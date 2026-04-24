@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moment.js 经典时间库</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/min/moment-with-locales.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">⏱️ Moment.js 时间库</h1>
+    <p class="text-white/60 mt-1">JavaScript 最经典的日期处理库（注意：官方已建议迁移到现代替代品）</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20 transition-colors">← 返回导航</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-6">
+
+  <!-- 实时时钟 -->
+  <div class="glass p-6 rounded-2xl">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="text-center">
+        <div class="text-white/50 text-sm mb-2">当前时间</div>
+        <div id="main-clock" class="text-5xl font-bold mono text-cyan-400">--:--:--</div>
+        <div id="main-date" class="text-white/70 mt-2">Loading...</div>
+      </div>
+      <div class="text-center">
+        <div class="text-white/50 text-sm mb-2">相对时间</div>
+        <div id="relative-now" class="text-2xl font-bold text-emerald-400">--</div>
+        <div class="text-white/50 text-sm mt-2">fromNow() 从页面加载开始</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 格式化演示 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+      <span class="w-8 h-8 bg-indigo-500/30 rounded-lg flex items-center justify-center">🎨</span>
+      格式化演示 (format)
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="text-white/70 text-sm w-24">自定义格式:</span>
+          <input type="text" id="format-input" value="YYYY年MM月DD日 dddd" 
+                 class="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white mono text-sm">
+        </div>
+        <button onclick="applyFormat()" class="w-full px-4 py-2 bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
+          应用格式
+        </button>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-xs text-white/40 mb-1">输出结果:</div>
+        <div id="format-output" class="mono text-lg text-yellow-400">--</div>
+      </div>
+    </div>
+    
+    <!-- 常用格式速查 -->
+    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+      <div class="bg-white/5 p-2 rounded cursor-pointer hover:bg-white/10" onclick="setFormat('YYYY-MM-DD')">
+        <div class="mono text-cyan-400">YYYY-MM-DD</div>
+        <div class="text-white/50" id="fmt-1">--</div>
+      </div>
+      <div class="bg-white/5 p-2 rounded cursor-pointer hover:bg-white/10" onclick="setFormat('MM/DD/YYYY HH:mm')">
+        <div class="mono text-cyan-400">MM/DD/YYYY HH:mm</div>
+        <div class="text-white/50" id="fmt-2">--</div>
+      </div>
+      <div class="bg-white/5 p-2 rounded cursor-pointer hover:bg-white/10" onclick="setFormat('dddd, MMMM Do')">
+        <div class="mono text-cyan-400">dddd, MMMM Do</div>
+        <div class="text-white/50" id="fmt-3">--</div>
+      </div>
+      <div class="bg-white/5 p-2 rounded cursor-pointer hover:bg-white/10" onclick="setFormat('YYYY年第Q季度')">
+        <div class="mono text-cyan-400">YYYY年第Q季度</div>
+        <div class="text-white/50" id="fmt-4">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 日期操作 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+      <span class="w-8 h-8 bg-emerald-500/30 rounded-lg flex items-center justify-center">🔧</span>
+      日期操作 (add/subtract)
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-xs text-white/40 mb-2">+7天</div>
+        <div id="add-7d" class="mono text-emerald-400">--</div>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-xs text-white/40 mb-2">-1个月</div>
+        <div id="sub-1m" class="mono text-orange-400">--</div>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-xs text-white/40 mb-2">+1年</div>
+        <div id="add-1y" class="mono text-rose-400">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 相对时间 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+      <span class="w-8 h-8 bg-purple-500/30 rounded-lg flex items-center justify-center">🕐</span>
+      相对时间 (fromNow / toNow)
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="space-y-3">
+        <div class="flex items-center gap-2">
+          <span class="text-white/70 text-sm">选择日期:</span>
+          <input type="datetime-local" id="relative-input" 
+                 class="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white">
+        </div>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl space-y-2">
+        <div class="flex justify-between">
+          <span class="text-white/50">fromNow():</span>
+          <span id="from-now-result" class="mono text-purple-400">--</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-white/50">toNow():</span>
+          <span id="to-now-result" class="mono text-purple-400">--</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 多语言支持 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+      <span class="w-8 h-8 bg-yellow-500/30 rounded-lg flex items-center justify-center">🌍</span>
+      多语言支持 (locale)
+    </h3>
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <button onclick="setLocale('zh-cn')" class="px-3 py-1 bg-white/10 rounded hover:bg-white/20 text-sm">🇨🇳 中文</button>
+      <button onclick="setLocale('en')" class="px-3 py-1 bg-white/10 rounded hover:bg-white/20 text-sm">🇺🇸 English</button>
+      <button onclick="setLocale('ja')" class="px-3 py-1 bg-white/10 rounded hover:bg-white/20 text-sm">🇯🇵 日本語</button>
+      <button onclick="setLocale('ko')" class="px-3 py-1 bg-white/10 rounded hover:bg-white/20 text-sm">🇰🇷 한국어</button>
+      <button onclick="setLocale('fr')" class="px-3 py-1 bg-white/10 rounded hover:bg-white/20 text-sm">🇫🇷 Français</button>
+    </div>
+    <div class="bg-slate-900/50 p-4 rounded-xl">
+      <div class="text-xs text-white/40 mb-1">当前语言显示:</div>
+      <div id="locale-output" class="mono text-yellow-400 text-lg">--</div>
+      <div id="locale-relative" class="text-white/60 mt-2">--</div>
+    </div>
+  </div>
+
+  <!-- 注意事项 -->
+  <div class="glass p-6 rounded-2xl border-l-4 border-amber-500">
+    <h3 class="font-bold text-amber-400 mb-2">⚠️ 注意事项</h3>
+    <p class="text-white/70 text-sm">
+      Moment.js 官方已宣布进入维护模式，不再添加新功能。对于新项目，建议使用 
+      <span class="text-cyan-400">Day.js</span>（API 兼容）、
+      <span class="text-cyan-400">date-fns</span>（模块化）或 
+      <span class="text-cyan-400">Luxon</span>（Moment 团队推荐）。
+    </p>
+  </div>
+
+</main>
+
+<script>
+  // 设置默认语言为中文
+  moment.locale('zh-cn');
+  
+  // 页面加载时间（用于计算相对时间）
+  const pageLoadTime = moment();
+  
+  // =====================
+  // 1. 实时时钟更新
+  // =====================
+  function updateClock() {
+    const now = moment();
+    document.getElementById('main-clock').textContent = now.format('HH:mm:ss');
+    document.getElementById('main-date').textContent = now.format('YYYY年MM月DD日 dddd');
+    
+    // 相对时间（从页面加载开始）
+    document.getElementById('relative-now').textContent = pageLoadTime.fromNow();
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+  
+  // =====================
+  // 2. 格式化演示
+  // =====================
+  function applyFormat() {
+    const fmt = document.getElementById('format-input').value;
+    try {
+      document.getElementById('format-output').textContent = moment().format(fmt);
+    } catch (e) {
+      document.getElementById('format-output').textContent = '格式错误';
+    }
+  }
+  
+  function setFormat(fmt) {
+    document.getElementById('format-input').value = fmt;
+    applyFormat();
+  }
+  
+  // 更新格式速查卡片
+  function updateFormatCards() {
+    document.getElementById('fmt-1').textContent = moment().format('YYYY-MM-DD');
+    document.getElementById('fmt-2').textContent = moment().format('MM/DD/YYYY HH:mm');
+    document.getElementById('fmt-3').textContent = moment().format('dddd, MMMM Do');
+    document.getElementById('fmt-4').textContent = moment().format('YYYY年第Q季度');
+  }
+  applyFormat();
+  updateFormatCards();
+  
+  // =====================
+  // 3. 日期操作
+  // =====================
+  function updateDateOps() {
+    document.getElementById('add-7d').textContent = moment().add(7, 'days').format('YYYY-MM-DD');
+    document.getElementById('sub-1m').textContent = moment().subtract(1, 'month').format('YYYY-MM-DD');
+    document.getElementById('add-1y').textContent = moment().add(1, 'year').format('YYYY-MM-DD');
+  }
+  updateDateOps();
+  
+  // =====================
+  // 4. 相对时间
+  // =====================
+  // 设置默认值为7天前
+  const defaultDate = moment().subtract(7, 'days');
+  document.getElementById('relative-input').value = defaultDate.format('YYYY-MM-DDTHH:mm');
+  
+  function updateRelative() {
+    const inputVal = document.getElementById('relative-input').value;
+    if (!inputVal) {
+      document.getElementById('from-now-result').textContent = '--';
+      document.getElementById('to-now-result').textContent = '--';
+      return;
+    }
+    
+    const m = moment(inputVal);
+    document.getElementById('from-now-result').textContent = m.fromNow();
+    document.getElementById('to-now-result').textContent = m.toNow();
+  }
+  
+  document.getElementById('relative-input').addEventListener('change', updateRelative);
+  updateRelative();
+  
+  // =====================
+  // 5. 多语言支持
+  // =====================
+  function setLocale(locale) {
+    moment.locale(locale);
+    updateLocaleDisplay();
+    updateFormatCards();
+  }
+  
+  function updateLocaleDisplay() {
+    const now = moment();
+    document.getElementById('locale-output').textContent = now.format('LLLL');
+    document.getElementById('locale-relative').textContent = `一周前: ${moment().subtract(7, 'days').fromNow()}`;
+  }
+  updateLocaleDisplay();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

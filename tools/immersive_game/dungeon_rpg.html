@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics：与项目其他工具保持一致 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地下城主 · 沉浸式文字 RPG</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /**
+         * 全局：中世纪地牢暗色基调 + 火把暖光氛围
+         * 字体：标题偏奇幻感，正文保持中文可读
+         */
+        :root {
+            --rpg-bg-deep: #0f0c09;
+            --rpg-panel: #1a1510;
+            --rpg-border: #3d2f1f;
+            --rpg-gold: #c9a227;
+            --rpg-gold-dim: #8a7020;
+            --rpg-emerald: #2d6a4f;
+            --rpg-emerald-glow: #40916c;
+            --rpg-blood: #9b2335;
+            --rpg-mana: #1d4ed8;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--rpg-bg-deep);
+            color: #e8dcc8;
+            font-family: "Source Han Serif SC", "Noto Serif SC", "Georgia", "Times New Roman", serif;
+        }
+
+        /* 全屏底层：摇曳火把光效（径向渐变动画） */
+        .torch-backdrop {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 20% 30%, rgba(201, 162, 39, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse 70% 45% at 75% 60%, rgba(255, 140, 60, 0.08) 0%, transparent 45%),
+                radial-gradient(ellipse 60% 40% at 50% 100%, rgba(45, 106, 79, 0.15) 0%, transparent 40%);
+            animation: torchFlicker 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes torchFlicker {
+            0% { opacity: 0.85; filter: brightness(0.95); }
+            33% { opacity: 1; filter: brightness(1.08); }
+            66% { opacity: 0.9; filter: brightness(1); }
+            100% { opacity: 0.95; filter: brightness(1.05); }
+        }
+
+        /* 主应用层叠在火把之上 */
+        #rpg-root {
+            position: relative;
+            z-index: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 自定义滚动条：石缝质感 */
+        .rpg-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .rpg-scroll::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 4px;
+        }
+        .rpg-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--rpg-gold-dim), var(--rpg-border));
+            border-radius: 4px;
+        }
+
+        /* 面板通用：深棕描边 + 内阴影 */
+        .rpg-panel-box {
+            background: linear-gradient(165deg, rgba(35, 28, 22, 0.96) 0%, rgba(20, 16, 12, 0.98) 100%);
+            border: 1px solid var(--rpg-border);
+            box-shadow:
+                inset 0 1px 0 rgba(201, 162, 39, 0.08),
+                0 8px 32px rgba(0, 0, 0, 0.45);
+            border-radius: 10px;
+        }
+
+        /* 属性条过渡：HP/MP/XP 数值变化时有动画 */
+        .bar-fill-anim {
+            transition: width 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 战斗模式：红色脉冲边框 */
+        .combat-frame {
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .combat-frame.is-combat {
+            animation: combatPulse 1.2s ease-in-out infinite;
+            border-color: var(--rpg-blood) !important;
+        }
+
+        @keyframes combatPulse {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 1px rgba(155, 35, 53, 0.5),
+                    0 0 24px rgba(155, 35, 53, 0.35),
+                    inset 0 0 20px rgba(155, 35, 53, 0.08);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 2px rgba(220, 53, 69, 0.85),
+                    0 0 40px rgba(220, 53, 69, 0.5),
+                    inset 0 0 28px rgba(155, 35, 53, 0.15);
+            }
+        }
+
+        /* 获得战利品：金光闪烁（加在中心栏容器） */
+        .loot-flash {
+            animation: lootGoldFlash 1.1s ease-out;
+        }
+
+        @keyframes lootGoldFlash {
+            0% { box-shadow: inset 0 0 0 rgba(201, 162, 39, 0); }
+            30% {
+                box-shadow:
+                    inset 0 0 80px rgba(201, 162, 39, 0.45),
+                    0 0 40px rgba(201, 162, 39, 0.35);
+            }
+            100% { box-shadow: inset 0 0 0 rgba(201, 162, 39, 0); }
+        }
+
+        /* 升级：全屏金色粒子层 */
+        .level-up-overlay {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            overflow: hidden;
+        }
+        .level-up-overlay .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #fff6cc, #c9a227);
+            border-radius: 50%;
+            opacity: 0;
+            animation: particleBurst 2s ease-out forwards;
+        }
+
+        @keyframes particleBurst {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(0.2);
+            }
+        }
+
+        /* Markdown 冒险日志样式 */
+        .prose-rpg {
+            font-size: 0.9375rem;
+            line-height: 1.75;
+            color: #dcd0bc;
+        }
+        .prose-rpg h1, .prose-rpg h2, .prose-rpg h3 {
+            color: var(--rpg-gold);
+            font-weight: 700;
+            margin: 0.65em 0 0.35em;
+        }
+        .prose-rpg h2 { font-size: 1.05rem; }
+        .prose-rpg p { margin: 0.4em 0; }
+        .prose-rpg strong { color: #f0e6d2; }
+        .prose-rpg ul, .prose-rpg ol { padding-left: 1.25rem; margin: 0.35em 0; }
+        .prose-rpg blockquote {
+            border-left: 3px solid var(--rpg-emerald-glow);
+            margin: 0.5em 0;
+            padding: 0.35rem 0.75rem;
+            background: rgba(45, 106, 79, 0.12);
+            border-radius: 0 6px 6px 0;
+        }
+        .prose-rpg code {
+            background: rgba(0, 0, 0, 0.35);
+            padding: 0.1em 0.35em;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
+
+        /* 顶部极简导航按钮 */
+        .nav-icon-btn {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(201, 162, 39, 0.25);
+            color: var(--rpg-gold);
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .nav-icon-btn:hover {
+            background: rgba(201, 162, 39, 0.12);
+            border-color: rgba(201, 162, 39, 0.5);
+        }
+
+        /* 背包格子 */
+        .inv-slot {
+            aspect-ratio: 1;
+            min-height: 44px;
+            border: 1px solid rgba(61, 47, 31, 0.9);
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            text-align: center;
+            padding: 2px;
+            color: #b8a990;
+        }
+        .inv-slot.filled {
+            border-color: rgba(201, 162, 39, 0.45);
+            color: #e8dcc8;
+        }
+
+        /* 死亡遮罩：灵魂归来 */
+        .soul-modal-backdrop {
+            background: rgba(5, 3, 2, 0.88);
+            backdrop-filter: blur(6px);
+        }
+
+        /* 小地图方向标签 */
+        .dir-pill {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.45rem;
+            border-radius: 999px;
+            background: rgba(45, 106, 79, 0.25);
+            border: 1px solid rgba(64, 145, 108, 0.4);
+            color: #a8d5ba;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+    <div class="torch-backdrop" aria-hidden="true"></div>
+
+    <div id="rpg-root" x-data="dungeonRpgApp()" x-init="init()">
+
+        <!-- 升级粒子全屏层 -->
+        <div class="level-up-overlay" x-show="showLevelUpFx" x-transition.opacity>
+            <template x-for="p in levelUpParticles" :key="p.id">
+                <div class="particle"
+                    :style="'left:' + p.x + '%;top:' + p.y + '%;--tx:' + p.tx + 'px;--ty:' + p.ty + 'px;animation-delay:' + p.delay + 's'">
+                </div>
+            </template>
+        </div>
+
+        <!-- ========== 阶段一：角色创建（全屏沉浸） ========== -->
+        <template x-if="phase === 'create'">
+            <div class="flex-1 flex flex-col min-h-0 overflow-y-auto rpg-scroll p-4 sm:p-8 items-center justify-center">
+                <div class="w-full max-w-lg rpg-panel-box p-6 sm:p-8 border border-[#3d2f1f]">
+                    <div class="text-center mb-6">
+                        <h1 class="text-2xl sm:text-3xl font-bold text-[#c9a227] tracking-wide drop-shadow-md">
+                            地下城主
+                        </h1>
+                        <p class="text-sm text-[#9a8b76] mt-2">D&amp;D 风格 · AI 担任地下城主 · 纯文字沉浸式冒险</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-[#c9a227]/90 mb-1">英雄之名</label>
+                            <input type="text" x-model="form.name" placeholder="输入你的名字…"
+                                class="w-full rounded-lg bg-black/40 border border-[#3d2f1f] px-3 py-2.5 text-[#e8dcc8] placeholder-[#6b5d4f] focus:ring-2 focus:ring-[#c9a227]/50 outline-none" />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-[#c9a227]/90 mb-2">种族</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <template x-for="r in raceOptions" :key="r.id">
+                                    <button type="button"
+                                        @click="form.race = r.id"
+                                        :class="form.race === r.id ? 'ring-2 ring-[#c9a227] bg-[#c9a227]/15' : 'hover:bg-white/5'"
+                                        class="rounded-lg border border-[#3d2f1f] px-3 py-2 text-left text-sm transition">
+                                        <span class="font-bold text-[#e8dcc8]" x-text="r.label"></span>
+                                        <span class="block text-[0.7rem] text-[#8a7d6b]" x-text="r.hint"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-[#c9a227]/90 mb-2">职业</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <template x-for="c in classOptions" :key="c.id">
+                                    <button type="button"
+                                        @click="form.job = c.id"
+                                        :class="form.job === c.id ? 'ring-2 ring-[#40916c] bg-[#2d6a4f]/25' : 'hover:bg-white/5'"
+                                        class="rounded-lg border border-[#3d2f1f] px-3 py-2 text-left text-sm transition">
+                                        <span class="font-bold text-[#e8dcc8]" x-text="c.label"></span>
+                                        <span class="block text-[0.65rem] text-[#8a7d6b]" x-text="c.hint"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="rpg-panel-box p-4 border border-[#3d2f1f]/80 bg-black/20">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-[#c9a227]">初始属性（10–18 随机）</span>
+                                <button type="button" @click="rollStats()"
+                                    class="text-xs text-[#40916c] hover:underline">重新掷骰</button>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm">
+                                <div><div class="text-[#8a7d6b] text-[0.65rem]">力量</div><div class="font-mono font-bold text-[#f0e6d2]" x-text="form.str"></div></div>
+                                <div><div class="text-[#8a7d6b] text-[0.65rem]">敏捷</div><div class="font-mono font-bold text-[#f0e6d2]" x-text="form.agi"></div></div>
+                                <div><div class="text-[#8a7d6b] text-[0.65rem]">智力</div><div class="font-mono font-bold text-[#f0e6d2]" x-text="form.int"></div></div>
+                                <div><div class="text-[#8a7d6b] text-[0.65rem]">体质</div><div class="font-mono font-bold text-[#f0e6d2]" x-text="form.con"></div></div>
+                            </div>
+                            <p class="text-[0.7rem] text-[#6b5d4f] mt-2">运气由种族加成后单独计算，进入游戏后显示。</p>
+                        </div>
+                    </div>
+
+                    <p x-show="errorMsg" class="mt-3 text-sm text-red-400" x-text="errorMsg"></p>
+
+                    <button type="button"
+                        @click="beginAdventure()"
+                        :disabled="isLoading || !canCreate"
+                        class="mt-6 w-full py-3.5 rounded-lg font-bold text-[#1a1510] bg-gradient-to-r from-[#c9a227] to-[#8a7020] hover:from-[#d4af37] hover:to-[#c9a227] disabled:opacity-45 disabled:cursor-not-allowed shadow-lg shadow-black/40 flex items-center justify-center gap-2">
+                        <i x-show="isLoading" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                        <span x-text="isLoading ? '地下城主正在编织命运…' : '踏入地下城'"></span>
+                    </button>
+
+                    <div class="mt-6 flex justify-center gap-3">
+                        <a href="../../index.html"
+                            class="nav-icon-btn rounded-full w-11 h-11 flex items-center justify-center"
+                            title="返回工坊">
+                            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                        </a>
+                        <button type="button" @click="showSettings = true"
+                            class="nav-icon-btn rounded-full w-11 h-11 flex items-center justify-center" title="设置">
+                            <i data-lucide="settings" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- ========== 阶段二：游戏主界面（RPG 固定布局） ========== -->
+        <template x-if="phase === 'play'">
+            <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+
+                <!-- 极简顶栏：返回 + 设置 -->
+                <header class="flex-shrink-0 flex items-center justify-between px-2 sm:px-3 py-2 border-b border-[#3d2f1f]/80 bg-black/30">
+                    <div class="flex items-center gap-2">
+                        <a href="../../index.html" class="nav-icon-btn rounded-lg p-2 flex items-center justify-center opacity-80 hover:opacity-100" title="返回">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        </a>
+                        <button type="button" @click="showSettings = true" class="nav-icon-btn rounded-lg p-2" title="API 设置">
+                            <i data-lucide="settings" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div class="text-[0.65rem] text-[#6b5d4f] hidden sm:block">沉浸式地下城 · 自动保存进度于本页会话</div>
+                    <div class="w-20"></div>
+                </header>
+
+                <!-- 顶部状态栏：HP / MP / XP / 金币 -->
+                <div class="flex-shrink-0 rpg-panel-box mx-2 sm:mx-3 mt-2 px-3 py-2 border border-[#3d2f1f]">
+                    <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+                        <div class="min-w-[120px]">
+                            <div class="text-xs text-[#c9a227] font-bold" x-text="player.name"></div>
+                            <div class="text-[0.7rem] text-[#8a7d6b]">
+                                Lv.<span x-text="player.level"></span>
+                                <span class="mx-1">·</span>
+                                <span x-text="jobLabel(player.job)"></span>
+                            </div>
+                        </div>
+                        <!-- HP -->
+                        <div class="flex-1 min-w-[140px]">
+                            <div class="flex justify-between text-[0.65rem] mb-0.5">
+                                <span class="text-red-300/90">生命值</span>
+                                <span class="font-mono" x-text="player.hp + ' / ' + player.hpMax"></span>
+                            </div>
+                            <div class="h-2 rounded-full bg-black/50 overflow-hidden border border-red-900/40">
+                                <div class="bar-fill-anim h-full rounded-full bg-gradient-to-r from-red-900 to-red-500"
+                                    :style="'width:' + barPercent(player.hp, player.hpMax) + '%'"></div>
+                            </div>
+                        </div>
+                        <!-- MP -->
+                        <div class="flex-1 min-w-[140px]">
+                            <div class="flex justify-between text-[0.65rem] mb-0.5">
+                                <span class="text-blue-300/90">法力</span>
+                                <span class="font-mono" x-text="player.mp + ' / ' + player.mpMax"></span>
+                            </div>
+                            <div class="h-2 rounded-full bg-black/50 overflow-hidden border border-blue-900/40">
+                                <div class="bar-fill-anim h-full rounded-full bg-gradient-to-r from-blue-900 to-blue-400"
+                                    :style="'width:' + barPercent(player.mp, player.mpMax) + '%'"></div>
+                            </div>
+                        </div>
+                        <!-- XP -->
+                        <div class="flex-1 min-w-[140px]">
+                            <div class="flex justify-between text-[0.65rem] mb-0.5">
+                                <span class="text-[#c9a227]">经验</span>
+                                <span class="font-mono" x-text="player.xp + ' / ' + player.xpToLevel"></span>
+                            </div>
+                            <div class="h-2 rounded-full bg-black/50 overflow-hidden border border-[#8a7020]/50">
+                                <div class="bar-fill-anim h-full rounded-full bg-gradient-to-r from-[#5c4a15] to-[#c9a227]"
+                                    :style="'width:' + barPercent(player.xp, player.xpToLevel) + '%'"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 text-[#c9a227] font-mono text-sm font-bold">
+                            <i data-lucide="coins" class="w-4 h-4"></i>
+                            <span x-text="player.gold"></span>
+                        </div>
+                    </div>
+                    <!-- 战斗中敌人条 -->
+                    <div x-show="inCombat && enemy.active" x-transition class="mt-2 pt-2 border-t border-[#3d2f1f]/60">
+                        <div class="flex justify-between text-[0.7rem] text-red-200/90 mb-0.5">
+                            <span x-text="'敌人：' + enemy.name"></span>
+                            <span class="font-mono" x-text="enemy.hp + ' / ' + enemy.hpMax"></span>
+                        </div>
+                        <div class="h-1.5 rounded-full bg-black/50 overflow-hidden">
+                            <div class="bar-fill-anim h-full bg-gradient-to-r from-red-950 to-orange-600"
+                                :style="'width:' + barPercent(enemy.hp, enemy.hpMax) + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 三栏主体：左 20% / 中 60% / 右 20%（小屏改为纵向堆叠） -->
+                <div class="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 p-2 sm:p-3 overflow-hidden">
+
+                    <!-- 左侧：属性 / 装备 / 技能 -->
+                    <aside class="lg:w-[20%] flex-shrink-0 flex flex-col gap-2 min-h-0 order-2 lg:order-1">
+                        <div class="rpg-panel-box p-3 flex-1 min-h-0 overflow-y-auto rpg-scroll border border-[#3d2f1f]">
+                            <h3 class="text-xs font-bold text-[#c9a227] mb-2 flex items-center gap-1">
+                                <i data-lucide="shield" class="w-3.5 h-3.5"></i> 属性
+                            </h3>
+                            <ul class="text-[0.8rem] space-y-1.5 text-[#c4b5a0]">
+                                <li class="flex justify-between"><span>力量</span><span class="font-mono text-[#f0e6d2]" x-text="player.str"></span></li>
+                                <li class="flex justify-between"><span>敏捷</span><span class="font-mono text-[#f0e6d2]" x-text="player.agi"></span></li>
+                                <li class="flex justify-between"><span>智力</span><span class="font-mono text-[#f0e6d2]" x-text="player.int"></span></li>
+                                <li class="flex justify-between"><span>体质</span><span class="font-mono text-[#f0e6d2]" x-text="player.con"></span></li>
+                                <li class="flex justify-between"><span>运气</span><span class="font-mono text-[#a8d5ba]" x-text="player.luck"></span></li>
+                            </ul>
+
+                            <h3 class="text-xs font-bold text-[#c9a227] mt-4 mb-2 flex items-center gap-1">
+                                <i data-lucide="sword" class="w-3.5 h-3.5"></i> 装备
+                            </h3>
+                            <ul class="text-[0.75rem] space-y-1 text-[#9a8b76]">
+                                <li>武器：<span class="text-[#e8dcc8]" x-text="equipment.weapon"></span></li>
+                                <li>防具：<span class="text-[#e8dcc8]" x-text="equipment.armor"></span></li>
+                                <li>饰品：<span class="text-[#e8dcc8]" x-text="equipment.trinket"></span></li>
+                            </ul>
+
+                            <h3 class="text-xs font-bold text-[#c9a227] mt-4 mb-2 flex items-center gap-1">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> 技能
+                            </h3>
+                            <ul class="text-[0.72rem] space-y-1.5 text-[#b8a990]">
+                                <template x-for="(sk, idx) in skills" :key="idx">
+                                    <li class="border-l-2 border-[#2d6a4f] pl-2" x-text="sk"></li>
+                                </template>
+                            </ul>
+                        </div>
+                    </aside>
+
+                    <!-- 中间：冒险日志 + 输入 + 快捷栏 -->
+                    <main
+                        class="lg:w-[60%] flex-1 flex flex-col min-h-0 min-w-0 order-1 lg:order-2 combat-frame rpg-panel-box border border-[#3d2f1f] overflow-hidden"
+                        :class="{ 'is-combat': inCombat, 'loot-flash': lootFlashActive }">
+
+                        <div class="flex-shrink-0 px-3 py-2 border-b border-[#3d2f1f] flex items-center justify-between bg-black/25">
+                            <span class="text-xs font-bold text-[#c9a227] flex items-center gap-1">
+                                <i data-lucide="scroll-text" class="w-4 h-4"></i> 冒险日志
+                            </span>
+                            <span x-show="inCombat" class="text-[0.65rem] text-red-400 animate-pulse font-bold">战斗中</span>
+                        </div>
+
+                        <!-- 日志区：自下而上视觉：flex-col-reverse 使最新在底部附近；实际滚动锚底 -->
+                        <div id="adventure-log-scroll"
+                            class="flex-1 min-h-0 overflow-y-auto rpg-scroll p-3 space-y-4 flex flex-col">
+                            <template x-for="entry in logArchive" :key="entry.id">
+                                <article class="prose-rpg border-b border-[#3d2f1f]/40 pb-3" x-html="renderMd(entry.md)"></article>
+                            </template>
+                            <article x-show="streamingMd || reasoningBuffer" class="prose-rpg">
+                                <details x-show="reasoningBuffer" class="mb-2 text-[0.7rem]">
+                                    <summary class="cursor-pointer text-[#8a7d6b]">🧠 地下城主的思考（可展开）</summary>
+                                    <pre class="mt-1 p-2 bg-black/30 rounded text-[#9a8b76] whitespace-pre-wrap max-h-32 overflow-y-auto" x-text="reasoningBuffer"></pre>
+                                </details>
+                                <div x-show="streamingMd" x-html="renderMd(streamingMd)"></div>
+                                <span x-show="isLoading" class="inline-block w-2 h-4 bg-[#c9a227] animate-pulse ml-0.5 align-middle"></span>
+                            </article>
+                        </div>
+
+                        <!-- 快捷命令 -->
+                        <div class="flex-shrink-0 px-2 py-2 border-t border-[#3d2f1f]/80 bg-black/35 flex flex-wrap gap-1">
+                            <template x-for="cmd in quickCommands" :key="cmd.key">
+                                <button type="button"
+                                    @click="appendQuick(cmd.text)"
+                                    :disabled="isLoading"
+                                    class="text-[0.65rem] sm:text-xs px-2 py-1.5 rounded-md border border-[#3d2f1f] bg-[#1a1510] text-[#c4b5a0] hover:border-[#c9a227]/50 hover:text-[#c9a227] disabled:opacity-40"
+                                    x-text="cmd.label"></button>
+                            </template>
+                        </div>
+
+                        <!-- 输入行 -->
+                        <div class="flex-shrink-0 p-2 border-t border-[#3d2f1f] bg-black/45 flex gap-2">
+                            <input type="text" x-model="userInput" @keydown.enter.prevent="sendAction()"
+                                placeholder="你想做什么？"
+                                class="flex-1 min-w-0 rounded-lg bg-black/50 border border-[#3d2f1f] px-3 py-2 text-sm text-[#e8dcc8] placeholder-[#5c4a3a] focus:ring-1 focus:ring-[#c9a227]/40 outline-none" />
+                            <button type="button" @click="sendAction()"
+                                :disabled="isLoading || !userInput.trim()"
+                                class="px-4 py-2 rounded-lg font-bold text-[#1a1510] bg-[#c9a227] hover:bg-[#d4af37] disabled:opacity-40 text-sm shrink-0">
+                                行动
+                            </button>
+                        </div>
+                    </main>
+
+                    <!-- 右侧：背包 / 任务 / 小地图 -->
+                    <aside class="lg:w-[20%] flex-shrink-0 flex flex-col gap-2 min-h-0 order-3">
+                        <div class="rpg-panel-box p-3 flex-1 min-h-0 overflow-y-auto rpg-scroll border border-[#3d2f1f]">
+                            <h3 class="text-xs font-bold text-[#c9a227] mb-2 flex items-center gap-1">
+                                <i data-lucide="backpack" class="w-3.5 h-3.5"></i> 背包
+                            </h3>
+                            <div class="grid grid-cols-4 gap-1.5">
+                                <template x-for="(slot, idx) in backpackSlots" :key="idx">
+                                    <div class="inv-slot" :class="{ 'filled': slot.name }" :title="slot.name || '空'">
+                                        <span x-text="slot.qty > 1 ? (slot.name || '') + '×' + slot.qty : (slot.name || '—')"></span>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <h3 class="text-xs font-bold text-[#c9a227] mt-4 mb-2 flex items-center gap-1">
+                                <i data-lucide="flag" class="w-3.5 h-3.5"></i> 任务日志
+                            </h3>
+                            <p class="text-[0.72rem] text-[#b8a990] leading-relaxed whitespace-pre-wrap" x-text="questText"></p>
+
+                            <h3 class="text-xs font-bold text-[#c9a227] mt-4 mb-2 flex items-center gap-1">
+                                <i data-lucide="map" class="w-3.5 h-3.5"></i> 小地图
+                            </h3>
+                            <p class="text-[0.72rem] text-[#9a8b76] mb-2 whitespace-pre-wrap" x-text="mapLocation"></p>
+                            <div class="flex flex-wrap gap-1">
+                                <template x-for="d in mapDirections" :key="d">
+                                    <span class="dir-pill" x-text="d"></span>
+                                </template>
+                            </div>
+
+                            <!-- 战斗日志：与冒险主日志区分，仅摘要数值与态势 -->
+                            <h3 class="text-xs font-bold text-[#c9a227] mt-4 mb-2 flex items-center gap-1">
+                                <i data-lucide="swords" class="w-3.5 h-3.5"></i> 战斗日志
+                            </h3>
+                            <div class="max-h-28 overflow-y-auto rpg-scroll space-y-1 text-[0.65rem] text-[#a89080] font-mono leading-snug">
+                                <template x-if="!battleLog.length">
+                                    <p class="text-[#5c4a3a]">暂无战斗记录。</p>
+                                </template>
+                                <template x-for="(line, idx) in battleLog" :key="idx">
+                                    <p class="border-l border-red-900/40 pl-1.5" x-text="line"></p>
+                                </template>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </template>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[150] px-4 py-2 rounded-lg text-sm font-medium shadow-lg border"
+            :class="toast.type === 'error' ? 'bg-red-950/95 text-red-100 border-red-800' : 'bg-[#1a1510]/95 text-[#c9a227] border-[#3d2f1f]'"
+            x-text="toast.msg"></div>
+
+        <!-- 设置弹窗 -->
+        <div x-show="showSettings" class="fixed inset-0 z-[120] flex items-center justify-center p-4 soul-modal-backdrop"
+            x-transition.opacity @keydown.escape.window="showSettings = false">
+            <div @click.away="showSettings = false" class="rpg-panel-box max-w-md w-full p-6 border border-[#c9a227]/30 shadow-2xl">
+                <h3 class="text-lg font-bold text-[#c9a227] mb-4">API 配置</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-[#9a8b76] mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg bg-black/40 border border-[#3d2f1f] px-3 py-2 text-sm text-[#e8dcc8]" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#9a8b76] mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg bg-black/40 border border-[#3d2f1f] px-3 py-2 text-sm text-[#e8dcc8]">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-sm text-[#9a8b76] hover:bg-white/5">取消</button>
+                    <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg text-sm font-bold bg-[#c9a227] text-[#1a1510]">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 死亡：灵魂归来 -->
+        <div x-show="showDeathModal" class="fixed inset-0 z-[130] flex items-center justify-center p-4 soul-modal-backdrop">
+            <div class="rpg-panel-box max-w-sm w-full p-8 text-center border-2 border-red-900/60">
+                <i data-lucide="skull" class="w-14 h-14 mx-auto text-red-500/90 mb-4"></i>
+                <h3 class="text-xl font-bold text-red-200 mb-2">你的灵魂游离在冥界边缘…</h3>
+                <p class="text-sm text-[#9a8b76] mb-6">古老祭坛仍回应你的真名。归来将失去部分金币，生命值恢复至一半。</p>
+                <button type="button" @click="soulReturn()"
+                    class="w-full py-3 rounded-lg font-bold bg-gradient-to-r from-[#2d6a4f] to-[#40916c] text-white hover:opacity-95">
+                    灵魂归来
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Alpine 根组件：沉浸式地下城 RPG
+         * - DeepSeek 流式 API
+         * - 叙事为 Markdown；状态更新在 ```json``` 代码块中
+         * - localStorage global_llm_config 合并写入
+         */
+        function dungeonRpgApp() {
+            return {
+                phase: 'create',
+                showSettings: false,
+                isLoading: false,
+                errorMsg: '',
+                toast: { show: false, msg: '', type: 'info' },
+
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                /** 创建角色表单 */
+                form: {
+                    name: '',
+                    race: 'human',
+                    job: 'warrior',
+                    str: 12,
+                    agi: 12,
+                    int: 12,
+                    con: 12
+                },
+
+                raceOptions: [
+                    { id: 'human', label: '人类', hint: '全属性平衡，运气+1' },
+                    { id: 'elf', label: '精灵', hint: '敏捷、智力+1' },
+                    { id: 'dwarf', label: '矮人', hint: '力量、体质+1' },
+                    { id: 'half_orc', label: '半兽人', hint: '力量+2，智力-1' }
+                ],
+
+                classOptions: [
+                    { id: 'warrior', label: '战士', hint: '近战、坚韧' },
+                    { id: 'mage', label: '法师', hint: '奥术、爆发' },
+                    { id: 'rogue', label: '盗贼', hint: '敏捷、偷袭' },
+                    { id: 'priest', label: '牧师', hint: '治疗、神圣' }
+                ],
+
+                /** 运行时玩家状态（由创建 + AI 同步更新） */
+                player: {
+                    name: '',
+                    race: '',
+                    job: '',
+                    str: 10, agi: 10, int: 10, con: 10, luck: 10,
+                    level: 1,
+                    xp: 0,
+                    xpToLevel: 100,
+                    hp: 30,
+                    hpMax: 30,
+                    mp: 10,
+                    mpMax: 10,
+                    gold: 10
+                },
+
+                equipment: {
+                    weapon: '',
+                    armor: '',
+                    trinket: ''
+                },
+
+                skills: [],
+
+                /** 背包：最多 16 格 */
+                backpack: [],
+
+                questText: '探索地下城，听从地下城主的指引。',
+                mapLocation: '你站在石砖门厅，火把在墙上摇曳。',
+                mapDirections: ['前方通道', '左侧铁门', '右侧斜坡'],
+
+                /** 战斗 */
+                inCombat: false,
+                enemy: { name: '', hp: 0, hpMax: 0, active: false },
+
+                /** 日志 */
+                logArchive: [],
+                streamingMd: '',
+                streamRaw: '',
+                reasoningBuffer: '',
+                userInput: '',
+
+                showDeathModal: false,
+                playerDead: false,
+
+                /** 战斗日志条目（仅摘要，避免与主叙事重复过长文本） */
+                battleLog: [],
+
+                lootFlashActive: false,
+                showLevelUpFx: false,
+                levelUpParticles: [],
+
+                quickCommands: [
+                    { key: 'atk', label: '攻击', text: '我发动攻击。' },
+                    { key: 'def', label: '防御', text: '我采取防御姿态，减少受到的伤害。' },
+                    { key: 'item', label: '使用物品', text: '我使用背包中的药水（请地下城主判定具体物品）。' },
+                    { key: 'spell', label: '施法', text: '我施展职业技能进行施法。' },
+                    { key: 'run', label: '逃跑', text: '我尝试脱离战斗并撤退。' },
+                    { key: 'rest', label: '休息', text: '我在安全处短暂休息，恢复体力与精神。' },
+                    { key: 'look', label: '查看', text: '我仔细观察周围环境、敌人细节与可疑之处。' }
+                ],
+
+                /** 计算属性显示用背包格子（固定 16 格） */
+                get backpackSlots() {
+                    const max = 16;
+                    const slots = [];
+                    for (let i = 0; i < max; i++) {
+                        const it = this.backpack[i];
+                        slots.push(it ? { name: it.name, qty: it.qty || 1 } : { name: '', qty: 0 });
+                    }
+                    return slots;
+                },
+
+                get canCreate() {
+                    return (this.form.name || '').trim().length > 0;
+                },
+
+                /**
+                 * 初始化：读取 global_llm_config，合并 DeepSeek 配置
+                 */
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        } catch (e) { /* 忽略损坏配置 */ }
+                    }
+                    this.rollStats();
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /**
+                 * 随机 10–18 四点属性
+                 */
+                rollStats() {
+                    const roll = () => Math.floor(Math.random() * 9) + 10;
+                    this.form.str = roll();
+                    this.form.agi = roll();
+                    this.form.int = roll();
+                    this.form.con = roll();
+                },
+
+                jobLabel(job) {
+                    const m = { warrior: '战士', mage: '法师', rogue: '盗贼', priest: '牧师' };
+                    return m[job] || job;
+                },
+
+                raceLabel(race) {
+                    const m = { human: '人类', elf: '精灵', dwarf: '矮人', half_orc: '半兽人' };
+                    return m[race] || race;
+                },
+
+                /**
+                 * 种族加成后计算运气与衍生 HP/MP
+                 */
+                applyRaceBonuses(base) {
+                    let luck = 10 + Math.floor(Math.random() * 5);
+                    let str = base.str, agi = base.agi, int = base.int, con = base.con;
+                    switch (this.form.race) {
+                        case 'human':
+                            luck += 1;
+                            break;
+                        case 'elf':
+                            agi += 1; int += 1;
+                            break;
+                        case 'dwarf':
+                            str += 1; con += 1;
+                            break;
+                        case 'half_orc':
+                            str += 2; int = Math.max(8, int - 1);
+                            break;
+                        default:
+                            break;
+                    }
+                    return { str, agi, int, con, luck };
+                },
+
+                /**
+                 * 职业默认装备与技能
+                 */
+                defaultLoadout(job) {
+                    const map = {
+                        warrior: {
+                            weapon: '铁剑',
+                            armor: '皮甲',
+                            trinket: '家徽护符',
+                            skills: ['猛击：造成额外物理伤害', '战吼：威慑敌人', '坚韧：短时减伤'],
+                            hpBase: 38,
+                            mpBase: 8
+                        },
+                        mage: {
+                            weapon: '橡木法杖',
+                            armor: '布袍',
+                            trinket: '魔力指环',
+                            skills: ['火球术：范围火焰伤害', '奥术飞弹：多段魔法弹', '法力护盾：消耗 MP 吸收伤害'],
+                            hpBase: 22,
+                            mpBase: 28
+                        },
+                        rogue: {
+                            weapon: '淬毒匕首',
+                            armor: '轻皮甲',
+                            trinket: '潜行斗篷扣',
+                            skills: ['背刺：从侧后高额伤害', '潜行：降低被发现概率', '毒刃：持续流血/中毒'],
+                            hpBase: 28,
+                            mpBase: 14
+                        },
+                        priest: {
+                            weapon: '圣徽钉锤',
+                            armor: '链甲衫',
+                            trinket: '圣水小瓶',
+                            skills: ['神圣之光：治疗或伤害亡灵', '愈合：持续恢复', '驱邪：对抗邪恶存在'],
+                            hpBase: 30,
+                            mpBase: 24
+                        }
+                    };
+                    return map[job] || map.warrior;
+                },
+
+                /**
+                 * 开始冒险：组装玩家状态并请求开场叙事
+                 */
+                async beginAdventure() {
+                    this.errorMsg = '';
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 DeepSeek API Key', 'error');
+                        return;
+                    }
+                    if (!this.canCreate) {
+                        this.errorMsg = '请填写角色名称。';
+                        return;
+                    }
+
+                    const st = this.applyRaceBonuses({
+                        str: this.form.str,
+                        agi: this.form.agi,
+                        int: this.form.int,
+                        con: this.form.con
+                    });
+                    const load = this.defaultLoadout(this.form.job);
+                    const hpMax = load.hpBase + Math.floor(st.con / 2);
+                    const mpMax = load.mpBase + Math.floor(st.int / 2);
+
+                    this.player = {
+                        name: (this.form.name || '').trim(),
+                        race: this.form.race,
+                        job: this.form.job,
+                        str: st.str,
+                        agi: st.agi,
+                        int: st.int,
+                        con: st.con,
+                        luck: st.luck,
+                        level: 1,
+                        xp: 0,
+                        xpToLevel: 100,
+                        hp: hpMax,
+                        hpMax,
+                        mp: mpMax,
+                        mpMax,
+                        gold: 15 + Math.floor(Math.random() * 11)
+                    };
+
+                    this.equipment = {
+                        weapon: load.weapon,
+                        armor: load.armor,
+                        trinket: load.trinket
+                    };
+                    this.skills = [...load.skills];
+                    this.backpack = [
+                        { name: '治疗药水', qty: 2 },
+                        { name: '面包', qty: 1 },
+                        { name: '火把', qty: 1 }
+                    ];
+                    this.questText = '进入地下城，找到失踪的斥候或查明古老封印。';
+                    this.mapLocation = '石砖门厅：潮湿冷风自前方通道灌入。';
+                    this.mapDirections = ['北：通道', '西：铁门', '东：斜坡向下'];
+                    this.logArchive = [];
+                    this.streamingMd = '';
+                    this.streamRaw = '';
+                    this.inCombat = false;
+                    this.enemy = { name: '', hp: 0, hpMax: 0, active: false };
+                    this.playerDead = false;
+                    this.showDeathModal = false;
+                    this.battleLog = [];
+
+                    this.phase = 'play';
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+
+                    const messages = this.buildOpeningMessages();
+                    await this.runStreamTurn(messages);
+                },
+
+                /**
+                 * 合并保存 API 配置（禁止整对象覆盖 global_llm_config）
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'success');
+                },
+
+                showToast(msg, type = 'info') {
+                    this.toast = { show: true, msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2600);
+                },
+
+                barPercent(cur, max) {
+                    if (!max || max <= 0) return 0;
+                    return Math.min(100, Math.max(0, (cur / max) * 100));
+                },
+
+                renderMd(text) {
+                    if (!text) return '';
+                    try { return marked.parse(text); }
+                    catch { return String(text).replace(/\n/g, '<br>'); }
+                },
+
+                /**
+                 * 系统提示：完整 RPG 规则 + 固定 JSON 结构
+                 */
+                getSystemPrompt() {
+                    return `你是「地下城主（DM）」，主持一款中文 D&D 风格文字地下城 RPG。
+
+【叙事】
+- 用沉浸式第二人称或「你」为主角描写，富有画面感、听觉与触觉细节，节奏紧凑。
+- 正文使用 Markdown（可含小标题、列表、引用），禁止在正文中输出 JSON。
+
+【状态同步】
+- 每次回复末尾必须**单独**输出一个 JSON 代码块（格式为 \`\`\`json ... \`\`\`），且全篇仅此一处 fenced 代码块。
+- JSON 字段说明（尽量全部给出；数值用数字；若无变化填 0 或 false）：
+{
+  "narrative_note": "可选，给开发用的短摘要，可为空字符串",
+  "in_combat": boolean,
+  "battle_state": "idle" | "combat" | "victory" | "fled" | "defeat",
+  "enemy": { "active": boolean, "name": "", "hp": 0, "hp_max": 0 },
+  "hp_delta": 整数,
+  "mp_delta": 整数,
+  "xp_gain": 整数,
+  "gold_gain": 整数,
+  "level": 整数或 null,
+  "xp_to_level": 整数或 null,
+  "items_found": [ { "name": "", "qty": 1 } ],
+  "quest_update": "字符串，更新任务目标描述；无变化可重复上一句要点",
+  "location": "当前位置文字描述",
+  "directions": ["可去方向或地标，数组"],
+  "equipment": { "weapon": "", "armor": "", "trinket": "" }  // 若某件不变可填空字符串表示不修改；若需改名称则写全名
+  , "stats": { "str": null, "agi": null, "int": null, "con": null, "luck": null }  // null 表示不改
+  , "player_dead": boolean
+}
+- hp_delta/mp_delta 为**相对变化**（可负）。应用后请保证 HP 在 [0, hp_max]、MP 在 [0, mp_max]。
+- 若 in_combat 为 true，enemy.active 应为 true 并给出合理 hp/hp_max。
+- battle_state 为 victory 时应有战利品（items_found / gold_gain）。
+- player_dead 为 true 表示角色死亡（界面会触发复活流程）；不要在此情况下继续长篇战斗。
+
+【规则】
+- 尊重玩家种族与职业；技能名称要一致。
+- 保持世界观连贯，记住已有任务与地图信息。
+- 若玩家输入含糊，可合理推断并说明推断。
+
+【禁止】
+- 在 \`\`\`json 代码块之外不要再写其它代码块。
+- 不要输出 XML 或 YAML 作为状态。`;
+                },
+
+                /**
+                 * 将当前完整状态打包为 JSON 字符串，供模型读取
+                 */
+                snapshotStateJson() {
+                    return JSON.stringify({
+                        player: this.player,
+                        equipment: this.equipment,
+                        backpack: this.backpack,
+                        in_combat: this.inCombat,
+                        enemy: this.enemy,
+                        quest: this.questText,
+                        location: this.mapLocation,
+                        directions: this.mapDirections,
+                        skills: this.skills
+                    }, null, 0);
+                },
+
+                buildOpeningMessages() {
+                    const user = `【开局】请开始冒险开场。
+
+【角色卡】
+- 姓名：${this.player.name}
+- 种族：${this.raceLabel(this.player.race)}
+- 职业：${this.jobLabel(this.player.job)}
+- 属性：力量${this.player.str} 敏捷${this.player.agi} 智力${this.player.int} 体质${this.player.con} 运气${this.player.luck}
+- 等级 ${this.player.level}，HP ${this.player.hp}/${this.player.hpMax}，MP ${this.player.mp}/${this.player.mpMax}，金币 ${this.player.gold}
+- 装备：武器「${this.equipment.weapon}」，防具「${this.equipment.armor}」，饰品「${this.equipment.trinket}」
+- 背包：${this.backpack.map(i => i.name + '×' + i.qty).join('、')}
+- 技能：${this.skills.join('；')}
+
+【当前任务线索】${this.questText}
+【初始位置】${this.mapLocation}
+【已知方向】${this.mapDirections.join('、')}
+
+请描写主角踏入地下城的第一幕，给出可互动线索，并输出规定 JSON。`;
+                    return [
+                        { role: 'system', content: this.getSystemPrompt() },
+                        { role: 'user', content: user }
+                    ];
+                },
+
+                /**
+                 * 追加用户行动到对话历史并流式请求
+                 */
+                async sendAction() {
+                    const text = (this.userInput || '').trim();
+                    if (!text || this.isLoading) return;
+                    if (this.playerDead) {
+                        this.showToast('请先灵魂归来', 'error');
+                        return;
+                    }
+
+                    const lastNarrative = this.stripJsonBlock(this.streamRaw).trim() || this.streamingMd.trim();
+                    if (lastNarrative) {
+                        this.logArchive.push({ id: 'log-' + Date.now(), md: lastNarrative });
+                    }
+
+                    this.streamingMd = '';
+                    this.streamRaw = '';
+                    this.reasoningBuffer = '';
+                    this.userInput = '';
+
+                    const userMsg = `【当前状态快照】${this.snapshotStateJson()}
+
+【玩家行动】
+${text}
+
+请继续叙事并更新 JSON。`;
+
+                    const messages = [
+                        { role: 'system', content: this.getSystemPrompt() },
+                        { role: 'user', content: userMsg }
+                    ];
+
+                    await this.runStreamTurn(messages);
+                },
+
+                appendQuick(text) {
+                    this.userInput = text;
+                    this.sendAction();
+                },
+
+                /**
+                 * 执行一轮流式生成，解析 JSON 并应用状态
+                 */
+                async runStreamTurn(messages) {
+                    this.isLoading = true;
+                    this.streamingMd = '';
+                    this.streamRaw = '';
+                    this.reasoningBuffer = '';
+
+                    try {
+                        await this.streamApi(messages, (deltaContent, deltaReason) => {
+                            if (deltaReason) this.reasoningBuffer += deltaReason;
+                            if (deltaContent) {
+                                this.streamRaw += deltaContent;
+                                this.streamingMd = this.stripJsonBlock(this.streamRaw);
+                            }
+                        });
+
+                        const json = this.extractJsonObject(this.streamRaw);
+                        if (json) {
+                            this.applyGameJson(json);
+                        } else {
+                            this.showToast('未解析到状态 JSON，叙事仍显示；可重试', 'error');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        this.showToast(e.message || '请求失败', 'error');
+                    } finally {
+                        this.isLoading = false;
+                        this.$nextTick(() => {
+                            if (window.lucide) lucide.createIcons();
+                            this.scrollLogToBottom();
+                        });
+                    }
+                },
+
+                /**
+                 * 根据 AI JSON 更新 UI 状态
+                 */
+                applyGameJson(j) {
+                    const prevLevel = this.player.level;
+
+                    if (typeof j.in_combat === 'boolean') this.inCombat = j.in_combat;
+
+                    if (j.battle_state) {
+                        if (j.battle_state === 'victory' || j.battle_state === 'fled' || j.battle_state === 'idle') {
+                            if (j.battle_state !== 'combat') this.inCombat = false;
+                        }
+                        if (j.battle_state === 'combat') this.inCombat = true;
+                    }
+
+                    if (j.enemy && typeof j.enemy === 'object') {
+                        const e = j.enemy;
+                        this.enemy = {
+                            name: e.name || '',
+                            hp: Math.max(0, Number(e.hp) || 0),
+                            hpMax: Math.max(1, Number(e.hp_max) || 1),
+                            active: !!e.active
+                        };
+                    }
+
+                    if (typeof j.hp_delta === 'number') {
+                        this.player.hp = Math.min(this.player.hpMax, Math.max(0, this.player.hp + j.hp_delta));
+                    }
+                    if (typeof j.mp_delta === 'number') {
+                        this.player.mp = Math.min(this.player.mpMax, Math.max(0, this.player.mp + j.mp_delta));
+                    }
+                    if (typeof j.xp_gain === 'number' && j.xp_gain !== 0) {
+                        this.player.xp += j.xp_gain;
+                        while (this.player.xp >= this.player.xpToLevel) {
+                            this.player.xp -= this.player.xpToLevel;
+                            this.player.level += 1;
+                            this.player.xpToLevel = Math.floor(this.player.xpToLevel * 1.25) + 20;
+                            this.player.hpMax += 4;
+                            this.player.mpMax += 2;
+                            this.player.hp = this.player.hpMax;
+                            this.player.mp = this.player.mpMax;
+                        }
+                    }
+                    if (typeof j.gold_gain === 'number' && j.gold_gain !== 0) {
+                        this.player.gold = Math.max(0, this.player.gold + j.gold_gain);
+                        if (j.gold_gain > 0) this.triggerLootFlash();
+                    }
+
+                    if (typeof j.level === 'number') this.player.level = j.level;
+                    if (typeof j.xp_to_level === 'number') this.player.xpToLevel = j.xp_to_level;
+
+                    if (Array.isArray(j.items_found) && j.items_found.length) {
+                        j.items_found.forEach(raw => {
+                            const name = (raw && raw.name) ? String(raw.name) : '';
+                            const qty = Math.max(1, parseInt(raw.qty, 10) || 1);
+                            if (!name) return;
+                            const idx = this.backpack.findIndex(b => b.name === name);
+                            if (idx >= 0) this.backpack[idx].qty += qty;
+                            else if (this.backpack.length < 16) this.backpack.push({ name, qty });
+                        });
+                        this.triggerLootFlash();
+                    }
+
+                    if (typeof j.quest_update === 'string' && j.quest_update.trim()) {
+                        this.questText = j.quest_update.trim();
+                    }
+                    if (typeof j.location === 'string' && j.location.trim()) {
+                        this.mapLocation = j.location.trim();
+                    }
+                    if (Array.isArray(j.directions)) {
+                        this.mapDirections = j.directions.map(String);
+                    }
+
+                    if (j.equipment && typeof j.equipment === 'object') {
+                        ['weapon', 'armor', 'trinket'].forEach(k => {
+                            if (j.equipment[k] && String(j.equipment[k]).trim()) {
+                                this.equipment[k] = String(j.equipment[k]).trim();
+                            }
+                        });
+                    }
+
+                    if (j.stats && typeof j.stats === 'object') {
+                        ['str', 'agi', 'int', 'con', 'luck'].forEach(k => {
+                            if (j.stats[k] != null && typeof j.stats[k] === 'number') {
+                                this.player[k] = j.stats[k];
+                            }
+                        });
+                    }
+
+                    if (j.player_dead === true) {
+                        this.player.hp = 0;
+                        this.playerDead = true;
+                        this.inCombat = false;
+                        this.showDeathModal = true;
+                        this.pushBattleLog('★ 角色倒下 — 等待灵魂归来');
+                    }
+
+                    if (this.player.level > prevLevel) {
+                        this.triggerLevelUpFx();
+                    }
+
+                    /* 根据本回合 JSON 追加战斗日志一行摘要 */
+                    this.appendBattleSummaryFromJson(j);
+                },
+
+                /**
+                 * 将战斗摘要写入右侧面板（最多保留 30 条，超出从头部移除）
+                 * @param {string} line 纯文本一行
+                 */
+                pushBattleLog(line) {
+                    if (!line || !String(line).trim()) return;
+                    this.battleLog.push('[' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '] ' + String(line).trim());
+                    while (this.battleLog.length > 30) this.battleLog.shift();
+                },
+
+                /**
+                 * 从 AI 返回的 JSON 生成简短战斗态势行（非战斗回合也可记录胜利/休整）
+                 * @param {object} j 已解析的状态对象
+                 */
+                appendBattleSummaryFromJson(j) {
+                    const state = j.battle_state || 'idle';
+                    if (!j.in_combat && state !== 'combat' && state !== 'victory' && state !== 'fled' && state !== 'defeat') {
+                        return;
+                    }
+                    const en = this.enemy.active ? `${this.enemy.name || '敌人'} ${this.enemy.hp}/${this.enemy.hpMax}` : '无活跃敌人';
+                    const me = `我方 HP ${this.player.hp}/${this.player.hpMax} MP ${this.player.mp}/${this.player.mpMax}`;
+                    const deltas = [];
+                    if (typeof j.hp_delta === 'number' && j.hp_delta !== 0) deltas.push('HP' + (j.hp_delta > 0 ? '+' : '') + j.hp_delta);
+                    if (typeof j.mp_delta === 'number' && j.mp_delta !== 0) deltas.push('MP' + (j.mp_delta > 0 ? '+' : '') + j.mp_delta);
+                    const deltaStr = deltas.length ? ` · 变化 ${deltas.join(' ')}` : '';
+                    this.pushBattleLog(`[${state}] ${en} · ${me}${deltaStr}`);
+                },
+
+                triggerLootFlash() {
+                    this.lootFlashActive = true;
+                    setTimeout(() => { this.lootFlashActive = false; }, 1100);
+                },
+
+                /**
+                 * 升级全屏粒子：随机位置与位移
+                 */
+                triggerLevelUpFx() {
+                    this.levelUpParticles = [];
+                    const n = 48;
+                    for (let i = 0; i < n; i++) {
+                        this.levelUpParticles.push({
+                            id: 'p-' + Date.now() + '-' + i,
+                            x: Math.random() * 100,
+                            y: Math.random() * 100,
+                            tx: (Math.random() - 0.5) * 280,
+                            ty: (Math.random() - 0.5) * 280,
+                            delay: Math.random() * 0.15
+                        });
+                    }
+                    this.showLevelUpFx = true;
+                    setTimeout(() => {
+                        this.showLevelUpFx = false;
+                        this.levelUpParticles = [];
+                    }, 2200);
+                },
+
+                /**
+                 * 灵魂归来：复活半血、扣金币、关闭战斗
+                 */
+                soulReturn() {
+                    const cost = Math.min(this.player.gold, 20 + this.player.level * 5);
+                    this.player.gold = Math.max(0, this.player.gold - cost);
+                    this.player.hp = Math.max(1, Math.floor(this.player.hpMax / 2));
+                    this.player.mp = Math.min(this.player.mpMax, Math.floor(this.player.mpMax / 2));
+                    this.playerDead = false;
+                    this.showDeathModal = false;
+                    this.inCombat = false;
+                    this.enemy = { name: '', hp: 0, hpMax: 0, active: false };
+                    this.showToast('灵魂归来！你损失了 ' + cost + ' 金币，生命恢复至一半。', 'success');
+
+                    this.logArchive.push({
+                        id: 'log-revive-' + Date.now(),
+                        md: '### 灵魂归来\n\n你从祭坛的灰烬中挣回呼吸，胸口的剧痛逐渐退去。地下城主的低语仍在耳边：**「下次小心。」**'
+                    });
+                    this.streamingMd = '';
+                    this.streamRaw = '';
+                    this.$nextTick(() => { this.scrollLogToBottom(); if (window.lucide) lucide.createIcons(); });
+                },
+
+                scrollLogToBottom() {
+                    const el = document.getElementById('adventure-log-scroll');
+                    if (el) el.scrollTop = el.scrollHeight;
+                },
+
+                /**
+                 * DeepSeek 流式请求
+                 */
+                async streamApi(messages, onDelta) {
+                    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages,
+                            stream: true,
+                            temperature: 0.82
+                        })
+                    });
+
+                    if (!resp.ok) {
+                        const errData = await resp.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || ('API 错误 ' + resp.status));
+                    }
+
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const raw = line.slice(6).trim();
+                            if (raw === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(raw);
+                                const delta = parsed.choices[0]?.delta || {};
+                                const r = delta.reasoning_content || '';
+                                const c = delta.content || '';
+                                if (r || c) onDelta(c, r);
+                            } catch (err) { /* 忽略损坏行 */ }
+                        }
+                    }
+                },
+
+                extractJsonObject(full) {
+                    const m = full.match(/```(?:json)?\s*([\s\S]*?)```/i);
+                    if (!m) return null;
+                    try { return JSON.parse(m[1].trim()); }
+                    catch (e) {
+                        console.warn('JSON 解析失败', e);
+                        return null;
+                    }
+                },
+
+                /**
+                 * 流式展示时隐藏 ```json 之后内容
+                 */
+                stripJsonBlock(text) {
+                    const m = text.match(/```json/i);
+                    if (!m || m.index === undefined) return text;
+                    return text.slice(0, m.index).trimEnd();
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

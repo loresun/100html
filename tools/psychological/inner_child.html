@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内在小孩对话 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .child-gradient {
+            background: linear-gradient(135deg, #FCE7F3 0%, #FBCFE8 50%, #F9A8D4 100%);
+        }
+
+        .child-card {
+            background: linear-gradient(135deg, #ffffff 0%, #FDF2F8 100%);
+            border: 2px solid #F9A8D4;
+        }
+
+        .adult-card {
+            background: linear-gradient(135deg, #ffffff 0%, #EFF6FF 100%);
+            border: 2px solid #93C5FD;
+        }
+
+        @keyframes heart-beat {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .heart-animation {
+            animation: heart-beat 2s ease-in-out infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="child-gradient min-h-screen">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b-2 border-pink-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-heart text-white h-5 w-5"></i>
+                        </div>
+                        <span class="font-bold text-xl text-slate-900">内在小孩对话</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 bg-pink-100 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-pink-600': apiConfig.model === 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-pink-600': apiConfig.model === 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true" class="text-pink-600 hover:text-pink-700 transition"><i
+                                class="fa-solid fa-gear h-4 w-4"></i></button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow max-w-6xl mx-auto w-full p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+                <div class="child-card rounded-2xl p-6 shadow-lg">
+                    <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-child-reaching w-5 h-5 text-pink-600"></i>
+                        启动对话
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">你想与哪个年龄的自己对话？</label>
+                            <select v-model="input.age" class="w-full bg-white border-2 border-pink-200 rounded-lg p-3">
+                                <option value="3-5岁">3-5岁（学龄前）</option>
+                                <option value="6-10岁">6-10岁（小学时期）</option>
+                                <option value="11-14岁">11-14岁（青春期早期）</option>
+                                <option value="15-18岁">15-18岁（青少年期）</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">当前困扰或情绪</label>
+                            <textarea v-model="input.issue" placeholder="例如：感到不被理解、害怕失败、难以信任他人..." rows="3"
+                                class="w-full bg-white border-2 border-pink-200 rounded-lg p-3"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">童年相关记忆（可选）</label>
+                            <textarea v-model="input.memory" placeholder="与当前困扰相关的童年事件或感受..." rows="2"
+                                class="w-full bg-white border-2 border-pink-200 rounded-lg p-3"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">对话模式</label>
+                            <select v-model="input.mode"
+                                class="w-full bg-white border-2 border-pink-200 rounded-lg p-3">
+                                <option value="倾听">倾听小孩的声音</option>
+                                <option value="安抚">安抚受伤的小孩</option>
+                                <option value="整合">整合成人与小孩</option>
+                                <option value="探索">探索未满足的需求</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button @click="startDialogue" :disabled="isGenerating || !input.issue"
+                        class="w-full mt-4 bg-gradient-to-r from-pink-400 to-pink-500 text-white font-bold py-3 rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <i class="fa-solid fa-heart w-5 h-5 inline mr-2"></i>开始对话
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div v-if="isGenerating" class="child-card rounded-2xl p-12 shadow-lg flex flex-col items-center">
+                    <i class="fa-solid fa-heart w-16 h-16 mb-4 text-pink-600 heart-animation"></i>
+                    <p class="text-lg font-medium text-pink-600">正在连接内在小孩...</p>
+                </div>
+
+                <div v-else-if="dialogue" class="space-y-4">
+                    <div class="child-card rounded-2xl p-6 shadow-lg">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-child-reaching w-5 h-5 text-pink-600"></i>
+                            <h3 class="font-bold text-pink-800">内在小孩的声音</h3>
+                        </div>
+                        <div class="prose max-w-none text-pink-900" v-html="marked.parse(dialogue.childVoice)"></div>
+                    </div>
+
+                    <div class="adult-card rounded-2xl p-6 shadow-lg">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-user-check w-5 h-5 text-blue-600"></i>
+                            <h3 class="font-bold text-blue-800">成人自我的回应</h3>
+                        </div>
+                        <div class="prose max-w-none text-blue-900" v-html="marked.parse(dialogue.adultResponse)"></div>
+                    </div>
+
+                    <div class="child-card rounded-2xl p-6 shadow-lg">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-wand-magic-sparkles w-5 h-5 text-pink-600"></i>
+                            <h3 class="font-bold">疗愈练习</h3>
+                        </div>
+                        <div class="prose max-w-none" v-html="marked.parse(dialogue.exercises)"></div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button @click="copyDialogue"
+                            class="flex-1 bg-pink-500 text-white py-2 rounded-lg hover:bg-pink-600">
+                            <i class="fa-solid fa-copy w-4 h-4 inline mr-1"></i>复制对话
+                        </button>
+                        <button @click="exportDialogue"
+                            class="flex-1 border-2 border-pink-500 text-pink-600 py-2 rounded-lg hover:bg-pink-50">
+                            <i class="fa-solid fa-download w-4 h-4 inline mr-1"></i>导出 TXT
+                        </button>
+                    </div>
+                </div>
+
+                <div v-else class="child-card rounded-2xl p-12 shadow-lg flex flex-col items-center text-slate-400">
+                    <i class="fa-solid fa-heart w-16 h-16 mb-4 opacity-50"></i>
+                    <p>准备好与内在小孩对话了吗？</p>
+                </div>
+            </div>
+        </main>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6" @click.stop>
+                <h3 class="text-xl font-bold mb-4">高级设置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-2">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" class="w-full rounded-lg border-2 p-3">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2">系统提示词</label>
+                        <textarea v-model="apiConfig.systemPrompt" rows="12"
+                            class="w-full rounded-lg border-2 p-3 font-mono text-sm"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-6 py-2 rounded-lg hover:bg-slate-100">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-pink-500 text-white px-6 py-2 rounded-lg hover:bg-pink-600">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue;
+        const DEFAULT_SYSTEM_PROMPT = `你是一位专业的 IFS（内在家庭系统）心理治疗师，擅长引导"内在小孩"疗愈工作。
+
+**理论框架**：
+- 每个人内在都有多个"部分"（Parts），包括不同年龄的自我
+- 内在小孩承载着早年未被满足的需求和情绪
+- 成人自我（Self）具有疗愈和照顾内在小孩的能力
+- 通过对话建立"内在安全依恋"
+
+**对话原则**：
+1. **内在小孩的声音**：
+   - 以第一人称表达小孩的感受、需求、恐惧
+   - 语言简单、直接、情绪化
+   - 可能包含"我害怕""我需要""我很孤单"等表达
+
+2. **成人自我的回应**：
+   - 温暖、接纳、不评判
+   - 提供小孩当年缺失的回应（被看见、被理解、被安慰）
+   - "我看见你了""你的感受是有道理的""我会保护你"
+
+3. **整合与疗愈**：
+   - 帮助成人自我与小孩建立持续连接
+   - 识别当前困扰与童年经历的关联
+   - 提供具体的自我照顾练习
+
+**输出 JSON 格式**：
+{
+  "childVoice": "内在小孩的独白（第一人称，情绪化的表达）",
+  "adultResponse": "成人自我的温暖回应（直接对小孩说话）",
+  "exercises": "3-5 个具体的疗愈练习（如：内在小孩冥想、写信给小孩、重新养育练习）"
+}
+
+**风格**：深度共情、温柔、疗愈性，避免说教。`;
+
+        createApp({
+            setup() {
+                // renderIcon function removed
+
+                const showSettings = ref(false);
+                const isGenerating = ref(false);
+                const dialogue = ref(null);
+                const apiConfig = reactive({ deepseek: '', model: 'deepseek-v4-pro', systemPrompt: DEFAULT_SYSTEM_PROMPT });
+                const input = reactive({ age: '6-10岁', issue: '', memory: '', mode: '倾听' });
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    // lucide.createIcons();
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const config = JSON.parse(saved);
+                            apiConfig.deepseek = config.deepseek || '';
+                            apiConfig.model = config.model || 'deepseek-v4-pro';
+                        } catch (e) {
+                            console.error('Failed to parse global_llm_config', e);
+                        }
+                    }
+                });
+
+                const saveConfig = () => {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, deepseek: apiConfig.deepseek, model: apiConfig.model }));
+                    showSettings.value = false;
+                    alert('配置已保存！');
+                };
+
+                const startDialogue = async () => {
+                    if (!apiConfig.deepseek) { showSettings.value = true; return; }
+                    isGenerating.value = true;
+                    dialogue.value = null;
+
+                    const userPrompt = `年龄：${input.age}\n当前困扰：${input.issue}\n${input.memory ? `相关记忆：${input.memory}\n` : ''}对话模式：${input.mode}\n\n请帮我进行内在小孩对话。`;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiConfig.deepseek}` },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: [{ role: 'system', content: apiConfig.systemPrompt }, { role: 'user', content: userPrompt }],
+                                response_format: { type: 'json_object' }
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        dialogue.value = JSON.parse(data.choices[0].message.content);
+                    } catch (error) {
+                        alert('生成失败：' + error.message);
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const copyDialogue = async () => {
+                    const text = `【内在小孩的声音】\n${dialogue.value.childVoice}\n\n【成人自我的回应】\n${dialogue.value.adultResponse}\n\n【疗愈练习】\n${dialogue.value.exercises}`;
+                    await navigator.clipboard.writeText(text);
+                    alert('已复制到剪贴板！');
+                };
+
+                const exportDialogue = () => {
+                    const text = `【内在小孩对话记录】\n生成时间：${new Date().toLocaleString()}\n\n【内在小孩的声音】\n${dialogue.value.childVoice}\n\n【成人自我的回应】\n${dialogue.value.adultResponse}\n\n【疗愈练习】\n${dialogue.value.exercises}`;
+                    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `内在小孩对话_${Date.now()}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+                return {
+                    showSettings, isGenerating, dialogue, apiConfig, input, saveConfig, startDialogue, copyDialogue, exportDialogue, marked
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/psychological_inner_child.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

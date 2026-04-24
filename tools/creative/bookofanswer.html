@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>答案之书 - 寻找心中的指引</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* 自定义字体，营造庄重感 */
+        body {
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        /* 星空背景动画 */
+        .stars {
+            background: #0f172a url('https://www.transparenttextures.com/patterns/stardust.png');
+            animation: moveBackground 100s linear infinite;
+        }
+        @keyframes moveBackground {
+            from { background-position: 0 0; }
+            to { background-position: 1000px 1000px; }
+        }
+
+        /* 3D 透视容器 */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+
+        /* 卡片翻转核心样式 */
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        /* 卡片正反面公共样式 */
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* 卡片背面（显示答案的一面，初始状态为旋转 180 度） */
+        .card-back {
+            transform: rotateY(180deg);
+            background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        /* 卡片正面（默认显示的一面，神秘图案） */
+        .card-front {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #4f46e5;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card-front:hover {
+            box-shadow: 0 0 15px rgba(79, 70, 229, 0.6);
+            border-color: #818cf8;
+        }
+
+        /* 选中时的放大与居中动画 */
+        .card.selected {
+            position: fixed;
+            /* top/left 将由 JS 动态计算初始值，然后通过 class 覆盖 */
+            top: 50% !important;
+            left: 50% !important;
+            width: 300px !important;
+            height: 450px !important;
+            transform: translate(-50%, -50%) !important; /* 仅居中，翻转由 .flipped 控制 */
+            z-index: 50;
+            margin: 0;
+            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 移动端适配选中态 */
+        @media (max-width: 640px) {
+            .card.selected {
+                width: 85vw !important;
+                height: 60vh !important;
+            }
+        }
+
+        /* 未选中卡片的淡出效果 */
+        .card.faded {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        /* 呼吸灯动画效果 */
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+        .breathe-anim {
+            animation: breathe 3s infinite ease-in-out;
+        }
+
+        /* 入场动画 */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+        .animate-fade-in {
+            animation: fadeInUp 1s ease-out forwards;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center overflow-hidden stars relative selection:bg-indigo-500 selection:text-white">
+
+    <!-- 背景氛围光晕 -->
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[100px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[100px]"></div>
+    </div>
+
+    <!-- 返回首页按钮 -->
+    <a href="../../index.html" class="absolute top-4 left-4 text-indigo-300 hover:text-white transition-colors z-50 flex items-center gap-2">
+        <i class="fas fa-arrow-left"></i> <span>返回</span>
+    </a>
+
+    <!-- 主应用容器 -->
+    <div id="app" class="relative z-10 w-full max-w-5xl px-4 py-8 flex flex-col items-center min-h-[80vh] transition-all duration-500">
+        
+        <!-- 阶段 1: 输入问题界面 -->
+        <div id="input-stage" class="flex flex-col items-center w-full max-w-md text-center space-y-8 transition-opacity duration-500 my-auto">
+            <div class="space-y-4">
+                <div class="relative inline-block">
+                    <i class="fas fa-book-open text-6xl text-indigo-400 breathe-anim"></i>
+                    <i class="fas fa-sparkles absolute -top-2 -right-4 text-yellow-300 animate-pulse text-xl"></i>
+                </div>
+                <h1 class="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-purple-200 to-indigo-200 tracking-tight">答案之书</h1>
+                <p class="text-indigo-200/70 text-sm md:text-base font-light tracking-wider">在心中默念你的疑惑，指引自会显现</p>
+            </div>
+
+            <div class="w-full space-y-8 bg-slate-800/40 p-8 rounded-3xl backdrop-blur-md border border-indigo-500/20 shadow-2xl">
+                <div class="relative group">
+                    <input type="text" id="question-input" 
+                        class="w-full bg-slate-900/60 border-2 border-indigo-500/30 rounded-xl text-white px-6 py-4 focus:outline-none focus:border-indigo-400 focus:bg-slate-900/80 transition-all text-center text-lg placeholder-indigo-400/30"
+                        placeholder="在此输入你的问题（可选）" autocomplete="off">
+                    <div class="absolute inset-0 rounded-xl bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                </div>
+                
+                <button onclick="startDivination()" class="group relative w-full py-4 px-6 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg transition-all hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98]">
+                    <span class="relative z-10 font-bold tracking-[0.2em] text-xl flex items-center justify-center gap-3">
+                        <i class="fas fa-search-location text-sm"></i> 寻找答案
+                    </span>
+                    <div class="absolute inset-0 h-full w-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 阶段 2 & 3: 选牌与展示界面 -->
+        <div id="cards-stage" class="hidden w-full h-full flex-col items-center justify-center pt-10">
+            
+            <h2 id="stage-title" class="text-xl md:text-2xl text-indigo-200 mb-12 font-light tracking-[0.3em] opacity-0 animate-fade-in text-center">
+                凭直觉 · 选择一张卡片
+            </h2>
+
+            <!-- 卡片网格布局 -->
+            <div id="cards-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 w-full max-w-4xl perspective-1000 pb-20">
+                <!-- 卡片将通过 JS 动态生成 -->
+            </div>
+
+            <!-- 结果操作区 (结果展示后的按钮) -->
+            <div id="result-actions" class="hidden fixed bottom-12 z-[60] flex-col items-center space-y-6 animate-fade-in-up w-full px-4">
+                <!-- 显示用户的问题 -->
+                <div id="user-question-display" class="text-indigo-200/80 text-base md:text-lg italic font-serif text-center max-w-2xl bg-slate-900/60 px-6 py-2 rounded-full backdrop-blur-sm border border-indigo-500/20"></div>
+                
+                <button onclick="resetGame()" class="px-10 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-full backdrop-blur-md transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-3 group">
+                    <i class="fas fa-redo group-hover:rotate-180 transition-transform duration-500"></i> 
+                    <span>再问一次</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 逻辑脚本 -->
+    <script>
+        /**
+         * 答案之书 - 核心逻辑
+         * 包含：随机答案生成、动画控制、状态管理
+         */
+
+        // 答案库：包含正面、中立、否定及建议类的指引
+        const ANSWERS = [
+            "坚持到底", "时机未到", "跟随你的心", "毫无疑问", 
+            "重新考虑", "结果会让你惊喜", "不要为此担心", "相信直觉",
+            "现在不是时候", "也许吧", "这就是你想要的", "保持耐心",
+            "你需要帮助", "放手一搏", "顺其自然", "绝不",
+            "肯定的", "前景不太乐观", "专注于当下", "倾听他人的意见",
+            "这是值得的", "不要放弃", "会有更好的选择", "你需要休息",
+            "改变方向", "这就是答案", "还需要更多信息", "相信自己",
+            "你需要做出妥协", "如果你说的是真的", "这很荒谬", "数到十再问",
+            "行动起来", "等待一个信号", "不要在此刻犹豫", "这不在你的掌控中"
+        ];
+
+        // 全局状态变量
+        let currentStep = 1;
+        let selectedIndex = -1;
+
+        /**
+         * 从答案库中随机获取指定数量的答案
+         * @param {number} count 需要的答案数量
+         * @returns {string[]} 随机答案数组
+         */
+        function getRandomAnswers(count = 8) {
+            const shuffled = [...ANSWERS].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        /**
+         * 开始占卜流程
+         * 1. 获取用户输入
+         * 2. 切换界面显示
+         * 3. 渲染卡片
+         */
+        function startDivination() {
+            const input = document.getElementById('question-input');
+            const question = input.value.trim();
+            
+            // 动画：隐藏输入区
+            const inputStage = document.getElementById('input-stage');
+            inputStage.classList.add('opacity-0', 'pointer-events-none');
+            
+            setTimeout(() => {
+                inputStage.style.display = 'none';
+                
+                // 显示卡片区
+                const cardsStage = document.getElementById('cards-stage');
+                cardsStage.style.display = 'flex';
+                
+                // 重置标题动画
+                const title = document.getElementById('stage-title');
+                title.classList.remove('opacity-0');
+                title.style.display = 'block';
+
+                renderCards();
+                
+                // 保存问题用于最后展示
+                const questionDisplay = document.getElementById('user-question-display');
+                if(question) {
+                    questionDisplay.textContent = "“ " + question + " ”";
+                    questionDisplay.style.display = 'block';
+                } else {
+                    questionDisplay.style.display = 'none';
+                }
+            }, 500);
+        }
+
+        /**
+         * 动态渲染 8 张神秘卡片
+         * 设置卡片的初始位置和入场动画
+         */
+        function renderCards() {
+            const grid = document.getElementById('cards-grid');
+            grid.innerHTML = '';
+            const currentRoundAnswers = getRandomAnswers(8);
+
+            currentRoundAnswers.forEach((answer, index) => {
+                // 创建卡片容器
+                const card = document.createElement('div');
+                card.className = `card relative w-full h-40 md:h-64 cursor-pointer transition-all duration-500 select-none`;
+                card.dataset.index = index;
+                card.onclick = () => selectCard(card, answer, index);
+
+                // 创建卡片内部结构 (用于 3D 翻转)
+                const inner = document.createElement('div');
+                inner.className = 'card-inner w-full h-full relative shadow-2xl rounded-2xl';
+
+                // 正面结构 (图案)
+                const front = document.createElement('div');
+                front.className = 'card-front rounded-2xl overflow-hidden bg-slate-800';
+                front.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full opacity-80 group-hover:opacity-100 transition-opacity">
+                        <i class="fas fa-star-of-life fa-spin text-indigo-500/40 text-5xl" style="animation-duration: 12s;"></i>
+                        <div class="mt-4 w-12 h-1 bg-indigo-500/30 rounded-full"></div>
+                    </div>
+                    <div class="absolute inset-0 border-2 border-indigo-500/20 rounded-2xl m-2"></div>
+                    <div class="absolute top-2 right-2 text-indigo-800/30 font-serif font-bold text-xl">${index + 1}</div>
+                `;
+
+                // 背面结构 (答案)
+                const back = document.createElement('div');
+                back.className = 'card-back rounded-2xl overflow-hidden text-center bg-indigo-900';
+                back.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full p-6 relative z-10">
+                        <i class="fas fa-quote-left text-indigo-300/20 text-3xl mb-4 self-start"></i>
+                        <p class="text-2xl md:text-4xl font-bold text-white leading-snug tracking-wide drop-shadow-lg answer-text">${answer}</p>
+                        <i class="fas fa-quote-right text-indigo-300/20 text-3xl mt-4 self-end"></i>
+                    </div>
+                    <!-- 装饰性背景 -->
+                    <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
+                    <div class="absolute inset-0 border-4 double border-indigo-400/30 rounded-2xl m-2"></div>
+                `;
+
+                inner.appendChild(front);
+                inner.appendChild(back);
+                card.appendChild(inner);
+                grid.appendChild(card);
+                
+                // 设置交错入场动画
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(30px)';
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 80 + 100);
+            });
+        }
+
+        /**
+         * 处理卡片点击事件
+         * 实现“选中放大”和“其他淡出”的逻辑
+         */
+        function selectCard(cardElement, answer, index) {
+            if (selectedIndex !== -1) return; // 防止重复点击
+            selectedIndex = index;
+
+            const allCards = document.querySelectorAll('.card');
+            
+            // 根据 index 通过 data-index 属性重新获取目标卡片元素，确保元素引用正确
+            const targetCard = document.querySelector(`.card[data-index="${index}"]`);
+            if (!targetCard) {
+                console.error('未找到目标卡片:', index);
+                return;
+            }
+            
+            // 隐藏提示标题
+            const title = document.getElementById('stage-title');
+            title.style.transition = 'opacity 0.5s';
+            title.style.opacity = '0';
+
+            // 1. 在任何布局变化之前，首先获取目标卡片的精确屏幕位置
+            const rect = targetCard.getBoundingClientRect();
+            
+            // 2. 先淡出其他卡片（保持布局空间，只是视觉隐藏）
+            allCards.forEach(c => {
+                if (c !== targetCard) {
+                    c.classList.add('faded');
+                }
+            });
+            
+            // 3. 锁定目标卡片的当前位置 (避免布局跳动)
+            targetCard.style.position = 'fixed';
+            targetCard.style.top = rect.top + 'px';
+            targetCard.style.left = rect.left + 'px';
+            targetCard.style.width = rect.width + 'px';
+            targetCard.style.height = rect.height + 'px';
+            targetCard.style.zIndex = '50';
+            targetCard.style.margin = '0'; // 清除可能的 margin 影响
+
+            // 4. 强制重绘以应用初始 fixed 位置，确保 transition 生效
+            void targetCard.offsetWidth;
+
+            // 5. 应用选中样式 (居中、放大、翻转)
+            // 注意：.selected 类中的 !important 会覆盖上面的内联样式
+            requestAnimationFrame(() => {
+                targetCard.classList.add('selected');
+                // 延迟一点翻转，让卡片先开始移动
+                setTimeout(() => {
+                    targetCard.classList.add('flipped');
+                }, 200);
+            });
+
+            // 6. 显示底部操作栏
+            setTimeout(() => {
+                const resultActions = document.getElementById('result-actions');
+                resultActions.classList.remove('hidden');
+                resultActions.classList.add('flex');
+            }, 1200);
+        }
+
+        /**
+         * 重置游戏状态，返回初始界面
+         */
+        function resetGame() {
+            // 重置变量
+            selectedIndex = -1;
+            document.getElementById('question-input').value = '';
+            
+            // 隐藏结果区
+            const resultActions = document.getElementById('result-actions');
+            resultActions.classList.add('hidden');
+            resultActions.classList.remove('flex');
+
+            // 隐藏卡片区
+            const cardsStage = document.getElementById('cards-stage');
+            cardsStage.style.display = 'none';
+            
+            // 显示输入区并添加淡入动画
+            const inputStage = document.getElementById('input-stage');
+            inputStage.style.display = 'flex';
+            // 强制重绘
+            void inputStage.offsetWidth;
+            inputStage.classList.remove('opacity-0', 'pointer-events-none');
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

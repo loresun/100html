@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片滤镜编辑器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .slider-thumb { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: #e2e8f0; outline: none; }
+        .slider-thumb::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #0ea5e9; cursor: pointer; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.1s; }
+        .slider-thumb::-webkit-slider-thumb:hover { transform: scale(1.1); }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-sky-50 min-h-screen font-sans text-slate-800" x-data="filterApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-sky-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-sky-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-cyan-600">
+                ✨ 图片滤镜编辑器
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-64px)] min-h-[600px]">
+
+        <!-- Sidebar (Direct CSS Filters) -->
+        <div class="lg:col-span-3 space-y-6 flex flex-col h-full overflow-y-auto custom-scrollbar pr-2">
+            
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-sky-100 flex-none sticky top-0 z-10">
+                <label class="block w-full text-center py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold cursor-pointer transition-colors shadow-lg shadow-sky-600/20 active:scale-95">
+                    上传图片
+                    <input type="file" class="hidden" accept="image/*" @change="loadImage($event)">
+                </label>
+                <button @click="reset()" class="mt-2 w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg text-xs font-bold transition-colors">
+                    重置所有参数
+                </button>
+            </div>
+
+            <div class="space-y-4 pb-12" x-show="imageSrc">
+                <template x-for="f in filters" :key="f.id">
+                    <div class="bg-white p-4 rounded-xl border border-sky-50">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase" x-text="f.label"></label>
+                            <span class="text-xs font-mono text-sky-600 font-bold" x-text="f.value + f.unit"></span>
+                        </div>
+                        <input type="range" :min="f.min" :max="f.max" :step="f.step" x-model="f.value" class="slider-thumb w-full h-1 bg-slate-100 rounded-lg">
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Main Preview Area -->
+        <div class="lg:col-span-9 bg-slate-900 rounded-3xl border border-sky-900/10 overflow-hidden relative flex flex-col">
+             
+             <!-- Canvas Container -->
+             <div class="flex-1 flex items-center justify-center p-8 overflow-hidden relative" id="canvasContainer">
+                 <div x-show="!imageSrc" class="text-slate-500 flex flex-col items-center">
+                     <i class="fa-regular fa-image text-8xl mb-4 opacity-20"></i>
+                     <span class="text-slate-400 font-bold">无图片</span>
+                 </div>
+                 
+                 <canvas id="canvas" class="max-w-full max-h-full rounded shadow-2xl transition-all duration-100"></canvas>
+             </div>
+
+             <!-- Bottom Actions -->
+             <div class="h-20 bg-slate-800/50 backdrop-blur border-t border-white/5 flex items-center justify-between px-8">
+                 <div class="text-slate-400 text-xs">
+                     <span x-show="imageSrc">原图尺寸: <span x-text="originalWidth"></span> x <span x-text="originalHeight"></span></span>
+                 </div>
+                 <button @click="download()" class="px-6 py-2 bg-white text-slate-900 hover:bg-sky-50 rounded-full font-bold shadow-lg transition-transform active:scale-95 flex items-center gap-2" :disabled="!imageSrc">
+                     <i class="fa-solid fa-download"></i> 保存图片
+                 </button>
+             </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function filterApp() {
+            return {
+                imageSrc: null,
+                originalWidth: 0,
+                originalHeight: 0,
+                filters: [
+                    { id: 'brightness', label: '亮度 (Brightness)', value: 100, min: 0, max: 200, step: 1, unit: '%', def: 100 },
+                    { id: 'contrast', label: '对比度 (Contrast)', value: 100, min: 0, max: 200, step: 1, unit: '%', def: 100 },
+                    { id: 'saturate', label: '饱和度 (Saturation)', value: 100, min: 0, max: 200, step: 1, unit: '%', def: 100 },
+                    { id: 'grayscale', label: '灰度 (Grayscale)', value: 0, min: 0, max: 100, step: 1, unit: '%', def: 0 },
+                    { id: 'sepia', label: '褐色 (Sepia)', value: 0, min: 0, max: 100, step: 1, unit: '%', def: 0 },
+                    { id: 'hue-rotate', label: '色相 (Hue)', value: 0, min: 0, max: 360, step: 1, unit: 'deg', def: 0 },
+                    { id: 'invert', label: '反色 (Invert)', value: 0, min: 0, max: 100, step: 1, unit: '%', def: 0 },
+                    { id: 'blur', label: '模糊 (Blur)', value: 0, min: 0, max: 20, step: 0.1, unit: 'px', def: 0 },
+                ],
+                imgObj: null,
+
+                init() {
+                    // init
+                    this.$watch('filters', () => {
+                        this.render();
+                    }, { deep: true });
+                },
+
+                loadImage(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.imageSrc = e.target.result;
+                        this.imgObj = new Image();
+                        this.imgObj.onload = () => {
+                            this.originalWidth = this.imgObj.width;
+                            this.originalHeight = this.imgObj.height;
+                            this.reset(); // Reset filters for new image
+                            this.render();
+                        };
+                        this.imgObj.src = this.imageSrc;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                reset() {
+                    this.filters.forEach(f => f.value = f.def);
+                    this.render();
+                },
+                
+                get filterString() {
+                    return this.filters.map(f => `${f.id}(${f.value}${f.unit})`).join(' ');
+                },
+
+                render() {
+                    if (!this.imgObj) return;
+                    
+                    const canvas = document.getElementById('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // We render at full resolution or displayed resolution?
+                    // For performance on huge images, maybe scale down for preview, 
+                    // but for "Saving", we need full res.
+                    // Let's render full res to canvas but scale canvas via CSS.
+                    
+                    canvas.width = this.imgObj.width;
+                    canvas.height = this.imgObj.height;
+                    
+                    ctx.filter = this.filterString;
+                    ctx.drawImage(this.imgObj, 0, 0);
+                },
+
+                download() {
+                    const canvas = document.getElementById('canvas');
+                    const link = document.createElement('a');
+                    link.download = `filtered-${Date.now()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_image_filters.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

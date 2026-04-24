@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>自定义大模型注册中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #eef2ff 0%, #ecfeff 35%, #fdf2f8 100%);
+            font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        .panel-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+        }
+
+        .scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.35);
+            border-radius: 999px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <header class="border-b border-blue-100 bg-white/70 backdrop-blur sticky top-0 z-10">
+            <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span
+                        class="h-10 w-10 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white shadow">
+                        <i class="fa-solid fa-database text-lg"></i>
+                    </span>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900">自定义大模型注册中心</h1>
+                        <p class="text-sm text-slate-500">统一管理模型 K 值、URL、模型 ID，供其他页面读取</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button @click="exportConfig"
+                        class="px-3 py-2 text-sm rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition">
+                        导出配置
+                    </button>
+                    <button @click="showImport = true"
+                        class="px-3 py-2 text-sm rounded-lg border border-slate-200 hover:border-blue-300 transition">
+                        导入配置
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto w-full px-6 py-6 grid lg:grid-cols-[320px_1fr] gap-6 flex-1">
+            <section class="panel-card rounded-2xl border border-blue-100 p-5 flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-semibold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-blue-500"></i>服务商列表
+                    </h2>
+                    <button @click="startProviderForm()" class="text-sm text-blue-600 hover:text-blue-700">+ 新增</button>
+                </div>
+
+                <div class="space-y-3 max-h-[55vh] overflow-auto scrollbar pr-1">
+                    <button v-for="provider in providers" :key="provider.id" @click="selectProvider(provider.id)"
+                        :class="['w-full text-left p-3 rounded-xl border transition',
+                            selectedProviderId === provider.id
+                                ? 'border-blue-400 bg-blue-50'
+                                : 'border-slate-200 bg-white hover:border-blue-200']">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-sm text-slate-800">{{ provider.name }}</div>
+                                <div class="text-xs text-slate-500">{{ provider.baseUrl || '未配置地址' }}</div>
+                            </div> <span class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500"> {{
+                                provider.models.length }} 模型 </span>
+                        </div>
+                        <div class="mt-2 text-xs text-slate-500 line-clamp-2">{{ provider.description || '暂无描述' }}</div>
+                    </button>
+                </div>
+
+                <div class="mt-auto space-y-3">
+                    <div class="rounded-xl border border-slate-200 bg-white p-3">
+                        <div class="text-xs font-semibold text-slate-600 mb-2">快速模板</div>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="template in providerTemplates" :key="template.id"
+                                @click="addFromTemplate(template)"
+                                class="text-xs px-2 py-1 rounded-full border border-slate-200 hover:border-blue-300 hover:text-blue-600 transition">
+                                {{ template.name }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                        读取方式：其他页面只需读取
+                        <code class="bg-white px-1 rounded">localStorage.llm_registry</code>
+                        即可获取全部模型信息。
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-6">
+                <div class="panel-card rounded-2xl border border-blue-100 p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-gear text-blue-500"></i>服务商配置
+                        </h2>
+                        <div v-if="activeProvider" class="flex gap-2">
+                            <button @click="duplicateProvider(activeProvider)"
+                                class="text-xs px-2 py-1 rounded-full border border-slate-200 hover:border-blue-300">复制</button>
+                            <button @click="removeProvider(activeProvider.id)"
+                                class="text-xs px-2 py-1 rounded-full border border-red-200 text-red-500 hover:border-red-300">删除</button>
+                        </div>
+                    </div>
+
+                    <div v-if="activeProvider" class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">服务商名称</label>
+                            <input v-model="activeProvider.name"
+                                class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">服务商标识</label>
+                            <input v-model="activeProvider.id"
+                                class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">API Base URL</label>
+                            <input v-model="activeProvider.baseUrl"
+                                class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600">API Key (K 值)</label>
+                            <input type="password" v-model="activeProvider.apiKey"
+                                class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm"
+                                placeholder="sk-..." />
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs font-semibold text-slate-600">说明/备注</label>
+                            <textarea v-model="activeProvider.description" rows="2"
+                                class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm"></textarea>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-sm text-slate-500">
+                        请选择左侧服务商或点击“新增”创建新的服务商。
+                    </div>
+                </div>
+
+                <div class="panel-card rounded-2xl border border-blue-100 p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-robot text-blue-500"></i>模型清单
+                        </h2>
+                        <button v-if="activeProvider" @click="addModel(activeProvider)"
+                            class="text-sm text-blue-600 hover:text-blue-700">+ 添加模型</button>
+                    </div>
+
+                    <div v-if="activeProvider" class="space-y-3 max-h-[40vh] overflow-auto scrollbar pr-1">
+                        <div v-for="model in activeProvider.models" :key="model.id"
+                            class="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-sm font-semibold text-slate-800">{{ model.name }}</div>
+                                    <div class="text-xs text-slate-500">{{ model.id }}</div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button @click="selectModel(activeProvider.id, model.id)" :class="['text-xs px-2 py-1 rounded-full border',
+                                            selectedModel.providerId === activeProvider.id && selectedModel.modelId === model.id
+                                                ? 'border-blue-400 text-blue-600'
+                                                : 'border-slate-200 text-slate-500']">
+                                        当前选择
+                                    </button>
+                                    <button @click="removeModel(activeProvider, model.id)"
+                                        class="text-xs px-2 py-1 rounded-full border border-red-200 text-red-500 hover:border-red-300">
+                                        删除
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">模型名称</label>
+                                    <input v-model="model.name"
+                                        class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">模型 ID</label>
+                                    <input v-model="model.id"
+                                        class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm" />
+                                </div>
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">上下文长度</label>
+                                    <input v-model="model.contextLimit"
+                                        class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm"
+                                        placeholder="例如 128k" />
+                                </div>
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">默认温度</label>
+                                    <input v-model="model.temperature" type="number" step="0.1" min="0" max="2"
+                                        class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm" />
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-xs font-semibold text-slate-600">模型说明</label>
+                                    <textarea v-model="model.notes" rows="2"
+                                        class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-sm text-slate-500">
+                        请选择服务商后管理模型清单。
+                    </div>
+                </div>
+
+                <div class="panel-card rounded-2xl border border-blue-100 p-6 space-y-3">
+                    <h2 class="font-semibold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-satellite-dish text-blue-500"></i>已识别配置
+                    </h2>
+                    <div v-if="detectedConfigs.length" class="space-y-3">
+                        <div v-for="item in detectedConfigs" :key="item.id"
+                            class="rounded-xl border border-slate-200 bg-white p-3 flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-800">{{ item.name }}</div>
+                                <div class="text-xs text-slate-500">{{ item.detail }}</div>
+                            </div>
+                            <button @click="importDetected(item)"
+                                class="text-xs px-2 py-1 rounded-full border border-blue-200 text-blue-600 hover:border-blue-300">
+                                导入
+                            </button>
+                        </div>
+                    </div>
+                    <div v-else class="text-sm text-slate-500">
+                        当前未检测到其它页面的模型配置，先保存后刷新此页即可识别。
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div v-if="showImport" class="fixed inset-0 bg-black/30 flex items-center justify-center z-20">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-900">导入配置</h3>
+                    <button @click="showImport = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+                <textarea v-model="importPayload" rows="8"
+                    class="w-full border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-200 outline-none"
+                    placeholder='粘贴 JSON 配置'></textarea>
+                <div class="flex justify-end gap-2">
+                    <button @click="showImport = false"
+                        class="px-3 py-2 rounded-lg border border-slate-200 text-sm">取消</button>
+                    <button @click="applyImport"
+                        class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700">导入并保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const STORAGE_KEY = 'llm_registry';
+                const SELECTED_KEY = 'llm_registry_selected';
+
+                const providers = ref([]);
+                const selectedProviderId = ref('');
+                const selectedModel = ref({ providerId: '', modelId: '' });
+                const showImport = ref(false);
+                const importPayload = ref('');
+                const detectedConfigs = ref([]);
+
+                const providerTemplates = [
+                    {
+                        id: 'deepseek',
+                        name: 'DeepSeek',
+                        baseUrl: 'https://api.deepseek.com',
+                        models: [
+                            { id: 'deepseek-v4-flash', name: 'DeepSeek Chat', contextLimit: '128k', temperature: 0.7 },
+                            { id: 'deepseek-v4-pro', name: 'DeepSeek Reasoner', contextLimit: '128k', temperature: 0.6 }
+                        ]
+                    },
+                    {
+                        id: 'openai',
+                        name: 'OpenAI',
+                        baseUrl: 'https://api.openai.com/v1',
+                        models: [
+                            { id: 'gpt-4o', name: 'GPT-4o', contextLimit: '128k', temperature: 0.7 },
+                            { id: 'gpt-4o-mini', name: 'GPT-4o mini', contextLimit: '128k', temperature: 0.7 }
+                        ]
+                    },
+                    {
+                        id: 'anthropic',
+                        name: 'Anthropic',
+                        baseUrl: 'https://api.anthropic.com',
+                        models: [
+                            { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', contextLimit: '200k', temperature: 0.7 }
+                        ]
+                    },
+                    {
+                        id: 'google',
+                        name: 'Google Gemini',
+                        baseUrl: 'https://generativelanguage.googleapis.com',
+                        models: [
+                            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', contextLimit: '1m', temperature: 0.7 }
+                        ]
+                    },
+                    {
+                        id: 'qwen',
+                        name: '通义千问',
+                        baseUrl: 'https://dashscope.aliyuncs.com',
+                        models: [
+                            { id: 'qwen-turbo', name: 'Qwen Turbo', contextLimit: '128k', temperature: 0.7 }
+                        ]
+                    },
+                    {
+                        id: 'zhipu',
+                        name: '智谱 AI',
+                        baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+                        models: [
+                            { id: 'glm-4', name: 'GLM-4', contextLimit: '128k', temperature: 0.7 }
+                        ]
+                    }
+                ];
+
+                const activeProvider = computed(() =>
+                    providers.value.find((provider) => provider.id === selectedProviderId.value)
+                );
+
+                const refreshIcons = () => {
+                };
+
+                const saveState = () => {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        version: 1,
+                        updatedAt: new Date().toISOString(),
+                        providers: providers.value
+                    }));
+                    localStorage.setItem(SELECTED_KEY, JSON.stringify(selectedModel.value));
+                };
+
+                const loadState = () => {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        providers.value = parsed.providers || [];
+                    }
+                    const savedSelected = localStorage.getItem(SELECTED_KEY);
+                    if (savedSelected) {
+                        selectedModel.value = JSON.parse(savedSelected);
+                    }
+                    if (!providers.value.length) {
+                        providers.value = providerTemplates.map((template) => ({
+                            id: template.id,
+                            name: template.name,
+                            baseUrl: template.baseUrl,
+                            apiKey: '',
+                            description: '',
+                            models: template.models.map((model) => ({
+                                ...model,
+                                notes: ''
+                            }))
+                        }));
+                    }
+                    if (!selectedProviderId.value && providers.value.length) {
+                        selectedProviderId.value = providers.value[0].id;
+                    }
+                };
+
+                const startProviderForm = () => {
+                    const id = `provider-${Date.now()}`;
+                    providers.value.unshift({
+                        id,
+                        name: '新服务商',
+                        baseUrl: '',
+                        apiKey: '',
+                        description: '',
+                        models: []
+                    });
+                    selectedProviderId.value = id;
+                };
+
+                const selectProvider = (providerId) => {
+                    selectedProviderId.value = providerId;
+                };
+
+                const addFromTemplate = (template) => {
+                    const exists = providers.value.find((item) => item.id === template.id);
+                    if (exists) {
+                        selectedProviderId.value = template.id;
+                        return;
+                    }
+                    providers.value.unshift({
+                        id: template.id,
+                        name: template.name,
+                        baseUrl: template.baseUrl,
+                        apiKey: '',
+                        description: '',
+                        models: template.models.map((model) => ({
+                            ...model,
+                            notes: ''
+                        }))
+                    });
+                    selectedProviderId.value = template.id;
+                };
+
+                const removeProvider = (providerId) => {
+                    providers.value = providers.value.filter((provider) => provider.id !== providerId);
+                    if (selectedProviderId.value === providerId) {
+                        selectedProviderId.value = providers.value[0]?.id || '';
+                    }
+                };
+
+                const duplicateProvider = (provider) => {
+                    const clone = JSON.parse(JSON.stringify(provider));
+                    clone.id = `${provider.id}-copy-${Date.now()}`;
+                    clone.name = `${provider.name}（复制）`;
+                    providers.value.unshift(clone);
+                    selectedProviderId.value = clone.id;
+                };
+
+                const addModel = (provider) => {
+                    provider.models.unshift({
+                        id: `model-${Date.now()}`,
+                        name: '新模型',
+                        contextLimit: '',
+                        temperature: 0.7,
+                        notes: ''
+                    });
+                };
+
+                const removeModel = (provider, modelId) => {
+                    provider.models = provider.models.filter((model) => model.id !== modelId);
+                    if (selectedModel.value.providerId === provider.id && selectedModel.value.modelId === modelId) {
+                        selectedModel.value = { providerId: '', modelId: '' };
+                    }
+                };
+
+                const selectModel = (providerId, modelId) => {
+                    selectedModel.value = { providerId, modelId };
+                };
+
+                const exportConfig = async () => {
+                    saveState();
+                    const payload = localStorage.getItem(STORAGE_KEY);
+                    await navigator.clipboard.writeText(payload || '');
+                    alert('配置已复制到剪贴板');
+                };
+
+                const applyImport = () => {
+                    if (!importPayload.value.trim()) {
+                        return;
+                    }
+                    const parsed = JSON.parse(importPayload.value);
+                    providers.value = parsed.providers || [];
+                    showImport.value = false;
+                    importPayload.value = '';
+                };
+
+                const detectConfigs = () => {
+                    const result = [];
+                    const globalConfigRaw = localStorage.getItem('global_llm_config');
+                    if (globalConfigRaw) {
+                        const config = JSON.parse(globalConfigRaw);
+                        if (config.deepseek) {
+                            result.push({
+                                id: 'detected-deepseek',
+                                name: 'DeepSeek (来自 global_llm_config)',
+                                detail: '检测到 deepseek API Key',
+                                provider: {
+                                    id: 'deepseek',
+                                    name: 'DeepSeek',
+                                    baseUrl: 'https://api.deepseek.com',
+                                    apiKey: config.deepseek,
+                                    description: '从其它页面自动识别',
+                                    models: [
+                                        { id: 'deepseek-v4-flash', name: 'DeepSeek Chat', contextLimit: '128k', temperature: 0.7, notes: '' },
+                                        { id: 'deepseek-v4-pro', name: 'DeepSeek Reasoner', contextLimit: '128k', temperature: 0.6, notes: '' }
+                                    ]
+                                }
+                            });
+                        }
+                    }
+                    detectedConfigs.value = result;
+                };
+
+                const importDetected = (item) => {
+                    const exists = providers.value.find((provider) => provider.id === item.provider.id);
+                    if (exists) {
+                        Object.assign(exists, item.provider);
+                        selectedProviderId.value = exists.id;
+                    } else {
+                        providers.value.unshift(item.provider);
+                        selectedProviderId.value = item.provider.id;
+                    }
+                };
+
+                watch(providers, saveState, { deep: true });
+                watch(selectedModel, saveState, { deep: true });
+
+                onMounted(() => {
+                    // 初始化图标
+                    loadState();
+                    detectConfigs();
+                    refreshIcons();
+                });
+
+                return {
+                    providers,
+                    selectedProviderId,
+                    selectedModel,
+                    activeProvider,
+                    providerTemplates,
+                    showImport,
+                    importPayload,
+                    detectedConfigs,
+                    startProviderForm,
+                    selectProvider,
+                    addFromTemplate,
+                    removeProvider,
+                    duplicateProvider,
+                    addModel,
+                    removeModel,
+                    selectModel,
+                    exportConfig,
+                    applyImport,
+                    importDetected
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_basics_llm_registry.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

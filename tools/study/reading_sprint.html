@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>阅读冲刺</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.0/index.css">
+  <style>
+    body {
+      font-family: "Noto Sans SC", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(120deg, #fdf4ff 0%, #f8fafc 60%, #fce7f3 100%);
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen text-slate-800">
+  <div x-data="readingSprint()" x-init="init()" class="min-h-screen flex flex-col">
+    <header class="bg-white/80 backdrop-blur border-b border-slate-200">
+      <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-fuchsia-500 font-semibold">Study · 阅读冲刺</p>
+          <h1 class="text-xl font-bold">阅读冲刺</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1 bg-slate-100 rounded-full p-1">
+            <button @click="setModel('v4-flash')" class="px-3 py-1 text-xs rounded-full font-semibold"
+              :class="modelLabel === 'v4-flash' ? 'bg-white shadow text-fuchsia-600' : 'text-slate-500'">V4 Flash</button>
+            <button @click="setModel('v4-pro')" class="px-3 py-1 text-xs rounded-full font-semibold"
+              :class="modelLabel === 'v4-pro' ? 'bg-white shadow text-fuchsia-600' : 'text-slate-500'">V4 Pro</button>
+          </div>
+          <button @click="showSettings = true" class="text-sm text-slate-600 hover:text-fuchsia-600">API 设置</button>
+          <a href="index.html" class="text-sm text-slate-500 hover:text-fuchsia-600">返回学习中心</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-[380px_1fr] gap-6">
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">阅读材料</label>
+          <textarea x-model="passage" rows="8" class="w-full rounded-lg border border-slate-200 px-3 py-2" placeholder="粘贴阅读文章"></textarea>
+        </div>
+        <button @click="analyze" :disabled="isLoading" class="w-full bg-fuchsia-600 text-white rounded-lg py-2 font-semibold hover:bg-fuchsia-500">
+          <span x-show="!isLoading">生成阅读任务</span>
+          <span x-show="isLoading">分析中...</span>
+        </button>
+        <p x-show="error" class="text-sm text-rose-600" x-text="error"></p>
+      </section>
+
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 min-h-[200px]">
+        <div>
+          <h2 class="text-lg font-semibold">阅读任务包</h2>
+          <p class="text-sm text-slate-500">包含摘要、关键词与检索问题。</p>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-600">快速摘要</h3>
+          <p class="mt-2 text-slate-700 whitespace-pre-line" x-text="summary"></p>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-600">关键词</h3>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <template x-for="(keyword, index) in keywords" :key="index">
+              <span class="px-3 py-1 rounded-full bg-fuchsia-50 text-fuchsia-600 text-xs" x-text="keyword"></span>
+            </template>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-600">理解检测问题</h3>
+          <ul class="mt-2 space-y-2 text-sm text-slate-600">
+            <template x-for="(question, index) in questions" :key="index">
+              <li class="flex gap-2">
+                <span class="text-fuchsia-500 font-semibold">•</span>
+                <span x-text="question"></span>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div @click.away="showSettings = false" class="bg-white rounded-2xl p-6 w-full max-w-md">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">API 配置</h3>
+          <button @click="showSettings = false" class="text-slate-400">✕</button>
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+          <input x-model="apiConfig.deepseek" type="password" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <button @click="saveConfig" class="mt-6 w-full bg-fuchsia-600 text-white rounded-lg py-2 font-medium hover:bg-fuchsia-500">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="study-shared.js"></script>
+  <script>
+    const createBaseState = () => ({
+      apiConfig: studyShared.loadConfig(),
+      modelLabel: 'v4-flash',
+      showSettings: false,
+      init() {
+        this.modelLabel = studyShared.resolveLabel(this.apiConfig.model);
+      },
+      setModel(label) {
+        this.modelLabel = label;
+        this.apiConfig.model = studyShared.modelMap[label] || this.apiConfig.model;
+        studyShared.saveConfig(this.apiConfig);
+      },
+      saveConfig() {
+        this.apiConfig.deepseek = this.apiConfig.deepseek.trim();
+        studyShared.saveConfig(this.apiConfig);
+        this.showSettings = false;
+      }
+    });
+
+    function readingSprint() {
+      return {
+        ...createBaseState(),
+        passage: '',
+        summary: '粘贴文章后生成摘要。',
+        keywords: [],
+        questions: [],
+        isLoading: false,
+        error: '',
+        async analyze() {
+          this.error = '';
+          this.isLoading = true;
+          const prompt = `请对以下阅读材料生成一个阅读冲刺包。返回 JSON：{\"summary\":\"摘要\",\"keywords\":[\"关键词\"],\"questions\":[\"理解问题\"]}。材料：\n${this.passage}`;
+          try {
+            const content = await studyShared.callLLM({
+              apiKey: this.apiConfig.deepseek,
+              model: this.apiConfig.model,
+              messages: [
+                { role: 'system', content: '你是阅读理解教练，擅长提炼重点并设计问题。' },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0.6
+            });
+            const cleaned = content.replace(/```json|```/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            this.summary = parsed.summary || '';
+            this.keywords = parsed.keywords || [];
+            this.questions = parsed.questions || [];
+          } catch (error) {
+            this.error = error.message || '生成失败，请稍后再试。';
+          } finally {
+            this.isLoading = false;
+          }
+        }
+      };
+    }
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/study_reading_sprint.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

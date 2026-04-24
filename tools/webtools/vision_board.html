@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>愿景板 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .masonry-grid {
+            column-count: 2;
+            column-gap: 1rem;
+        }
+        @media (min-width: 640px) {
+            .masonry-grid { column-count: 3; }
+        }
+        .break-inside {
+            break-inside: avoid;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-neutral-50 min-h-screen font-sans text-neutral-800" x-data="visionApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur border-b border-neutral-200 sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-neutral-100 text-neutral-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold tracking-tight">
+                    ✨ 2026 愿景板
+                </h1>
+            </div>
+            
+            <button @click="showAddModal = true" class="bg-black text-white px-4 py-2 rounded-lg hover:bg-neutral-800 transition-all flex items-center gap-2 text-sm font-medium shadow-lg shadow-black/10">
+                <i class="fa-solid fa-plus w-4 h-4"></i>
+                <span class="hidden sm:inline">添加愿景</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 pb-24">
+        
+        <!-- Masonry Grid -->
+        <div class="masonry-grid space-y-4">
+            <template x-for="item in items" :key="item.id">
+                <div class="break-inside bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group relative mb-4 border border-neutral-100">
+                    <div class="relative overflow-hidden w-full bg-neutral-100" :style="`aspect-ratio: ${item.ratio}`">
+                        <img :src="item.url" 
+                             class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                             onerror="this.src='https://placehold.co/400x400?text=Image+Error'">
+                        
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+                        
+                        <!-- Delete Button -->
+                        <button @click="deleteItem(item.id)" class="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full shadow-sm text-neutral-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-[-10px] group-hover:translate-y-0">
+                            <i class="fa-solid fa-xmark w-4 h-4"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="p-4" x-show="item.text">
+                        <p class="font-medium text-neutral-800 text-sm leading-relaxed" x-text="item.text"></p>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="items.length === 0" class="text-center py-32">
+            <div class="inline-block p-6 rounded-full bg-white border border-neutral-200 shadow-sm mb-6">
+                <i class="fa-solid fa-image w-10 h-10 text-neutral-300"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-neutral-900 mb-2">你的愿景板是空的</h2>
+            <p class="text-neutral-500 max-w-sm mx-auto">添加图片来可视化你的目标和梦想。你可以使用来自 Unsplash 等网站的图片链接。</p>
+        </div>
+
+    </main>
+
+    <!-- Add Modal -->
+    <div x-show="showAddModal" x-cloak class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.away="showAddModal = false">
+            <h3 class="text-lg font-bold text-neutral-900 mb-4">添加新的愿景</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-neutral-500 mb-1">图片链接 (URL)</label>
+                    <div class="flex gap-2">
+                        <input type="text" x-model="form.url" class="w-full rounded-xl border border-neutral-200 p-3 outline-none focus:border-black transition-colors bg-neutral-50" placeholder="https://...">
+                        <!-- Quick presets logic could go here -->
+                    </div>
+                    <p class="text-[10px] text-neutral-400 mt-1">推荐使用 Unsplash 或 Pinterest 的图片链接</p>
+                </div>
+                
+                <div>
+                     <label class="block text-xs font-bold text-neutral-500 mb-1">描述 / 目标 (可选)</label>
+                     <input type="text" x-model="form.text" class="w-full rounded-xl border border-neutral-200 p-3 outline-none focus:border-black transition-colors bg-neutral-50" placeholder="我的梦想之家...">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-neutral-500 mb-2">图片比例</label>
+                    <div class="flex gap-2">
+                        <button @click="form.ratio = '1/1'" class="flex-1 py-2 border rounded-lg text-xs font-medium hover:bg-neutral-50" :class="form.ratio === '1/1' ? 'border-black bg-neutral-100' : 'border-neutral-200'">
+                            正方形
+                        </button>
+                        <button @click="form.ratio = '3/4'" class="flex-1 py-2 border rounded-lg text-xs font-medium hover:bg-neutral-50" :class="form.ratio === '3/4' ? 'border-black bg-neutral-100' : 'border-neutral-200'">
+                            竖图
+                        </button>
+                        <button @click="form.ratio = '4/3'" class="flex-1 py-2 border rounded-lg text-xs font-medium hover:bg-neutral-50" :class="form.ratio === '4/3' ? 'border-black bg-neutral-100' : 'border-neutral-200'">
+                            横图
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div x-show="form.url" class="mt-4 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-50 relative" :style="`aspect-ratio: ${form.ratio}`">
+                     <img :src="form.url" class="absolute inset-0 w-full h-full object-cover">
+                </div>
+            </div>
+            
+            <div class="mt-8 flex gap-3">
+                <button @click="showAddModal = false" class="flex-1 py-3 rounded-xl bg-neutral-100 text-neutral-600 font-bold hover:bg-neutral-200">取消</button>
+                <button @click="addItem()" 
+                        :disabled="!form.url"
+                        class="flex-1 py-3 rounded-xl bg-black text-white font-bold hover:bg-neutral-800 shadow-lg disabled:opacity-50 disabled:shadow-none transition-all">
+                    添加到愿景板
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function visionApp() {
+            return {
+                showAddModal: false,
+                items: [],
+                
+                form: {
+                    url: '',
+                    text: '',
+                    ratio: '1/1'
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_vision_board');
+                    if (saved) {
+                        this.items = JSON.parse(saved);
+                    } else {
+                        // Demo
+                        this.items = [
+                            { id: 1, url: 'https://images.unsplash.com/photo-1499955085172-a104c9463ece?auto=format&fit=crop&w=800&q=80', text: '去一次巴黎', ratio: '3/4' },
+                            { id: 2, url: 'https://images.unsplash.com/photo-1542382211-1b38f8280f2d?auto=format&fit=crop&w=800&q=80', text: '治愈系森林小屋', ratio: '4/3' }
+                        ];
+                    }
+
+                    this.$watch('items', () => {
+                        localStorage.setItem('webtools_vision_board', JSON.stringify(this.items));
+                    });
+                    
+                    // icons removed
+                },
+
+                addItem() {
+                    this.items.unshift({
+                        id: Date.now(),
+                        ...this.form
+                    });
+                    this.form = { url: '', text: '', ratio: '1/1' };
+                    this.showAddModal = false;
+                    this.$nextTick(() => { });
+                },
+
+                deleteItem(id) {
+                    if(confirm('移除这个愿景？')) {
+                        this.items = this.items.filter(i => i.id !== id);
+                    }
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_vision_board.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

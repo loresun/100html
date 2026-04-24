@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pickr 颜色选择器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #7c3aed 0%, #1e1b4b 100%); min-height: 100vh; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+    .color-box { width: 60px; height: 60px; border-radius: 12px; cursor: pointer; transition: transform 0.2s; }
+    .color-box:hover { transform: scale(1.1); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">🎨 Pickr 颜色选择器</h1>
+    <p class="text-white/60 mt-1">现代化、可定制的颜色选择器组件</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-6">
+  <!-- 主颜色选择器 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🖌️ 选择颜色</h3>
+    <div class="flex flex-wrap items-center gap-6">
+      <div id="color-picker"></div>
+      <div class="flex-1 min-w-[200px]">
+        <div class="text-white/50 text-sm mb-2">当前颜色:</div>
+        <div id="color-preview" class="h-20 rounded-xl" style="background: #6366f1"></div>
+      </div>
+      <div class="space-y-2 text-sm font-mono">
+        <div class="flex items-center gap-2">
+          <span class="text-white/50 w-16">HEX:</span>
+          <span id="hex-value" class="text-purple-300">#6366f1</span>
+          <button onclick="copyValue('hex')" class="text-xs px-2 py-1 bg-slate-700 rounded">📋</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-white/50 w-16">RGB:</span>
+          <span id="rgb-value" class="text-purple-300">rgb(99, 102, 241)</span>
+          <button onclick="copyValue('rgb')" class="text-xs px-2 py-1 bg-slate-700 rounded">📋</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-white/50 w-16">HSL:</span>
+          <span id="hsl-value" class="text-purple-300">hsl(239, 84%, 67%)</span>
+          <button onclick="copyValue('hsl')" class="text-xs px-2 py-1 bg-slate-700 rounded">📋</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 预设颜色 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🎯 预设颜色</h3>
+    <div class="grid grid-cols-6 md:grid-cols-10 gap-3">
+      <div class="color-box" style="background:#ef4444" onclick="setColor('#ef4444')"></div>
+      <div class="color-box" style="background:#f97316" onclick="setColor('#f97316')"></div>
+      <div class="color-box" style="background:#eab308" onclick="setColor('#eab308')"></div>
+      <div class="color-box" style="background:#22c55e" onclick="setColor('#22c55e')"></div>
+      <div class="color-box" style="background:#14b8a6" onclick="setColor('#14b8a6')"></div>
+      <div class="color-box" style="background:#0ea5e9" onclick="setColor('#0ea5e9')"></div>
+      <div class="color-box" style="background:#6366f1" onclick="setColor('#6366f1')"></div>
+      <div class="color-box" style="background:#a855f7" onclick="setColor('#a855f7')"></div>
+      <div class="color-box" style="background:#ec4899" onclick="setColor('#ec4899')"></div>
+      <div class="color-box" style="background:#64748b" onclick="setColor('#64748b')"></div>
+    </div>
+  </div>
+
+  <!-- 颜色历史 -->
+  <div class="glass p-6 rounded-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-bold text-lg">📜 最近使用</h3>
+      <button onclick="clearHistory()" class="text-xs px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">清空</button>
+    </div>
+    <div id="color-history" class="flex flex-wrap gap-3">
+      <div class="text-white/40 text-sm">选择颜色后会显示在这里</div>
+    </div>
+  </div>
+
+  <!-- 渐变生成器 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🌈 渐变生成器</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <div class="flex items-center gap-4">
+          <span class="text-sm text-white/70 w-20">开始颜色:</span>
+          <div id="gradient-start"></div>
+        </div>
+        <div class="flex items-center gap-4">
+          <span class="text-sm text-white/70 w-20">结束颜色:</span>
+          <div id="gradient-end"></div>
+        </div>
+        <div class="flex items-center gap-4">
+          <span class="text-sm text-white/70 w-20">方向:</span>
+          <select id="gradient-direction" onchange="updateGradient()" class="px-3 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+            <option value="to right">→ 向右</option>
+            <option value="to left">← 向左</option>
+            <option value="to bottom">↓ 向下</option>
+            <option value="to top">↑ 向上</option>
+            <option value="45deg">↗ 45°</option>
+            <option value="135deg">↘ 135°</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div id="gradient-preview" class="h-32 rounded-xl mb-3" style="background: linear-gradient(to right, #6366f1, #ec4899)"></div>
+        <div class="bg-slate-900/50 p-3 rounded-lg">
+          <div class="text-xs text-white/50 mb-1">CSS 代码:</div>
+          <code id="gradient-code" class="text-sm text-cyan-300 break-all">background: linear-gradient(to right, #6366f1, #ec4899);</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使用场景 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">💡 使用场景</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-2xl mb-2">🎨</div>
+        <div class="font-bold text-purple-300">主题定制</div>
+        <div class="text-white/50 text-sm mt-1">让用户自定义界面颜色</div>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-2xl mb-2">✏️</div>
+        <div class="font-bold text-purple-300">绘图工具</div>
+        <div class="text-white/50 text-sm mt-1">画笔和填充颜色选择</div>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-2xl mb-2">📊</div>
+        <div class="font-bold text-purple-300">图表配色</div>
+        <div class="text-white/50 text-sm mt-1">自定义数据可视化颜色</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+<script>
+let colorHistory = [];
+let startColor = '#6366f1';
+let endColor = '#ec4899';
+
+// 主颜色选择器
+const pickr = Pickr.create({
+  el: '#color-picker',
+  theme: 'classic',
+  default: '#6366f1',
+  swatches: ['#ef4444', '#f97316', '#22c55e', '#0ea5e9', '#6366f1', '#ec4899'],
+  components: {
+    preview: true,
+    opacity: true,
+    hue: true,
+    interaction: { hex: true, rgba: true, hsla: true, input: true, save: true }
+  }
+});
+
+pickr.on('save', (color) => {
+  if (!color) return;
+  const hex = color.toHEXA().toString();
+  updateColorDisplay(color);
+  addToHistory(hex);
+  pickr.hide();
+});
+
+pickr.on('change', (color) => {
+  updateColorDisplay(color);
+});
+
+function updateColorDisplay(color) {
+  const hex = color.toHEXA().toString();
+  const rgba = color.toRGBA();
+  const hsla = color.toHSLA();
+  
+  document.getElementById('color-preview').style.background = hex;
+  document.getElementById('hex-value').textContent = hex;
+  document.getElementById('rgb-value').textContent = `rgb(${Math.round(rgba[0])}, ${Math.round(rgba[1])}, ${Math.round(rgba[2])})`;
+  document.getElementById('hsl-value').textContent = `hsl(${Math.round(hsla[0])}, ${Math.round(hsla[1])}%, ${Math.round(hsla[2])}%)`;
+}
+
+function setColor(hex) {
+  pickr.setColor(hex);
+  addToHistory(hex);
+}
+
+function addToHistory(hex) {
+  if (!colorHistory.includes(hex)) {
+    colorHistory.unshift(hex);
+    if (colorHistory.length > 10) colorHistory.pop();
+    renderHistory();
+  }
+}
+
+function renderHistory() {
+  const container = document.getElementById('color-history');
+  if (colorHistory.length === 0) {
+    container.innerHTML = '<div class="text-white/40 text-sm">选择颜色后会显示在这里</div>';
+    return;
+  }
+  container.innerHTML = colorHistory.map(c => 
+    `<div class="color-box" style="background:${c};width:40px;height:40px" onclick="setColor('${c}')" title="${c}"></div>`
+  ).join('');
+}
+
+function clearHistory() {
+  colorHistory = [];
+  renderHistory();
+}
+
+function copyValue(type) {
+  const text = document.getElementById(`${type}-value`).textContent;
+  navigator.clipboard.writeText(text).then(() => alert('已复制: ' + text));
+}
+
+// 渐变选择器
+const gradientStartPicker = Pickr.create({
+  el: '#gradient-start',
+  theme: 'classic',
+  default: '#6366f1',
+  components: { preview: true, hue: true, interaction: { input: true, save: true } }
+});
+
+const gradientEndPicker = Pickr.create({
+  el: '#gradient-end',
+  theme: 'classic',
+  default: '#ec4899',
+  components: { preview: true, hue: true, interaction: { input: true, save: true } }
+});
+
+gradientStartPicker.on('save', (color) => {
+  startColor = color.toHEXA().toString();
+  updateGradient();
+  gradientStartPicker.hide();
+});
+
+gradientEndPicker.on('save', (color) => {
+  endColor = color.toHEXA().toString();
+  updateGradient();
+  gradientEndPicker.hide();
+});
+
+function updateGradient() {
+  const direction = document.getElementById('gradient-direction').value;
+  const gradient = `linear-gradient(${direction}, ${startColor}, ${endColor})`;
+  document.getElementById('gradient-preview').style.background = gradient;
+  document.getElementById('gradient-code').textContent = `background: ${gradient};`;
+}
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

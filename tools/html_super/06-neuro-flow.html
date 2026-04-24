@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro Flow / HTML_SUPER</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; }
+        canvas { display: block; }
+        
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-family: monospace;
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            pointer-events: none;
+        }
+        .nav { pointer-events: auto; display: inline-block; }
+        a { color: #fff; text-decoration: none; border-bottom: 1px solid #fff; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+
+    <div class="ui">
+        <div class="nav"><a href="index.html">← BACK</a></div>
+        <br><br>
+        <div id="stats">Particles: 1000</div>
+        <div>Click to reset colors.</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Perlin Noise function (Simplified Simplex/Perlin implementation)
+        // Source: https://github.com/josephg/noisejs (A classic, but I'll inline a minimal version for a single file)
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let particles = [];
+        const numParticles = 2000;
+        const noiseScale = 0.005;
+        let zOff = 0;
+        let hueSeed = Math.random() * 360;
+
+        // Minimal Hash function for Noise
+        function hash(x) {
+            x = Math.imul(x ^ (x >>> 16), 0x5d588b65);
+            x = Math.imul(x ^ (x >>> 16), 0x5d588b65);
+            return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
+        }
+        
+        // Simple Noise 2D
+        function noise(x, y) {
+           return Math.sin(x) * Math.cos(y); // Fake noise for simplicity if library not allowed
+           // Actually, let's achieve flow with trigonometric interference, creates beautiful patterns too.
+        }
+        
+        // Better flow field function
+        function getFlowAngle(x, y, z) {
+            // Overlapping sine waves creating pseudo-random flow
+            return (Math.sin(x * noiseScale) + Math.cos(y * noiseScale) + Math.sin(z)) * Math.PI * 2;
+        }
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.speed = Math.random() * 2 + 1;
+                this.prevX = this.x;
+                this.prevY = this.y;
+                // Assign each particle a unique hue offset
+                this.hue = (hueSeed + (this.x / width) * 100) % 360;
+            }
+
+            update() {
+                this.prevX = this.x;
+                this.prevY = this.y;
+                
+                let angle = getFlowAngle(this.x, this.y, zOff);
+                
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+
+                // Wrap around edges
+                if (this.x > width) { this.x = 0; this.prevX = 0; }
+                if (this.x < 0) { this.x = width; this.prevX = width; }
+                if (this.y > height) { this.y = 0; this.prevY = 0; }
+                if (this.y < 0) { this.y = height; this.prevY = height; }
+                
+                // Randomly reset sometimes to keep density
+                if (Math.random() < 0.001) this.reset();
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.prevX, this.prevY);
+                ctx.lineTo(this.x, this.y);
+                ctx.strokeStyle = `hsla(${this.hue}, 80%, 60%, 0.1)`; // Low opacity trails
+                ctx.stroke();
+            }
+        }
+
+        function init() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            
+            // Background black initially
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0,0,width,height);
+            
+            particles = [];
+            for (let i=0; i<numParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            // Fade out trail slowly (alpha 0.05) creates the trails
+            // Instead of clearing, we draw a semi-transparent black rectangle
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            
+            zOff += 0.001; // Slowly change the vector field over time
+            
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', init);
+        window.addEventListener('click', () => {
+            hueSeed = Math.random() * 360; // Change color palette
+            particles.forEach(p => p.hue = (hueSeed + (p.x/width)*60)%360);
+        });
+
+        init();
+        animate();
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

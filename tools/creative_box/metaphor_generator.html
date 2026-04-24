@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隐喻制造机 - AI创意生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .linear-bg {
+            background: linear-gradient(135deg, #5E6AD2 0%, #3B82F6 100%);
+        }
+        .result-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .metaphor-connection {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            color: white;
+            margin: 1rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .metaphor-connection::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%);
+            background-size: 20px 20px;
+            animation: flow 10s linear infinite;
+        }
+        @keyframes flow {
+            0% { background-position: 0 0; }
+            100% { background-position: 20px 20px; }
+        }
+        .word-input {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+        .word-input:focus {
+            background: rgba(255, 255, 255, 1);
+            border-color: #5E6AD2;
+            box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.1);
+        }
+        .connection-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 1rem;
+        }
+        .loading-dots {
+            display: inline-block;
+        }
+        .loading-dots:after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #5E6AD2 0%, #3B82F6 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(94, 106, 210, 0.3);
+        }
+        .suggestion-tag {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .suggestion-tag:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        .metaphor-quote {
+            font-style: italic;
+            font-size: 1.25rem;
+            line-height: 1.6;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+        .metaphor-explanation {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-4">
+    <!-- 设置面板 -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="glass-effect rounded-2xl p-6 max-w-md w-full">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-white">API设置</h3>
+                    <button onclick="closeSettings()" class="text-white hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-white mb-2">模型选择</label>
+                        <select id="modelSelect" class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                            <option value="doubao-seed-1-6-thinking-250615">豆包思维版</option>
+                            <option value="doubao-seed-1-6-250615">豆包标准版</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-white mb-2">API地址</label>
+                        <input type="text" id="apiUrlInput" 
+                               class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white placeholder-gray-300">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-white mb-2">API密钥</label>
+                        <input type="password" id="apiKeyInput" placeholder="留空使用默认密钥" 
+                               class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white placeholder-gray-300">
+                    </div>
+                    
+                    <button onclick="saveSettings()" class="w-full btn-primary text-white py-2 px-4 rounded-lg font-medium">
+                        保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto">
+        <!-- 顶部导航 -->
+        <div class="flex justify-between items-center mb-8">
+            <div class="flex items-center space-x-4">
+                <div class="w-10 h-10 linear-bg rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-white">隐喻制造机</h1>
+                    <p class="text-blue-100">连接不相关的概念，创造深刻隐喻</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <select id="headerModelSelect" class="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg px-3 py-2 text-white text-sm">
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    <option value="doubao-seed-1-6-thinking-250615">豆包思维版</option>
+                    <option value="doubao-seed-1-6-250615">豆包标准版</option>
+                </select>
+                <button onclick="showSettings()" class="glass-effect p-2 rounded-lg text-white hover:bg-white hover:bg-opacity-20 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 输入表单 -->
+        <div class="glass-effect rounded-2xl p-6 mb-8">
+            <h2 class="text-xl font-semibold text-white mb-6">输入两个毫不相干的名词</h2>
+            
+            <div class="flex items-center justify-center mb-6">
+                <div class="flex-1 max-w-xs">
+                    <input type="text" id="word1Input" placeholder="第一个词" 
+                           class="w-full px-4 py-4 word-input rounded-xl border-0 focus:outline-none">
+                </div>
+                
+                <div class="connection-arrow">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                    </svg>
+                </div>
+                
+                <div class="flex-1 max-w-xs">
+                    <input type="text" id="word2Input" placeholder="第二个词" 
+                           class="w-full px-4 py-4 word-input rounded-xl border-0 focus:outline-none">
+                </div>
+            </div>
+            
+            <div class="text-center mb-6">
+                <p class="text-blue-100 text-sm mb-4">或者尝试这些有趣的组合：</p>
+                <div class="flex flex-wrap justify-center gap-2">
+                    <button onclick="setSuggestion('爱情', '旧冰箱')" class="suggestion-tag">爱情 + 旧冰箱</button>
+                    <button onclick="setSuggestion('梦想', '螺丝钉')" class="suggestion-tag">梦想 + 螺丝钉</button>
+                    <button onclick="setSuggestion('孤独', '图书馆')" class="suggestion-tag">孤独 + 图书馆</button>
+                    <button onclick="setSuggestion('时间', '蜘蛛网')" class="suggestion-tag">时间 + 蜘蛛网</button>
+                    <button onclick="setSuggestion('希望', '废墟')" class="suggestion-tag">希望 + 废墟</button>
+                    <button onclick="setSuggestion('记忆', '镜子')" class="suggestion-tag">记忆 + 镜子</button>
+                </div>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-blue-100 mb-2">隐喻风格（可选）</label>
+                    <select id="styleSelect" class="w-full px-4 py-3 bg-white bg-opacity-90 rounded-xl border-0 focus:outline-none">
+                        <option value="">自由发挥</option>
+                        <option value="poetic">诗意优美</option>
+                        <option value="philosophical">哲学深刻</option>
+                        <option value="metaphysical">形而上学</option>
+                        <option value="emotional">情感触动</option>
+                        <option value="humorous">幽默风趣</option>
+                        <option value="dark">暗黑深沉</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-blue-100 mb-2">期望的情感色调</label>
+                    <select id="toneSelect" class="w-full px-4 py-3 bg-white bg-opacity-90 rounded-xl border-0 focus:outline-none">
+                        <option value="">不限制</option>
+                        <option value="melancholy">忧郁</option>
+                        <option value="hopeful">希望</option>
+                        <option value="mysterious">神秘</option>
+                        <option value="nostalgic">怀旧</option>
+                        <option value="passionate">激情</option>
+                        <option value="tranquil">宁静</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex justify-center mt-6">
+                <button onclick="generateMetaphor()" id="generateBtn" 
+                        class="btn-primary text-white px-8 py-3 rounded-xl font-medium flex items-center space-x-2 shadow-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                    </svg>
+                    <span>制造隐喻</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 结果展示区域 -->
+        <div id="resultsContainer" class="space-y-6"></div>
+    </div>
+
+    <script>
+        // 获取全局 DeepSeek Key
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        // 全局配置
+        let currentSettings = {
+            model: 'deepseek-v4-flash',
+            apiKey: '', // 默认密钥
+            apiUrl: 'https://api.deepseek.com/chat/completions'
+        };
+
+        // 加载保存的设置
+        function loadSettings() {
+            const saved = localStorage.getItem('ai_creative_settings');
+            if (saved) {
+                currentSettings = { ...currentSettings, ...JSON.parse(saved) };
+            }
+
+            // 优先从全局配置读取 key
+            const globalKey = getGlobalDeepSeekKey();
+            if (globalKey) {
+                currentSettings.apiKey = globalKey;
+            }
+
+            document.getElementById('modelSelect').value = currentSettings.model;
+            document.getElementById('headerModelSelect').value = currentSettings.model;
+            document.getElementById('apiUrlInput').value = currentSettings.apiUrl;
+            if (currentSettings.apiKey !== '') {
+                document.getElementById('apiKeyInput').value = currentSettings.apiKey;
+            } else {
+                document.getElementById('apiKeyInput').value = '';
+            }
+        }
+
+        // 保存设置
+        function saveSettings() {
+            const model = document.getElementById('modelSelect').value;
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const apiUrl = document.getElementById('apiUrlInput').value.trim();
+
+            currentSettings.model = model;
+            currentSettings.apiKey = apiKey || '';
+            currentSettings.apiUrl = apiUrl || 'https://api.deepseek.com/chat/completions';
+
+            // 同步头部选择器
+            document.getElementById('headerModelSelect').value = model;
+
+            localStorage.setItem('ai_creative_settings', JSON.stringify(currentSettings));
+
+            // 同步到全局配置
+            let globalConfig = {};
+            try {
+                globalConfig = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+            } catch (e) {}
+            globalConfig.deepseek = currentSettings.apiKey;
+            globalConfig.model = currentSettings.model;
+            localStorage.setItem('global_llm_config', JSON.stringify(globalConfig));
+
+            closeSettings();
+
+            // 显示保存成功提示
+            showNotification('设置已保存', 'success');
+        }
+
+        // 显示/隐藏设置面板
+        function showSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        // 头部模型选择器变化
+        document.getElementById('headerModelSelect').addEventListener('change', function(e) {
+            currentSettings.model = e.target.value;
+            document.getElementById('modelSelect').value = e.target.value;
+            localStorage.setItem('ai_creative_settings', JSON.stringify(currentSettings));
+        });
+
+        // 设置建议组合
+        function setSuggestion(word1, word2) {
+            document.getElementById('word1Input').value = word1;
+            document.getElementById('word2Input').value = word2;
+        }
+
+        // 生成隐喻
+        async function generateMetaphor() {
+            const word1 = document.getElementById('word1Input').value.trim();
+            const word2 = document.getElementById('word2Input').value.trim();
+            const style = document.getElementById('styleSelect').value;
+            const tone = document.getElementById('toneSelect').value;
+            
+            if (!word1 || !word2) {
+                showNotification('请输入两个名词', 'error');
+                return;
+            }
+
+            const generateBtn = document.getElementById('generateBtn');
+            const originalContent = generateBtn.innerHTML;
+            
+            // 显示加载状态
+            generateBtn.innerHTML = `
+                <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="loading-dots">AI正在制造隐喻</span>
+            `;
+            generateBtn.disabled = true;
+
+            try {
+                const prompt = createMetaphorPrompt(word1, word2, style, tone);
+                const response = await callAI(prompt);
+                displayResults(response, word1, word2, style, tone);
+            } catch (error) {
+                console.error('生成错误:', error);
+                showNotification('生成失败，请稍后重试', 'error');
+            } finally {
+                generateBtn.innerHTML = originalContent;
+                generateBtn.disabled = false;
+            }
+        }
+
+        // 创建隐喻提示词
+        function createMetaphorPrompt(word1, word2, style, tone) {
+            const styleMap = {
+                poetic: '诗意优美的',
+                philosophical: '哲学深刻的',
+                metaphysical: '形而上学的',
+                emotional: '情感触动的',
+                humorous: '幽默风趣的',
+                dark: '暗黑深沉的'
+            };
+
+            const toneMap = {
+                melancholy: '忧郁',
+                hopeful: '希望',
+                mysterious: '神秘',
+                nostalgic: '怀旧',
+                passionate: '激情',
+                tranquil: '宁静'
+            };
+
+            let prompt = `作为隐喻制造大师，请将"${word1}"和"${word2}"这两个看似毫无关联的概念，通过深刻的洞察力连接起来，创造一个原创的、富有启发性的隐喻。
+
+要求：
+1. **隐喻句子**：创造一个简洁而富有诗意的隐喻表达（20-40字）
+2. **深层连接**：解释这两个概念之间的抽象联系和哲学意义
+3. **象征解读**：分析每个元素在隐喻中的象征意义
+4. **情感共鸣**：描述这个隐喻能触发的情感体验
+5. **生活应用**：说明这个隐喻在现实生活中的洞察价值`;
+
+            if (style) {
+                prompt += `\n\n风格要求：${styleMap[style]}`;
+            }
+
+            if (tone) {
+                prompt += `\n情感色调：带有${toneMap[tone]}的情感`;
+            }
+
+            prompt += `\n\n请确保隐喻既有原创性又有深度，能够让人产生"原来如此"的顿悟感。隐喻应该揭示两个概念之间意想不到但合理的共同本质。`;
+
+            return prompt;
+        }
+
+        // 调用AI接口
+        async function callAI(prompt) {
+            const response = await fetch(currentSettings.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentSettings.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: currentSettings.model,
+                    messages: [
+                        {
+                            role: "system",
+                            content: "你是一位资深的诗人、哲学家和隐喻大师，擅长发现看似无关事物之间的深层联系，创造富有洞察力和美感的隐喻。你的作品既有诗意又有哲学深度。"
+                        },
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.9,
+                    max_tokens: 1500
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+
+        // 显示结果
+        function displayResults(content, word1, word2, style, tone) {
+            const container = document.getElementById('resultsContainer');
+            const timestamp = new Date().toLocaleString();
+            
+            // 尝试提取隐喻句子（通常在开头或被引号包围）
+            const metaphorMatch = content.match(/["「『](.*?)["」』]/);
+            const metaphorQuote = metaphorMatch ? metaphorMatch[1] : extractFirstSentence(content);
+            
+            const resultCard = document.createElement('div');
+            resultCard.className = 'result-card rounded-2xl p-6 fade-in';
+            
+            resultCard.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 linear-bg rounded-xl flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800">隐喻制造结果</h3>
+                            <p class="text-sm text-gray-500">${word1} × ${word2}${style ? ' | ' + document.querySelector('#styleSelect option[value="' + style + '"]').textContent : ''}${tone ? ' | ' + document.querySelector('#toneSelect option[value="' + tone + '"]').textContent : ''}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="copyResult(this)" class="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="复制结果">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="shareResult(this)" class="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="分享结果">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="downloadResult(this)" class="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="下载结果">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                ${metaphorQuote ? `
+                <div class="metaphor-connection">
+                    <div class="metaphor-quote">"${metaphorQuote}"</div>
+                    <div class="metaphor-explanation">
+                        <div class="text-sm opacity-90">
+                            <strong>${word1}</strong> ⟷ <strong>${word2}</strong> 的深层连接
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="prose max-w-none">
+                    <div class="bg-gray-50 rounded-xl p-4 whitespace-pre-wrap text-gray-700 leading-relaxed">${content}</div>
+                </div>
+                
+                <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center text-sm text-gray-500">
+                    <span>生成时间: ${timestamp}</span>
+                    <span>模型: ${currentSettings.model}</span>
+                </div>
+            `;
+            
+            container.insertBefore(resultCard, container.firstChild);
+        }
+
+        // 提取第一句话作为隐喻
+        function extractFirstSentence(text) {
+            const sentences = text.split(/[。！？.!?]/);
+            return sentences[0].trim();
+        }
+
+        // 复制内容
+        function copyResult(button) {
+            const content = button.closest('.result-card').querySelector('.prose div').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                showNotification('内容已复制到剪贴板', 'success');
+            });
+        }
+
+        // 分享结果
+        function shareResult(button) {
+            const content = button.closest('.result-card').querySelector('.prose div').textContent;
+            if (navigator.share) {
+                navigator.share({
+                    title: '隐喻制造机 - AI创意生成',
+                    text: content.substring(0, 100) + '...',
+                    url: window.location.href
+                });
+            } else {
+                copyResult(button);
+                showNotification('内容已复制，可手动分享', 'info');
+            }
+        }
+
+        // 下载结果
+        function downloadResult(button) {
+            const card = button.closest('.result-card');
+            const content = card.querySelector('.prose div').textContent;
+            const timestamp = card.querySelector('.mt-4 span').textContent;
+            
+            const blob = new Blob([`隐喻制造机 - AI创意生成\n\n${content}\n\n${timestamp}`], 
+                                 { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `隐喻制造_${new Date().getTime()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white font-medium transform transition-all duration-300 translate-x-full`;
+            
+            const bgColors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500',
+                warning: 'bg-yellow-500'
+            };
+            
+            notification.classList.add(bgColors[type] || bgColors.info);
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // 触发动画
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full');
+            }, 100);
+            
+            // 自动移除
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // 回车提交
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                generateMetaphor();
+            }
+        });
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+        });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_metaphor_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html> 

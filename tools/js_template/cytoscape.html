@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cytoscape.js 网络图</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fdf4ff; color: #701a75; }
+    .glass { background: white; border: 1px solid #f0abfc; box-shadow: 0 4px 6px -1px rgba(192, 38, 211, 0.05); }
+    #cy { width: 100%; height: 500px; background: white; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold text-fuchsia-900">🕸️ Cytoscape.js</h1>
+    <p class="text-fuchsia-800/60 mt-2 text-lg">用于可视化和分析的图论(网络)库</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-fuchsia-200 text-fuchsia-800 rounded-lg hover:bg-fuchsia-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+  <!-- 侧边栏控制 -->
+  <div class="glass p-6 rounded-2xl lg:col-span-1 space-y-6 h-fit">
+    <h3 class="font-bold text-lg text-fuchsia-900 border-b border-fuchsia-100 pb-2">🎮 布局控制</h3>
+    
+    <div>
+      <label class="block text-sm font-bold text-fuchsia-700 mb-2">布局算法</label>
+      <select id="layout-select" class="w-full p-2 border border-fuchsia-200 rounded text-sm bg-fuchsia-50" onchange="changeLayout(this.value)">
+        <option value="grid">网格 (Grid)</option>
+        <option value="circle">圆形 (Circle)</option>
+        <option value="concentric">同心圆 (Concentric)</option>
+        <option value="breadthfirst">广度优先 (Breadthfirst)</option>
+        <option value="cose" selected>力导向 (Cose)</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-bold text-fuchsia-700 mb-2">操作</label>
+      <div class="flex flex-col gap-2">
+        <button onclick="fit()" class="px-4 py-2 bg-fuchsia-100 text-fuchsia-800 rounded hover:bg-fuchsia-200 text-sm">自适应视图</button>
+        <button onclick="addNode()" class="px-4 py-2 bg-fuchsia-100 text-fuchsia-800 rounded hover:bg-fuchsia-200 text-sm">随机添加节点</button>
+      </div>
+    </div>
+
+    <div class="text-xs text-fuchsia-400 p-2 bg-fuchsia-50 rounded">
+      提示：点击节点查看详情，由于是 canvas 绘制，这比 DOM 节点性能高得多。
+    </div>
+  </div>
+
+  <!-- 图表区域 -->
+  <div class="lg:col-span-3 rounded-2xl overflow-hidden border border-fuchsia-200 shadow-lg relative bg-white">
+    <div id="cy"></div>
+    
+    <!-- 悬浮信息 -->
+    <div id="info-box" class="absolute bottom-4 right-4 bg-white/90 backdrop-blur border border-fuchsia-100 p-4 rounded-xl shadow-lg text-sm hidden max-w-xs">
+      <h4 class="font-bold text-fuchsia-900 mb-1" id="node-label">Label</h4>
+      <p class="text-slate-500">ID: <span id="node-id"></span></p>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+<script>
+  // 初始化数据
+  const elements = [
+    { data: { id: 'a', label: '核心 (Core)', weight: 100 } },
+    { data: { id: 'b', label: '模块 A', weight: 50 } },
+    { data: { id: 'c', label: '模块 B', weight: 50 } },
+    { data: { id: 'd', label: '服务 1', weight: 30 } },
+    { data: { id: 'e', label: '服务 2', weight: 30 } },
+    { data: { id: 'f', label: '数据库', weight: 80 } },
+    
+    { data: { source: 'a', target: 'b' } },
+    { data: { source: 'a', target: 'c' } },
+    { data: { source: 'b', target: 'd' } },
+    { data: { source: 'b', target: 'e' } },
+    { data: { source: 'c', target: 'e' } },
+    { data: { source: 'c', target: 'f' } }
+  ];
+
+  const cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: elements,
+    style: [ // 样式表
+      {
+        selector: 'node',
+        style: {
+          'background-color': '#d946ef', // fuchsia-500
+          'label': 'data(label)',
+          'color': '#333',
+          'font-size': '12px',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'width': 'mapData(weight, 0, 100, 20, 60)',
+          'height': 'mapData(weight, 0, 100, 20, 60)',
+          'text-outline-color': '#fff',
+          'text-outline-width': 2
+        }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'width': 2,
+          'line-color': '#f0abfc',
+          'target-arrow-color': '#f0abfc',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier'
+        }
+      },
+      {
+        selector: ':selected',
+        style: {
+          'background-color': '#86198f', // fuchsia-800
+          'line-color': '#86198f',
+          'target-arrow-color': '#86198f',
+          'source-arrow-color': '#86198f'
+        }
+      }
+    ],
+    layout: {
+      name: 'cose',
+      padding: 50
+    }
+  });
+
+  // 交互事件
+  cy.on('tap', 'node', function(evt){
+    const node = evt.target;
+    document.getElementById('node-label').innerText = node.data('label');
+    document.getElementById('node-id').innerText = node.id();
+    document.getElementById('info-box').classList.remove('hidden');
+  });
+
+  cy.on('tap', function(evt){
+    if(evt.target === cy){
+        document.getElementById('info-box').classList.add('hidden');
+    }
+  });
+
+  // 控制函数
+  function changeLayout(name) {
+    cy.layout({ name: name, animate: true }).run();
+  }
+
+  function fit() {
+    cy.fit();
+  }
+
+  function addNode() {
+    const id = 'n' + Math.round(Math.random() * 1000);
+    cy.add({
+        group: 'nodes',
+        data: { id: id, label: 'Node ' + id, weight: 30 + Math.random() * 40 },
+        position: { x: cy.width()/2, y: cy.height()/2 }
+    });
+    
+    // 随机连接
+    const targets = cy.nodes();
+    const source = targets[Math.floor(Math.random() * targets.length)];
+    if(source.id() !== id) {
+        cy.add({
+            group: 'edges',
+            data: { source: source.id(), target: id }
+        });
+    }
+    
+    // 重新布局
+    cy.layout({ name: 'cose', animate: true }).run();
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

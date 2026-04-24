@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AA 制计算器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-amber-50 min-h-screen font-sans text-stone-800" x-data="splitApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-amber-200 sticky top-0 z-50">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-amber-100 text-stone-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-orange-600">
+                    🍻 AA 制计算器
+                </h1>
+            </div>
+            
+            <button @click="reset()" class="text-xs font-bold text-amber-600 hover:text-amber-800 underline">
+                清空重置
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8 pb-24 space-y-8">
+
+        <!-- Step 1: People -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-amber-100">
+            <h2 class="font-bold text-lg mb-4 flex items-center gap-2 text-stone-700">
+                <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs">1</span>
+                参与人员
+            </h2>
+            
+            <div class="flex flex-wrap gap-2 mb-4">
+                <template x-for="p in people" :key="p">
+                    <div class="px-3 py-1.5 bg-amber-50 text-amber-800 rounded-lg text-sm font-bold flex items-center gap-2 group">
+                        <span x-text="p"></span>
+                        <button @click="removePerson(p)" class="text-amber-400 hover:text-amber-600"><i class="fa-solid fa-xmark w-3 h-3"></i></button>
+                    </div>
+                </template>
+            </div>
+            
+            <div class="flex gap-2">
+                <input type="text" x-model="newPerson" @keyup.enter="addPerson()" placeholder="输入名字 (如: 小明)" class="flex-1 p-3 rounded-xl border border-stone-200 outline-none focus:border-amber-500 bg-stone-50">
+                <button @click="addPerson()" class="px-6 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20">
+                    添加
+                </button>
+            </div>
+        </section>
+
+        <!-- Step 2: Expenses -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-amber-100" x-show="people.length >= 2">
+            <h2 class="font-bold text-lg mb-4 flex items-center gap-2 text-stone-700">
+                <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs">2</span>
+                添加消费
+            </h2>
+            
+             <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-4 items-end">
+                <div class="sm:col-span-4">
+                    <label class="block text-xs font-bold text-stone-400 mb-1">付款人</label>
+                    <select x-model="tempExp.payer" class="w-full p-3 rounded-xl border border-stone-200 outline-none focus:border-amber-500 bg-white cursor-pointer">
+                        <template x-for="p in people" :key="p">
+                            <option :value="p" x-text="p"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="sm:col-span-4">
+                    <label class="block text-xs font-bold text-stone-400 mb-1">金额</label>
+                    <input type="number" x-model="tempExp.amount" placeholder="0.00" class="w-full p-3 rounded-xl border border-stone-200 outline-none focus:border-amber-500 bg-white font-mono">
+                </div>
+                <div class="sm:col-span-4">
+                     <label class="block text-xs font-bold text-stone-400 mb-1">说明 (可选)</label>
+                     <input type="text" x-model="tempExp.desc" placeholder="午饭, 打车..." class="w-full p-3 rounded-xl border border-stone-200 outline-none focus:border-amber-500 bg-white">
+                </div>
+             </div>
+             
+             <!-- Split options (Simplified: Split equally for now) -->
+             <div class="mb-4">
+                 <button @click="addExpense()" class="w-full py-3 bg-stone-800 text-white rounded-xl font-bold hover:bg-black transition-colors flex items-center justify-center gap-2">
+                     <i class="fa-solid fa-circle-plus w-4 h-4"></i>
+                     记录这笔消费
+                 </button>
+             </div>
+
+            <!-- Expense List -->
+             <div class="space-y-2 max-h-60 overflow-y-auto">
+                 <template x-for="exp in expenses" :key="exp.id">
+                     <div class="flex justify-between items-center p-3 bg-stone-50 rounded-lg text-sm border border-stone-100">
+                         <div>
+                             <span class="font-bold text-amber-700" x-text="exp.payer"></span>
+                             <span class="text-stone-500 mx-1">支付了</span>
+                             <span class="font-mono font-bold" x-text="exp.amount"></span>
+                             <span class="text-stone-400 text-xs ml-1" x-text="exp.desc ? '('+exp.desc+')' : ''"></span>
+                         </div>
+                         <button @click="removeExpense(exp.id)" class="text-stone-300 hover:text-rose-500"><i class="fa-solid fa-trash w-4 h-4"></i></button>
+                     </div>
+                 </template>
+             </div>
+        </section>
+
+        <!-- Step 3: Result -->
+        <section class="bg-stone-900 text-white p-6 rounded-2xl shadow-xl shadow-stone-900/10" x-show="expenses.length > 0">
+             <h2 class="font-bold text-lg mb-6 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs">3</span>
+                结算方案
+                <span class="ml-auto text-sm font-normal text-stone-400" x-text="'总支出: ' + totalExpense"></span>
+            </h2>
+            
+            <div class="space-y-4">
+                <template x-for="t in transactions" :key="t.from + t.to">
+                     <div class="flex items-center gap-4 p-4 bg-stone-800 rounded-xl border border-stone-700">
+                         <div class="font-bold text-rose-400 text-lg" x-text="t.from"></div>
+                         <div class="flex-1 flex flex-col items-center">
+                             <div class="text-xs text-stone-500 mb-1">支付给</div>
+                             <i class="fa-solid fa-arrow-right w-5 h-5 text-stone-500"></i>
+                             <div class="text-xs font-mono font-bold text-amber-400 mt-1" x-text="t.amount"></div>
+                         </div>
+                         <div class="font-bold text-emerald-400 text-lg" x-text="t.to"></div>
+                     </div>
+                </template>
+                <div x-show="transactions.length === 0" class="text-center text-stone-500 py-4">
+                    无需转账，大家花费正好平衡 🎉
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        function splitApp() {
+            return {
+                people: [],
+                newPerson: '',
+                expenses: [],
+                tempExp: { payer: '', amount: '', desc: '' },
+                
+                init() {
+                    const savedP = localStorage.getItem('webtools_split_people');
+                    const savedE = localStorage.getItem('webtools_split_expenses');
+                    if(savedP) this.people = JSON.parse(savedP);
+                    if(savedE) this.expenses = JSON.parse(savedE);
+                    
+                    if (this.people.length === 0) {
+                        this.people = ['我', '小明']; // Default
+                        this.tempExp.payer = '我';
+                    } else {
+                        this.tempExp.payer = this.people[0];
+                    }
+
+                    this.$watch('people', () => localStorage.setItem('webtools_split_people', JSON.stringify(this.people)));
+                    this.$watch('expenses', () => localStorage.setItem('webtools_split_expenses', JSON.stringify(this.expenses)));
+                },
+
+                addPerson() {
+                    if (this.newPerson && !this.people.includes(this.newPerson)) {
+                        this.people.push(this.newPerson);
+                        this.newPerson = '';
+                    }
+                },
+                
+                removePerson(p) {
+                    this.people = this.people.filter(x => x !== p);
+                    // Also remove expenses involving this person? Ideally yes, or reset payer
+                    // For simplicity, keep expenses but calc will ignore or create generic balance
+                },
+
+                addExpense() {
+                    if (this.tempExp.payer && this.tempExp.amount) {
+                        this.expenses.push({
+                            id: Date.now(),
+                            payer: this.tempExp.payer,
+                            amount: parseFloat(this.tempExp.amount),
+                            desc: this.tempExp.desc
+                        });
+                        this.tempExp.amount = '';
+                        this.tempExp.desc = '';
+                    }
+                },
+                
+                removeExpense(id) {
+                    this.expenses = this.expenses.filter(e => e.id !== id);
+                },
+                
+                reset() {
+                    if(confirm('清空所有数据？')) {
+                        this.people = [];
+                        this.expenses = [];
+                        localStorage.removeItem('webtools_split_people');
+                        localStorage.removeItem('webtools_split_expenses');
+                    }
+                },
+
+                get totalExpense() {
+                    return this.expenses.reduce((s, e) => s + e.amount, 0).toFixed(2);
+                },
+
+                get transactions() {
+                    if (this.people.length < 2 || this.expenses.length === 0) return [];
+                    
+                    // 1. Calc Balances
+                    const balances = {};
+                    this.people.forEach(p => balances[p] = 0);
+                    
+                    this.expenses.forEach(e => {
+                        const paidBy = e.payer;
+                        const amount = e.amount;
+                        // Split equally amongst all current people
+                        // Note: Real apps allow selecting who is involved. Here assuming everyone involved.
+                        const splitAmount = amount / this.people.length;
+                        
+                        // Payer gets + (paid - share)
+                        // Others get - (share)
+                        
+                        this.people.forEach(p => {
+                            if (p === paidBy) {
+                                balances[p] += (amount - splitAmount);
+                            } else {
+                                balances[p] -= splitAmount;
+                            }
+                        });
+                    });
+                    
+                    // 2. Simplify Debt (Greedy)
+                    const debtors = [];
+                    const creditors = [];
+                    
+                    for (const [p, bal] of Object.entries(balances)) {
+                        if (bal < -0.01) debtors.push({ name: p, amount: bal }); // Negative balance
+                        if (bal > 0.01) creditors.push({ name: p, amount: bal }); // Positive balance
+                    }
+                    
+                    debtors.sort((a,b) => a.amount - b.amount); // Ascending (most negative first)
+                    creditors.sort((a,b) => b.amount - a.amount); // Descending (most positive first)
+                    
+                    const txs = [];
+                    let i = 0; // debtors index
+                    let j = 0; // creditors index
+                    
+                    while (i < debtors.length && j < creditors.length) {
+                        const debtor = debtors[i];
+                        const creditor = creditors[j];
+                        
+                        // The amount to settle is min(|debtor.amount|, creditor.amount)
+                        const amount = Math.min(Math.abs(debtor.amount), creditor.amount);
+                        
+                        txs.push({
+                            from: debtor.name,
+                            to: creditor.name,
+                            amount: amount.toFixed(2)
+                        });
+                        
+                        // Update remaining
+                        debtor.amount += amount;
+                        creditor.amount -= amount;
+                        
+                        if (Math.abs(debtor.amount) < 0.01) i++;
+                        if (creditor.amount < 0.01) j++;
+                    }
+                    
+                    return txs;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_expense_splitter.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

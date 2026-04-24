@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 格式化工具 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .json-key { color: #0066cc; }
+        .json-string { color: #008000; }
+        .json-number { color: #ff6600; }
+        .json-boolean { color: #cc00cc; }
+        .json-null { color: #999999; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-900 min-h-screen text-white font-sans" x-data="jsonApp()" x-init="init()">
+
+    <header class="bg-slate-800/50 backdrop-blur-md border-b border-slate-700">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-700 text-slate-400 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold">⚡ JSON 格式化工具</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="formatJSON()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm transition-colors">
+                    美化
+                </button>
+                <button @click="minifyJSON()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">
+                    压缩
+                </button>
+                <button @click="copyOutput()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm transition-colors">
+                    复制
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <div class="grid md:grid-cols-2 gap-6">
+            
+            <!-- Input -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="bg-slate-700/50 px-4 py-3 border-b border-slate-600 flex items-center justify-between">
+                    <span class="font-medium text-sm">输入 JSON</span>
+                    <button @click="input = ''" class="text-xs text-slate-400 hover:text-white transition-colors">
+                        清空
+                    </button>
+                </div>
+                <textarea 
+                    x-model="input"
+                    @input="validateJSON()"
+                    placeholder='{"name": "示例", "value": 123}'
+                    class="w-full h-[600px] bg-slate-800 text-white p-4 font-mono text-sm outline-none resize-none"
+                ></textarea>
+                <div class="bg-slate-700/50 px-4 py-2 border-t border-slate-600 flex items-center justify-between text-xs">
+                    <span :class="isValid ? 'text-emerald-400' : 'text-rose-400'">
+                        <i :class="isValid ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-xmark'" class="w-3 h-3 inline"></i>
+                        <span x-text="isValid ? '格式正确' : errorMsg"></span>
+                    </span>
+                    <span class="text-slate-400">字符数: <span x-text="input.length"></span></span>
+                </div>
+            </div>
+
+            <!-- Output -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="bg-slate-700/50 px-4 py-3 border-b border-slate-600 flex items-center justify-between">
+                    <span class="font-medium text-sm">输出结果</span>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400 flex items-center gap-1">
+                            <input type="checkbox" x-model="syntaxHighlight" class="rounded">
+                            语法高亮
+                        </label>
+                    </div>
+                </div>
+                <div class="h-[600px] overflow-auto">
+                    <template x-if="syntaxHighlight && output">
+                        <pre class="p-4 font-mono text-sm" x-html="highlightedOutput"></pre>
+                    </template>
+                    <template x-if="!syntaxHighlight || !output">
+                        <pre class="p-4 font-mono text-sm text-slate-300" x-text="output || '等待输入...'"></pre>
+                    </template>
+                </div>
+                <div class="bg-slate-700/50 px-4 py-2 border-t border-slate-600 text-xs text-slate-400">
+                    字符数: <span x-text="output.length"></span>
+                    <span x-show="input.length > 0 && output.length > 0">
+                        | 压缩率: <span x-text="compressionRatio + '%'"></span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tools -->
+        <div class="mt-6 grid md:grid-cols-3 gap-4">
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+                <h4 class="font-medium mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-gear"></i>
+                    缩进设置
+                </h4>
+                <div class="flex gap-2">
+                    <button 
+                        @click="indentSize = 2"
+                        :class="indentSize === 2 ? 'bg-indigo-600' : 'bg-slate-700'"
+                        class="flex-1 py-2 rounded-lg text-sm transition-colors"
+                    >
+                        2 空格
+                    </button>
+                    <button 
+                        @click="indentSize = 4"
+                        :class="indentSize === 4 ? 'bg-indigo-600' : 'bg-slate-700'"
+                        class="flex-1 py-2 rounded-lg text-sm transition-colors"
+                    >
+                        4 空格
+                    </button>
+                    <button 
+                        @click="indentSize = '\t'"
+                        :class="indentSize === '\t' ? 'bg-indigo-600' : 'bg-slate-700'"
+                        class="flex-1 py-2 rounded-lg text-sm transition-colors"
+                    >
+                        Tab
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+                <h4 class="font-medium mb-3 flex items-center gap-2">
+                    <i class="fa-regular fa-file-code"></i>
+                    快速操作
+                </h4>
+                <div class="flex gap-2">
+                    <button @click="loadSample()" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">
+                        加载示例
+                    </button>
+                    <button @click="downloadJSON()" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">
+                        下载
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+                <h4 class="font-medium mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info"></i>
+                    统计信息
+                </h4>
+                <div class="text-sm text-slate-400 space-y-1">
+                    <div>对象数: <span class="text-white" x-text="stats.objects"></span></div>
+                    <div>数组数: <span class="text-white" x-text="stats.arrays"></span></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function jsonApp() {
+            return {
+                input: '',
+                output: '',
+                isValid: false,
+                errorMsg: '等待输入',
+                indentSize: 2,
+                syntaxHighlight: true,
+
+                init() {
+                    // init
+                },
+
+                validateJSON() {
+                    if (!this.input.trim()) {
+                        this.isValid = false;
+                        this.errorMsg = '等待输入';
+                        this.output = '';
+                        return;
+                    }
+
+                    try {
+                        JSON.parse(this.input);
+                        this.isValid = true;
+                        this.errorMsg = '';
+                    } catch (e) {
+                        this.isValid = false;
+                        this.errorMsg = e.message;
+                    }
+                },
+
+                formatJSON() {
+                    if (!this.isValid) return;
+                    
+                    try {
+                        const parsed = JSON.parse(this.input);
+                        this.output = JSON.stringify(parsed, null, this.indentSize);
+                    } catch (e) {
+                        alert('JSON 格式错误: ' + e.message);
+                    }
+                },
+
+                minifyJSON() {
+                    if (!this.isValid) return;
+                    
+                    try {
+                        const parsed = JSON.parse(this.input);
+                        this.output = JSON.stringify(parsed);
+                    } catch (e) {
+                        alert('JSON 格式错误: ' + e.message);
+                    }
+                },
+
+                copyOutput() {
+                    if (!this.output) return;
+                    
+                    navigator.clipboard.writeText(this.output).then(() => {
+                        alert('已复制到剪贴板');
+                    });
+                },
+
+                downloadJSON() {
+                    if (!this.output) return;
+                    
+                    const blob = new Blob([this.output], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'formatted.json';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                },
+
+                loadSample() {
+                    this.input = JSON.stringify({
+                        "name": "示例数据",
+                        "version": "1.0.0",
+                        "data": {
+                            "users": [
+                                { "id": 1, "name": "张三", "active": true },
+                                { "id": 2, "name": "李四", "active": false }
+                            ],
+                            "settings": {
+                                "theme": "dark",
+                                "language": "zh-CN"
+                            }
+                        }
+                    });
+                    this.validateJSON();
+                    this.formatJSON();
+                },
+
+                get highlightedOutput() {
+                    if (!this.output) return '';
+                    
+                    return this.output
+                        .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
+                        .replace(/: "([^"]*)"/g, ': <span class="json-string">"$1"</span>')
+                        .replace(/: (\d+)/g, ': <span class="json-number">$1</span>')
+                        .replace(/: (true|false)/g, ': <span class="json-boolean">$1</span>')
+                        .replace(/: null/g, ': <span class="json-null">null</span>');
+                },
+
+                get compressionRatio() {
+                    if (!this.input || !this.output) return 0;
+                    return Math.round((1 - this.output.length / this.input.length) * 100);
+                },
+
+                get stats() {
+                    if (!this.isValid) return { objects: 0, arrays: 0 };
+                    
+                    try {
+                        const parsed = JSON.parse(this.input);
+                        const str = JSON.stringify(parsed);
+                        return {
+                            objects: (str.match(/{/g) || []).length,
+                            arrays: (str.match(/\[/g) || []).length
+                        };
+                    } catch {
+                        return { objects: 0, arrays: 0 };
+                    }
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_json_formatter.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

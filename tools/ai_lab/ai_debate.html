@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 辩论赛 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* 页面基底：玫瑰色渐变背景 */
+        body {
+            background: linear-gradient(145deg, #fff1f2 0%, #ffe4e6 35%, #fecdd3 70%, #fda4af 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #f43f5e; border-radius: 3px; }
+
+        /* 辩论气泡：从两侧滑入 */
+        @keyframes slideInPro {
+            from { opacity: 0; transform: translateX(-28px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideInCon {
+            from { opacity: 0; transform: translateX(28px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .bubble-pro { animation: slideInPro 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .bubble-con { animation: slideInCon 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+        /* 顶部三阶段指示器 */
+        .phase-dot {
+            transition: all 0.35s ease;
+        }
+        .phase-dot.active {
+            background: linear-gradient(135deg, #fb7185, #e11d48);
+            box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.25);
+            color: white;
+        }
+        .phase-dot.done {
+            background: #e11d48;
+            color: white;
+        }
+        .phase-line.done { background: linear-gradient(90deg, #fb7185, #e11d48); }
+
+        /* 投票按钮点击后的庆祝动画 */
+        @keyframes voteBurst {
+            0% { transform: scale(1); box-shadow: 0 10px 40px rgba(0,0,0,0.12); }
+            40% { transform: scale(1.06); box-shadow: 0 16px 48px rgba(244, 63, 94, 0.45); }
+            100% { transform: scale(1.02); box-shadow: 0 12px 36px rgba(244, 63, 94, 0.3); }
+        }
+        .vote-chosen {
+            animation: voteBurst 0.65s ease-out forwards;
+        }
+
+        /* Markdown 气泡内排版 */
+        .debate-md p { margin: 0.4rem 0; line-height: 1.75; }
+        .debate-md ul, .debate-md ol { margin: 0.4rem 0; padding-left: 1.25rem; }
+        .debate-md li { margin: 0.2rem 0; }
+        .debate-md strong { font-weight: 700; }
+        .debate-md h1, .debate-md h2, .debate-md h3 {
+            font-size: 1rem; font-weight: 700; margin: 0.5rem 0 0.25rem;
+        }
+
+        /* 打字光标（流式输出时） */
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        .cursor-blink::after {
+            content: '▍';
+            animation: blink 1s step-end infinite;
+            color: currentColor;
+            opacity: 0.7;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="aiDebateApp()" x-init="init()" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航：左侧返回 ../../index.html -->
+        <nav class="bg-white/85 backdrop-blur-md sticky top-0 z-50 border-b border-rose-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer hover:opacity-85 transition"
+                    onclick="location.href='../../index.html'">
+                    <div class="w-10 h-10 bg-gradient-to-br from-rose-500 to-rose-700 rounded-xl flex items-center justify-center shadow-lg">
+                        <i data-lucide="scale" class="text-white h-5 w-5"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg text-slate-900">AI 辩论赛</span>
+                        <span class="hidden sm:inline text-xs text-slate-500 ml-2">正反交锋 · 你来裁决</span>
+                    </div>
+                </div>
+                <button type="button" @click="showSettings = true"
+                    class="text-slate-500 hover:text-rose-600 flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg hover:bg-rose-50 transition">
+                    <i data-lucide="settings" class="h-4 w-4"></i>
+                    <span class="hidden sm:inline">设置</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- 三阶段进度：开场立论 → 交叉辩论 → 评委裁决 -->
+        <div class="bg-white/55 backdrop-blur-sm border-b border-rose-100 py-4">
+            <div class="max-w-3xl mx-auto px-4">
+                <div class="flex items-center justify-between">
+                    <template x-for="(p, idx) in phaseLabels" :key="p.key">
+                        <div class="flex items-center" :class="idx < phaseLabels.length - 1 ? 'flex-1' : ''">
+                            <div class="flex flex-col items-center w-full max-w-[120px]">
+                                <div :class="[
+                                    'phase-dot w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold',
+                                    phaseIndex === idx ? 'active' : '',
+                                    phaseIndex > idx ? 'done' : '',
+                                    phaseIndex < idx ? 'bg-slate-200 text-slate-500' : ''
+                                ]">
+                                    <template x-if="phaseIndex > idx">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="phaseIndex <= idx">
+                                        <span x-text="idx + 1"></span>
+                                    </template>
+                                </div>
+                                <span class="mt-2 text-xs font-semibold text-center leading-tight"
+                                    :class="phaseIndex >= idx ? 'text-rose-700' : 'text-slate-400'"
+                                    x-text="p.label"></span>
+                            </div>
+                            <div x-show="idx < phaseLabels.length - 1"
+                                :class="[
+                                    'flex-1 h-1 mx-2 rounded-full max-w-[80px]',
+                                    phaseIndex > idx ? 'phase-line done' : 'bg-slate-200'
+                                ]"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:py-8">
+
+            <!-- 辩题输入与预设 -->
+            <section x-show="!debateStarted && !isDebating" x-transition class="max-w-3xl mx-auto space-y-6 mb-8">
+                <div class="text-center">
+                    <h1 class="text-2xl sm:text-3xl font-black text-slate-900 mb-2">开启一场 AI 辩论</h1>
+                    <p class="text-slate-600 text-sm sm:text-base">输入辩题或选择热门话题，AI 将扮演正反双方激烈交锋，最后由你投票并听取评委总结。</p>
+                </div>
+
+                <div class="bg-white/90 rounded-2xl p-5 sm:p-6 shadow-lg border border-rose-100">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">辩题</label>
+                    <input type="text" x-model="topic"
+                        placeholder="例如：996 工作制利大于弊"
+                        class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent" />
+
+                    <p class="text-xs text-slate-500 mt-3 mb-2 font-medium">热门预设（点击填入）</p>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="t in presetTopics" :key="t">
+                            <button type="button" @click="topic = t"
+                                class="text-xs sm:text-sm px-3 py-1.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 transition">
+                                <span x-text="t"></span>
+                            </button>
+                        </template>
+                    </div>
+
+                    <button type="button" @click="startFullDebate()"
+                        :disabled="!topic.trim() || isDebating"
+                        class="mt-6 w-full py-4 rounded-xl font-bold text-white bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 shadow-lg disabled:opacity-45 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition">
+                        <i data-lucide="swords" class="w-5 h-5"></i>
+                        开始辩论
+                    </button>
+                </div>
+            </section>
+
+            <!-- 辩论进行中 / 结果：左右分栏 -->
+            <section x-show="debateStarted" x-transition class="space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="text-sm sm:text-base">
+                        <span class="text-slate-500">当前辩题：</span>
+                        <span class="font-bold text-slate-900" x-text="topic"></span>
+                    </div>
+                    <button type="button" x-show="!isDebating" @click="resetDebate()"
+                        class="text-sm text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-white/80 border border-transparent hover:border-rose-200">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重新开始
+                    </button>
+                </div>
+
+                <!-- V4 Pro 推理过程（可选展示） -->
+                <details x-show="reasoningBuffer" class="bg-white/80 rounded-xl border border-rose-100 p-4 text-sm">
+                    <summary class="cursor-pointer font-semibold text-slate-700 flex items-center gap-2">
+                        <i data-lucide="brain" class="w-4 h-4 text-rose-500"></i>
+                        模型思考过程（点击展开，V4 Pro 模型时可见）
+                    </summary>
+                    <pre class="mt-3 whitespace-pre-wrap text-slate-600 text-xs max-h-48 overflow-y-auto" x-text="reasoningBuffer"></pre>
+                </details>
+
+                <!-- 双栏：左蓝正方 / 右红反方 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
+                    <!-- 正方列 -->
+                    <div class="rounded-2xl border-2 border-blue-200 bg-blue-50/80 p-4 sm:p-5 shadow-md min-h-[200px]">
+                        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-blue-200">
+                            <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow">正</div>
+                            <div>
+                                <p class="font-bold text-blue-900">正方</p>
+                                <p class="text-xs text-blue-700/80">支持辩题立场</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <template x-for="msg in proMessages" :key="msg.id">
+                                <article :class="'bubble-pro rounded-xl p-4 bg-white border border-blue-100 shadow-sm ' + (msg.streaming ? 'ring-2 ring-blue-300' : '')">
+                                    <div class="flex items-center justify-between gap-2 mb-2">
+                                        <span class="text-xs font-bold text-blue-700" x-text="msg.title"></span>
+                                        <button type="button" @click="copyText(msg.plain || stripMd(msg.content))"
+                                            class="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-blue-50">
+                                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> 复制
+                                        </button>
+                                    </div>
+                                    <div class="debate-md text-sm text-slate-700 prose prose-sm max-w-none"
+                                        :class="{ 'cursor-blink': msg.streaming }"
+                                        x-html="msg.streaming ? marked.parse(msg.content || ' ') : marked.parse(msg.content)"></div>
+                                </article>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 反方列 -->
+                    <div class="rounded-2xl border-2 border-red-200 bg-red-50/80 p-4 sm:p-5 shadow-md min-h-[200px]">
+                        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-red-200">
+                            <div class="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center font-black text-sm shadow">反</div>
+                            <div>
+                                <p class="font-bold text-red-900">反方</p>
+                                <p class="text-xs text-red-700/80">反对辩题立场</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <template x-for="msg in conMessages" :key="msg.id">
+                                <article :class="'bubble-con rounded-xl p-4 bg-white border border-red-100 shadow-sm ' + (msg.streaming ? 'ring-2 ring-red-300' : '')">
+                                    <div class="flex items-center justify-between gap-2 mb-2">
+                                        <span class="text-xs font-bold text-red-700" x-text="msg.title"></span>
+                                        <button type="button" @click="copyText(msg.plain || stripMd(msg.content))"
+                                            class="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50">
+                                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> 复制
+                                        </button>
+                                    </div>
+                                    <div class="debate-md text-sm text-slate-700 prose prose-sm max-w-none"
+                                        :class="{ 'cursor-blink': msg.streaming }"
+                                        x-html="msg.streaming ? marked.parse(msg.content || ' ') : marked.parse(msg.content)"></div>
+                                </article>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 全局加载条 -->
+                <div x-show="isDebating" class="flex items-center justify-center gap-3 py-4 text-rose-700 font-medium">
+                    <i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i>
+                    <span x-text="statusHint"></span>
+                </div>
+
+                <!-- 投票区：交叉辩论结束后显示 -->
+                <div x-show="showVotePanel && !isDebating" x-transition
+                    class="bg-white/95 rounded-2xl border-2 border-rose-200 p-6 sm:p-8 shadow-xl">
+                    <h2 class="text-center text-lg sm:text-xl font-black text-slate-900 mb-2">请你担任裁判</h2>
+                    <p class="text-center text-sm text-slate-600 mb-6">听完双方陈述后，你认为哪一方整体表现更胜一筹？</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                        <button type="button" @click="submitVote('pro')"
+                            :disabled="userVote !== null"
+                            :class="[
+                                'py-6 px-4 rounded-2xl font-bold text-lg border-2 transition flex flex-col items-center gap-2',
+                                userVote === 'pro' ? 'vote-chosen border-blue-600 bg-blue-600 text-white' : 'border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100',
+                                userVote && userVote !== 'pro' ? 'opacity-40' : ''
+                            ]">
+                            <i data-lucide="thumbs-up" class="w-8 h-8"></i>
+                            正方获胜
+                        </button>
+                        <button type="button" @click="submitVote('con')"
+                            :disabled="userVote !== null"
+                            :class="[
+                                'py-6 px-4 rounded-2xl font-bold text-lg border-2 transition flex flex-col items-center gap-2',
+                                userVote === 'con' ? 'vote-chosen border-red-600 bg-red-600 text-white' : 'border-red-300 bg-red-50 text-red-900 hover:bg-red-100',
+                                userVote && userVote !== 'con' ? 'opacity-40' : ''
+                            ]">
+                            <i data-lucide="thumbs-up" class="w-8 h-8"></i>
+                            反方获胜
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 评委 AI 总结 -->
+                <div x-show="judgeContent || judgeStreaming" x-transition class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200 p-5 sm:p-6 shadow-lg">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="gavel" class="w-6 h-6 text-amber-700"></i>
+                        <h3 class="text-lg font-black text-amber-900">评委点评与总结</h3>
+                    </div>
+                    <div x-show="judgeStreaming" class="flex items-center gap-2 text-amber-800 text-sm mb-2">
+                        <i data-lucide="pen-line" class="w-4 h-4 animate-pulse"></i> 正在撰写裁决书…
+                    </div>
+                    <div class="debate-md text-slate-800 prose prose-sm max-w-none"
+                        :class="{ 'cursor-blink': judgeStreaming }"
+                        x-html="judgeStreaming ? marked.parse(judgeContent || ' ') : marked.parse(judgeContent)"></div>
+                    <button type="button" x-show="judgeContent && !judgeStreaming" @click="copyText(stripMd(judgeContent))"
+                        class="mt-4 text-sm text-amber-800 font-medium flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-amber-100/80 border border-amber-200">
+                        <i data-lucide="copy" class="w-4 h-4"></i> 复制评委总结
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- 设置弹窗：API Key + 模型 -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-rose-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-rose-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false"
+                        class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium">取消</button>
+                    <button type="button" @click="saveConfig()"
+                        class="bg-rose-600 hover:bg-rose-700 text-white px-6 py-2 rounded-lg text-sm font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium">
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * AI 辩论赛 - Alpine.js 应用
+         * 流程：立论（正→反）→ 交叉辩论若干轮（正→反）→ 用户投票 → 评委流式总结
+         */
+        function aiDebateApp() {
+            /** 交叉辩论轮数（每轮：正方发言 + 反方发言） */
+            const CROSS_ROUNDS = 3;
+
+            return {
+                /* ---------- 界面阶段索引：0 立论 1 交叉 2 裁决（投票+点评） ---------- */
+                phaseIndex: 0,
+                phaseLabels: [
+                    { key: 'open', label: '开场立论' },
+                    { key: 'cross', label: '交叉辩论' },
+                    { key: 'judge', label: '评委裁决' }
+                ],
+
+                topic: '',
+                presetTopics: [
+                    '996 工作制利大于弊',
+                    '人工智能会加剧失业',
+                    '远程办公比坐班更高效',
+                    '短视频对青少年成长利大于弊',
+                    '大学教育是否应该以就业为导向',
+                    '社交媒体拉近了人与人的距离'
+                ],
+
+                debateStarted: false,
+                isDebating: false,
+                statusHint: '',
+                showVotePanel: false,
+                userVote: null,
+                voteAnimKey: 0,
+
+                proMessages: [],
+                conMessages: [],
+                messageId: 0,
+
+                judgeContent: '',
+                judgeStreaming: false,
+
+                showSettings: false,
+                toast: { show: false, message: '' },
+                reasoningBuffer: '',
+
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                init() {
+                    this.loadConfig();
+                    if (typeof marked !== 'undefined') {
+                        marked.setOptions({ breaks: true });
+                    }
+                    this.$watch('proMessages', () => this.$nextTick(() => lucide.createIcons()));
+                    this.$watch('conMessages', () => this.$nextTick(() => lucide.createIcons()));
+                    this.$nextTick(() => lucide.createIcons());
+                },
+
+                /** 从 localStorage 合并读取 global_llm_config */
+                loadConfig() {
+                    const raw = localStorage.getItem('global_llm_config');
+                    if (!raw) return;
+                    try {
+                        const parsed = JSON.parse(raw);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    } catch (e) { /* 忽略损坏数据 */ }
+                },
+
+                /** 保存配置：合并写入，禁止整对象覆盖 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存');
+                },
+
+                showToast(msg) {
+                    this.toast.message = msg;
+                    this.toast.show = true;
+                    clearTimeout(this._toastT);
+                    this._toastT = setTimeout(() => { this.toast.show = false; }, 2600);
+                },
+
+                /** 简易去除 Markdown 用于复制纯文本 */
+                stripMd(s) {
+                    if (!s) return '';
+                    return s
+                        .replace(/```[\s\S]*?```/g, '')
+                        .replace(/`([^`]+)`/g, '$1')
+                        .replace(/\*\*([^*]+)\*\*/g, '$1')
+                        .replace(/\*([^*]+)\*/g, '$1')
+                        .replace(/^#+\s+/gm, '')
+                        .replace(/^\s*[-*]\s+/gm, '• ')
+                        .trim();
+                },
+
+                async copyText(text) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        this.showToast('已复制到剪贴板');
+                    } catch (e) {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        this.showToast('已复制到剪贴板');
+                    }
+                },
+
+                nextId() {
+                    this.messageId += 1;
+                    return 'm-' + this.messageId;
+                },
+
+                /**
+                 * 在指定阵营追加一条消息对象，并返回该对象引用（用于流式写入 content）
+                 * @param {'pro'|'con'} side
+                 * @param {string} title 气泡标题
+                 */
+                pushMessage(side, title) {
+                    const id = this.nextId();
+                    const msg = { id, title, content: '', streaming: true, plain: '' };
+                    if (side === 'pro') this.proMessages.push(msg);
+                    else this.conMessages.push(msg);
+                    this.$nextTick(() => {
+                        lucide.createIcons();
+                        this.scrollToLatest(side);
+                    });
+                    return msg;
+                },
+
+                scrollToLatest(side) {
+                    const col = document.querySelector(side === 'pro'
+                        ? '.border-blue-200 .space-y-4'
+                        : '.border-red-200 .space-y-4');
+                    if (col && col.lastElementChild) {
+                        col.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }
+                },
+
+                /**
+                 * 调用 DeepSeek Chat Completions（流式）
+                 * @param {Array} messages OpenAI 格式 messages
+                 * @param {(chunk: string) => void} onToken 正文增量
+                 */
+                async streamChat(messages, onToken) {
+                    this.reasoningBuffer = '';
+                    const body = {
+                        model: this.apiConfig.model,
+                        messages,
+                        stream: true,
+                        temperature: 0.75
+                    };
+
+                    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error('API 错误 (' + response.status + '): ' + err);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices[0].delta;
+                                if (delta.reasoning_content) {
+                                    this.reasoningBuffer += delta.reasoning_content;
+                                }
+                                if (delta.content) {
+                                    onToken(delta.content);
+                                }
+                            } catch (err) { /* 忽略单行解析失败 */ }
+                        }
+                    }
+                },
+
+                /**
+                 * 单段生成：创建气泡 → 流式填充 → 结束标记
+                 */
+                async runSegment(side, title, systemPrompt, userPrompt) {
+                    const msg = this.pushMessage(side, title);
+                    try {
+                        await this.streamChat(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            (chunk) => {
+                                msg.content += chunk;
+                                this.$nextTick(() => this.scrollToLatest(side));
+                            }
+                        );
+                        msg.plain = this.stripMd(msg.content);
+                        msg.streaming = false;
+                    } catch (e) {
+                        msg.content = '**生成失败：** ' + (e.message || String(e));
+                        msg.streaming = false;
+                        throw e;
+                    }
+                    this.$nextTick(() => lucide.createIcons());
+                },
+
+                /** 汇总双方全文，供评委提示词使用 */
+                buildTranscript() {
+                    const lines = [];
+                    const fmt = (arr) => arr.map(m => '【' + m.title + '】\n' + m.content).join('\n\n');
+                    lines.push('=== 正方 ===\n' + fmt(this.proMessages));
+                    lines.push('=== 反方 ===\n' + fmt(this.conMessages));
+                    return lines.join('\n\n');
+                },
+
+                /** 主流程：立论 → 交叉 → 展示投票 */
+                async startFullDebate() {
+                    if (!this.topic.trim()) {
+                        this.showToast('请先填写辩题');
+                        return;
+                    }
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key');
+                        return;
+                    }
+
+                    this.debateStarted = true;
+                    this.isDebating = true;
+                    this.phaseIndex = 0;
+                    this.showVotePanel = false;
+                    this.userVote = null;
+                    this.judgeContent = '';
+                    this.judgeStreaming = false;
+                    this.proMessages = [];
+                    this.conMessages = [];
+                    this.reasoningBuffer = '';
+
+                    const T = this.topic.trim();
+                    const basePro = '你是一位专业中文辩论选手，立场为【正方】，完全支持辩题。语言犀利、有逻辑、有论据，可使用 Markdown（标题、列表）。不要输出角色旁白或「作为 AI」等套话，直接写辩论稿。';
+                    const baseCon = '你是一位专业中文辩论选手，立场为【反方】，反对辩题。语言犀利、有逻辑、有论据，可使用 Markdown。不要输出角色旁白或「作为 AI」等套话，直接写辩论稿。';
+
+                    try {
+                        // —— 开场立论 ——
+                        this.statusHint = '正方立论生成中…';
+                        await this.runSegment('pro', '正方 · 开场立论', basePro,
+                            '辩题：「' + T + '」。请写正方开场立论，约 400～700 字，结构含：核心论点、分论点与论据、小结。');
+
+                        this.statusHint = '反方立论生成中…';
+                        await this.runSegment('con', '反方 · 开场立论', baseCon,
+                            '辩题：「' + T + '」。请写反方开场立论，约 400～700 字，直接回应正方可能攻击点，结构含：核心论点、分论点与论据、小结。');
+
+                        // —— 交叉辩论 ——
+                        this.phaseIndex = 1;
+                        let prevTranscript = this.buildTranscript();
+
+                        for (let r = 1; r <= CROSS_ROUNDS; r++) {
+                            this.statusHint = '交叉辩论 第 ' + r + ' 轮 · 正方发言…';
+                            await this.runSegment('pro', '正方 · 自由辩论 第' + r + '轮', basePro,
+                                '辩题：「' + T + '」。以下是此前双方发言摘要与全文：\n\n' + prevTranscript.slice(0, 12000) + '\n\n请正方进行第 ' + r + ' 轮自由辩论发言：抓住反方漏洞、强化己方论证，约 250～450 字。');
+
+                            prevTranscript = this.buildTranscript();
+                            this.statusHint = '交叉辩论 第 ' + r + ' 轮 · 反方发言…';
+                            await this.runSegment('con', '反方 · 自由辩论 第' + r + '轮', baseCon,
+                                '辩题：「' + T + '」。以下是此前双方发言：\n\n' + prevTranscript.slice(0, 12000) + '\n\n请反方进行第 ' + r + ' 轮回应与反击，约 250～450 字。');
+
+                            prevTranscript = this.buildTranscript();
+                        }
+
+                        this.phaseIndex = 2;
+                        this.statusHint = '';
+                        this.showVotePanel = true;
+                        this.showToast('辩论环节结束，请投票');
+                    } catch (e) {
+                        console.error(e);
+                        this.showToast(e.message || '辩论中断，请重试');
+                    } finally {
+                        this.isDebating = false;
+                        this.statusHint = '';
+                        this.$nextTick(() => lucide.createIcons());
+                    }
+                },
+
+                /**
+                 * 用户投票后：流式生成评委总结
+                 * @param {'pro'|'con'} side
+                 */
+                async submitVote(side) {
+                    if (this.userVote !== null) return;
+                    this.userVote = side;
+                    this.voteAnimKey += 1;
+                    this.judgeContent = '';
+                    this.judgeStreaming = true;
+                    this.reasoningBuffer = '';
+
+                    const voteLabel = side === 'pro' ? '正方' : '反方';
+                    const transcript = this.buildTranscript();
+
+                    const systemJudge = '你是一位资深辩论赛评委，公正、专业。请用中文 Markdown 输出：1）双方亮点与不足 2）论证与交锋评析 3）回应用户裁定（用户已选「' + voteLabel + '获胜」，可表示认同或温和补充不同看法）4）若重来一场的建议。语气庄重但不刻板。';
+
+                    const userJudge = '辩题：「' + this.topic.trim() + '」\n\n用户裁判投票：' + voteLabel + ' 获胜。\n\n完整辩论记录如下：\n\n' + transcript.slice(0, 14000) + '\n\n请给出评委点评与总结。';
+
+                    try {
+                        if (!this.apiConfig.deepseek) {
+                            this.showSettings = true;
+                            throw new Error('未配置 API Key');
+                        }
+                        await this.streamChat(
+                            [
+                                { role: 'system', content: systemJudge },
+                                { role: 'user', content: userJudge }
+                            ],
+                            (chunk) => {
+                                this.judgeContent += chunk;
+                            }
+                        );
+                    } catch (e) {
+                        this.judgeContent = '**评委总结生成失败：** ' + (e.message || String(e));
+                        this.showToast('评委总结失败');
+                    } finally {
+                        this.judgeStreaming = false;
+                        this.$nextTick(() => lucide.createIcons());
+                    }
+                },
+
+                resetDebate() {
+                    this.debateStarted = false;
+                    this.isDebating = false;
+                    this.phaseIndex = 0;
+                    this.proMessages = [];
+                    this.conMessages = [];
+                    this.showVotePanel = false;
+                    this.userVote = null;
+                    this.judgeContent = '';
+                    this.judgeStreaming = false;
+                    this.reasoningBuffer = '';
+                    this.statusHint = '';
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            };
+        }
+    </script>
+</body>
+</html>

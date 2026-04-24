@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM API 教学 - 一步步学会调用大模型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .code-editor {
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 min-h-screen" x-data="llmDemo()">
+
+    <div class="max-w-6xl mx-auto px-4 py-8 pb-24">
+        
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <div class="inline-flex items-center gap-3 mb-4">
+                <a href="./index.html" class="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition">
+                    <i class="fa-solid fa-arrow-left text-white"></i>
+                </a>
+                <span class="px-3 py-1 bg-blue-500/30 text-blue-300 rounded-full text-sm font-medium">
+                    AI 基础教程
+                </span>
+            </div>
+            <h1 class="text-4xl font-bold text-white mb-3">
+                <i class="fa-solid fa-code mr-3"></i>
+                LLM API 教学
+            </h1>
+            <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+                一步步学会如何调用大语言模型 API，从零开始构建你的第一个 AI 应用
+            </p>
+        </header>
+
+        <!-- 步骤导航 -->
+        <div class="flex justify-center gap-4 mb-8 flex-wrap">
+            <template x-for="(step, index) in steps" :key="index">
+                <button 
+                    @click="currentStep = index"
+                    :class="[
+                        'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                        currentStep === index 
+                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' 
+                            : 'bg-white/10 text-slate-400 hover:bg-white/20'
+                    ]"
+                >
+                    <span class="mr-2" x-text="index + 1"></span>
+                    <span x-text="step.title"></span>
+                </button>
+            </template>
+        </div>
+
+        <!-- 步骤内容 -->
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-8 mb-8">
+            
+            <!-- 步骤 1: 什么是 API -->
+            <div x-show="currentStep === 0">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-blue-500 rounded-lg mr-3 text-sm">1</span>
+                    什么是 API？
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <p class="text-slate-300 mb-4 leading-relaxed">
+                            <strong class="text-white">API = 应用程序编程接口</strong>，简单说就是：
+                            <br><br>
+                            一个"窗口"，让你的程序可以"调用"远程服务的能力。
+                        </p>
+                        
+                        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                            <h3 class="text-white font-semibold mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-store text-blue-400"></i>
+                                类比：餐厅
+                            </h3>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex gap-3">
+                                    <span class="w-20 text-slate-500">你</span>
+                                    <span class="text-slate-300">= 你的程序</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <span class="w-20 text-slate-500">服务员</span>
+                                    <span class="text-slate-300">= API</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <span class="w-20 text-slate-500">厨房</span>
+                                    <span class="text-slate-300">= 大模型服务器</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <span class="w-20 text-slate-500">菜单</span>
+                                    <span class="text-slate-300">= API 文档</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                            <h3 class="text-white font-semibold mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-diagram-project text-green-400"></i>
+                                调用流程
+                            </h3>
+                            <div class="flex items-center justify-between text-sm">
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-2">
+                                        <i class="fa-solid fa-laptop text-blue-400 text-xl"></i>
+                                    </div>
+                                    <div class="text-slate-400">你的程序</div>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-slate-600"></i>
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-2">
+                                        <i class="fa-solid fa-server text-green-400 text-xl"></i>
+                                    </div>
+                                    <div class="text-slate-400">API 服务器</div>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-slate-600"></i>
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-2">
+                                        <i class="fa-solid fa-brain text-purple-400 text-xl"></i>
+                                    </div>
+                                    <div class="text-slate-400">AI 模型</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤 2: 代码结构 -->
+            <div x-show="currentStep === 1">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-blue-500 rounded-lg mr-3 text-sm">2</span>
+                    API 调用的基本结构
+                </h2>
+                
+                <div class="grid md:grid-cols-3 gap-6 mb-6">
+                    <div class="md:col-span-1 bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                        <div class="bg-slate-700 px-4 py-2 text-sm text-white font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-key text-yellow-400"></i>
+                            1. 配置
+                        </div>
+                        <div class="p-4 code-editor text-sm text-slate-300">
+<pre class="whitespace-pre-wrap">{
+  endpoint: 'https://...',
+  apiKey: 'sk-xxx',
+  model: 'deepseek-v4-flash'
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-1 bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                        <div class="bg-slate-700 px-4 py-2 text-sm text-white font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-envelope text-blue-400"></i>
+                            2. 请求体
+                        </div>
+                        <div class="p-4 code-editor text-sm text-slate-300">
+<pre class="whitespace-pre-wrap">{
+  model: 'deepseek-v4-flash',
+  messages: [
+    {role: 'user', content: '你好'}
+  ]
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-1 bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                        <div class="bg-slate-700 px-4 py-2 text-sm text-white font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-reply text-green-400"></i>
+                            3. 响应
+                        </div>
+                        <div class="p-4 code-editor text-sm text-slate-300">
+<pre class="whitespace-pre-wrap">{
+  choices: [{
+    message: {
+      content: '你好！我是...'
+    }
+  }]
+}</pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+                    <i class="fa-solid fa-lightbulb text-yellow-400 mt-1"></i>
+                    <div class="text-sm text-yellow-200">
+                        <strong>提示：</strong>每次调用 API 都需要发送 <code class="bg-yellow-500/20 px-2 py-0.5 rounded">messages</code> 数组，里面包含对话历史。模型会根据历史来理解上下文。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤 3: 代码示例 -->
+            <div x-show="currentStep === 2">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-blue-500 rounded-lg mr-3 text-sm">3</span>
+                    完整代码示例
+                </h2>
+                
+                <div class="space-y-6">
+                    <!-- 3.1 如何引用 -->
+                    <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                        <div class="flex items-center justify-between px-4 py-2 bg-slate-700 border-b border-slate-600">
+                            <span class="text-sm text-white font-medium">3.1 在 HTML 中引用</span>
+                        </div>
+                        <div class="p-6 code-editor text-sm text-slate-300">
+<pre><code class="language-html">&lt;script src="simple-llm-api.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+    // 你的代码...
+&lt;/script&gt;</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 3.2 基础调用 -->
+                    <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                        <div class="flex items-center justify-between px-4 py-2 bg-slate-700 border-b border-slate-600">
+                            <span class="text-sm text-white font-medium">3.2 基础调用方式</span>
+                        </div>
+                        <div class="p-6 code-editor text-sm text-slate-300 overflow-x-auto">
+<pre><code class="language-javascript">// 方式1: 使用 createLLM 快捷函数
+const llm = createLLM('sk-xxx', {
+    systemPrompt: '你是一个专业助手'
+});
+
+// 发送对话，获取完整回复
+const result = await llm.chat('你好');
+console.log(result.content);
+
+// 流式输出（打字机效果）
+for await (const chunk of llm.stream('写一首诗')) {
+    process.stdout.write(chunk);
+}
+
+// 方式2: 直接使用 SimpleLLM 类
+const client = new SimpleLLM({
+    apiKey: 'sk-xxx',
+    endpoint: 'https://api.deepseek.com/chat/completions',
+    model: 'deepseek-v4-flash'
+});</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 3.3 并行请求 -->
+                    <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                        <div class="flex items-center justify-between px-4 py-2 bg-slate-700 border-b border-slate-600">
+                            <span class="text-sm text-white font-medium">3.3 并行调用多个请求</span>
+                        </div>
+                        <div class="p-6 code-editor text-sm text-slate-300 overflow-x-auto">
+<pre><code class="language-javascript">// 并行调用：同时发送多个请求，提高效率
+async function parallelDemo() {
+    const llm = createLLM('sk-xxx');
+    
+    // 使用 Promise.all 并行执行
+    const [result1, result2, result3] = await Promise.all([
+        llm.chat('用一句话介绍北京'),
+        llm.chat('用一句话介绍上海'),
+        llm.chat('用一句话介绍深圳')
+    ]);
+    
+    console.log('北京:', result1.content);
+    console.log('上海:', result2.content);
+    console.log('深圳:', result3.content);
+}
+
+// 错误处理：即使一个失败，其他继续
+async function safeParallel() {
+    const results = await Promise.allSettled([
+        llm.chat('问题1'),
+        llm.chat('问题2'),
+        llm.chat('问题3')
+    ]);
+    
+    results.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+            console.log(`问题${i+1}:`, r.value.content);
+        } else {
+            console.log(`问题${i+1} 失败:`, r.reason.message);
+        }
+    });
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- 3.4 进阶用法 -->
+                    <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                        <div class="flex items-center justify-between px-4 py-2 bg-slate-700 border-b border-slate-600">
+                            <span class="text-sm text-white font-medium">3.4 进阶：自定义请求参数</span>
+                        </div>
+                        <div class="p-6 code-editor text-sm text-slate-300 overflow-x-auto">
+<pre><code class="language-javascript">// 调整 temperature（创造性）
+await llm.chat('写一首诗', { temperature: 0.9 });  // 更随机
+
+// 限制回复长度
+await llm.chat('详细解释', { maxTokens: 100 });   // 简短回复
+
+// JSON 模式输出
+await llm.chat('返回一个JSON对象', { 
+    temperature: 0.3,
+    model: 'deepseek-v4-flash'  // 指定模型
+});
+
+// 切换不同模型
+const openai = createLLM('sk-xxx');
+openai.setEndpoint('https://api.openai.com/v1/chat/completions');
+openai.setModel('gpt-4');
+await openai.chat('你好');</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤 4: 实战 -->
+            <div x-show="currentStep === 3">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-blue-500 rounded-lg mr-3 text-sm">4</span>
+                    实战：输入你的 API Key
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- API Key 输入 -->
+                    <div class="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-key text-yellow-400"></i>
+                            配置
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-slate-400 mb-2">API Key</label>
+                                <input 
+                                    type="password" 
+                                    x-model="apiKey"
+                                    placeholder="sk-..."
+                                    class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                                >
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm text-slate-400 mb-2">系统提示词</label>
+                                <textarea 
+                                    x-model="systemPrompt"
+                                    rows="3"
+                                    placeholder="你是一个..."
+                                    class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
+                                >你是一个专业、有帮助的AI助手。</textarea>
+                            </div>
+                            
+                            <button 
+                                @click="testApi"
+                                :disabled="!apiKey || isLoading"
+                                class="w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+                                :class="!apiKey || isLoading ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'"
+                            >
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span x-text="isLoading ? '发送中...' : '发送测试'"></span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 结果展示 -->
+                    <div class="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-robot text-blue-400"></i>
+                            AI 回复
+                        </h3>
+                        
+                        <div id="result-area" class="min-h-[300px] bg-slate-900 rounded-lg p-4 overflow-y-auto">
+                            <template x-if="!response && !isLoading">
+                                <div class="h-full flex flex-col items-center justify-center text-slate-500">
+                                    <i class="fa-regular fa-comment-dots text-4xl mb-3"></i>
+                                    <p>输入 API Key 后点击发送</p>
+                                </div>
+                            </template>
+                            
+                            <template x-if="isLoading">
+                                <div class="flex items-center gap-2 text-blue-400">
+                                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                    <span>AI 正在思考...</span>
+                                </div>
+                            </template>
+                            
+                            <template x-if="response">
+                                <div class="text-slate-300 whitespace-pre-wrap" x-text="response"></div>
+                            </template>
+                            
+                            <template x-if="error">
+                                <div class="bg-red-500/20 border border-red-500/30 rounded-lg p-4 text-red-400">
+                                    <i class="fa-solid fa-circle-exclamation mr-2"></i>
+                                    <span x-text="error"></span>
+                                </div>
+                            </template>
+                        </div>
+                        
+                        <div x-show="usage" class="mt-4 pt-4 border-t border-white/10 flex justify-between text-sm">
+                            <span class="text-slate-400">
+                                Token: <span class="text-white" x-text="usage"></span>
+                            </span>
+                            <button @click="response = ''; error = ''; usage = ''" class="text-slate-400 hover:text-white">
+                                <i class="fa-solid fa-trash-can mr-1"></i>清空
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                    <h4 class="text-blue-400 font-medium mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-info-circle"></i>
+                        获取 API Key
+                    </h4>
+                    <p class="text-sm text-slate-300">
+                        本示例使用 <strong>DeepSeek API</strong>。你可以在 
+                        <a href="https://platform.deepseek.com/api_keys" target="_blank" class="text-blue-400 hover:underline">DeepSeek 官网</a> 
+                        注册并获取 API Key。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 步骤 5: 如何复用这个模板 -->
+            <div x-show="currentStep === 4">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-green-500 rounded-lg mr-3 text-sm">5</span>
+                    如何复用这个模板？
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-copy text-yellow-400"></i>
+                            复制整个页面
+                        </h3>
+                        <p class="text-slate-300 text-sm mb-4">
+                            这个页面本身就是完整的模板。你可以直接复制整页代码，然后修改成新的工具。
+                        </p>
+                        <button 
+                            @click="copyTemplate"
+                            class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+                        >
+                            <i class="fa-solid fa-copy"></i>
+                            <span x-text="copySuccess ? '已复制！' : '复制整页代码'"></span>
+                        </button>
+                    </div>
+                    
+                    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-green-400"></i>
+                            用 AI 生成新工具
+                        </h3>
+                        <p class="text-slate-300 text-sm mb-4">
+                            复制代码后，到其他工具让 AI 帮你修改：
+                        </p>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <i class="fa-solid fa-arrow-right text-slate-600"></i>
+                                <span>复制本页代码</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <i class="fa-solid fa-arrow-right text-slate-600"></i>
+                                <span>打开「<a href="../ai_tools/ai_translator.html" class="text-blue-400 hover:underline">AI 翻译</a>」或「<a href="../ai_tools/prompt_optimizer.html" class="text-blue-400 hover:underline">Prompt 优化</a>」</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <i class="fa-solid fa-arrow-right text-slate-600"></i>
+                                <span>让 AI 帮你修改成新工具</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 复制提示 -->
+                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-6">
+                    <h3 class="text-green-400 font-medium mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        进阶技巧：让 AI 帮你魔改
+                    </h3>
+                    <div class="grid md:grid-cols-3 gap-4 text-sm">
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <div class="text-white font-medium mb-2">🔢 计算器</div>
+                            <p class="text-slate-400">复制代码，让 AI 把「对话」改成「计算器功能」</p>
+                        </div>
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <div class="text-white font-medium mb-2">🎨 风格转换</div>
+                            <p class="text-slate-400">让 AI 把「对话」改成「Markdown 渲染器」</p>
+                        </div>
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <div class="text-white font-medium mb-2">🔗 批量处理</div>
+                            <p class="text-slate-400">让 AI 改成「批量文本处理器」</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-4 bg-slate-900 rounded-lg">
+                        <p class="text-slate-400 text-sm mb-2">💡 示例 Prompt：</p>
+                        <p class="text-green-400 text-sm font-mono">
+                            "请把这个 LLM API 模板改成：一个【XX】工具。保留 API 调用结构，但把对话界面改成【XX】功能。"
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- 代码预览 -->
+                <div class="mt-6 bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                    <div class="flex items-center justify-between px-4 py-2 bg-slate-700 border-b border-slate-600">
+                        <span class="text-sm text-white font-medium">复制这段代码开始改造</span>
+                        <span class="text-xs text-slate-400">simple-llm-api.js 引用已内置</span>
+                    </div>
+                    <div class="p-4 code-editor text-xs text-slate-400 overflow-x-auto max-h-64">
+                        <pre>&lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;
+&lt;script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"&gt;&lt;/script&gt;
+&lt;link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"&gt;
+
+&lt;scr` + `ipt&gt;
+function myApp() {
+    return {
+        apiKey: '',
+        result: '',
+        async send() {
+            const llm = createLLM(this.apiKey);
+            this.result = await llm.chat('你的问题');
+        }
+    }
+}
+&lt;/scr` + `ipt&gt;</pre>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 步骤标题更新 -->
+        <script>
+            const originalSteps = [
+                { title: '什么是 API' },
+                { title: '调用结构' },
+                { title: '代码示例' },
+                { title: '实战测试' },
+                { title: '模板复用' }
+            ];
+        </script>
+
+        <!-- 底部导航 -->
+        <div class="flex justify-between items-center">
+            <button 
+                @click="currentStep = Math.max(0, currentStep - 1)"
+                :disabled="currentStep === 0"
+                class="px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2"
+                :class="currentStep === 0 ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-white/10 text-white hover:bg-white/20'"
+            >
+                <i class="fa-solid fa-arrow-left"></i>
+                上一步
+            </button>
+            
+            <div class="flex items-center gap-2 text-sm text-slate-500">
+                <span x-text="currentStep + 1"></span> / <span x-text="steps.length"></span>
+            </div>
+            
+            <button 
+                @click="currentStep = Math.min(steps.length - 1, currentStep + 1)"
+                :disabled="currentStep === steps.length - 1"
+                class="px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2"
+                :class="currentStep === steps.length - 1 ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'"
+            >
+                下一步
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <script src="simple-llm-api.js"></script>
+    <script>
+        function llmDemo() {
+            return {
+                currentStep: 0,
+                steps: [
+                    { title: '什么是 API' },
+                    { title: '调用结构' },
+                    { title: '代码示例' },
+                    { title: '实战测试' },
+                    { title: '模板复用' }
+                ],
+                apiKey: '',
+                systemPrompt: '你是一个专业、有帮助的AI助手。',
+                response: '',
+                error: '',
+                usage: '',
+                isLoading: false,
+                copySuccess: false,
+                
+                async testApi() {
+                    if (!this.apiKey) return;
+                    
+                    this.response = '';
+                    this.error = '';
+                    this.usage = '';
+                    this.isLoading = true;
+                    
+                    try {
+                        const llm = createLLM(this.apiKey, {
+                            systemPrompt: this.systemPrompt
+                        });
+                        
+                        const result = await llm.chat('你好，请用一句话介绍你自己');
+                        this.response = result.content;
+                        if (result.usage) {
+                            this.usage = result.usage.totalTokens || '-';
+                        }
+                    } catch (e) {
+                        this.error = e.message;
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+                
+                async copyTemplate() {
+                    const templateCode = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的新工具</title>
+    <script src="https://cdn.tailwindcss.com"></scr` + `ipt>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></scr` + `ipt>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="simple-llm-api.js"></scr` + `ipt>
+</head>
+<body class="bg-slate-900 min-h-screen" x-data="myApp()">
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-white mb-6">我的新工具</h1>
+        
+        <div class="bg-white/10 rounded-xl p-6 border border-white/20 mb-6">
+            <label class="block text-slate-400 mb-2">API Key</label>
+            <input type="password" x-model="apiKey" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white" placeholder="sk-...">
+        </div>
+        
+        <button @click="send" class="bg-blue-500 text-white px-6 py-3 rounded-lg">发送</button>
+        
+        <div class="mt-6 p-4 bg-slate-800 rounded-lg">
+            <pre class="text-slate-300 whitespace-pre-wrap" x-text="result"></pre>
+        </div>
+    </div>
+
+    <scr` + `ipt>
+    function myApp() {
+        return {
+            apiKey: '',
+            result: '',
+            async send() {
+                const llm = createLLM(this.apiKey);
+                this.result = await llm.chat('你好');
+            }
+        }
+    }
+    </scr` + `ipt>
+</body>
+</html>`;
+                    
+                    try {
+                        await navigator.clipboard.writeText(templateCode);
+                        this.copySuccess = true;
+                        setTimeout(() => this.copySuccess = false, 2000);
+                    } catch (e) {
+                        alert('复制失败，请手动复制代码');
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- HELP-WIDGET-START -->
+    <script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_basics_llm_api_demo.md"></script>
+    <!-- HELP-WIDGET-END -->
+</body>
+</html>

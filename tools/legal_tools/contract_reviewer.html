@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合同审查助手 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+        .pulse-ring::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            animation: pulse-ring 1.5s ease-out infinite;
+        }
+
+        .risk-card {
+            transition: all 0.3s ease;
+        }
+        .risk-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.15);
+        }
+
+        .step-connector {
+            height: 2px;
+            flex: 1;
+            transition: background-color 0.4s ease;
+        }
+
+        @keyframes typing-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .typing-cursor::after {
+            content: '▋';
+            animation: typing-cursor 0.8s infinite;
+            color: #475569;
+        }
+
+        .gauge-fill {
+            transition: stroke-dashoffset 1.5s ease-out;
+        }
+
+        .report-section {
+            page-break-inside: avoid;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="contractReviewerApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="file-search" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">合同审查助手</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 智能合同风险审查</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-slate-700 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-slate-100">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 免责声明横幅 -->
+        <div class="bg-amber-50 border-b border-amber-200">
+            <div class="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-center gap-2 text-sm text-amber-800">
+                <i data-lucide="alert-triangle" class="h-4 w-4 text-amber-600 flex-shrink-0"></i>
+                <span class="font-medium">本工具仅供参考，不构成法律建议，重要合同请咨询专业律师</span>
+            </div>
+        </div>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-slate-200 py-4">
+            <div class="max-w-3xl mx-auto px-4 flex items-center">
+                <template x-for="(step, idx) in steps" :key="idx">
+                    <div class="flex items-center" :class="idx < steps.length - 1 ? 'flex-1' : ''">
+                        <div class="flex items-center gap-2 cursor-pointer" @click="canGoToStep(idx) && goToStep(idx)">
+                            <div :class="[
+                                'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 relative',
+                                currentStep === idx ? 'bg-slate-700 text-white shadow-lg scale-110' :
+                                currentStep > idx ? 'bg-emerald-500 text-white' :
+                                'bg-slate-200 text-slate-500'
+                            ]">
+                                <template x-if="currentStep > idx">
+                                    <i data-lucide="check" class="w-4 h-4"></i>
+                                </template>
+                                <template x-if="currentStep <= idx">
+                                    <span x-text="idx + 1"></span>
+                                </template>
+                            </div>
+                            <span :class="[
+                                'text-sm font-medium hidden sm:inline transition-colors',
+                                currentStep === idx ? 'text-slate-900' :
+                                currentStep > idx ? 'text-emerald-600' : 'text-slate-400'
+                            ]" x-text="step.name"></span>
+                        </div>
+                        <div x-show="idx < steps.length - 1"
+                            :class="['step-connector mx-3', currentStep > idx ? 'bg-emerald-400' : 'bg-slate-200']">
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow overflow-y-auto">
+            <div class="max-w-5xl mx-auto px-4 py-6">
+
+                <!-- ============ 步骤1：合同输入 ============ -->
+                <div x-show="currentStep === 0" x-transition class="animate-fade-in">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="file-text" class="w-5 h-5 text-slate-600"></i>
+                                粘贴合同文本
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">请将完整的合同文本粘贴到下方，AI 将为您进行全面审查</p>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <!-- 合同类型选择 -->
+                            <div class="space-y-2">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="folder" class="w-4 h-4 text-slate-500"></i>
+                                    合同类型 <span class="text-red-500">*</span>
+                                </label>
+                                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                    <template x-for="ct in contractTypes" :key="ct.value">
+                                        <button @click="input.contractType = ct.value"
+                                            :class="[
+                                                'px-3 py-2.5 rounded-xl text-sm font-medium border-2 transition-all duration-200',
+                                                input.contractType === ct.value
+                                                    ? 'border-slate-700 bg-slate-700 text-white shadow-md'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                                            ]">
+                                            <span x-text="ct.icon + ' ' + ct.label"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 用户角色（可选） -->
+                            <div class="space-y-2">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="user" class="w-4 h-4 text-slate-500"></i>
+                                    您的身份 <span class="text-xs text-slate-400 ml-1">(可选，有助于更精准地识别风险)</span>
+                                </label>
+                                <div class="flex gap-2">
+                                    <button @click="input.userRole = input.userRole === '甲方' ? '' : '甲方'"
+                                        :class="[
+                                            'px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all',
+                                            input.userRole === '甲方'
+                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+                                        ]">
+                                        甲方
+                                    </button>
+                                    <button @click="input.userRole = input.userRole === '乙方' ? '' : '乙方'"
+                                        :class="[
+                                            'px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all',
+                                            input.userRole === '乙方'
+                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:border-purple-300'
+                                        ]">
+                                        乙方
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 合同文本 -->
+                            <div class="space-y-2">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center justify-between">
+                                    <span class="flex items-center gap-2">
+                                        <i data-lucide="align-left" class="w-4 h-4 text-slate-500"></i>
+                                        合同全文 <span class="text-red-500">*</span>
+                                    </span>
+                                    <span class="text-xs text-slate-400" x-text="'已输入 ' + input.contractText.length + ' 字'"></span>
+                                </label>
+                                <textarea x-model="input.contractText" rows="16"
+                                    placeholder="请在此粘贴完整的合同文本内容...&#10;&#10;提示：建议粘贴合同全文，以便 AI 进行全面、准确的风险审查。"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition resize-none font-mono"></textarea>
+                            </div>
+
+                            <!-- 开始审查按钮 -->
+                            <button @click="startReview"
+                                :disabled="!input.contractType || input.contractText.length < 50 || isLoading"
+                                class="w-full bg-gradient-to-r from-slate-700 to-slate-900 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                                <i data-lucide="scan-search" class="w-5 h-5"></i>
+                                <span>开始风险扫描</span>
+                            </button>
+
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                <div class="flex items-start gap-2">
+                                    <i data-lucide="info" class="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5"></i>
+                                    <div class="text-xs text-slate-600 space-y-1">
+                                        <p class="font-medium">审查流程说明</p>
+                                        <p>1. 风险扫描 → 识别合同中的潜在风险条款</p>
+                                        <p>2. 修改建议 → 针对高/中风险条款给出替代方案</p>
+                                        <p>3. 审查报告 → 生成完整审查报告，支持导出</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤2：风险扫描 ============ -->
+                <div x-show="currentStep === 1" x-transition class="animate-fade-in space-y-4">
+                    <!-- 加载状态 -->
+                    <div x-show="isLoading" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-12">
+                        <div class="flex flex-col items-center justify-center text-slate-500">
+                            <div class="relative mb-6">
+                                <div class="w-20 h-20 rounded-full border-4 border-slate-200 border-t-slate-700 animate-spin"></div>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <i data-lucide="scan-search" class="w-8 h-8 text-slate-600"></i>
+                                </div>
+                            </div>
+                            <p class="text-lg font-semibold text-slate-700">正在扫描合同风险...</p>
+                            <p class="text-sm text-slate-400 mt-1">AI 正在逐条分析合同条款</p>
+                        </div>
+                    </div>
+
+                    <!-- 扫描结果 -->
+                    <template x-if="!isLoading && riskItems.length > 0">
+                        <div>
+                            <!-- 风险统计概览 -->
+                            <div class="grid grid-cols-3 gap-3 mb-4">
+                                <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                                    <div class="text-2xl font-bold text-red-600" x-text="riskItems.filter(r => r.risk_level === '高').length"></div>
+                                    <div class="text-xs text-red-500 font-medium mt-1">高风险</div>
+                                </div>
+                                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                                    <div class="text-2xl font-bold text-amber-600" x-text="riskItems.filter(r => r.risk_level === '中').length"></div>
+                                    <div class="text-xs text-amber-500 font-medium mt-1">中风险</div>
+                                </div>
+                                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                                    <div class="text-2xl font-bold text-emerald-600" x-text="riskItems.filter(r => r.risk_level === '低').length"></div>
+                                    <div class="text-xs text-emerald-500 font-medium mt-1">低风险</div>
+                                </div>
+                            </div>
+
+                            <!-- 风险条目列表 -->
+                            <div class="space-y-3">
+                                <template x-for="(item, idx) in riskItems" :key="idx">
+                                    <div :class="[
+                                        'risk-card bg-white rounded-xl border overflow-hidden',
+                                        item.risk_level === '高' ? 'border-l-4 border-l-red-500 border-red-200' :
+                                        item.risk_level === '中' ? 'border-l-4 border-l-amber-500 border-amber-200' :
+                                        'border-l-4 border-l-emerald-500 border-emerald-200'
+                                    ]">
+                                        <div class="p-4">
+                                            <div class="flex items-start justify-between gap-3 mb-2">
+                                                <div class="flex items-center gap-2">
+                                                    <span :class="[
+                                                        'px-2.5 py-0.5 rounded-full text-xs font-bold',
+                                                        item.risk_level === '高' ? 'bg-red-100 text-red-700' :
+                                                        item.risk_level === '中' ? 'bg-amber-100 text-amber-700' :
+                                                        'bg-emerald-100 text-emerald-700'
+                                                    ]" x-text="item.risk_level + '风险'"></span>
+                                                    <span class="text-sm font-bold text-slate-800" x-text="'#' + (idx + 1)"></span>
+                                                </div>
+                                            </div>
+                                            <!-- 原文条款 -->
+                                            <div class="bg-slate-50 rounded-lg p-3 mb-3 text-sm text-slate-700 leading-relaxed border border-slate-100">
+                                                <div class="text-xs font-medium text-slate-400 mb-1">原文条款</div>
+                                                <p x-text="item.clause_text"></p>
+                                            </div>
+                                            <!-- 风险描述 -->
+                                            <div class="text-sm text-slate-600 leading-relaxed mb-2">
+                                                <span class="font-semibold text-slate-700">风险说明：</span>
+                                                <span x-text="item.risk_description"></span>
+                                            </div>
+                                            <!-- 简要建议 -->
+                                            <div class="text-sm text-blue-700 bg-blue-50 rounded-lg p-2.5 border border-blue-100">
+                                                <span class="font-semibold">建议：</span>
+                                                <span x-text="item.suggestion"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 下一步按钮 -->
+                            <div class="flex gap-3 mt-6">
+                                <button @click="goToStep(0)"
+                                    class="px-6 py-3 rounded-xl border-2 border-slate-300 text-slate-600 font-medium hover:bg-slate-50 transition">
+                                    <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i>返回修改
+                                </button>
+                                <button @click="generateSuggestions"
+                                    :disabled="isLoading"
+                                    class="flex-1 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 flex items-center justify-center gap-2 transition-all">
+                                    <i data-lucide="lightbulb" class="w-5 h-5"></i>
+                                    <span>生成修改建议</span>
+                                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- ============ 步骤3：修改建议 ============ -->
+                <div x-show="currentStep === 2" x-transition class="animate-fade-in space-y-4">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="lightbulb" class="w-5 h-5 text-amber-500"></i>
+                                条款修改建议
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">针对中/高风险条款，AI 提供替代条款措辞</p>
+                        </div>
+                        <div class="p-6">
+                            <!-- 流式输出区域 -->
+                            <div class="prose prose-slate max-w-none text-sm leading-relaxed min-h-[200px]">
+                                <div x-show="isLoading && !suggestionsText" class="flex items-center gap-3 text-slate-400 py-8 justify-center">
+                                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    <span>AI 正在生成修改建议...</span>
+                                </div>
+                                <div x-show="suggestionsText"
+                                    x-html="renderMarkdown(suggestionsText)"
+                                    :class="isLoading ? 'typing-cursor' : ''">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 导航按钮 -->
+                    <div class="flex gap-3">
+                        <button @click="goToStep(1)"
+                            class="px-6 py-3 rounded-xl border-2 border-slate-300 text-slate-600 font-medium hover:bg-slate-50 transition">
+                            <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i>查看风险
+                        </button>
+                        <button @click="generateReport"
+                            :disabled="isLoading || !suggestionsText"
+                            class="flex-1 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="file-check" class="w-5 h-5"></i>
+                            <span>生成审查报告</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤4：审查报告 ============ -->
+                <div x-show="currentStep === 3" x-transition class="animate-fade-in space-y-4">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <i data-lucide="file-check" class="w-5 h-5 text-emerald-600"></i>
+                                    合同审查报告
+                                </h2>
+                                <p class="text-sm text-slate-500 mt-1">综合风险评估与审查总结</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="copyReport"
+                                    class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition flex items-center gap-1">
+                                    <i data-lucide="copy" class="w-4 h-4"></i> 复制
+                                </button>
+                                <button @click="exportReport"
+                                    class="px-3 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800 transition flex items-center gap-1">
+                                    <i data-lucide="download" class="w-4 h-4"></i> 导出
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- 风险评分仪表盘 -->
+                            <div x-show="reportData.riskScore > 0" class="flex justify-center mb-8">
+                                <div class="text-center">
+                                    <div class="relative w-36 h-36 mx-auto">
+                                        <svg class="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                                            <circle cx="60" cy="60" r="52" fill="none" stroke="#e2e8f0" stroke-width="10" />
+                                            <circle cx="60" cy="60" r="52" fill="none"
+                                                :stroke="reportData.riskScore <= 3 ? '#22c55e' : reportData.riskScore <= 6 ? '#f59e0b' : '#ef4444'"
+                                                stroke-width="10" stroke-linecap="round"
+                                                class="gauge-fill"
+                                                :stroke-dasharray="326.7"
+                                                :stroke-dashoffset="326.7 - (326.7 * reportData.riskScore / 10)" />
+                                        </svg>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span class="text-3xl font-black"
+                                                :class="reportData.riskScore <= 3 ? 'text-emerald-600' : reportData.riskScore <= 6 ? 'text-amber-600' : 'text-red-600'"
+                                                x-text="reportData.riskScore"></span>
+                                            <span class="text-xs text-slate-400 font-medium">/10 风险值</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-sm font-semibold"
+                                        :class="reportData.riskScore <= 3 ? 'text-emerald-600' : reportData.riskScore <= 6 ? 'text-amber-600' : 'text-red-600'"
+                                        x-text="reportData.riskScore <= 3 ? '风险较低' : reportData.riskScore <= 6 ? '风险中等，建议修改' : '风险较高，强烈建议修改'">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 报告正文（流式输出） -->
+                            <div class="prose prose-slate max-w-none text-sm leading-relaxed min-h-[200px]">
+                                <div x-show="isLoading && !reportText" class="flex items-center gap-3 text-slate-400 py-8 justify-center">
+                                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    <span>AI 正在生成审查报告...</span>
+                                </div>
+                                <div x-show="reportText"
+                                    x-html="renderMarkdown(reportText)"
+                                    :class="isLoading ? 'typing-cursor' : ''">
+                                </div>
+                            </div>
+
+                            <!-- 免责声明 -->
+                            <div x-show="reportText && !isLoading" class="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                <div class="flex items-start gap-2 text-xs text-slate-500">
+                                    <i data-lucide="shield-alert" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+                                    <div>
+                                        <p class="font-semibold text-slate-600 mb-1">免责声明</p>
+                                        <p>本审查报告由 AI 自动生成，仅供参考之用。AI 对合同条款的理解和法律判断可能存在偏差，不构成正式的法律意见。涉及重大权益的合同，请务必咨询专业律师进行审核。使用本工具所产生的任何后果，由用户自行承担。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 导航按钮 -->
+                    <div class="flex gap-3">
+                        <button @click="goToStep(2)"
+                            class="px-6 py-3 rounded-xl border-2 border-slate-300 text-slate-600 font-medium hover:bg-slate-50 transition">
+                            <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i>查看建议
+                        </button>
+                        <button @click="resetAll"
+                            class="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                            <span>审查新合同</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============ 设置弹窗 ============ -->
+        <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div @click.outside="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-slate-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-slate-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-slate-500 transition">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 hover:bg-slate-100 rounded-xl text-sm font-medium transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-slate-700 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ Toast 通知 ============ -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium">
+            <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+            <span x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('contractReviewerApp', () => ({
+
+            /** 步骤定义 */
+            steps: [
+                { name: '合同输入' },
+                { name: '风险扫描' },
+                { name: '修改建议' },
+                { name: '审查报告' }
+            ],
+            currentStep: 0,
+
+            /** 合同类型选项 */
+            contractTypes: [
+                { value: '租赁合同', label: '租赁', icon: '🏠' },
+                { value: '劳动合同', label: '劳动', icon: '👔' },
+                { value: '合作协议', label: '合作', icon: '🤝' },
+                { value: '借款合同', label: '借款', icon: '💰' },
+                { value: '服务合同', label: '服务', icon: '🛠' },
+                { value: '其他', label: '其他', icon: '📄' }
+            ],
+
+            /** 用户输入数据 */
+            input: {
+                contractType: '',
+                userRole: '',
+                contractText: ''
+            },
+
+            /** 审查结果数据 */
+            riskItems: [],
+            suggestionsText: '',
+            reportText: '',
+            reportData: { riskScore: 0 },
+
+            /** UI 状态 */
+            isLoading: false,
+            showSettings: false,
+            toast: { show: false, message: '', icon: 'check-circle' },
+
+            /** API 配置 */
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            /**
+             * 初始化 - 加载配置并刷新图标
+             */
+            init() {
+                this.loadConfig();
+                this.$nextTick(() => this.refreshIcons());
+            },
+
+            /**
+             * 从 localStorage 加载 API 配置（合并策略）
+             */
+            loadConfig() {
+                try {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    }
+                } catch (e) {
+                    console.error('[ContractReviewer] 加载配置失败:', e);
+                }
+            },
+
+            /**
+             * 保存 API 配置到 localStorage（合并策略，不覆盖其他工具的字段）
+             */
+            saveConfig() {
+                try {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'check-circle');
+                } catch (e) {
+                    console.error('[ContractReviewer] 保存配置失败:', e);
+                }
+            },
+
+            /**
+             * 刷新 Lucide 图标
+             */
+            refreshIcons() {
+                setTimeout(() => { try { lucide.createIcons(); } catch(e) {} }, 50);
+            },
+
+            /**
+             * 显示 Toast 通知
+             * @param {string} message - 通知消息
+             * @param {string} icon - Lucide 图标名
+             */
+            showToast(message, icon = 'check-circle') {
+                this.toast = { show: true, message, icon };
+                this.refreshIcons();
+                setTimeout(() => { this.toast.show = false; }, 2500);
+            },
+
+            /**
+             * 判断是否可以跳转到指定步骤（只能跳转到已完成的步骤）
+             */
+            canGoToStep(idx) {
+                return idx < this.currentStep;
+            },
+
+            /**
+             * 跳转到指定步骤
+             */
+            goToStep(idx) {
+                this.currentStep = idx;
+                this.$nextTick(() => this.refreshIcons());
+            },
+
+            /**
+             * 渲染 Markdown 文本为 HTML
+             */
+            renderMarkdown(text) {
+                if (!text) return '';
+                try {
+                    return marked.parse(text);
+                } catch (e) {
+                    return text.replace(/\n/g, '<br>');
+                }
+            },
+
+            /**
+             * 安全解析 JSON - 支持容错处理
+             * @param {string} str - 待解析的 JSON 字符串
+             * @returns {object|null}
+             */
+            safeParseJSON(str) {
+                if (!str) return null;
+                try {
+                    return JSON.parse(str);
+                } catch (e) {
+                    try {
+                        const cleaned = str.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+                        return JSON.parse(cleaned);
+                    } catch (e2) {
+                        try {
+                            const match = str.match(/\{[\s\S]*\}/);
+                            if (match) return JSON.parse(match[0]);
+                        } catch (e3) {}
+                    }
+                }
+                return null;
+            },
+
+            /**
+             * 步骤1 → 步骤2：开始风险扫描（JSON 模式，非流式）
+             */
+            async startReview() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    this.showToast('请先配置 API Key', 'alert-circle');
+                    return;
+                }
+
+                this.isLoading = true;
+                this.riskItems = [];
+                this.currentStep = 1;
+                this.$nextTick(() => this.refreshIcons());
+
+                const roleHint = this.input.userRole
+                    ? `用户身份为「${this.input.userRole}」，请从${this.input.userRole}的角度重点关注对其不利的条款。`
+                    : '';
+
+                const systemPrompt = `你是一位资深合同审查律师，擅长识别各类合同中的法律风险。请对用户提供的合同进行逐条审查，识别出所有存在风险的条款。
+${roleHint}
+请严格以 JSON 格式返回结果。`;
+
+                const userPrompt = `请审查以下「${this.input.contractType}」的条款，识别其中所有风险点。
+
+合同全文：
+${this.input.contractText}
+
+请以 JSON 格式返回，结构如下：
+{
+  "risk_items": [
+    {
+      "clause_text": "原文中存在风险的具体条款内容",
+      "risk_level": "高/中/低",
+      "risk_description": "该条款存在的具体风险说明",
+      "suggestion": "简要修改方向建议"
+    }
+  ]
+}
+
+要求：
+1. 仔细逐条审查，不要遗漏重要风险
+2. risk_level 只能是「高」「中」「低」三个值
+3. clause_text 应引用合同原文
+4. 按风险等级从高到低排列
+5. 如果合同整体风险较低，至少指出 2-3 个需要注意的条款`;
+
+                try {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            response_format: { type: 'json_object' },
+                            stream: false,
+                            temperature: 0.3
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                    }
+
+                    const data = await response.json();
+                    const content = data.choices?.[0]?.message?.content;
+
+                    if (content) {
+                        const parsed = this.safeParseJSON(content);
+                        if (parsed && parsed.risk_items && Array.isArray(parsed.risk_items)) {
+                            this.riskItems = parsed.risk_items;
+                            this.showToast(`已识别 ${this.riskItems.length} 个风险点`, 'check-circle');
+                        } else {
+                            throw new Error('AI 返回数据格式不正确');
+                        }
+                    } else {
+                        throw new Error('AI 未返回有效内容');
+                    }
+                } catch (error) {
+                    console.error('[ContractReviewer] 风险扫描失败:', error);
+                    this.showToast('扫描失败: ' + error.message, 'alert-circle');
+                    this.currentStep = 0;
+                } finally {
+                    this.isLoading = false;
+                    this.$nextTick(() => this.refreshIcons());
+                }
+            },
+
+            /**
+             * 步骤2 → 步骤3：生成修改建议（流式输出）
+             */
+            async generateSuggestions() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isLoading = true;
+                this.suggestionsText = '';
+                this.currentStep = 2;
+                this.$nextTick(() => this.refreshIcons());
+
+                const highMedRisks = this.riskItems.filter(r => r.risk_level === '高' || r.risk_level === '中');
+                if (highMedRisks.length === 0) {
+                    this.suggestionsText = '恭喜！当前合同没有发现高风险或中风险条款。低风险条款建议在签约前进行确认即可。';
+                    this.isLoading = false;
+                    this.refreshIcons();
+                    return;
+                }
+
+                const riskSummary = highMedRisks.map((r, i) =>
+                    `【${r.risk_level}风险 #${i + 1}】\n原文：${r.clause_text}\n风险：${r.risk_description}`
+                ).join('\n\n');
+
+                const systemPrompt = `你是一位资深合同律师，擅长为客户修改合同条款。请针对每个风险条款提供具体的替代措辞。
+输出用 Markdown 格式，每个条款用二级标题。`;
+
+                const userPrompt = `以下是「${this.input.contractType}」中识别出的中/高风险条款：
+
+${riskSummary}
+
+请为每个风险条款提供：
+1. **原始条款** - 引用原文
+2. **风险分析** - 2-3 句话说明风险
+3. **建议修改为** - 给出具体的替代条款措辞（完整可用的条文）
+4. **修改理由** - 简要说明为什么这样修改更合理
+
+${this.input.userRole ? `请特别注意保护「${this.input.userRole}」的权益。` : ''}`;
+
+                try {
+                    await this.streamAPICall(systemPrompt, userPrompt, 'suggestions');
+                } catch (error) {
+                    console.error('[ContractReviewer] 生成建议失败:', error);
+                    this.showToast('生成失败: ' + error.message, 'alert-circle');
+                } finally {
+                    this.isLoading = false;
+                    this.$nextTick(() => this.refreshIcons());
+                }
+            },
+
+            /**
+             * 步骤3 → 步骤4：生成审查报告（流式输出）
+             */
+            async generateReport() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isLoading = true;
+                this.reportText = '';
+                this.reportData = { riskScore: 0 };
+                this.currentStep = 3;
+                this.$nextTick(() => this.refreshIcons());
+
+                const totalRisks = this.riskItems.length;
+                const highCount = this.riskItems.filter(r => r.risk_level === '高').length;
+                const medCount = this.riskItems.filter(r => r.risk_level === '中').length;
+                const lowCount = this.riskItems.filter(r => r.risk_level === '低').length;
+
+                const riskScore = Math.min(10, Math.max(1, Math.round(highCount * 3 + medCount * 1.5 + lowCount * 0.5)));
+                this.reportData.riskScore = riskScore;
+
+                const systemPrompt = `你是一位资深法律顾问，正在为客户出具合同审查报告。
+请用专业、严谨但易懂的语言撰写。输出 Markdown 格式。`;
+
+                const riskListStr = this.riskItems.map((r, i) =>
+                    `${i + 1}. [${r.risk_level}风险] ${r.clause_text.substring(0, 80)}... → ${r.risk_description}`
+                ).join('\n');
+
+                const userPrompt = `请根据以下合同审查结果，生成一份完整的审查报告。
+
+合同类型：${this.input.contractType}
+${this.input.userRole ? '审查视角：' + this.input.userRole : ''}
+整体风险评分：${riskScore}/10
+风险统计：高风险 ${highCount} 项，中风险 ${medCount} 项，低风险 ${lowCount} 项
+
+风险清单：
+${riskListStr}
+
+请按以下结构输出报告（Markdown 格式）：
+
+## 审查概况
+（合同类型、审查范围、整体评价）
+
+## 核心风险发现
+（列出最重要的 3-5 个风险发现，说明影响）
+
+## 关键条款分析
+（对重要条款逐项分析，包括权利义务平衡性）
+
+## 修改优先级建议
+（按优先级排列需要修改的条款，标注紧急程度）
+
+## 签约建议
+（总结性建议：可以签/需修改后签/不建议签）
+
+注意：
+- 语言严谨但易于理解
+- 不要照搬风险条目，而是综合分析、提炼观点
+- 给出明确、可操作的建议`;
+
+                try {
+                    await this.streamAPICall(systemPrompt, userPrompt, 'report');
+                } catch (error) {
+                    console.error('[ContractReviewer] 生成报告失败:', error);
+                    this.showToast('生成失败: ' + error.message, 'alert-circle');
+                } finally {
+                    this.isLoading = false;
+                    this.$nextTick(() => this.refreshIcons());
+                }
+            },
+
+            /**
+             * 通用流式 API 调用方法
+             * @param {string} systemPrompt - 系统提示词
+             * @param {string} userPrompt - 用户提示词
+             * @param {string} target - 输出目标：'suggestions' 或 'report'
+             */
+            async streamAPICall(systemPrompt, userPrompt, target) {
+                const response = await fetch('https://api.deepseek.com/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                    },
+                    body: JSON.stringify({
+                        model: this.apiConfig.model || 'deepseek-v4-flash',
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        stream: true,
+                        temperature: 0.5
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6).trim();
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices?.[0]?.delta;
+                                if (delta?.content) {
+                                    if (target === 'suggestions') {
+                                        this.suggestionsText += delta.content;
+                                    } else if (target === 'report') {
+                                        this.reportText += delta.content;
+                                    }
+                                }
+                            } catch (e) { /* 忽略解析异常的数据块 */ }
+                        }
+                    }
+                }
+            },
+
+            /**
+             * 复制审查报告到剪贴板
+             */
+            async copyReport() {
+                const fullReport = this.buildExportContent();
+                try {
+                    await navigator.clipboard.writeText(fullReport);
+                    this.showToast('报告已复制到剪贴板', 'copy');
+                } catch (e) {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = fullReport;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    this.showToast('报告已复制', 'copy');
+                }
+            },
+
+            /**
+             * 导出审查报告为 Markdown 文件
+             */
+            exportReport() {
+                const content = this.buildExportContent();
+                const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const dateStr = new Date().toISOString().slice(0, 10);
+                a.download = `合同审查报告_${this.input.contractType}_${dateStr}.md`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                this.showToast('报告已导出', 'download');
+            },
+
+            /**
+             * 构建导出内容（含风险扫描 + 修改建议 + 审查报告）
+             */
+            buildExportContent() {
+                const dateStr = new Date().toLocaleString('zh-CN');
+                let md = `# 合同审查报告\n\n`;
+                md += `- **合同类型**：${this.input.contractType}\n`;
+                if (this.input.userRole) md += `- **审查视角**：${this.input.userRole}\n`;
+                md += `- **风险评分**：${this.reportData.riskScore}/10\n`;
+                md += `- **生成时间**：${dateStr}\n`;
+                md += `\n---\n\n`;
+
+                md += `## 一、风险扫描结果\n\n`;
+                md += `共发现 **${this.riskItems.length}** 个风险点`;
+                const highC = this.riskItems.filter(r => r.risk_level === '高').length;
+                const medC = this.riskItems.filter(r => r.risk_level === '中').length;
+                const lowC = this.riskItems.filter(r => r.risk_level === '低').length;
+                md += `（高风险 ${highC} 项，中风险 ${medC} 项，低风险 ${lowC} 项）\n\n`;
+
+                this.riskItems.forEach((item, idx) => {
+                    md += `### ${idx + 1}. 【${item.risk_level}风险】\n`;
+                    md += `- **原文条款**：${item.clause_text}\n`;
+                    md += `- **风险说明**：${item.risk_description}\n`;
+                    md += `- **建议**：${item.suggestion}\n\n`;
+                });
+
+                if (this.suggestionsText) {
+                    md += `---\n\n## 二、修改建议\n\n${this.suggestionsText}\n\n`;
+                }
+
+                if (this.reportText) {
+                    md += `---\n\n## 三、综合审查报告\n\n${this.reportText}\n\n`;
+                }
+
+                md += `---\n\n`;
+                md += `> **免责声明**：本审查报告由 AI 自动生成，仅供参考之用，不构成正式法律意见。涉及重大权益的合同，请务必咨询专业律师。\n`;
+
+                return md;
+            },
+
+            /**
+             * 重置所有状态，开始新一轮审查
+             */
+            resetAll() {
+                this.currentStep = 0;
+                this.input = { contractType: '', userRole: '', contractText: '' };
+                this.riskItems = [];
+                this.suggestionsText = '';
+                this.reportText = '';
+                this.reportData = { riskScore: 0 };
+                this.$nextTick(() => this.refreshIcons());
+            }
+        }));
+    });
+    </script>
+</body>
+
+</html>

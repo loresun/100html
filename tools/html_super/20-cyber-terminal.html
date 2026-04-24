@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Cyber Terminal // HTML_SUPER</title>
+    <style>
+        body { background: #1a1b26; color: #a9b1d6; font-family: 'Courier New', monospace; padding: 20px; font-size: 16px; margin: 0; min-height: 100vh; box-sizing: border-box; }
+        .prompt { color: #7aa2f7; font-weight: bold; }
+        .command { color: #e0af68; }
+        .output { white-space: pre-wrap; margin-bottom: 20px; color: #9aa5ce; }
+        input { background: transparent; border: none; color: #c0caf5; font-family: inherit; font-size: inherit; outline: none; width: 60%; }
+        .cursor { display: inline-block; width: 10px; height: 18px; background: #c0caf5; animation: blink 1s infinite; vertical-align: middle; }
+        @keyframes blink { 50% { opacity: 0; } }
+        a { color: #bb9af7; }
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #1a1b26; }
+        ::-webkit-scrollbar-thumb { background: #414868; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div id="history"></div>
+    <div>
+        <span class="prompt">visitor@html_super:~$</span> 
+        <input type="text" id="input" autofocus>
+        <!-- <span class="cursor"></span> -->
+    </div>
+
+    <script>
+        const input = document.getElementById('input');
+        const historyDiv = document.getElementById('history');
+
+        const fileSystem = {
+            'readme.txt': 'Welcome to the Cyber Terminal.\nTry commands: help, ls, cat [file], clear, exit',
+            'projects.list': '01-cosmic-dashboard\n02-reality-field\n...\n20-cyber-terminal',
+            'contact.info': 'Email: user@example.com\nTwitter: @user'
+        };
+
+        const commands = {
+            help: () => 'Available commands:\n  ls       - List files\n  cat [file] - View file contents\n  clear    - Clear screen\n  echo [msg] - Print message\n  exit     - Back to main index\n  date     - Show current date',
+            ls: () => Object.keys(fileSystem).join('\n'),
+            cat: (args) => {
+                const file = args[0];
+                if(file in fileSystem) return fileSystem[file];
+                return `cat: ${file}: No such file or directory`;
+            },
+            clear: () => { historyDiv.innerHTML = ''; return null; },
+            echo: (args) => args.join(' '),
+            date: () => new Date().toString(),
+            exit: () => { window.location.href = 'index.html'; return 'Redirecting...'; }
+        };
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const text = input.value;
+                const parts = text.trim().split(/\s+/);
+                const cmd = parts[0];
+                const args = parts.slice(1);
+
+                // Add to history
+                const line = document.createElement('div');
+                line.innerHTML = `<span class="prompt">visitor@html_super:~$</span> <span class="command">${text}</span>`;
+                historyDiv.appendChild(line);
+
+                // Process
+                if(cmd) {
+                    let output = '';
+                    if (cmd in commands) {
+                        const result = commands[cmd](args);
+                        if(result !== null) output = result;
+                    } else {
+                        output = `Command not found: ${cmd}. Type 'help' for available commands.`;
+                    }
+                    
+                    if(output) {
+                        const outDiv = document.createElement('div');
+                        outDiv.className = 'output';
+                        outDiv.innerText = output;
+                        historyDiv.appendChild(outDiv);
+                    }
+                }
+
+                input.value = '';
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+        });
+
+        // Init message
+        historyDiv.innerHTML = '<div class="output">Connected to HTML_SUPER server v2.0...<br>Type "help" to start.</div>';
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

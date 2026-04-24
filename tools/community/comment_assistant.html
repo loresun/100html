@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能神评论/回复助手</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #8b5cf6;
+            /* Violet for "Smart/Witty" vibe */
+            --bg-color: #f5f3ff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Top Navigation -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-violet-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-comment text-violet-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">Smart Comment Assistant</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-violet-50 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-violet-600': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-violet-600': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-violet-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i> API 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Layout -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- Left: Input & Controls -->
+            <div
+                class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-violet-100 flex flex-col h-full z-20 shadow-lg">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+
+                    <!-- Input Content -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <i class="fa-solid fa-comment w-4 h-4 inline mr-1"></i> 评论内容
+                        </label>
+                        <textarea v-model="input.comment" rows="5" placeholder="粘贴观众的评论内容..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-violet-500 focus:outline-none transition resize-none text-sm leading-relaxed"></textarea>
+                    </div>
+
+                    <!-- Persona Settings -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-bold text-slate-700">
+                                <i class="fa-solid fa-user w-4 h-4 inline mr-1"></i> 你的“人设”
+                            </label>
+                            <button @click="showPersonaPresets = !showPersonaPresets"
+                                class="text-xs text-violet-600 hover:underline">
+                                {{ showPersonaPresets ? '收起预设' : '选择预设' }}
+                            </button>
+                        </div>
+
+                        <div v-if="showPersonaPresets" class="grid grid-cols-2 gap-2 mb-2">
+                            <button v-for="p in personaPresets" :key="p.name" @click="input.persona = p.content"
+                                class="text-xs border border-slate-200 rounded-lg p-2 hover:bg-violet-50 hover:border-violet-200 text-left transition">
+                                <div class="font-bold text-slate-700">{{ p.name }}</div>
+                                <div class="text-[10px] text-slate-400 truncate">{{ p.desc }}</div>
+                            </button>
+                        </div>
+
+                        <textarea v-model="input.persona" rows="3" placeholder="例如：毒舌但心软的知心大姐姐，或者专业严谨的科普博主..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-violet-500 focus:outline-none transition resize-none text-sm leading-relaxed"></textarea>
+                    </div>
+
+                    <!-- Style Selection -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <i class="fa-solid fa-palette w-4 h-4 inline mr-1"></i> 回复风格 (多选)
+                        </label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <label v-for="style in replyStyles" :key="style.id"
+                                class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition hover:bg-slate-50"
+                                :class="selectedStyles.includes(style.id) ? 'border-violet-500 bg-violet-50' : 'border-slate-200'">
+                                <input type="checkbox" :value="style.id" v-model="selectedStyles" class="hidden">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs"
+                                    :class="style.color">
+                                    <i :class="style.icon + ' w-4 h-4'"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-slate-700">{{ style.name }}</div>
+                                    <div class="text-xs text-slate-400">{{ style.desc }}</div>
+                                </div>
+                                <div class="ml-auto" v-if="selectedStyles.includes(style.id)">
+                                    <i class="fa-solid fa-circle-check w-4 h-4 text-violet-600"></i>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button @click="startGenerate"
+                        :disabled="isGenerating || !input.comment || selectedStyles.length === 0"
+                        class="w-full bg-violet-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin w-5 h-5"></i>
+                        <span v-if="isGenerating">正在生成...</span>
+                        <span v-else>✨ 生成神回复</span>
+                    </button>
+
+                    <!-- Status -->
+                    <div class="text-xs text-center text-slate-400">
+                        {{ statusText }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Output Grid -->
+            <div class="flex-grow bg-[#f5f3ff] p-4 md:p-8 overflow-y-auto h-full relative">
+
+                <!-- Empty State -->
+                <div v-if="results.length === 0 && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                    <i class="fa-solid fa-comment w-24 h-24 mb-4 stroke-1 text-violet-300"></i>
+                    <p class="text-lg text-violet-900/50">输入评论，一键生成多种风格的神回复</p>
+                </div>
+
+                <!-- Results Grid -->
+                <div v-else class="max-w-5xl mx-auto">
+                    <div class="flex justify-between items-end mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800">生成结果</h2>
+                        <div v-if="results.length > 0" class="flex gap-3">
+                            <button @click="exportAll"
+                                class="text-violet-600 text-sm font-medium hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-download w-4 h-4"></i> 导出全部
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div v-for="res in results" :key="res.id"
+                            class="bg-white rounded-xl shadow-sm border border-violet-100 overflow-hidden flex flex-col transition hover:shadow-md">
+
+                            <!-- Card Header -->
+                            <div
+                                class="p-4 border-b border-violet-50 flex justify-between items-center bg-violet-50/30">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px]"
+                                        :class="getStyleColor(res.styleId)">
+                                        <i :class="getStyleIcon(res.styleId) + ' w-3 h-3'"></i>
+                                    </div>
+                                    <span class="font-bold text-slate-800 text-sm">{{ getStyleName(res.styleId)
+                                        }}</span>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <span v-if="res.status === 'loading'"
+                                        class="text-xs text-violet-500 animate-pulse mr-2">思考中...</span>
+                                    <button v-if="res.content" @click="copyContent(res.content)"
+                                        class="p-1.5 hover:bg-white rounded-md text-slate-500 hover:text-violet-600 transition"
+                                        title="复制">
+                                        <i class="fa-regular fa-copy w-4 h-4"></i>
+                                    </button>
+                                    <button @click="retryItem(res.id)"
+                                        class="p-1.5 hover:bg-white rounded-md text-slate-500 hover:text-violet-600 transition"
+                                        title="重试">
+                                        <i class="fa-solid fa-rotate w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Card Content -->
+                            <div class="flex-grow p-4 overflow-y-auto bg-white min-h-[150px]">
+                                <!-- Reasoning Box -->
+                                <div v-if="res.reasoning"
+                                    class="mb-4 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                                    <details class="group">
+                                        <summary
+                                            class="flex items-center justify-between p-2 cursor-pointer bg-slate-100 hover:bg-slate-200 transition text-xs font-bold text-slate-600 select-none">
+                                            <div class="flex items-center gap-1">
+                                                <i class="fa-solid fa-brain w-3 h-3"></i>
+                                                <span>深度思考过程</span>
+                                            </div>
+                                            <i
+                                                class="fa-solid fa-chevron-down w-3 h-3 transition-transform group-open:rotate-180"></i>
+                                        </summary>
+                                        <div
+                                            class="p-3 bg-slate-50 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-200 max-h-48 overflow-y-auto">
+                                            {{ res.reasoning }}
+                                        </div>
+                                    </details>
+                                </div>
+
+                                <div v-if="res.content"
+                                    class="prose prose-sm max-w-none whitespace-pre-wrap text-slate-700 text-sm font-medium"
+                                    v-html="renderMarkdown(res.content)"></div>
+                                <div v-else-if="res.status === 'loading'"
+                                    class="h-full flex flex-col items-center justify-center text-slate-300 space-y-3 py-8">
+                                    <i class="fa-solid fa-spinner fa-spin w-6 h-6 text-violet-300"></i>
+                                </div>
+                                <div v-else-if="res.status === 'error'"
+                                    class="h-full flex flex-col items-center justify-center text-red-400 space-y-2 py-8">
+                                    <i class="fa-solid fa-circle-exclamation w-6 h-6"></i>
+                                    <span class="text-xs">生成失败</span>
+                                    <p class="text-[10px] text-center px-2">{{ res.error }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- API Settings Modal -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Key 会存储在本地，与其他应用共享。</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+        const REPLY_STYLES = [
+            {
+                id: 'humor',
+                name: '神吐槽/幽默风',
+                desc: '幽默回怼，化解尴尬，增加趣味性',
+                icon: 'fa-regular fa-face-smile',
+                color: 'bg-orange-500',
+                prompt: '请用幽默、风趣、甚至带点“神吐槽”的风格回复这条评论。可以适当玩梗，语气轻松活泼，让围观路人觉得很有意思。'
+            },
+            {
+                id: 'eq',
+                name: '高情商/温柔风',
+                desc: '温柔体贴，情绪价值拉满',
+                icon: 'fa-solid fa-heart',
+                color: 'bg-pink-500',
+                prompt: '请用高情商、温柔、体贴的风格回复。关注评论者的情绪，给予共情和鼓励，展现博主的亲和力，化解可能存在的戾气。'
+            },
+            {
+                id: 'sales',
+                name: '销售转化/引导私域',
+                desc: '优雅地引导咨询或购买',
+                icon: 'fa-solid fa-bag-shopping',
+                color: 'bg-green-500',
+                prompt: '请用专业且不引起反感的风格回复。目的是将用户转化为潜在客户，或者引导其查看主页/私信。话术要自然，避免生硬的广子味。'
+            },
+            {
+                id: 'cool',
+                name: '极简/高冷风',
+                desc: '言简意赅，个性十足',
+                icon: 'fa-solid fa-bolt',
+                color: 'bg-slate-800',
+                prompt: '请用极简、高冷、有个性的风格回复。字数要少，一针见血，展现博主的独特格调。'
+            }
+        ];
+
+        const PERSONA_PRESETS = [
+            { name: '知心姐姐', desc: '温柔细腻，善解人意', content: '你是一位温柔细腻的知心姐姐，擅长倾听和安慰，语气总是暖暖的。' },
+            { name: '毒舌专家', desc: '犀利直接，一针见血', content: '你是一位犀利直接的专家，说话一针见血，偶尔带点毒舌，但出发点是好的。' },
+            { name: '搞怪逗比', desc: '幽默风趣，爱玩梗', content: '你是一位幽默风趣的博主，喜欢开玩笑，爱玩网络热梗，是大家的开心果。' },
+            { name: '专业导师', desc: '严谨客观，逻辑清晰', content: '你是一位严谨客观的专业导师，回复内容逻辑清晰，干货满满，令人信服。' }
+        ];
+
+        createApp({
+            setup() {
+
+
+                const showSettings = ref(false);
+                const showPersonaPresets = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+                const statusText = ref('准备就绪');
+
+                const input = reactive({
+                    comment: '',
+                    persona: ''
+                });
+
+                const replyStyles = ref(REPLY_STYLES);
+                const selectedStyles = ref(['humor', 'eq']); // Default selection
+                const personaPresets = ref(PERSONA_PRESETS);
+
+                const results = ref([]);
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+
+                    try {
+                        const savedConfig = localStorage.getItem('global_llm_config');
+                        if (savedConfig) apiConfig.value = { ...apiConfig.value, ...JSON.parse(savedConfig) };
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                });
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                const getStyleName = (id) => REPLY_STYLES.find(s => s.id === id)?.name || id;
+                const getStyleIcon = (id) => REPLY_STYLES.find(s => s.id === id)?.icon || 'message-circle';
+                const getStyleColor = (id) => REPLY_STYLES.find(s => s.id === id)?.color || 'bg-slate-500';
+
+                const renderMarkdown = (text) => {
+                    if (!text) return '';
+                    return window.marked ? window.marked.parse(text) : text;
+                };
+
+                const copyContent = (text) => {
+                    navigator.clipboard.writeText(text);
+                };
+
+                const startGenerate = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!input.comment) return;
+
+                    isGenerating.value = true;
+                    statusText.value = '正在思考回复策略...';
+
+                    // Initialize results
+                    results.value = selectedStyles.value.map(styleId => ({
+                        id: Date.now() + Math.random(),
+                        styleId,
+                        content: '',
+                        reasoning: '',
+                        status: 'loading',
+                        error: null
+                    }));
+
+                    const tasks = results.value.map(res => processItem(res));
+
+                    try {
+                        await Promise.all(tasks);
+                        statusText.value = '生成完成';
+                    } catch (e) {
+                        statusText.value = '部分生成失败';
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const retryItem = async (id) => {
+                    const res = results.value.find(r => r.id === id);
+                    if (!res) return;
+                    res.status = 'loading';
+                    res.content = '';
+                    res.reasoning = '';
+                    res.error = null;
+                    await processItem(res);
+                };
+
+                const processItem = async (res) => {
+                    const style = REPLY_STYLES.find(s => s.id === res.styleId);
+
+                    let systemPrompt = `你是一个专业的社交媒体运营助手。你的任务是根据用户的评论，生成一条回复。\n`;
+                    if (input.persona) {
+                        systemPrompt += `【你的人设】：${input.persona}\n请务必保持这个人设的语气和性格特征。\n`;
+                    }
+                    systemPrompt += `【回复风格要求】：${style.prompt}\n`;
+                    systemPrompt += `【规则】：\n1. 回复要自然、口语化，像真人一样。\n2. 长度适中，不要长篇大论，除非风格需要。\n3. 不要带引号，直接输出回复内容。`;
+
+                    const userPrompt = `【观众评论】：\n${input.comment}`;
+
+                    try {
+                        await callDeepSeek(systemPrompt, userPrompt, true,
+                            (chunk) => { res.content += chunk; },
+                            (reasoning) => {
+                                if (!res.reasoning) res.reasoning = '';
+                                res.reasoning += reasoning;
+                            }
+                        );
+                        res.status = 'done';
+                    } catch (e) {
+                        res.status = 'error';
+                        res.error = e.message;
+                    }
+                };
+
+                const callDeepSeek = async (systemPrompt, userContent, stream = false, onChunk = null, onReasoning = null) => {
+                    const apiKey = apiConfig.value.deepseek;
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: model.value,
+                                messages: [
+                                    { "role": "system", "content": systemPrompt },
+                                    { "role": "user", "content": userContent }
+                                ],
+                                stream: stream
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    if (!stream) {
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+                                    const reasoning = json.choices[0].delta.reasoning_content;
+                                    if (reasoning && onReasoning) onReasoning(reasoning);
+                                    const content = json.choices[0].delta.content || "";
+                                    if (onChunk) onChunk(content);
+                                } catch (e) { console.error(e); }
+                            }
+                        }
+                    }
+                };
+
+                const exportAll = () => {
+                    let text = `评论内容：${input.comment}\n\n`;
+                    results.value.forEach(res => {
+                        if (res.content) {
+                            text += `=== ${getStyleName(res.styleId)} ===\n`;
+                            if (res.reasoning) text += `[思考]: ${res.reasoning}\n`;
+                            text += `${res.content}\n\n`;
+                        }
+                    });
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `神评论回复_${new Date().toLocaleDateString()}.txt`;
+                    a.click();
+                };
+
+                return {
+                    // State
+                    showSettings,
+                    showPersonaPresets,
+                    apiConfig,
+                    model,
+                    isGenerating,
+                    statusText,
+                    input,
+                    replyStyles,
+                    selectedStyles,
+                    personaPresets,
+                    results,
+
+                    // Methods
+                    saveConfig,
+                    startGenerate,
+                    retryItem,
+                    copyContent,
+                    exportAll,
+
+                    // Utils
+                    getStyleName,
+                    getStyleIcon,
+                    getStyleColor,
+                    renderMarkdown
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/community_comment_assistant.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

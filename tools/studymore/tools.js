@@ -1,0 +1,91 @@
+window.toolCollections = window.toolCollections || {};
+window.toolCollections.advanced_learning = window.toolCollections.advanced_learning || [];
+window.toolCollections.advanced_learning.push(
+    {
+        id: 'js_template_index',
+        name: 'JS 库示例大全',
+        desc: '包含 110+ 常用 JavaScript 库的交互式演示。从动画、图表到 3D 图形，一站式探索前端生态。',
+        href: 'tools/js_template/index.html',
+        icon: 'fa-solid fa-boxes',
+        category: 'advanced_learning',
+        tags: ['JS库', 'Demo', '合集'],
+        iconBg: 'bg-yellow-50',
+        iconColor: 'text-yellow-600',
+        borderColor: 'yellow-200',
+        hoverTextColor: 'text-yellow-600',
+        linkColor: 'text-yellow-600',
+        badgeStyle: 'bg-yellow-100 text-yellow-700'
+    },
+    {
+        id: 'html_style_index',
+        name: 'SuperHTML 特效库',
+        desc: '收集全球顶尖的 HTML/CSS 视觉特效与布局设计。',
+        href: 'tools/html_style/index.html',
+        icon: 'fa-solid fa-palette',
+        category: 'advanced_learning',
+        tags: ['CSS', '特效', 'UI'],
+        iconBg: 'bg-pink-50',
+        iconColor: 'text-pink-600',
+        borderColor: 'pink-200',
+        hoverTextColor: 'text-pink-600',
+        linkColor: 'text-pink-600'
+    },
+    {
+        id: 'excel_examples',
+        name: 'Excel 自动化与公式案例',
+        desc: 'Excel 数据处理与自动化实战案例库。',
+        href: 'tools/excel_examples/index.html',
+        icon: 'fa-solid fa-file-spreadsheet',
+        category: 'advanced_learning',
+        tags: ['Excel', '办公'],
+        iconBg: 'bg-green-50',
+        iconColor: 'text-green-600',
+        borderColor: 'green-200',
+        hoverTextColor: 'text-green-600',
+        linkColor: 'text-green-600'
+    },
+    {
+        id: 'utils_tool_index',
+        name: 'Utils 实用工具库',
+        desc: '27 个高频本地前端工具合集：图片处理、文本编辑、开发辅助等。',
+        href: 'tools/utils/index.html',
+        icon: 'fa-solid fa-hammer',
+        category: 'advanced_learning',
+        tags: ['工具', '效率'],
+        iconBg: 'bg-indigo-50',
+        iconColor: 'text-indigo-600',
+        borderColor: 'indigo-200',
+        hoverTextColor: 'text-indigo-600',
+        linkColor: 'text-indigo-600'
+    },
+    {
+        id: 'api_hub_index',
+        name: 'API 交易平台 / 调试中心',
+        desc: '免费公开 API 汇聚中心。包含 DeepSeek 调试、公共 API 演示库与实时数据看板。',
+        href: 'tools/api/index.html',
+        icon: 'fa-solid fa-satellite',
+        category: 'advanced_learning',
+        tags: ['API', '调试', '数据'],
+        iconBg: 'bg-blue-50',
+        iconColor: 'text-blue-600',
+        borderColor: 'blue-200',
+        hoverTextColor: 'text-blue-600',
+        linkColor: 'text-blue-600',
+        badgeStyle: 'bg-blue-100 text-blue-700'
+    },
+    {
+        id: 'html_super_index',
+        name: 'HTML_SUPER 实验室',
+        desc: '23 个探索 Web 前端极限的实验性项目：粒子系统、物理模拟、3D 渲染、算法艺术。',
+        href: 'tools/html_super/index.html',
+        icon: 'fa-solid fa-flask',
+        category: 'advanced_learning',
+        tags: ['实验', '3D', '动画'],
+        iconBg: 'bg-slate-50',
+        iconColor: 'text-slate-600',
+        borderColor: 'slate-200',
+        hoverTextColor: 'text-slate-600',
+        linkColor: 'text-slate-600',
+        badgeStyle: 'bg-slate-100 text-slate-700'
+    }
+);

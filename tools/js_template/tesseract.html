@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tesseract.js OCR 识别</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f0fdfa; color: #115e59; }
+    .glass { background: white; border: 1px solid #ccfbf1; box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.05); }
+    .scan-line {
+      position: absolute; width: 100%; height: 2px; bg-teal-400; background: #2dd4bf;
+      box-shadow: 0 0 4px #2dd4bf;
+      animation: scan 2s linear infinite;
+      display: none;
+    }
+    @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-teal-900">🔍 Tesseract.js</h1>
+    <p class="text-teal-800/60 mt-2 text-lg">纯 JavaScript 实现的 OCR (光学字符识别) 引擎</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-teal-200 text-teal-800 rounded-lg hover:bg-teal-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+
+  <!-- 左侧：图像输入 -->
+  <div class="space-y-6">
+    <div class="glass p-6 rounded-2xl">
+      <h3 class="font-bold text-teal-900 mb-4">1. 选择图像</h3>
+      
+      <div class="relative group cursor-pointer overflow-hidden rounded-xl border-2 border-dashed border-teal-300 bg-teal-50 hover:bg-teal-100 transition-colors h-64 flex items-center justify-center" id="drop-area">
+        <img id="preview-img" src="https://tesseract.projectnaptha.com/img/eng_bw.png" class="max-h-full max-w-full object-contain" crossorigin="anonymous">
+        <div class="scan-line" id="scan-line"></div>
+        <input type="file" id="file-input" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*">
+      </div>
+      
+      <div class="mt-4 flex justify-between items-center text-sm text-teal-600">
+        <span>支持语言: English</span>
+        <button onclick="recognize()" id="btn-scan" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-bold shadow-md shadow-teal-600/20">开始识别</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧：识别结果 -->
+  <div class="space-y-6">
+    <div class="glass p-6 rounded-2xl h-full flex flex-col">
+      <h3 class="font-bold text-teal-900 mb-4 flex justify-between">
+        2. 识别结果
+        <span id="progress-text" class="text-xs font-mono text-teal-500 self-center">Ready</span>
+      </h3>
+      
+      <!-- 进度条 -->
+      <div class="w-full bg-teal-100 rounded-full h-1.5 mb-4 overflow-hidden">
+        <div id="progress-bar" class="bg-teal-500 h-1.5 rounded-full transition-all duration-200" style="width: 0%"></div>
+      </div>
+
+      <textarea id="result-text" class="flex-1 w-full p-4 bg-slate-50 border border-slate-200 rounded-xl resize-none outline-none font-mono text-sm text-slate-700 leading-relaxed" placeholder="识别的文字将显示在这里..." readonly></textarea>
+      
+      <div class="mt-4 flex gap-2 justify-end">
+        <button onclick="copyText()" class="text-xs text-teal-600 hover:underline">复制文本</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+  const fileInput = document.getElementById('file-input');
+  const previewImg = document.getElementById('preview-img');
+  const resultText = document.getElementById('result-text');
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  const scanLine = document.getElementById('scan-line');
+  const btnScan = document.getElementById('btn-scan');
+
+  // 文件预览
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      previewImg.src = URL.createObjectURL(file);
+      resultText.value = '';
+      progressBar.style.width = '0%';
+      progressText.innerText = 'Ready';
+    }
+  });
+
+  async function recognize() {
+    if (!previewImg.src) return;
+
+    // UI 状态更新
+    btnScan.disabled = true;
+    btnScan.classList.add('opacity-50');
+    scanLine.style.display = 'block';
+    resultText.value = '正在初始化引擎...';
+    
+    try {
+      const worker = await Tesseract.createWorker('eng', 1, {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            const p = Math.round(m.progress * 100);
+            progressBar.style.width = p + '%';
+            progressText.innerText = `Recognizing... ${p}%`;
+          } else {
+            progressText.innerText = m.status;
+          }
+        }
+      });
+
+      const ret = await worker.recognize(previewImg.src);
+      resultText.value = ret.data.text;
+      await worker.terminate();
+    } catch(err) {
+      resultText.value = 'Error: ' + err.message;
+    } finally {
+      btnScan.disabled = false;
+      btnScan.classList.remove('opacity-50');
+      scanLine.style.display = 'none';
+      progressText.innerText = 'Complete';
+    }
+  }
+
+  function copyText() {
+    resultText.select();
+    document.execCommand('copy');
+    progressText.innerText = 'Copied!';
+    setTimeout(() => progressText.innerText = 'Complete', 2000);
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

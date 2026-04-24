@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>构图提示词生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #eef2ff;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #eef2ff 0%, #f8fafc 40%, #ffffff 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #818cf8, #38bdf8);
+            border-radius: 3px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        .keyword-pill {
+            transition: all 0.2s ease;
+        }
+
+        .keyword-pill:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(99, 102, 241, 0.15);
+        }
+
+        .output-card {
+            background: linear-gradient(140deg, #111827, #1f2937, #0f172a);
+            color: #e2e8f0;
+        }
+
+        .copy-btn:active {
+            transform: scale(0.96);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-camera-retro text-indigo-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">构图提示词生成器</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1 bg-indigo-50 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-indigo-600': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-indigo-600': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showKeywordLib = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-book-open h-4 w-4"></i>
+                            <span class="hidden sm:inline">构图词库</span>
+                        </button>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i>
+                            <span class="hidden sm:inline">API 设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+            <div class="w-full lg:w-2/5 glass-card border-r border-indigo-100 p-6 overflow-y-auto space-y-5">
+                <div class="space-y-2">
+                    <label class="font-semibold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-table-columns w-4 h-4 text-indigo-600"></i>
+                        场景类型
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button v-for="type in sceneTypes" :key="type" @click="input.sceneType = type"
+                            :class="['px-3 py-2 rounded-lg text-sm border transition', input.sceneType === type ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 text-slate-600 hover:border-indigo-200']">
+                            {{ type }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="font-semibold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-camera w-4 h-4 text-indigo-600"></i>
+                        镜头风格
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button v-for="style in cameraStyles" :key="style" @click="input.cameraStyle = style"
+                            :class="['px-3 py-2 rounded-lg text-sm border transition', input.cameraStyle === style ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 text-slate-600 hover:border-indigo-200']">
+                            {{ style }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="font-semibold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-wand-magic-sparkles w-4 h-4 text-indigo-600"></i>
+                        参考情绪 / 主题
+                    </label>
+                    <textarea v-model="input.mood" rows="5" placeholder="例如：静谧、电影感、极简主义、柔和治愈、未来感..."
+                        class="w-full bg-white border border-indigo-100 rounded-xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"></textarea>
+                    <p class="text-xs text-slate-400">可从构图词库中一键添加关键词。</p>
+                </div>
+
+                <button @click="generatePrompt" :disabled="isGenerating || !input.mood.trim()"
+                    class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <span v-if="isGenerating"><i class="fa-solid fa-spinner animate-spin w-5 h-5"></i></span>
+                    <span v-else>{{ result ? '再生成构图提示词' : '生成构图提示词' }}</span>
+                </button>
+                <p class="text-xs text-center text-slate-400">提示：V4 Pro 更适合复杂构图推理。</p>
+            </div>
+
+            <div class="flex-grow bg-slate-50 p-6 lg:p-10 overflow-y-auto">
+                <div v-if="!result && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400">
+                    <i class="fa-solid fa-crosshairs w-20 h-20 mb-4"></i>
+                    <p class="text-lg">填写场景与情绪，生成专业构图建议</p>
+                </div>
+
+                <div v-if="result" class="space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900">构图输出</h2>
+                            <p class="text-sm text-slate-500 mt-1">一键复制或继续调整情绪主题再生成。</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button @click="copyAll"
+                                class="copy-btn px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold flex items-center gap-2">
+                                <i class="fa-regular fa-copy w-4 h-4"></i>
+                                复制全部
+                            </button>
+                            <button @click="downloadTxt"
+                                class="copy-btn px-3 py-2 rounded-lg bg-white text-slate-600 text-sm font-semibold border border-slate-200 hover:border-indigo-200 flex items-center gap-2">
+                                <i class="fa-solid fa-file-lines w-4 h-4"></i>
+                                下载 TXT
+                            </button>
+                            <button @click="downloadMarkdown"
+                                class="copy-btn px-3 py-2 rounded-lg bg-white text-slate-600 text-sm font-semibold border border-slate-200 hover:border-indigo-200 flex items-center gap-2">
+                                <i class="fa-brands fa-markdown w-4 h-4"></i>
+                                下载 Markdown
+                            </button>
+                            <button @click="downloadCsv"
+                                class="copy-btn px-3 py-2 rounded-lg bg-white text-slate-600 text-sm font-semibold border border-slate-200 hover:border-indigo-200 flex items-center gap-2">
+                                <i class="fa-solid fa-file-csv w-4 h-4"></i>
+                                下载 CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="output-card rounded-2xl p-6 shadow-lg">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-lg font-semibold">构图提示词</h3>
+                                <button @click="copyText(result.compositionPrompt)"
+                                    class="copy-btn text-xs px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">复制</button>
+                            </div>
+                            <p class="text-sm leading-relaxed whitespace-pre-line">{{ result.compositionPrompt }}</p>
+                        </div>
+                        <div class="output-card rounded-2xl p-6 shadow-lg">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-lg font-semibold">镜头语言描述</h3>
+                                <button @click="copyText(result.lensLanguage)"
+                                    class="copy-btn text-xs px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">复制</button>
+                            </div>
+                            <p class="text-sm leading-relaxed whitespace-pre-line">{{ result.lensLanguage }}</p>
+                        </div>
+                        <div class="output-card rounded-2xl p-6 shadow-lg">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-lg font-semibold">光线 / 景深建议</h3>
+                                <button @click="copyText(result.lightingDepth)"
+                                    class="copy-btn text-xs px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">复制</button>
+                            </div>
+                            <p class="text-sm leading-relaxed whitespace-pre-line">{{ result.lightingDepth }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-800">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-slate-700">DeepSeek API Key</label>
+                    <input v-model="apiConfig.deepseek" type="password" placeholder="sk-xxxxxxxx"
+                        class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <p class="text-xs text-slate-500">配置后将自动复用全局 API Key。</p>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showKeywordLib" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-3xl shadow-xl max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-800">构图维度提示词库</h3>
+                    <button @click="showKeywordLib = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-6">
+                    <div v-for="section in compositionKeywords" :key="section.title" class="space-y-2">
+                        <div>
+                            <h4 class="text-sm font-semibold text-slate-700">{{ section.title }}</h4>
+                            <p class="text-xs text-slate-400">{{ section.desc }}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="keyword in section.keywords" :key="keyword" @click="addKeyword(keyword)"
+                                class="keyword-pill text-xs px-3 py-1 rounded-full border border-indigo-200 text-indigo-700 bg-indigo-50">
+                                {{ keyword }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button @click="showKeywordLib = false"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">完成</button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="toast.show"
+            class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+            <i :class="toast.icon" class="w-4 h-4"></i>
+            <span class="text-sm">{{ toast.message }}</span>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, reactive, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const sceneTypes = ['人物', '产品', '风景', '室内'];
+                const cameraStyles = ['广角', '长焦', '俯拍', '仰拍'];
+
+                const compositionKeywords = [
+                    {
+                        title: '构图方式',
+                        desc: '强化画面秩序与视觉稳定感',
+                        keywords: ['三分法构图', '对称构图', '居中构图', '黄金分割', '对角线构图', '框中框构图']
+                    },
+                    {
+                        title: '主体布局',
+                        desc: '控制主体位置与留白关系',
+                        keywords: ['主体偏左留白', '主体占满画面', '上下分区', '多主体并列', '前景遮挡', '负空间强化']
+                    },
+                    {
+                        title: '视线引导',
+                        desc: '引导观众视线移动',
+                        keywords: ['引导线', '视线流向中心', 'Z 字形动线', '曲线引导', '高低错落', '点线面层次']
+                    },
+                    {
+                        title: '空间层次',
+                        desc: '营造纵深与环境感',
+                        keywords: ['前景-中景-远景', '景深分层', '雾化远景', '层叠建筑', '透视夸张', '空间压缩']
+                    }
+                ];
+
+                const input = reactive({
+                    sceneType: sceneTypes[0],
+                    cameraStyle: cameraStyles[0],
+                    mood: ''
+                });
+
+                const result = ref(null);
+                const isGenerating = ref(false);
+                const showSettings = ref(false);
+                const showKeywordLib = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+
+                const toast = reactive({
+                    show: false,
+                    message: '',
+                    icon: 'fa-solid fa-check'
+                });
+
+                const showToast = (message, icon = 'fa-solid fa-check') => {
+                    toast.message = message;
+                    toast.icon = icon;
+                    toast.show = true;
+                    setTimeout(() => { toast.show = false; }, 2200);
+                };
+
+                const loadConfig = () => {
+                    try {
+                        const stored = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        if (stored.deepseek) {
+                            apiConfig.value.deepseek = stored.deepseek;
+                        }
+                        if (stored.model) {
+                            model.value = stored.model;
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                };
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value, model: model.value }));
+                    showSettings.value = false;
+                    showToast('配置已保存');
+                };
+
+                const addKeyword = (keyword) => {
+                    if (input.mood) {
+                        input.mood = `${input.mood}、${keyword}`;
+                    } else {
+                        input.mood = keyword;
+                    }
+                    showToast(`已添加：${keyword}`, 'fa-solid fa-plus');
+                };
+
+                const callDeepSeek = async (systemPrompt, userPrompt) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error('API Key 未配置');
+
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: model.value,
+                                messages: [
+                                    { role: 'system', content: systemPrompt },
+                                    { role: 'user', content: userPrompt }
+                                ],
+                                temperature: 0.7
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText || '请求失败');
+                    }
+
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content || '';
+                };
+
+                const extractJsonText = (content) => {
+                    if (!content) return '';
+                    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
+                    let cleaned = fenced ? fenced[1] : content;
+                    cleaned = cleaned.trim();
+                    const firstBrace = cleaned.indexOf('{');
+                    const firstBracket = cleaned.indexOf('[');
+                    const start = [firstBrace, firstBracket].filter((idx) => idx >= 0).sort((a, b) => a - b)[0];
+                    if (start !== undefined) {
+                        const endBrace = cleaned.lastIndexOf('}');
+                        const endBracket = cleaned.lastIndexOf(']');
+                        const end = Math.max(endBrace, endBracket);
+                        if (end > start) {
+                            cleaned = cleaned.slice(start, end + 1);
+                        }
+                    }
+                    return cleaned;
+                };
+
+                const generatePrompt = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        showToast('请先配置 API Key', 'fa-solid fa-circle-exclamation');
+                        return;
+                    }
+                    if (!input.mood.trim()) {
+                        showToast('请填写参考情绪/主题', 'fa-solid fa-circle-exclamation');
+                        return;
+                    }
+
+                    isGenerating.value = true;
+                    result.value = null;
+
+                    try {
+                        const systemPrompt = `你是一位专业的摄影构图顾问，擅长为 AI 绘图或摄影创作生成构图提示词与镜头语言建议。请基于用户输入生成专业、可执行的建议。输出必须为 JSON。`;
+
+                        const userPrompt = `请基于以下信息生成构图提示词库输出：
+
+【输入信息】
+- 场景类型：${input.sceneType}
+- 镜头风格：${input.cameraStyle}
+- 参考情绪/主题：${input.mood}
+
+输出要求：
+1. 输出 JSON 格式，包含以下字段：
+- compositionPrompt: 可直接用于 AI 绘图的构图提示词（中文为主，可混合英文关键词）。
+- lensLanguage: 镜头语言描述，强调景别、机位、构图核心。
+- lightingDepth: 光线与景深建议，包含光位、质感与景深控制。
+2. 语言精炼，有条理，避免空泛。
+3. 每个字段 2-4 句话即可。`;
+
+                        const content = await callDeepSeek(systemPrompt, userPrompt);
+                        const jsonText = extractJsonText(content);
+                        if (!jsonText) {
+                            throw new Error('JSON 解析失败：响应为空');
+                        }
+                        result.value = JSON.parse(jsonText);
+                        showToast('构图提示词已生成', 'fa-solid fa-circle-check');
+                    } catch (error) {
+                        console.error('[Composition Prompt] 生成失败:', error);
+                        showToast('生成失败: ' + error.message, 'fa-solid fa-circle-exclamation');
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const copyText = async (text) => {
+                    try {
+                        await navigator.clipboard.writeText(text || '');
+                        showToast('已复制到剪贴板');
+                    } catch (error) {
+                        showToast('复制失败', 'fa-solid fa-circle-exclamation');
+                        console.error(error);
+                    }
+                };
+
+                const copyAll = () => {
+                    if (!result.value) return;
+                    const combined = `构图提示词：\n${result.value.compositionPrompt}\n\n镜头语言描述：\n${result.value.lensLanguage}\n\n光线/景深建议：\n${result.value.lightingDepth}`;
+                    copyText(combined);
+                };
+
+                const buildExportData = () => {
+                    if (!result.value) {
+                        showToast('暂无可下载内容', 'fa-solid fa-circle-exclamation');
+                        return null;
+                    }
+                    return {
+                        date: new Date().toISOString().slice(0, 10),
+                        compositionPrompt: result.value.compositionPrompt,
+                        lensLanguage: result.value.lensLanguage,
+                        lightingDepth: result.value.lightingDepth
+                    };
+                };
+
+                const downloadFile = (content, filename, type) => {
+                    const blob = new Blob([content], { type });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                };
+
+                const downloadTxt = () => {
+                    const data = buildExportData();
+                    if (!data) return;
+                    const content = `构图提示词：\n${data.compositionPrompt}\n\n镜头语言描述：\n${data.lensLanguage}\n\n光线/景深建议：\n${data.lightingDepth}`;
+                    downloadFile(content, `composition_prompt_${data.date}.txt`, 'text/plain;charset=utf-8');
+                };
+
+                const downloadMarkdown = () => {
+                    const data = buildExportData();
+                    if (!data) return;
+                    const content = [
+                        '# 构图提示词生成器输出',
+                        '',
+                        '## 构图提示词',
+                        data.compositionPrompt,
+                        '',
+                        '## 镜头语言描述',
+                        data.lensLanguage,
+                        '',
+                        '## 光线 / 景深建议',
+                        data.lightingDepth
+                    ].join('\n');
+                    downloadFile(content, `composition_prompt_${data.date}.md`, 'text/markdown;charset=utf-8');
+                };
+
+                const escapeCsv = (value) => `"${String(value ?? '').replace(/\"/g, '\"\"')}"`;
+
+                const downloadCsv = () => {
+                    const data = buildExportData();
+                    if (!data) return;
+                    const rows = [
+                        ['section', 'content'],
+                        ['构图提示词', data.compositionPrompt],
+                        ['镜头语言描述', data.lensLanguage],
+                        ['光线/景深建议', data.lightingDepth]
+                    ];
+                    const content = rows.map((row) => row.map(escapeCsv).join(',')).join('\n');
+                    downloadFile(content, `composition_prompt_${data.date}.csv`, 'text/csv;charset=utf-8');
+                };
+
+                onMounted(() => {
+                    loadConfig();
+                });
+
+                return {
+                    sceneTypes,
+                    cameraStyles,
+                    compositionKeywords,
+                    input,
+                    result,
+                    isGenerating,
+                    showSettings,
+                    showKeywordLib,
+                    apiConfig,
+                    model,
+                    toast,
+                    generatePrompt,
+                    saveConfig,
+                    addKeyword,
+                    copyText,
+                    copyAll,
+                    downloadTxt,
+                    downloadMarkdown,
+                    downloadCsv
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_tools_composition_prompt_builder.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

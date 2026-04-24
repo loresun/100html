@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能内容日历规划师 - AI Content Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 1px;
+            background-color: #e2e8f0;
+            border: 1px solid #e2e8f0;
+        }
+
+        .calendar-day {
+            background-color: white;
+            min-height: 140px; /* Increased height for multiple items */
+            transition: all 0.2s;
+        }
+
+        .calendar-day:hover {
+            background-color: #f8fafc;
+        }
+
+        .calendar-day.empty {
+            background-color: #f9fafb;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 1s linear infinite;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        [v-cloak] { display: none; }
+
+        /* Elegant Markdown Styling */
+        .markdown-body h1 { font-size: 1.5em; font-weight: 700; color: #1e293b; margin-top: 1.5em; margin-bottom: 0.75em; letter-spacing: -0.025em; }
+        .markdown-body h2 { font-size: 1.25em; font-weight: 600; color: #334155; margin-top: 1.25em; margin-bottom: 0.5em; letter-spacing: -0.025em; padding-bottom: 0.25em; border-bottom: 1px solid #e2e8f0; }
+        .markdown-body h3 { font-size: 1.1em; font-weight: 600; color: #475569; margin-top: 1em; margin-bottom: 0.5em; }
+        .markdown-body p { margin-bottom: 1em; line-height: 1.75; color: #334155; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; color: #475569; }
+        .markdown-body ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; color: #475569; }
+        .markdown-body li { margin-bottom: 0.25em; }
+        .markdown-body blockquote { border-left: 4px solid #3b82f6; background-color: #eff6ff; padding: 0.75em 1em; margin-bottom: 1em; border-radius: 0 0.5em 0.5em 0; color: #1e40af; }
+        .markdown-body blockquote p { margin-bottom: 0; }
+        .markdown-body code { background-color: #f1f5f9; padding: 0.2em 0.4em; border-radius: 0.25em; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85em; color: #0f172a; }
+        .markdown-body pre { background-color: #1e293b; color: #f8fafc; padding: 1em; border-radius: 0.5em; overflow-x: auto; margin-bottom: 1em; }
+        .markdown-body pre code { background-color: transparent; color: inherit; padding: 0; font-size: 0.9em; }
+        .markdown-body strong { font-weight: 600; color: #0f172a; }
+        .markdown-body em { color: #475569; font-style: italic; }
+        .markdown-body hr { border: 0; border-top: 1px solid #e2e8f0; margin: 2em 0; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+        .markdown-body th, .markdown-body td { border: 1px solid #cbd5e1; padding: 0.5em; text-align: left; font-size: 0.9em; }
+        .markdown-body th { background-color: #f8fafc; font-weight: 600; color: #334155; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部导航 -->
+    <nav class="bg-white border-b border-slate-200 flex-none z-10">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <a href="../../index.html" class="text-slate-400 hover:text-slate-600 transition">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </a>
+                    <div class="flex items-center gap-2">
+                        <div class="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <h1 class="font-bold text-lg text-slate-900">智能内容日历规划师</h1>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <!-- 导出按钮组 -->
+                    <div class="flex items-center gap-2">
+                        <button onclick="app.exportCalendar('csv')" class="text-slate-600 hover:text-blue-600 px-3 py-1.5 text-xs font-medium transition flex items-center gap-2 border border-slate-200 rounded-md hover:bg-slate-50">
+                            <i class="fa-solid fa-download"></i> CSV
+                        </button>
+                        <button onclick="app.exportCalendar('txt')" class="text-slate-600 hover:text-purple-600 px-3 py-1.5 text-xs font-medium transition flex items-center gap-2 border border-slate-200 rounded-md hover:bg-slate-50">
+                            <i class="fa-solid fa-file-lines"></i> TXT
+                        </button>
+                        <button onclick="app.exportCalendar('xlsx')" class="text-slate-600 hover:text-green-600 px-3 py-1.5 text-xs font-medium transition flex items-center gap-2 border border-slate-200 rounded-md hover:bg-slate-50">
+                            <i class="fa-solid fa-file-excel"></i> Excel (含正文)
+                        </button>
+                    </div>
+
+                    <div class="h-6 w-px bg-slate-200"></div>
+
+                    <!-- 模型选择 -->
+                    <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                        <button onclick="app.setModel('deepseek-v4-flash')" id="btnModelChat" class="px-3 py-1 text-xs font-medium rounded-md transition bg-white shadow text-blue-600">V4 Flash</button>
+                        <button onclick="app.setModel('deepseek-v4-pro')" id="btnModelReasoner" class="px-3 py-1 text-xs font-medium rounded-md transition text-slate-500 hover:text-slate-700">V4 Pro</button>
+                    </div>
+
+                    <!-- 设置按钮 -->
+                    <div class="flex items-center gap-1">
+                        <button onclick="app.openApiModal()" class="text-slate-500 hover:text-blue-600 transition p-2 rounded-full hover:bg-slate-100" title="API 设置">
+                            <i class="fa-solid fa-gear"></i>
+                        </button>
+                        <button onclick="app.openPromptModal()" class="text-slate-500 hover:text-indigo-600 transition p-2 rounded-full hover:bg-slate-100" title="提示词配置">
+                            <i class="fa-solid fa-sliders"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex flex-1 overflow-hidden relative">
+        
+        <!-- 左侧侧边栏：输入与控制 -->
+        <aside class="w-80 bg-white border-r border-slate-200 flex-col overflow-y-auto hidden md:flex shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-20">
+            <div class="p-6 space-y-6">
+                
+                <!-- 账号信息 -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-user text-blue-500"></i> 账号设定
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">账号定位</label>
+                            <input type="text" id="accountNiche" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" placeholder="例如：职场干货分享">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">目标人群</label>
+                            <textarea id="targetAudience" rows="2" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none" placeholder="例如：0-3岁职场新人"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-100">
+
+                <!-- 规划参数 -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-check text-green-500"></i> 规划参数
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">起始日期</label>
+                            <input type="date" id="startDate" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">规划周期</label>
+                                <select id="duration" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                                    <option value="7">未来 7 天</option>
+                                    <option value="10">未来 10 天</option>
+                                    <option value="14">未来 2 周</option>
+                                    <option value="30" selected>未来 1 个月</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">更新频率</label>
+                                <select id="frequency" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                                    <option value="daily">日更 (每天1篇)</option>
+                                    <option value="daily-2">日更 (每天2篇)</option>
+                                    <option value="daily-3">日更 (每天3篇)</option>
+                                    <option value="workdays">周一至周五</option>
+                                    <option value="3perweek">周更 3 篇</option>
+                                    <option value="2perweek">周更 2 篇</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">已有选题/灵感 (可选)</label>
+                            <textarea id="userIdeas" rows="3" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none" placeholder="输入已有想法，AI 会优先安排..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 生成按钮 -->
+                <div class="space-y-3">
+                    <button onclick="app.generatePlan()" id="btnGenerate" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="btnText">生成排期计划</span>
+                    </button>
+                    
+                    <button onclick="app.clearPlan()" class="w-full bg-white border border-red-200 text-red-500 hover:bg-red-50 font-medium py-2 rounded-xl transition-all flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-trash"></i> 清空所有排期
+                    </button>
+                    
+                    <button onclick="app.startBatchGeneration()" id="btnBatchGenerate" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 mt-4">
+                        <i class="fa-solid fa-bolt"></i> 批量撰写所有文案
+                    </button>
+                </div>
+
+                <div class="text-xs text-slate-400 text-center px-4 leading-relaxed">
+                    数据已启用本地自动保存。<br>刷新页面或关闭浏览器不会丢失。
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- 主内容区：日历 -->
+        <main class="flex-1 flex flex-col bg-white overflow-hidden relative">
+            <!-- 日历头部：星期 -->
+            <div class="grid grid-cols-7 border-b border-slate-200 bg-slate-50 flex-none">
+                <div class="py-3 text-center text-xs font-semibold text-slate-500 uppercase">周日</div>
+                <div class="py-3 text-center text-xs font-semibold text-slate-500 uppercase">周一</div>
+                <div class="py-3 text-center text-xs font-semibold text-slate-500 uppercase">周二</div>
+                <div class="py-3 text-center text-xs font-semibold text-slate-500 uppercase">周三</div>
+                <div class="py-3 text-center text-xs font-semibold text-slate-500 uppercase">周四</div>
+                <div class="py-3 text-center text-xs font-semibold text-slate-500 uppercase">周五</div>
+                <div class="py-3 text-center text-xs font-semibold text-slate-500 uppercase">周六</div>
+            </div>
+            
+            <!-- 日历网格容器 -->
+            <div class="flex-1 overflow-y-auto bg-slate-50 p-4">
+                <div id="calendarContainer" class="calendar-grid rounded-lg overflow-hidden shadow-sm border border-slate-200 max-w-[1400px] mx-auto bg-white min-h-[600px]">
+                    <!-- JS 将在这里填充日历格子 -->
+                    <div class="col-span-7 p-12 text-center text-slate-400 flex flex-col items-center justify-center h-full bg-white">
+                        <div class="bg-slate-50 p-4 rounded-full mb-4">
+                            <i class="fa-solid fa-calendar text-3xl text-slate-300"></i>
+                        </div>
+                        <p>请在左侧配置参数并点击生成，开始您的内容规划。</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- 详情与生成弹窗 -->
+    <div id="detailModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all scale-95 opacity-0" id="detailModalContent">
+            <!-- 弹窗头部 -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-4">
+                    <div class="bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm font-bold" id="modalDate">2023-10-01</div>
+                    <!-- 多篇切换 Tabs -->
+                    <div id="modalTabs" class="flex gap-2 overflow-x-auto">
+                        <!-- JS 填充 Tabs -->
+                    </div>
+                </div>
+                <button onclick="app.closeDetailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- 弹窗内容区 -->
+            <div class="flex-1 overflow-hidden flex flex-col md:flex-row">
+                <!-- 左侧：选题详情 -->
+                <div class="w-full md:w-1/3 p-6 overflow-y-auto border-b md:border-b-0 md:border-r border-slate-100 bg-white">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">选题策划</h4>
+                    
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1.5">内容标题/主题</label>
+                            <textarea id="editTitle" rows="2" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1.5">形式</label>
+                                <select id="editType" class="w-full text-xs border border-slate-200 rounded-lg px-2 py-2 bg-slate-50">
+                                    <option value="图文">图文</option>
+                                    <option value="视频">视频</option>
+                                    <option value="纯文字">纯文字</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1.5">目标</label>
+                                <input type="text" id="editGoal" class="w-full text-xs border border-slate-200 rounded-lg px-2 py-2 bg-slate-50" placeholder="如：涨粉">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1.5">切入点/钩子</label>
+                            <textarea id="editHook" rows="3" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"></textarea>
+                        </div>
+
+                        <button onclick="app.generateContentForCurrentItem()" id="btnGenerateContent" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 mt-4 group">
+                            <i class="fa-solid fa-pen-nib group-hover:rotate-12 transition-transform"></i> 生成正文内容
+                        </button>
+                        <button onclick="app.saveCurrentItem()" id="btnSaveItem" class="w-full bg-white border border-slate-200 text-slate-600 font-medium py-2 rounded-xl hover:bg-slate-50 transition-all text-sm">
+                            保存策划修改
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 右侧：生成结果 -->
+                <div class="w-full md:w-2/3 p-6 overflow-y-auto bg-slate-50/30 custom-scrollbar flex flex-col relative">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">内容正文</h4>
+                        <div class="flex gap-2">
+                            <button onclick="app.copyContent()" class="text-xs bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded hover:text-blue-600 hover:border-blue-200 transition flex items-center gap-1">
+                                <i class="fa-solid fa-copy"></i> 复制
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="contentResultArea" class="flex-1 bg-white border border-slate-200 rounded-xl p-5 min-h-[300px] text-sm leading-relaxed text-slate-700 overflow-y-auto relative">
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none" id="contentPlaceholder">
+                            <i class="fa-solid fa-file-lines text-5xl text-slate-200 mb-2"></i>
+                            <p>点击左侧“生成正文内容”按钮开始写作</p>
+                        </div>
+                        <div id="markdownOutput" class="hidden markdown-body"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 设置弹窗 -->
+    <div id="apiModal" class="fixed inset-0 bg-black/50 z-[60] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-95 opacity-0" id="apiModalContent">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-gear text-slate-600"></i> API 配置
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                    <input type="password" id="apiKeyInput" class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="sk-...">
+                    <p class="text-xs text-slate-500 mt-1">Key 将安全存储在您的本地浏览器中。</p>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="app.closeApiModal()" class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg text-sm">取消</button>
+                <button onclick="app.saveApiConfig()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示词配置弹窗 -->
+    <div id="promptModal" class="fixed inset-0 bg-black/50 z-[60] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 transform transition-all scale-95 opacity-0" id="promptModalContent">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-slate-600"></i> 提示词配置
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">账号详细背景信息 (全局 Context)</label>
+                    <p class="text-xs text-slate-400 mb-2">输入账号的详细背景、品牌故事或长期设定。此内容将拼接到 AI 生成请求中。</p>
+                    <textarea id="accountContext" rows="3" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition resize-none" placeholder="例如：本账号是一个拥有5年历史的职场自媒体，风格犀利，禁止使用过于软萌的语气..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">排期生成提示词 (System Prompt)</label>
+                    <textarea id="promptPlan" rows="4" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition font-mono"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">内容生成提示词 (System Prompt)</label>
+                    <textarea id="promptContent" rows="4" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition font-mono"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="app.closePromptModal()" class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg text-sm">取消</button>
+                <button onclick="app.savePromptConfig()" class="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 text-sm">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量生成进度弹窗 -->
+    <div id="batchModal" class="fixed inset-0 bg-black/60 z-[70] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-95 opacity-0" id="batchModalContent">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-spinner fa-spin w-8 h-8 text-blue-600" id="batchIcon"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2" id="batchTitle">正在批量生成...</h3>
+                <p class="text-sm text-slate-500" id="batchStatus">准备开始任务队列</p>
+            </div>
+
+            <!-- 进度条 -->
+            <div class="w-full bg-slate-100 rounded-full h-4 mb-2 overflow-hidden">
+                <div id="batchProgressBar" class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-500 mb-6">
+                <span id="batchProgressText">0%</span>
+                <span id="batchCountText">0/0</span>
+            </div>
+            
+            <!-- 日志区域 -->
+            <div id="batchLog" class="h-32 overflow-y-auto bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-600 font-mono mb-6 space-y-1">
+                <div class="text-slate-400 italic">等待任务启动...</div>
+            </div>
+
+            <div class="flex justify-center">
+                <button onclick="app.stopBatchGeneration()" id="btnStopBatch" class="bg-white border border-red-200 text-red-500 hover:bg-red-50 font-medium px-6 py-2 rounded-xl transition-all text-sm">
+                    停止生成
+                </button>
+                <button onclick="app.closeBatchModal()" id="btnCloseBatch" class="bg-slate-900 text-white font-medium px-6 py-2 rounded-xl hover:bg-slate-800 transition-all text-sm hidden">
+                    完成并关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            state: {
+                // Key: 'YYYY-MM-DD', Value: Array of Objects [{id, title, type, goal, hook, content}]
+                calendarData: {}, 
+                currentDetailDate: null,
+                currentDetailIndex: 0,
+                isGenerating: false,
+                isBatchRunning: false,
+                batchStopFlag: false,
+                model: 'deepseek-v4-flash',
+                config: {
+                    promptPlan: "",
+                    promptContent: ""
+                },
+                settings: {
+                    startDate: new Date().toISOString().split('T')[0],
+                    duration: 30
+                }
+            },
+
+            defaultPrompts: {
+                plan: `你是一位资深的新媒体内容运营专家。
+任务：根据用户提供的账号定位、目标人群和已有想法，生成一份详细的内容排期表。
+
+请严格按照以下 JSON 格式返回数据，不要包含 markdown 代码块标记，直接返回 JSON 数组：
+[
+  {
+    "dateOffset": 0, // 0 代表起始日期
+    "items": [
+       {
+         "title": "选题标题",
+         "type": "图文/视频",
+         "goal": "涨粉/变现/人设",
+         "hook": "切入点"
+       }
+    ]
+  }
+]
+
+要求：
+1. 严格遵守更新频率（如每天2篇，则 items 数组应包含2个对象）。
+2. 如果某天休息，items 可为空数组。
+`,
+                content: `你是一位爆款文案创作者。
+任务：根据提供的选题信息（标题、钩子、目标人群），撰写一篇完整的内容文案。
+
+要求：
+1. 风格要贴合目标人群喜好。
+2. 开头要有吸引力（黄金前3秒/前3行）。
+3. 结构清晰，适合在社交媒体阅读。
+4. 结尾包含互动引导。
+`
+            },
+
+            init() {
+                // Font Awesome auto-renders
+                
+                // Load Global Config (API Key & Model)
+                this.loadGlobalConfig();
+                this.updateModelUI();
+
+                // Load Local State (Calendar Data & Settings)
+                const savedData = localStorage.getItem('planner_calendar_data');
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        // Migration: if old format (object instead of array), convert
+                        const migratedData = {};
+                        for(let date in parsed) {
+                            if(!Array.isArray(parsed[date])) {
+                                migratedData[date] = [parsed[date]];
+                            } else {
+                                migratedData[date] = parsed[date];
+                            }
+                        }
+                        this.state.calendarData = migratedData;
+                    } catch(e) {
+
+                        this.state.calendarData = {};
+                    }
+                }
+
+                // Load saved settings inputs
+                try {
+                    const savedSettings = localStorage.getItem('planner_settings');
+                    if (savedSettings) {
+                        const s = JSON.parse(savedSettings);
+                        if(s.startDate) document.getElementById('startDate').value = s.startDate;
+                        if(s.duration) document.getElementById('duration').value = s.duration;
+                        if(s.frequency) document.getElementById('frequency').value = s.frequency;
+                        if(s.niche) document.getElementById('accountNiche').value = s.niche;
+                        if(s.audience) document.getElementById('targetAudience').value = s.audience;
+                        if(s.ideas) document.getElementById('userIdeas').value = s.ideas;
+                        
+                        this.state.settings.startDate = s.startDate || this.state.settings.startDate;
+                        this.state.settings.duration = parseInt(s.duration || 30);
+                    } else {
+                        // Default start date today
+                        document.getElementById('startDate').valueAsDate = new Date();
+                    }
+                } catch (e) {
+
+                    document.getElementById('startDate').valueAsDate = new Date();
+                }
+
+                // Load Prompts
+                const savedPlanPrompt = localStorage.getItem('planner_prompt_plan');
+                const savedContentPrompt = localStorage.getItem('planner_prompt_content');
+                this.state.config.promptPlan = savedPlanPrompt || this.defaultPrompts.plan;
+                this.state.config.promptContent = savedContentPrompt || this.defaultPrompts.content;
+                this.state.config.accountContext = localStorage.getItem('planner_account_context') || "";
+
+                // Initial Render
+                this.renderCalendar(this.state.settings.startDate, this.state.settings.duration);
+            },
+
+            // --- Persistence ---
+            saveState() {
+                localStorage.setItem('planner_calendar_data', JSON.stringify(this.state.calendarData));
+                
+                let settings = {};
+                try {
+                    const savedSettings = localStorage.getItem('planner_settings');
+                    if (savedSettings) settings = JSON.parse(savedSettings);
+                } catch (e) {
+
+                }
+
+                const newSettings = {
+                    ...settings,
+                    startDate: document.getElementById('startDate').value,
+                    duration: document.getElementById('duration').value,
+                    frequency: document.getElementById('frequency').value,
+                    niche: document.getElementById('accountNiche').value,
+                    audience: document.getElementById('targetAudience').value,
+                    ideas: document.getElementById('userIdeas').value
+                };
+                localStorage.setItem('planner_settings', JSON.stringify(newSettings));
+                
+                this.state.settings.startDate = newSettings.startDate;
+                this.state.settings.duration = parseInt(newSettings.duration);
+            },
+
+            clearPlan() {
+                if(confirm('确定要清空所有排期数据吗？此操作无法撤销。')) {
+                    this.state.calendarData = {};
+                    this.saveState();
+                    this.renderCalendar(document.getElementById('startDate').value, parseInt(document.getElementById('duration').value));
+                }
+            },
+
+            // --- Calendar Rendering ---
+            renderCalendar(startDate, duration) {
+                const container = document.getElementById('calendarContainer');
+                container.innerHTML = ''; 
+                
+                if(!startDate) return;
+
+                const start = new Date(startDate);
+                const dayOfWeek = start.getDay(); 
+                const calendarStart = new Date(start);
+                calendarStart.setDate(start.getDate() - dayOfWeek); 
+                
+                let totalDays = duration + dayOfWeek;
+                const remainder = totalDays % 7;
+                if (remainder !== 0) {
+                    totalDays += (7 - remainder);
+                }
+
+                for (let i = 0; i < totalDays; i++) {
+                    const current = new Date(calendarStart);
+                    current.setDate(calendarStart.getDate() + i);
+                    const dateStr = current.toISOString().split('T')[0];
+                    
+                    const isOutsideRange = current < start || current > new Date(start.getTime() + (duration - 1) * 86400000);
+
+                    const items = this.state.calendarData[dateStr] || [];
+                    
+                    const el = document.createElement('div');
+                    el.className = `calendar-day p-2 flex flex-col gap-1 relative group border-b border-r border-slate-100 ${isOutsideRange ? 'bg-slate-50 text-slate-400' : 'cursor-pointer hover:bg-blue-50/30'}`;
+                    
+                    const dayNum = current.getDate();
+                    const isToday = dateStr === new Date().toISOString().split('T')[0];
+                    
+                    let html = `
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-xs font-medium ${isToday ? 'bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-500'}">${dayNum}</span>
+                            ${items.length > 0 ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">${items.length}篇</span>` : ''}
+                        </div>
+                    `;
+
+                    if (!isOutsideRange) {
+                        if (items.length > 0) {
+                            // Render up to 3 items to prevent overflow
+                            items.slice(0, 3).forEach((item, idx) => {
+                                html += `
+                                    <div class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 shadow-sm mb-1 hover:border-blue-300 transition-colors">
+                                        <div class="text-[11px] font-bold text-slate-800 truncate leading-tight">${item.title}</div>
+                                        <div class="flex justify-between items-center mt-0.5">
+                                            <span class="text-[9px] text-slate-400 bg-slate-100 px-1 rounded">${item.type}</span>
+                                            ${item.content ? `<i class="fa-solid fa-file-circle-check text-green-500"></i>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            if(items.length > 3) {
+                                html += `<div class="text-[10px] text-slate-400 text-center">+${items.length - 3} 更多</div>`;
+                            }
+                        } else {
+                             html += `
+                                <div class="flex-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="fa-solid fa-plus w-4 h-4 text-slate-300"></i>
+                                </div>
+                            `;
+                        }
+                        el.onclick = () => this.openDetailModal(dateStr);
+                    }
+
+                    el.innerHTML = html;
+                    container.appendChild(el);
+                }
+                
+                // Font Awesome auto-renders
+            },
+
+            // --- Batch Generation Logic ---
+
+            async startBatchGeneration() {
+                // 1. Check API Key
+                const apiKey = this.getApiKey();
+                if (!apiKey) return this.openApiModal();
+
+                // 2. Collect items needing generation
+                const allItems = [];
+                const dates = Object.keys(this.state.calendarData).sort();
+                dates.forEach(date => {
+                    const items = this.state.calendarData[date];
+                    items.forEach((item, index) => {
+                        // Only select items without content
+                        if (!item.content || item.content.trim() === '') {
+                            allItems.push({ date, index, item });
+                        }
+                    });
+                });
+
+                if (allItems.length === 0) {
+                    return alert('当前所有排期都已生成文案，没有需要处理的任务。');
+                }
+
+                if (!confirm(`检测到 ${allItems.length} 篇待生成的文案。批量生成可能需要较长时间，是否开始？`)) {
+                    return;
+                }
+
+                // 3. Open Modal
+                this.openBatchModal(allItems.length);
+                this.state.isBatchRunning = true;
+                this.state.batchStopFlag = false;
+
+                // 4. Process Queue with Concurrency
+                const CONCURRENCY = 3;
+                let completedCount = 0;
+                let activeCount = 0;
+                let queueIndex = 0;
+
+                const processNext = async () => {
+                    if (this.state.batchStopFlag) return;
+                    if (queueIndex >= allItems.length) return;
+
+                    const taskIndex = queueIndex++;
+                    const task = allItems[taskIndex];
+                    activeCount++;
+
+                    this.logBatch(`开始生成: ${task.item.title.substring(0, 15)}...`);
+
+                    try {
+                        const systemPrompt = this.state.config.promptContent;
+                        const userPrompt = `
+选题标题: ${task.item.title}
+形式: ${task.item.type}
+目标: ${task.item.goal}
+切入点: ${task.item.hook}
+目标人群: ${document.getElementById('targetAudience').value}
+账号定位: ${document.getElementById('accountNiche').value}
+【账号详细背景信息】: ${this.state.config.accountContext || '无'}
+`;
+                        const content = await this.callDeepSeek(apiKey, systemPrompt, userPrompt);
+                        
+                        // Update Data
+                        task.item.content = content;
+                        this.saveState(); // Save incrementally
+                        
+                        this.logBatch(`✅ 完成: ${task.item.title.substring(0, 15)}...`, 'text-green-600');
+
+                    } catch (error) {
+
+                        this.logBatch(`❌ 失败: ${task.item.title.substring(0, 15)}...`, 'text-red-500');
+                    } finally {
+                        activeCount--;
+                        completedCount++;
+                        this.updateBatchProgress(completedCount, allItems.length);
+                        
+                        // Trigger next if not stopped
+                        if (!this.state.batchStopFlag && queueIndex < allItems.length) {
+                            processNext();
+                        } else if (activeCount === 0 && queueIndex >= allItems.length) {
+                            this.finishBatch(allItems.length);
+                        }
+                    }
+                };
+
+                // Initial burst
+                for (let i = 0; i < CONCURRENCY && i < allItems.length; i++) {
+                    processNext();
+                }
+            },
+
+            stopBatchGeneration() {
+                this.state.batchStopFlag = true;
+                this.logBatch('🛑 用户请求停止...', 'text-red-600 font-bold');
+                document.getElementById('btnStopBatch').disabled = true;
+                document.getElementById('btnStopBatch').textContent = '正在停止...';
+                
+                // Wait a bit then show close button
+                setTimeout(() => {
+                    this.finishBatch(0, true);
+                }, 1500);
+            },
+
+            finishBatch(total, stopped = false) {
+                this.state.isBatchRunning = false;
+                const title = document.getElementById('batchTitle');
+                const status = document.getElementById('batchStatus');
+                const icon = document.getElementById('batchIcon');
+                const btnStop = document.getElementById('btnStopBatch');
+                const btnClose = document.getElementById('btnCloseBatch');
+
+                icon.classList.remove('animate-spin', 'text-blue-600');
+                
+                if (stopped) {
+                    title.textContent = '任务已停止';
+                    status.textContent = '已保留生成进度。';
+                    icon.className = 'fa-solid fa-triangle-exclamation w-8 h-8 text-red-500';
+                } else {
+                    title.textContent = '批量生成完成！';
+                    status.textContent = `共处理 ${total} 篇文案。`;
+                    icon.className = 'fa-solid fa-circle-check w-8 h-8 text-green-500';
+                }
+                
+                // Font Awesome auto-renders
+                
+                btnStop.classList.add('hidden');
+                btnClose.classList.remove('hidden');
+                
+                // Refresh calendar UI to show checkmarks
+                this.renderCalendar(document.getElementById('startDate').value, parseInt(document.getElementById('duration').value));
+            },
+
+            // --- Batch Modal UI ---
+            
+            openBatchModal(total) {
+                const modal = document.getElementById('batchModal');
+                const content = document.getElementById('batchModalContent');
+                
+                // Reset UI
+                document.getElementById('batchProgressBar').style.width = '0%';
+                document.getElementById('batchProgressText').textContent = '0%';
+                document.getElementById('batchCountText').textContent = `0/${total}`;
+                document.getElementById('batchLog').innerHTML = '';
+                
+                document.getElementById('batchTitle').textContent = '正在批量生成...';
+                document.getElementById('batchStatus').textContent = 'AI 正在奋笔疾书，请勿关闭窗口';
+                
+                const icon = document.getElementById('batchIcon');
+                icon.className = 'fa-solid fa-spinner fa-spin w-8 h-8 text-blue-600';
+
+                document.getElementById('btnStopBatch').classList.remove('hidden');
+                document.getElementById('btnStopBatch').disabled = false;
+                document.getElementById('btnStopBatch').textContent = '停止生成';
+                document.getElementById('btnCloseBatch').classList.add('hidden');
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                // Font Awesome auto-renders
+            },
+
+            closeBatchModal() {
+                const modal = document.getElementById('batchModal');
+                const content = document.getElementById('batchModalContent');
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 200);
+            },
+
+            updateBatchProgress(completed, total) {
+                const percent = Math.round((completed / total) * 100);
+                document.getElementById('batchProgressBar').style.width = `${percent}%`;
+                document.getElementById('batchProgressText').textContent = `${percent}%`;
+                document.getElementById('batchCountText').textContent = `${completed}/${total}`;
+            },
+
+            logBatch(msg, classes = '') {
+                const log = document.getElementById('batchLog');
+                const div = document.createElement('div');
+                div.className = classes;
+                div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                log.appendChild(div);
+                log.scrollTop = log.scrollHeight;
+            },
+
+            // --- Generation Logic ---
+            
+            async generatePlan() {
+                const apiKey = this.getApiKey();
+                if (!apiKey) return this.openApiModal();
+
+                const inputs = {
+                    niche: document.getElementById('accountNiche').value,
+                    audience: document.getElementById('targetAudience').value,
+                    startDate: document.getElementById('startDate').value,
+                    duration: parseInt(document.getElementById('duration').value),
+                    frequency: document.getElementById('frequency').value,
+                    ideas: document.getElementById('userIdeas').value
+                };
+
+                if (!inputs.niche) return alert('请输入账号定位');
+
+                this.state.isGenerating = true;
+                this.updateButtonState(true);
+
+                try {
+                    // Save inputs before generating
+                    this.saveState();
+
+                    const systemPrompt = this.state.config.promptPlan;
+                    const userPrompt = `
+当前日期: ${inputs.startDate}
+账号定位: ${inputs.niche}
+目标人群: ${inputs.audience}
+【账号详细背景信息】: ${this.state.config.accountContext || '无'}
+已有想法: ${inputs.ideas}
+规划周期: ${inputs.duration}天
+更新频率: ${inputs.frequency} (daily=每天1篇, daily-2=每天2篇, daily-3=每天3篇)
+
+请生成内容排期。
+`;
+
+                    const response = await this.callDeepSeek(apiKey, systemPrompt, userPrompt);
+                    
+                    let planArray = [];
+                    try {
+                        const jsonMatch = response.match(/\[[\s\S]*\]/);
+                        if (jsonMatch) {
+                            planArray = JSON.parse(jsonMatch[0]);
+                        } else {
+                            throw new Error('No JSON found');
+                        }
+                    } catch (e) {
+
+                        alert('AI 返回格式有误，请重试。');
+                        this.state.isGenerating = false;
+                        this.updateButtonState(false);
+                        return;
+                    }
+
+                    const startDateObj = new Date(inputs.startDate);
+                    
+                    planArray.forEach(dayPlan => {
+                        const itemDate = new Date(startDateObj);
+                        itemDate.setDate(startDateObj.getDate() + dayPlan.dateOffset);
+                        const dateStr = itemDate.toISOString().split('T')[0];
+                        
+                        // Handle both array of items or single item (legacy compatibility)
+                        let newItems = [];
+                        if (dayPlan.items && Array.isArray(dayPlan.items)) {
+                            newItems = dayPlan.items.map(i => ({
+                                ...i,
+                                content: ''
+                            }));
+                        } else if (dayPlan.title) {
+                            // Fallback for older prompts
+                             newItems.push({
+                                title: dayPlan.title,
+                                type: dayPlan.type || '图文',
+                                goal: dayPlan.goal || '',
+                                hook: dayPlan.hook || '',
+                                content: ''
+                            });
+                        }
+
+                        if(newItems.length > 0) {
+                             this.state.calendarData[dateStr] = newItems;
+                        }
+                    });
+
+                    this.saveState();
+                    this.renderCalendar(startDateObj, inputs.duration);
+
+                } catch (error) {
+
+                    alert('生成失败: ' + error.message);
+                } finally {
+                    this.state.isGenerating = false;
+                    this.updateButtonState(false);
+                }
+            },
+
+            async generateContentForCurrentItem() {
+                const dateStr = this.state.currentDetailDate;
+                const idx = this.state.currentDetailIndex;
+                const items = this.state.calendarData[dateStr];
+                if (!items || !items[idx]) return;
+                
+                const item = items[idx];
+                
+                // Update item from UI
+                item.title = document.getElementById('editTitle').value;
+                item.type = document.getElementById('editType').value;
+                item.goal = document.getElementById('editGoal').value;
+                item.hook = document.getElementById('editHook').value;
+                
+                const apiKey = this.getApiKey();
+                if (!apiKey) return this.openApiModal();
+
+                const btn = document.getElementById('btnGenerateContent');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = `<span class="loader mr-2"></span> 正在撰写...`;
+                
+                document.getElementById('contentPlaceholder').classList.add('hidden');
+                const resultArea = document.getElementById('markdownOutput');
+                resultArea.classList.remove('hidden');
+                resultArea.innerHTML = '<div class="animate-pulse space-y-2"><div class="h-4 bg-slate-200 rounded w-3/4"></div><div class="h-4 bg-slate-200 rounded"></div><div class="h-4 bg-slate-200 rounded w-5/6"></div></div>';
+
+                try {
+                    const systemPrompt = this.state.config.promptContent;
+                    const userPrompt = `
+选题标题: ${item.title}
+形式: ${item.type}
+目标: ${item.goal}
+切入点: ${item.hook}
+目标人群: ${document.getElementById('targetAudience').value}
+账号定位: ${document.getElementById('accountNiche').value}
+【账号详细背景信息】: ${this.state.config.accountContext || '无'}
+`;
+
+                    const content = await this.callDeepSeek(apiKey, systemPrompt, userPrompt);
+                    
+                    item.content = content;
+                    this.saveState();
+                    
+                    resultArea.innerHTML = marked.parse(content);
+                    this.renderCalendar(document.getElementById('startDate').value, parseInt(document.getElementById('duration').value));
+
+                } catch (error) {
+                    alert('生成失败: ' + error.message);
+                    resultArea.innerHTML = '';
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            },
+
+            // --- Modal & UI Handling ---
+
+            openDetailModal(dateStr) {
+                this.state.currentDetailDate = dateStr;
+                this.state.currentDetailIndex = 0;
+                
+                // Initialize if empty
+                if (!this.state.calendarData[dateStr]) {
+                    this.state.calendarData[dateStr] = [{ title: '', type: '图文', goal: '', hook: '', content: '' }];
+                }
+                
+                document.getElementById('modalDate').textContent = dateStr;
+                
+                this.renderModalTabs(dateStr);
+                this.loadItemIntoModal(dateStr, 0);
+
+                const modal = document.getElementById('detailModal');
+                const content = document.getElementById('detailModalContent');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            },
+            
+            renderModalTabs(dateStr) {
+                const items = this.state.calendarData[dateStr];
+                const tabsContainer = document.getElementById('modalTabs');
+                tabsContainer.innerHTML = '';
+                
+                items.forEach((item, idx) => {
+                    const btn = document.createElement('button');
+                    const isActive = idx === this.state.currentDetailIndex;
+                    btn.className = `px-3 py-1 text-xs font-medium rounded-md transition whitespace-nowrap ${isActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`;
+                    btn.textContent = `第 ${idx + 1} 篇`;
+                    btn.onclick = () => {
+                        this.state.currentDetailIndex = idx;
+                        this.renderModalTabs(dateStr); // Re-render to update active state
+                        this.loadItemIntoModal(dateStr, idx);
+                    };
+                    tabsContainer.appendChild(btn);
+                });
+                
+                // Add "New" button logic could go here
+            },
+
+            loadItemIntoModal(dateStr, index) {
+                const item = this.state.calendarData[dateStr][index];
+                
+                document.getElementById('editTitle').value = item.title || '';
+                document.getElementById('editType').value = item.type || '图文';
+                document.getElementById('editGoal').value = item.goal || '';
+                document.getElementById('editHook').value = item.hook || '';
+
+                const resultArea = document.getElementById('markdownOutput');
+                const placeholder = document.getElementById('contentPlaceholder');
+                
+                if (item.content) {
+                    resultArea.innerHTML = marked.parse(item.content);
+                    resultArea.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                } else {
+                    resultArea.innerHTML = '';
+                    resultArea.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                }
+            },
+
+            saveCurrentItem() {
+                const dateStr = this.state.currentDetailDate;
+                const idx = this.state.currentDetailIndex;
+                const item = this.state.calendarData[dateStr][idx];
+                
+                item.title = document.getElementById('editTitle').value;
+                item.type = document.getElementById('editType').value;
+                item.goal = document.getElementById('editGoal').value;
+                item.hook = document.getElementById('editHook').value;
+                
+                this.saveState();
+                this.renderCalendar(document.getElementById('startDate').value, parseInt(document.getElementById('duration').value));
+                
+                const btn = document.getElementById('btnSaveItem');
+                const original = btn.textContent;
+                btn.textContent = '已保存';
+                btn.classList.add('text-green-600');
+                setTimeout(() => {
+                    btn.textContent = original;
+                    btn.classList.remove('text-green-600');
+                }, 1000);
+            },
+
+            closeDetailModal() {
+                const modal = document.getElementById('detailModal');
+                const content = document.getElementById('detailModalContent');
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 200);
+            },
+
+            // --- API & Model Config ---
+            
+            loadGlobalConfig() {
+                try {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        this.state.model = parsed.model || 'deepseek-v4-flash';
+                    }
+                } catch (e) {
+
+                }
+            },
+
+            setModel(model) {
+                this.state.model = model;
+                this.updateModelUI();
+                
+                // Save global config
+                let current = {};
+                try {
+                    current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                } catch (e) {
+
+                }
+                localStorage.setItem('global_llm_config', JSON.stringify({ ...current, model: model }));
+            },
+
+            updateModelUI() {
+                const btnChat = document.getElementById('btnModelChat');
+                const btnReason = document.getElementById('btnModelReasoner');
+                
+                if (this.state.model === 'deepseek-v4-flash') {
+                    btnChat.className = "px-3 py-1 text-xs font-medium rounded-md transition bg-white shadow text-blue-600";
+                    btnReason.className = "px-3 py-1 text-xs font-medium rounded-md transition text-slate-500 hover:text-slate-700";
+                } else {
+                    btnChat.className = "px-3 py-1 text-xs font-medium rounded-md transition text-slate-500 hover:text-slate-700";
+                    btnReason.className = "px-3 py-1 text-xs font-medium rounded-md transition bg-white shadow text-blue-600";
+                }
+            },
+
+            openApiModal() {
+                let config = {};
+                try {
+                    config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                } catch (e) {
+
+                }
+                document.getElementById('apiKeyInput').value = config.deepseek || '';
+                
+                const modal = document.getElementById('apiModal');
+                const content = document.getElementById('apiModalContent');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            },
+
+            closeApiModal() {
+                 const modal = document.getElementById('apiModal');
+                const content = document.getElementById('apiModalContent');
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 200);
+            },
+
+            saveApiConfig() {
+                const key = document.getElementById('apiKeyInput').value.trim();
+                let current = {};
+                try {
+                    current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                } catch (e) {
+
+                }
+                localStorage.setItem('global_llm_config', JSON.stringify({ ...current, deepseek: key }));
+                this.closeApiModal();
+                alert('API Key 已保存');
+            },
+
+            openPromptModal() {
+                document.getElementById('promptPlan').value = this.state.config.promptPlan;
+                document.getElementById('promptContent').value = this.state.config.promptContent;
+                document.getElementById('accountContext').value = this.state.config.accountContext || "";
+                
+                const modal = document.getElementById('promptModal');
+                const content = document.getElementById('promptModalContent');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            },
+
+            closePromptModal() {
+                const modal = document.getElementById('promptModal');
+                const content = document.getElementById('promptModalContent');
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 200);
+            },
+
+            savePromptConfig() {
+                this.state.config.promptPlan = document.getElementById('promptPlan').value;
+                this.state.config.promptContent = document.getElementById('promptContent').value;
+                this.state.config.accountContext = document.getElementById('accountContext').value;
+                
+                localStorage.setItem('planner_prompt_plan', this.state.config.promptPlan);
+                localStorage.setItem('planner_prompt_content', this.state.config.promptContent);
+                localStorage.setItem('planner_account_context', this.state.config.accountContext);
+                
+                this.closePromptModal();
+            },
+
+            // --- Helpers ---
+
+            copyContent() {
+                const dateStr = this.state.currentDetailDate;
+                const idx = this.state.currentDetailIndex;
+                const item = this.state.calendarData[dateStr]?.[idx];
+                
+                if (!item || !item.content) {
+                    return alert('暂无内容可复制');
+                }
+                
+                navigator.clipboard.writeText(item.content).then(() => {
+                    alert('已复制到剪贴板');
+                }).catch(err => {
+                    // Fallback for older browsers
+                    const textarea = document.createElement('textarea');
+                    textarea.value = item.content;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    alert('已复制到剪贴板');
+                });
+            },
+
+            getApiKey() {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek;
+            },
+            
+            updateButtonState(loading) {
+                 const btn = document.getElementById('btnGenerate');
+                const txt = document.getElementById('btnText');
+                if (loading) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-75', 'cursor-not-allowed');
+                    txt.textContent = 'AI 正在规划中...';
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    txt.textContent = '生成排期计划';
+                }
+            },
+
+            async callDeepSeek(apiKey, systemPrompt, userPrompt) {
+                let response;
+                try {
+                    response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: this.state.model,
+                            messages: [
+                                { role: "system", content: systemPrompt },
+                                { role: "user", content: userPrompt }
+                            ],
+                            temperature: 1.0
+                        })
+                    });
+                } catch (e) {
+                    throw new Error(`网络请求失败: ${e.message}`);
+                }
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error?.message || 'API 请求失败');
+                }
+
+                const data = await response.json();
+                return data.choices[0].message.content;
+            },
+
+            exportCalendar(type) {
+                const data = this.state.calendarData;
+                const dates = Object.keys(data).sort();
+                
+                if (dates.length === 0) return alert('暂无排期数据');
+
+                if (type === 'csv') {
+                    let csv = '日期,篇数,标题,形式,目标,钩子\n';
+                    dates.forEach(d => {
+                        const items = data[d];
+                        items.forEach((item, idx) => {
+                            csv += `${d},第${idx+1}篇,"${(item.title||'').replace(/"/g, '""')}","${item.type}","${item.goal}","${(item.hook||'').replace(/"/g, '""')}"\n`;
+                        });
+                    });
+                    
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `内容排期_${new Date().toISOString().split('T')[0]}.csv`;
+                    link.click();
+                } else if (type === 'txt') {
+                    let txt = `内容排期计划\n`;
+                    txt += `导出时间: ${new Date().toLocaleString()}\n`;
+                    txt += `${'='.repeat(60)}\n\n`;
+                    
+                    dates.forEach(d => {
+                        const items = data[d];
+                        if (items.length > 0) {
+                            txt += `📅 ${d}\n`;
+                            txt += `${'-'.repeat(40)}\n`;
+                            
+                            items.forEach((item, idx) => {
+                                txt += `\n【第 ${idx + 1} 篇】\n`;
+                                txt += `标题: ${item.title || '(未设置)'}\n`;
+                                txt += `形式: ${item.type || '图文'}\n`;
+                                txt += `目标: ${item.goal || '(未设置)'}\n`;
+                                txt += `钩子: ${item.hook || '(未设置)'}\n`;
+                                
+                                if (item.content) {
+                                    txt += `\n正文内容:\n${item.content}\n`;
+                                } else {
+                                    txt += `\n正文内容: (未生成)\n`;
+                                }
+                                txt += `${'-'.repeat(40)}\n`;
+                            });
+                            txt += `\n`;
+                        }
+                    });
+                    
+                    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `内容排期及文案_${new Date().toISOString().split('T')[0]}.txt`;
+                    link.click();
+                } else if (type === 'xlsx') {
+                    const wb = XLSX.utils.book_new();
+                    
+                    let sheetData = [];
+                    dates.forEach(d => {
+                        const items = data[d];
+                        items.forEach((item, idx) => {
+                            sheetData.push({
+                                "日期": d,
+                                "篇数": `第${idx+1}篇`,
+                                "标题": item.title,
+                                "形式": item.type,
+                                "目标": item.goal,
+                                "切入点/钩子": item.hook,
+                                "正文内容": item.content || '(未生成)'
+                            });
+                        });
+                    });
+
+                    const ws = XLSX.utils.json_to_sheet(sheetData);
+                    XLSX.utils.book_append_sheet(wb, ws, "内容排期");
+                    XLSX.writeFile(wb, `内容排期及文案_${new Date().toISOString().split('T')[0]}.xlsx`);
+                }
+            }
+        };
+
+        app.init();
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/topic_content_calendar_planner.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

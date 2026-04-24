@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mo.js 动态图形</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Correct CDN for Mo.js -->
+  <script src="https://unpkg.com/@mojs/core@1.5.1/dist/mo.umd.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fff1f2; color: #881337; overflow: hidden; }
+    .glass { background: rgba(255, 255, 255, 0.8); border: 1px solid #fda4af; box-shadow: 0 4px 6px rgba(244, 63, 94, 0.1); }
+    .click-layer { position: absolute; inset: 0; z-index: 0; }
+    .ui-layer { position: relative; z-index: 10; pointer-events: none; }
+    button { pointer-events: auto; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="w-screen h-screen">
+
+<!-- 点击交互层 -->
+<div class="click-layer" id="scene"></div>
+
+<!-- UI 层 -->
+<div class="ui-layer flex flex-col justify-between h-full p-6 md:p-12">
+  <header class="flex justify-between items-start">
+    <div>
+      <h1 class="text-4xl font-bold text-rose-900">🌪️ Mo.js</h1>
+      <p class="text-rose-700/60 mt-2 text-xl">为 Web 构建的极速动画图形库</p>
+    </div>
+    <a href="index.html" class="px-6 py-2 bg-white/90 border border-rose-200 text-rose-700 rounded-full hover:bg-rose-50 transition-all font-bold shadow-sm">← 返回</a>
+  </header>
+
+  <footer class="text-center pb-8 pointer-events-auto">
+    <div class="glass inline-block px-8 py-4 rounded-2xl backdrop-blur-sm">
+      <p class="font-bold text-rose-800 mb-2">点击屏幕任意位置触发动画</p>
+      <div class="flex gap-4 justify-center">
+        <button onclick="triggerBurst()" class="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 shadow-md transition-transform hover:-translate-y-0.5">Burst (爆炸)</button>
+        <button onclick="triggerShape()" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 shadow-md transition-transform hover:-translate-y-0.5">Shape (图形)</button>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+  // Wait for window load to ensure mojs is available
+  window.onload = function() {
+    
+    // Check if mojs loaded
+    if (typeof mojs === 'undefined') {
+      alert('Mo.js failed to load from CDN. Please check your internet connection.');
+      return;
+    }
+
+    // 1. 基础 Burst 效果
+    const burst = new mojs.Burst({
+      left: 0, top: 0,
+      radius:   { 0: 100 },
+      count:    5,
+      children: {
+        shape:      'circle',
+        radius:     20,
+        fill:       [ 'deeppink', 'cyan', 'yellow' ],
+        strokeWidth: 5,
+        duration:   2000
+      }
+    });
+
+    // 2. 复杂的图形变换
+    const shape = new mojs.Shape({
+      left: 0, top: 0,
+      shape:        'rect',
+      radius:       25,
+      fill:         'none',
+      stroke:       '#F64040',
+      strokeWidth:  { 10 : 0 },
+      strokeDasharray: '100%',
+      strokeDashoffset: { '-100%' : '100%' },
+      angle:        { 0: 180 },
+      duration:     3000
+    });
+
+    // 3. 点击交互
+    document.getElementById('scene').addEventListener('click', function(e) {
+      const x = e.pageX;
+      const y = e.pageY;
+      
+      // 播放 Burst
+      burst
+        .tune({ x: x, y: y })
+        .replay();
+        
+      // 播放 Shape
+      shape
+        .tune({ x: x, y: y })
+        .replay();
+        
+      // 添加波纹效果
+      new mojs.Shape({
+        left: x, top: y,
+        shape: 'circle',
+        radius: {0: 50},
+        fill: 'transparent',
+        stroke: '#F64040',
+        strokeWidth: {5: 0},
+        opacity: {1: 0},
+        duration: 500,
+        easing: 'sin.out'
+      }).play();
+    });
+
+    // Expose functions globally so buttons can call them
+    window.triggerBurst = function() {
+      const x = window.innerWidth / 2;
+      const y = window.innerHeight / 2;
+      burst.tune({ x: x, y: y }).replay();
+    };
+    
+    window.triggerShape = function() {
+      const x = window.innerWidth / 2;
+      const y = window.innerHeight / 2;
+      shape.tune({ x: x, y: y }).replay();
+    };
+    
+  };
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

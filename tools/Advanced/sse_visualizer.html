@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE 流式响应可视化实验室 | SSE Stream Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- Marked for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            500: '#8b5cf6', // Violet for this tool
+                            600: '#7c3aed',
+                        },
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stream-line {
+            transition: all 0.3s ease;
+            border-left: 2px solid transparent;
+        }
+
+        .stream-line.active {
+            background: rgba(139, 92, 246, 0.1);
+            border-left-color: #8b5cf6;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen relative overflow-hidden">
+    <!-- 背景光效 -->
+    <div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none">
+        <div class="absolute top-[10%] right-[10%] w-[400px] h-[400px] bg-violet-600/10 rounded-full blur-[100px]">
+        </div>
+        <div class="absolute bottom-[10%] left-[10%] w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-[80px]"></div>
+    </div>
+
+    <div id="app" class="max-w-7xl mx-auto px-4 py-8 h-screen flex flex-col">
+
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-violet-500/10 rounded-lg text-violet-400">
+                    <i data-lucide="waves" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">SSE 流式响应解剖台</h1>
+                    <p class="text-xs text-slate-400">DeepSeek Stream API Visualization</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div
+                    class="flex items-center gap-2 text-xs bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500/50 transition-all">
+                    <span :class="apiKey ? 'bg-green-500' : 'bg-red-500'" class="w-2 h-2 rounded-full shrink-0"></span>
+                    <input type="password" v-model="apiKey" @change="saveApiKey" placeholder="输入 DeepSeek API Key"
+                        class="bg-transparent border-none outline-none text-slate-300 w-48 placeholder-slate-600">
+                </div>
+                <button @click="startSimulation" :disabled="isLoading || !apiKey"
+                    class="px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-semibold text-white transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2">
+                    <i data-lucide="play" class="w-4 h-4" v-if="!isLoading"></i>
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin" v-else></i>
+                    {{ isLoading ? '接收数据流中...' : '开始模拟' }}
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 grid grid-cols-12 gap-6 min-h-0">
+
+            <!-- Column 1: Network Stream (Raw) -->
+            <div class="col-span-4 flex flex-col glass-card rounded-xl overflow-hidden border border-slate-700/50">
+                <div class="p-3 border-b border-slate-700/50 bg-slate-800/30 flex justify-between items-center">
+                    <h2 class="text-sm font-semibold flex items-center gap-2 text-blue-400">
+                        <i data-lucide="server" class="w-4 h-4"></i>
+                        1. 原始网络流 (Network Chunk)
+                    </h2>
+                    <span class="text-[10px] font-mono text-slate-500">{{ rawChunks.length }} 包</span>
+                </div>
+                <div ref="rawStreamBox" class="flex-1 overflow-y-auto font-mono text-xs p-2 space-y-1 bg-[#0d1117]">
+                    <div v-if="rawChunks.length === 0"
+                        class="h-full flex flex-col items-center justify-center text-slate-600 opacity-50">
+                        <i data-lucide="arrow-down" class="w-8 h-8 mb-2"></i>
+                        <p>等待数据包到达...</p>
+                    </div>
+                    <div v-for="(chunk, idx) in rawChunks" :key="idx"
+                        class="stream-line p-2 rounded break-all animate-in fade-in slide-in-from-left-2 duration-300"
+                        :class="{'bg-blue-500/10 border-l-2 border-blue-500': idx === currentProcessingIdx}">
+                        <div class="text-slate-500 mb-1 select-none flex justify-between">
+                            <span>#{{ idx + 1 }} &middot; {{ chunk.timestamp }}ms</span>
+                            <span class="text-[10px]">{{ chunk.size }} bytes</span>
+                        </div>
+                        <div class="text-green-400 opacity-90 leading-tight">
+                            {{ chunk.content }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2: Parser Logic -->
+            <div class="col-span-4 flex flex-col glass-card rounded-xl overflow-hidden border border-slate-700/50">
+                <div class="p-3 border-b border-slate-700/50 bg-slate-800/30 flex justify-between items-center">
+                    <h2 class="text-sm font-semibold flex items-center gap-2 text-yellow-400">
+                        <i data-lucide="cpu" class="w-4 h-4"></i>
+                        2. 解析过程 (Parsing)
+                    </h2>
+                    <span class="text-[10px] font-mono text-slate-500">SSE Event Extract</span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 bg-[#111] font-mono text-xs relative">
+                    <!-- Current Operation Visualizer -->
+                    <div v-if="currentParserState" class="space-y-4">
+
+                        <!-- Step 1: Buffer -->
+                        <div class="space-y-1">
+                            <div class="text-slate-500">Current Buffer:</div>
+                            <div class="p-2 bg-slate-800 rounded border border-slate-700 text-slate-300 break-all">
+                                {{ currentParserState.buffer }}
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center text-slate-600">
+                            <i data-lucide="arrow-down" class="w-4 h-4"></i>
+                        </div>
+
+                        <!-- Step 2: Line Split -->
+                        <div class="space-y-1">
+                            <div class="text-slate-500">Identify "data:" line:</div>
+                            <div
+                                class="p-2 bg-yellow-900/20 border border-yellow-500/30 rounded text-yellow-300 break-all">
+                                {{ currentParserState.line }}
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center text-slate-600">
+                            <i data-lucide="arrow-down" class="w-4 h-4"></i>
+                        </div>
+
+                        <!-- Step 3: JSON Parse -->
+                        <div class="space-y-1">
+                            <div class="text-slate-500">JSON.parse(content):</div>
+                            <div class="p-2 bg-green-900/20 border border-green-500/30 rounded text-green-300">
+                                <span class="text-slate-400">delta.content = </span>
+                                "<span class="font-bold bg-green-500/20 px-1 rounded text-white">{{
+                                    currentParserState.content }}</span>"
+                            </div>
+                        </div>
+
+                    </div>
+                    <div v-else class="h-full flex items-center justify-center text-slate-600 opacity-50">
+                        <p>等待解析...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 3: Rendered Output -->
+            <div class="col-span-4 flex flex-col glass-card rounded-xl overflow-hidden border border-slate-700/50">
+                <div class="p-3 border-b border-slate-700/50 bg-slate-800/30 flex justify-between items-center">
+                    <h2 class="text-sm font-semibold flex items-center gap-2 text-purple-400">
+                        <i data-lucide="monitor" class="w-4 h-4"></i>
+                        3. 最终渲染 (UI Render)
+                    </h2>
+                    <span class="text-[10px] font-mono text-slate-500">Markdown View</span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 bg-slate-900/50 relative">
+                    <!-- Text Accumulation -->
+                    <div class="prose prose-invert prose-sm max-w-none">
+                        <div v-html="renderedMarkdown"></div>
+                        <span v-if="isLoading"
+                            class="inline-block w-2 h-4 bg-violet-500 animate-pulse ml-1 align-middle"></span>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Controls / Visualization Settings -->
+        <footer class="mt-6 shrink-0 grid grid-cols-2 gap-6">
+            <div class="glass-card p-4 rounded-lg flex items-center gap-4">
+                <div class="text-xs text-slate-400 w-24">演示延迟</div>
+                <input type="range" class="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                    v-model.number="delay" min="0" max="500" step="50">
+                <div class="text-xs font-mono w-16 text-right">{{ delay }}ms/包</div>
+            </div>
+            <div class="glass-card p-4 rounded-lg flex items-center gap-2 text-xs text-slate-400">
+                <i data-lucide="info" class="w-4 h-4 text-slate-500"></i>
+                <span>此工具通过向 DeepSeek 请求 100 字符的回复，并人为降低处理速度，来展示前端如何一步步处理 SSE 数据流。</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, nextTick, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const apiKey = ref('');
+                const isLoading = ref(false);
+                const rawChunks = ref([]);
+                const currentProcessingIdx = ref(-1);
+                const currentParserState = ref(null);
+                const streamingText = ref('');
+                const delay = ref(100); // Artificial delay in ms
+                const rawStreamBox = ref(null);
+
+                onMounted(() => {
+                    const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    apiKey.value = config.deepseek_api_key || '';
+                    try {
+                        if (typeof lucide !== 'undefined') {
+                            lucide.createIcons();
+                        }
+                    } catch (e) {
+                        console.warn('Lucide icons failed to load', e);
+                    }
+                });
+
+                const saveApiKey = () => {
+                    const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    config.deepseek_api_key = apiKey.value;
+                    localStorage.setItem('global_llm_config', JSON.stringify(config));
+                };
+
+                const renderedMarkdown = computed(() => {
+                    return marked.parse(streamingText.value);
+                });
+
+                const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+                const startSimulation = async () => {
+                    if (!apiKey.value) return;
+
+                    // Reset State
+                    isLoading.value = true;
+                    rawChunks.value = [];
+                    streamingText.value = '';
+                    currentProcessingIdx.value = -1;
+                    currentParserState.value = null;
+
+                    const messages = [
+                        { role: "system", content: "You are a helpful assistant." },
+                        { role: "user", content: "Print a random poem about programming in exactly 4 lines. No more than 100 characters in total." }
+                    ];
+
+                    try {
+                        const response = await fetch("https://api.deepseek.com/chat/completions", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${apiKey.value}`
+                            },
+                            body: JSON.stringify({
+                                model: "deepseek-v4-flash",
+                                messages: messages,
+                                stream: true,
+                                max_tokens: 100
+                            })
+                        });
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder("utf-8");
+                        let buffer = "";
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunkStr = decoder.decode(value, { stream: true });
+
+                            // 1. Record Raw Chunk
+                            const chunkObj = {
+                                content: chunkStr,
+                                timestamp: Date.now() % 10000,
+                                size: value.byteLength
+                            };
+                            rawChunks.value.push(chunkObj);
+
+                            // Visual: Scroll to bottom of chunk list
+                            nextTick(() => {
+                                if (rawStreamBox.value) rawStreamBox.value.scrollTop = rawStreamBox.value.scrollHeight;
+                            });
+
+                            // Process this chunk with delay for visualization
+                            currentProcessingIdx.value = rawChunks.value.length - 1;
+
+                            // Append to main buffer
+                            buffer += chunkStr;
+
+                            // Parse lines
+                            const lines = buffer.split('\n');
+
+                            // Keep the last incomplete line in buffer
+                            buffer = lines.pop();
+
+                            for (const line of lines) {
+                                if (line.trim() === '') continue;
+                                if (line.trim() === 'data: [DONE]') continue;
+
+                                if (line.startsWith('data: ')) {
+                                    const jsonStr = line.slice(6);
+                                    try {
+                                        const json = JSON.parse(jsonStr);
+                                        const deltaContent = json.choices[0].delta.content || '';
+
+                                        // 2. Visual: Show Parser State
+                                        currentParserState.value = {
+                                            buffer: line.substring(0, 40) + '...', // Just show snippet
+                                            line: line.substring(0, 50) + (line.length > 50 ? '...' : ''),
+                                            content: deltaContent
+                                        };
+
+                                        // Wait for visual effect
+                                        if (delay.value > 0) await sleep(delay.value);
+
+                                        // 3. Visual: Update Text
+                                        if (deltaContent) {
+                                            streamingText.value += deltaContent;
+                                        }
+
+                                    } catch (e) {
+                                        console.error("Parse error", e);
+                                    }
+                                }
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error(error);
+                        alert("API Error: " + error.message);
+                    } finally {
+                        isLoading.value = false;
+                        currentParserState.value = null;
+                        currentProcessingIdx.value = -1;
+                    }
+                };
+
+                return {
+                    apiKey,
+                    isLoading,
+                    rawChunks,
+                    streamingText,
+                    renderedMarkdown,
+                    startSimulation,
+                    currentProcessingIdx,
+                    currentParserState,
+                    delay,
+                    rawStreamBox,
+                    saveApiKey
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>

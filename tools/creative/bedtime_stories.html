@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>睡前故事生成器 - AI 童话屋</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .story-title {
+            font-family: 'Zcool KuaiLe', cursive;
+        }
+
+        .stars {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 100%);
+            z-index: -1;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col items-center p-6">
+    <div class="stars"></div>
+
+    <!-- 浮动右上角工具栏 -->
+    <div id="app" class="w-full max-w-3xl space-y-8">
+        <div class="fixed top-6 right-6 z-50 flex items-center gap-2">
+            <!-- V4 Flash/V4 Pro 模型切换器 -->
+            <div class="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-lg p-1 border border-white/20">
+                <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                    :class="{'bg-indigo-500 shadow text-white': apiConfig.model === 'deepseek-v4-flash', 'text-slate-300': apiConfig.model !== 'deepseek-v4-flash'}"
+                    class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                    :class="{'bg-indigo-500 shadow text-white': apiConfig.model === 'deepseek-v4-pro', 'text-slate-300': apiConfig.model !== 'deepseek-v4-pro'}"
+                    class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+            </div>
+            <!-- 设置按钮 -->
+            <button @click="showSettings = true"
+                class="bg-white/10 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-lg hover:bg-white/20 transition flex items-center gap-1 text-xs">
+                <i class="fa-solid fa-gear w-3 h-3"></i>
+                <span class="hidden sm:inline">设置</span>
+            </button>
+        </div>
+
+        <!-- 头部 -->
+        <div class="text-center space-y-2">
+            <div class="inline-block p-3 bg-indigo-500 rounded-full shadow-lg shadow-indigo-500/50 mb-4">
+                <i class="fa-solid fa-moon w-10 h-10 text-white"></i>
+            </div>
+            <h1
+                class="text-4xl font-black story-title tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-400">
+                AI 睡前故事生成器</h1>
+            <p class="text-slate-400 text-sm">为每个孩子定制专属的奇幻梦境</p>
+        </div>
+
+        <!-- 输入区 -->
+        <div class="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] shadow-2xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">宝贝称呼</label>
+                    <input v-model="name" type="text" placeholder="例：小明、跳跳"
+                        class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">宝贝年龄</label>
+                    <select v-model="age"
+                        class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500">
+                        <option value="2-4">2-4 岁</option>
+                        <option value="5-7">5-7 岁</option>
+                        <option value="8-10">8-10 岁</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">想让孩子明白的道理
+                    (或故事主题)</label>
+                <textarea v-model="lesson"
+                    class="w-full h-24 bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500 resize-none"
+                    placeholder="例：勇敢面对黑暗、要按时刷牙、珍惜友谊..."></textarea>
+            </div>
+            <button @click="generateStory" :disabled="isGenerating || !name"
+                class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold shadow-xl shadow-indigo-600/30 transition flex items-center justify-center gap-2">
+                <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin w-5 h-5"></i>
+                <span v-else>✨ 开启奇幻旅程</span>
+            </button>
+        </div>
+
+        <!-- 错误提示 -->
+        <div v-if="errorLog"
+            class="bg-red-500/20 border border-red-500/50 rounded-xl p-4 text-xs text-red-200 overflow-auto max-h-40">
+            <div class="font-bold mb-1">⚠️ 故事生成中断:</div>
+            <pre>{{ errorLog }}</pre>
+        </div>
+
+        <!-- 故事显示 -->
+        <div v-if="story"
+            class="bg-white p-10 rounded-[2.5rem] shadow-2xl space-y-6 text-slate-800 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+            </div>
+            <h2 class="text-3xl font-black text-center story-title text-indigo-900">{{ story.title }}</h2>
+            <div class="prose prose-slate max-w-none text-lg leading-loose space-y-4 whitespace-pre-wrap">
+                {{ story.content }}
+            </div>
+            <div class="pt-6 border-t border-slate-100 flex justify-between items-center">
+                <div class="text-xs text-slate-400">道理：{{ lesson }}</div>
+                <button @click="copyStory"
+                    class="text-indigo-600 hover:text-indigo-800 font-bold text-sm flex items-center gap-1">
+                    <i class="fa-regular fa-copy w-4 h-4"></i> 复制故事
+                </button>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4"
+            @click="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">API 配置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark h-5 w-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2 outline-none">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 hover:bg-slate-100 rounded-lg text-slate-600">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a href="../../index.html"
+                class="text-slate-500 hover:text-white transition text-sm flex items-center justify-center gap-1">
+                <i class="fa-solid fa-arrow-left w-4 h-4"></i> 返回首页
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        createApp({
+            setup() {
+                // renderIcon removed
+
+                const name = ref('');
+                const age = ref('5-7');
+                const lesson = ref('');
+                const isGenerating = ref(false);
+                const story = ref(null);
+                const errorLog = ref('');
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    // lucide.createIcons();
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const config = JSON.parse(saved);
+                            apiConfig.value = { ...apiConfig.value, ...config };
+                        } catch (e) {
+                            console.error('Failed to parse global_llm_config', e);
+                        }
+                    }
+                    if (!apiConfig.value.model) apiConfig.value.model = 'deepseek-v4-flash';
+                });
+
+                const generateStory = async () => {
+                    if (!apiConfig.value.deepseek) { alert('请先配置 API Key'); return; }
+                    isGenerating.value = true;
+                    story.value = null;
+                    errorLog.value = '';
+
+                    const prompt = `你是一个温柔的儿童文学作家。请为孩子创作一个睡前童话。
+                    孩子姓名：${name.value}，年龄：${age.value}。
+                    故事核心寓意/道理：${lesson.value}。
+                    要求：语气亲切、富有想象力、适合这个年龄段理解、长度约 500 字。
+                    请直接返回 JSON 格式：{ "title": "故事标题", "content": "故事内容全文" }。不要有任何额外文字。`;
+
+                    try {
+                        const payload = {
+                            model: apiConfig.value.model || 'deepseek-v4-flash', // 再次兜底
+                            messages: [{ role: "system", content: prompt }],
+                            stream: false
+                        };
+
+                        let response;
+                        try {
+                            response = await fetch('https://api.deepseek.com/chat/completions', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiConfig.value.deepseek}` },
+                                body: JSON.stringify(payload)
+                            });
+                        } catch (e) {
+                            throw new Error(`网络请求失败: ${e.message}`);
+                        }
+
+                        if (!response.ok) {
+                            const errText = await response.text();
+                            throw new Error(`API Error ${response.status}: ${errText}`);
+                        }
+
+                        const data = await response.json();
+                        const content = data.choices[0].message.content;
+                        // 清洗 Markdown
+                        let cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const match = cleanJson.match(/\{[\s\S]*\}/);
+                        if (match) cleanJson = match[0];
+
+                        story.value = JSON.parse(cleanJson);
+
+                    } catch (e) {
+                        console.error(e);
+                        errorLog.value = e.message;
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+                const copyStory = () => { navigator.clipboard.writeText(story.value.content); alert('已复制！'); };
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                    alert('配置已保存');
+                };
+
+                return {
+                    name, age, lesson, isGenerating, story, errorLog, showSettings, apiConfig, generateStory, copyStory, saveConfig
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_bedtime_stories.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

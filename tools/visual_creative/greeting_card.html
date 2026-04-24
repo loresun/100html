@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 贺卡工坊 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- 代码区语法高亮（深色主题与 IDE 风格一致） -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <style>
+        /* 粉色调页面背景渐变 */
+        body {
+            background: linear-gradient(160deg, #fdf2f8 0%, #fce7f3 28%, #fbcfe8 55%, #f9a8d4 85%, #f472b6 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.3); }
+        ::-webkit-scrollbar-thumb { background: #db2777; border-radius: 3px; }
+
+        /* 预览区外框装饰：双层描边 + 角花 */
+        .preview-frame {
+            position: relative;
+            padding: 14px;
+            background: linear-gradient(135deg, #fff 0%, #fdf2f8 50%, #fce7f3 100%);
+            border-radius: 1.25rem;
+            box-shadow:
+                0 0 0 3px rgba(219, 39, 119, 0.35),
+                0 0 0 8px rgba(255, 255, 255, 0.9),
+                0 25px 50px -12px rgba(190, 24, 93, 0.35);
+        }
+        .preview-frame::before,
+        .preview-frame::after {
+            content: '';
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border: 3px solid #db2777;
+            pointer-events: none;
+        }
+        .preview-frame::before {
+            top: 6px; left: 6px;
+            border-right: none; border-bottom: none;
+            border-radius: 10px 0 0 0;
+        }
+        .preview-frame::after {
+            bottom: 6px; right: 6px;
+            border-left: none; border-top: none;
+            border-radius: 0 0 10px 0;
+        }
+
+        /* IDE 风格代码外壳 */
+        .ide-shell {
+            background: linear-gradient(180deg, #1e1e2e 0%, #181825 100%);
+            border: 1px solid rgba(244, 114, 182, 0.25);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .ide-dots span {
+            width: 10px; height: 10px; border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* 预览区加载动画 */
+        @keyframes cardShimmer {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        .preview-loading-bg {
+            background: linear-gradient(90deg, #fce7f3, #fbcfe8, #f9a8d4, #fbcfe8, #fce7f3);
+            background-size: 200% 100%;
+            animation: cardShimmer 1.8s ease-in-out infinite;
+        }
+        @keyframes heartPulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.15); opacity: 1; }
+        }
+        .loading-heart {
+            animation: heartPulse 1.2s ease-in-out infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+    <div x-data="greetingCardApp()" x-init="init()" class="min-h-screen pb-12">
+
+        <!-- 顶部导航：左侧返回项目首页 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-pink-200/80 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i data-lucide="gift" class="text-pink-600 h-6 w-6"></i>
+                    <span class="font-bold text-xl text-slate-900">HTML 贺卡工坊</span>
+                </div>
+                <button type="button" @click="showSettings = true"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-pink-50 hover:text-pink-700 transition">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">设置</span>
+                </button>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+            <p class="text-sm text-pink-900/70 mb-6 text-center sm:text-left">
+                描述你想要的贺卡场景与祝福，AI 将生成可独立运行的 HTML/CSS 贺卡，右侧实时预览。
+            </p>
+
+            <!-- 桌面：左输入+代码 / 右预览；移动端：纵向堆叠 -->
+            <div class="flex flex-col xl:flex-row gap-6 xl:items-stretch">
+
+                <!-- 左侧列 -->
+                <div class="flex-1 min-w-0 flex flex-col gap-5 order-2 xl:order-1">
+
+                    <!-- 输入卡片 -->
+                    <div class="bg-white/90 backdrop-blur rounded-2xl border border-pink-200 shadow-lg p-5 sm:p-6">
+                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+                            <i data-lucide="pen-line" class="w-5 h-5 text-pink-600"></i>
+                            贺卡设定
+                        </h2>
+
+                        <!-- 贺卡场景标签 -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">贺卡场景（可多选）</label>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="tag in occasionOptions" :key="tag">
+                                    <button type="button"
+                                        @click="toggleOccasion(tag)"
+                                        :class="form.occasions.includes(tag)
+                                            ? 'bg-pink-600 text-white border-pink-600 shadow-md'
+                                            : 'bg-white text-slate-600 border-pink-100 hover:border-pink-300'"
+                                        class="px-3 py-1.5 rounded-full text-sm border transition"
+                                        x-text="tag"></button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">收件人名字</label>
+                                <input type="text" x-model="form.recipient" placeholder="例如：小雅"
+                                    class="w-full rounded-xl border border-pink-100 bg-pink-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-pink-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">视觉风格</label>
+                                <select x-model="form.style"
+                                    class="w-full rounded-xl border border-pink-100 bg-pink-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-pink-500">
+                                    <template x-for="s in styleOptions" :key="s.value">
+                                        <option :value="s.value" x-text="s.label"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">想说的话 / 祝福语</label>
+                            <textarea x-model="form.message" rows="4" placeholder="写下你想对 TA 说的话…"
+                                class="w-full rounded-xl border border-pink-100 bg-pink-50/50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-pink-500 resize-y min-h-[100px]"></textarea>
+                        </div>
+
+                        <!-- 预设示例：快速填充表单 -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">快速体验模板</label>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="ex in presets" :key="ex.id">
+                                    <button type="button" @click="applyPreset(ex)"
+                                        class="text-xs px-3 py-1.5 rounded-lg border border-pink-200 bg-white text-pink-800 hover:bg-pink-50 transition"
+                                        x-text="ex.title"></button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" @click="generateCard(false)"
+                                :disabled="isLoading || !canGenerate"
+                                class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-600/30 transition">
+                                <i x-show="isLoading" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                <i x-show="!isLoading" data-lucide="sparkles" class="w-5 h-5"></i>
+                                <span x-text="isLoading ? '正在生成…' : '生成贺卡'"></span>
+                            </button>
+                            <button type="button" @click="generateCard(true)"
+                                :disabled="isLoading || !generatedCode"
+                                class="sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium border-2 border-pink-300 text-pink-800 bg-white/80 hover:bg-pink-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                换一个风格
+                            </button>
+                        </div>
+                        <p x-show="errorMsg" class="mt-3 text-sm text-red-600" x-text="errorMsg"></p>
+
+                        <!-- V4 Pro 推理过程 -->
+                        <div x-show="reasoningBuffer" class="mt-4">
+                            <details class="text-xs border border-pink-100 rounded-xl p-3 bg-pink-50/50">
+                                <summary class="cursor-pointer font-medium text-slate-600">🧠 深度思考过程（点击展开）</summary>
+                                <pre class="mt-2 p-3 bg-white rounded-lg whitespace-pre-wrap text-slate-600 max-h-36 overflow-y-auto text-[11px]" x-text="reasoningBuffer"></pre>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- 代码区：深色 IDE 风格 -->
+                    <div class="flex-1 min-h-[280px] flex flex-col rounded-2xl overflow-hidden ide-shell">
+                        <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-black/20">
+                            <div class="flex items-center gap-3">
+                                <div class="ide-dots flex gap-1.5">
+                                    <span class="bg-rose-400"></span>
+                                    <span class="bg-amber-400"></span>
+                                    <span class="bg-emerald-400"></span>
+                                </div>
+                                <span class="text-xs text-pink-200/80 font-mono">greeting-card.html</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button type="button" @click="copyCode()"
+                                    class="p-2 rounded-lg text-pink-200/90 hover:bg-white/10 transition" title="复制代码">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                                <button type="button" @click="openInNewWindow()"
+                                    :disabled="!generatedCode"
+                                    class="p-2 rounded-lg text-pink-200/90 hover:bg-white/10 disabled:opacity-30 transition" title="新窗口预览">
+                                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                                </button>
+                                <button type="button" @click="downloadHtml()"
+                                    :disabled="!generatedCode"
+                                    class="p-2 rounded-lg text-pink-200/90 hover:bg-white/10 disabled:opacity-30 transition" title="下载 HTML">
+                                    <i data-lucide="download" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-auto max-h-[min(52vh,520px)] p-0">
+                            <pre class="m-0 p-4 text-sm leading-relaxed"><code x-ref="codeEl" class="language-html hljs" x-text="displayCode"></code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：预览 -->
+                <div class="xl:w-[min(100%,860px)] flex-shrink-0 order-1 xl:order-2">
+                    <div class="preview-frame h-full min-h-[320px] xl:min-h-[640px]">
+                        <div class="relative rounded-xl overflow-hidden bg-white h-full min-h-[300px] xl:min-h-[600px] flex items-center justify-center">
+                            <!-- 加载遮罩 -->
+                            <div x-show="isLoading"
+                                class="absolute inset-0 z-20 preview-loading-bg flex flex-col items-center justify-center gap-4">
+                                <i data-lucide="heart" class="w-14 h-14 text-pink-600 loading-heart"></i>
+                                <p class="text-pink-900 font-medium text-sm">AI 正在绘制你的贺卡…</p>
+                                <div class="flex gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-pink-600 animate-bounce" style="animation-delay:0ms"></span>
+                                    <span class="w-2 h-2 rounded-full bg-pink-600 animate-bounce" style="animation-delay:150ms"></span>
+                                    <span class="w-2 h-2 rounded-full bg-pink-600 animate-bounce" style="animation-delay:300ms"></span>
+                                </div>
+                            </div>
+                            <!-- 空状态 -->
+                            <div x-show="!isLoading && !generatedCode" class="text-center px-6 py-12 text-pink-900/50">
+                                <i data-lucide="image" class="w-16 h-16 mx-auto mb-3 opacity-40"></i>
+                                <p class="text-sm">填写左侧信息并点击「生成贺卡」</p>
+                                <p class="text-xs mt-2 text-pink-800/40">预览区域约 800×600，支持动画效果</p>
+                            </div>
+                            <!-- iframe 实时预览 -->
+                            <iframe x-show="!isLoading && generatedCode"
+                                x-ref="previewFrame"
+                                class="w-full border-0 bg-white"
+                                style="min-height: 280px; height: min(70vh, 620px);"
+                                title="贺卡预览"
+                                sandbox="allow-scripts allow-same-origin"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗：API Key + 模型 -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/45"
+            @keydown.escape.window="showSettings = false">
+            <div @click.away="showSettings = false"
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-pink-100">
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="key-round" class="w-5 h-5 text-pink-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border border-pink-100 px-3 py-2.5 outline-none focus:ring-2 focus:ring-pink-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-pink-100 px-3 py-2.5 outline-none focus:ring-2 focus:ring-pink-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false"
+                        class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100">取消</button>
+                    <button type="button" @click="saveConfig()"
+                        class="px-4 py-2 rounded-xl bg-pink-600 text-white font-medium hover:bg-pink-500">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl shadow-lg text-white text-sm font-medium"
+            :class="toast.type === 'error' ? 'bg-red-600' : 'bg-pink-700'"
+            x-text="toast.msg"></div>
+    </div>
+
+    <script>
+        /**
+         * HTML 贺卡工坊 — Alpine 根组件
+         * 职责：收集用户需求、流式调用 DeepSeek、解析 HTML、iframe 预览、导出与复制
+         */
+        function greetingCardApp() {
+            return {
+                showSettings: false,
+                isLoading: false,
+                errorMsg: '',
+                toast: { show: false, msg: '', type: 'info' },
+                reasoningBuffer: '',
+
+                /** DeepSeek 配置（与 global_llm_config 对齐字段） */
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                /** 表单：场景多选、收件人、风格、祝福语 */
+                form: {
+                    occasions: [],
+                    recipient: '',
+                    style: 'cute',
+                    message: ''
+                },
+
+                /** 可选场景标签 */
+                occasionOptions: ['生日', '新年', '结婚', '毕业', '母亲节', '父亲节', '情人节', '中秋', '感谢', '通用'],
+
+                /** 风格下拉：value 用于 prompt */
+                styleOptions: [
+                    { value: 'minimal', label: '简约' },
+                    { value: 'luxury', label: '华丽' },
+                    { value: 'cute', label: '可爱' },
+                    { value: 'retro', label: '复古' },
+                    { value: 'cyberpunk', label: '赛博朋克' }
+                ],
+
+                /**
+                 * 预设示例：仅填充表单，便于一键体验生成流程
+                 */
+                presets: [
+                    { id: 'p1', title: '生日·可爱', occasions: ['生日'], recipient: '小雨', style: 'cute', message: '愿你永远被温柔环绕，生日快乐！' },
+                    { id: 'p2', title: '新年·华丽', occasions: ['新年'], recipient: '家人', style: 'luxury', message: '新岁常欢愉，万事皆胜意。' },
+                    { id: 'p3', title: '情人节·简约', occasions: ['情人节'], recipient: '亲爱的你', style: 'minimal', message: '与你共度的每一天，都是最好的节日。' },
+                    { id: 'p4', title: '毕业·复古', occasions: ['毕业'], recipient: '同窗', style: 'retro', message: '此去前程似锦，相逢依然如故。' },
+                    { id: 'p5', title: '母亲节', occasions: ['母亲节'], recipient: '妈妈', style: 'cute', message: '谢谢你一直照亮我的路，爱你。' },
+                    { id: 'p6', title: '赛博祝福', occasions: ['通用'], recipient: '玩家', style: 'cyberpunk', message: '系统提示：今日快乐值已拉满。' }
+                ],
+
+                /** AI 原始输出（含可能的 markdown 围栏） */
+                rawStream: '',
+                /** 提取后的完整 HTML 文档字符串 */
+                generatedCode: '',
+
+                /**
+                 * 代码区展示：无内容时显示占位提示
+                 */
+                get displayCode() {
+                    return this.generatedCode || '// 生成完成后，完整 HTML 将显示在此处…';
+                },
+
+                get canGenerate() {
+                    const msg = (this.form.message || '').trim();
+                    const occ = this.form.occasions.length > 0;
+                    return occ && msg.length > 0;
+                },
+
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        } catch (e) { /* 忽略损坏配置 */ }
+                    }
+                    this.$nextTick(() => {
+                        if (window.lucide) lucide.createIcons();
+                        this.refreshHighlight();
+                    });
+
+                    /* 监听代码文本变化，重新跑语法高亮 */
+                    this.$watch('generatedCode', () => {
+                        this.$nextTick(() => this.refreshHighlight());
+                    });
+                },
+
+                /**
+                 * 使用 highlight.js 刷新 code 元素高亮
+                 */
+                refreshHighlight() {
+                    const el = this.$refs.codeEl;
+                    if (!el || !window.hljs) return;
+                    try {
+                        el.removeAttribute('data-highlighted');
+                        hljs.highlightElement(el);
+                    } catch (e) { /* 占位文案非合法 HTML 时忽略 */ }
+                },
+
+                /**
+                 * 将 iframe 的 srcdoc 设为当前贺卡 HTML
+                 */
+                syncPreview() {
+                    const iframe = this.$refs.previewFrame;
+                    if (iframe && this.generatedCode) {
+                        iframe.srcdoc = this.generatedCode;
+                    }
+                },
+
+                /** 切换场景标签选中状态 */
+                toggleOccasion(tag) {
+                    const i = this.form.occasions.indexOf(tag);
+                    if (i >= 0) this.form.occasions.splice(i, 1);
+                    else this.form.occasions.push(tag);
+                },
+
+                /** 应用预设模板到表单 */
+                applyPreset(ex) {
+                    this.form.occasions = [...(ex.occasions || [])];
+                    this.form.recipient = ex.recipient || '';
+                    this.form.style = ex.style || 'cute';
+                    this.form.message = ex.message || '';
+                    this.showToast('已填入示例，可点击「生成贺卡」', 'success');
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /**
+                 * 合并写入 global_llm_config，避免覆盖其他工具字段
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'success');
+                },
+
+                showToast(msg, type = 'info') {
+                    this.toast = { show: true, msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2600);
+                },
+
+                /**
+                 * 系统提示：约束输出为单文件、内联样式、固定尺寸与动画
+                 */
+                getSystemPrompt() {
+                    return `你是「HTML 贺卡工坊」的资深前端设计师，专门输出**一份完整、可独立在浏览器打开的电子贺卡 HTML 页面**。
+
+【输出格式】
+- 必须使用一个 Markdown 代码围栏包裹完整文档：首行写 \`\`\`html ，末尾写 \`\`\` 。
+- 围栏内是**唯一**内容：从 <!DOCTYPE html> 到 </html> 的完整文档，不要附加解释文字。
+
+【视觉与结构】
+- 贺卡主视觉区域：固定约 800px × 600px 的容器（可用固定 width/height + max-width:100% + 外层 flex 居中），小屏可用 transform: scale(...) 或缩小 padding 适配。
+- 所有 CSS 写在 <style> 标签内（可配合少量内联 style），**禁止** link 外部样式、@import、外链图片、外链字体、外链脚本。
+- 仅使用 HTML + CSS；**禁止** <script>（安全与 sandbox 兼容）。
+- 使用渐变、阴影、边框、Unicode 装饰符号（如 ✦ ♥ ★）营造氛围。
+
+【动效】
+- 至少包含 **2 种** 不同的 @keyframes 动画（例如：淡入上浮、轻微摇摆、光晕脉冲、粒子闪烁、背景缓慢移动等），通过 animation 应用到标题或装饰元素。
+
+【文案】
+- 根据用户提供的收件人姓名、场景、祝福语，将内容自然融入版面（可用主标题 + 副文案结构）。
+- 默认语言与用户输入一致（一般为中文）。
+
+【禁止】
+- 不要使用需要联网的资源；不要输出多个代码块；不要在围栏外输出多余字符。`;
+                },
+
+                /** 将 style value 转为中文描述给模型 */
+                styleLabel(v) {
+                    const m = { minimal: '简约', luxury: '华丽', cute: '可爱', retro: '复古', cyberpunk: '赛博朋克' };
+                    return m[v] || v;
+                },
+
+                /**
+                 * 构造用户消息
+                 * @param {boolean} styleRefresh 是否为「换一个风格」模式
+                 */
+                buildUserMessage(styleRefresh) {
+                    const occ = this.form.occasions.join('、');
+                    const name = (this.form.recipient || '').trim() || '朋友';
+                    const msg = (this.form.message || '').trim();
+                    const st = this.styleLabel(this.form.style);
+
+                    let base = `请为我设计一张电子贺卡：
+【场景】${occ}
+【收件人】${name}
+【我想说的话】${msg}
+【风格偏好】${st}
+
+请严格按系统说明输出单个 \`\`\`html 代码块。`;
+
+                    if (styleRefresh && this.generatedCode) {
+                        base += `
+
+【重要】用户希望**在保持祝福语含义不变**的前提下，**彻底换一种视觉风格**（版式、配色、装饰元素、动效类型都要与上一版明显不同）。请忽略上一版的具体 HTML，重新设计一版全新的贺卡页面。`;
+                    }
+                    return base;
+                },
+
+                /**
+                 * 从模型输出中提取 HTML 字符串（支持 \`\`\`html 围栏或裸 HTML）
+                 * @param {string} raw 模型完整输出
+                 * @returns {string} 可放入 srcdoc 的文档
+                 */
+                extractHtml(raw) {
+                    if (!raw || !raw.trim()) return '';
+                    const fence = raw.match(/```(?:html)?\s*([\s\S]*?)```/i);
+                    if (fence) return fence[1].trim();
+
+                    const t = raw.trim();
+                    if (/^<!DOCTYPE/i.test(t) || /^<html/i.test(t)) return t;
+
+                    /* 尝试截取第一个 <html ...> 到最后 */
+                    const hi = t.search(/<html[\s>]/i);
+                    if (hi >= 0) {
+                        const lo = t.toLowerCase().lastIndexOf('</html>');
+                        if (lo > hi) return t.slice(hi, lo + 7);
+                    }
+                    return t;
+                },
+
+                /**
+                 * 生成贺卡主流程
+                 * @param {boolean} styleOnly true 表示「换一个风格」
+                 */
+                async generateCard(styleOnly) {
+                    this.errorMsg = '';
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 DeepSeek API Key', 'error');
+                        return;
+                    }
+                    if (!this.canGenerate) {
+                        this.errorMsg = '请至少选择一个场景并填写祝福语。';
+                        return;
+                    }
+                    if (styleOnly && !this.generatedCode) {
+                        this.errorMsg = '请先生成一版贺卡，再尝试换风格。';
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    this.reasoningBuffer = '';
+                    this.rawStream = '';
+                    if (!styleOnly) this.generatedCode = '';
+
+                    const messages = [
+                        { role: 'system', content: this.getSystemPrompt() },
+                        { role: 'user', content: this.buildUserMessage(styleOnly) }
+                    ];
+
+                    try {
+                        await this.streamDeepSeek(messages, (content, reasoning) => {
+                            if (reasoning) this.reasoningBuffer += reasoning;
+                            if (content) this.rawStream += content;
+                            /* 流式过程中尝试解析，便于提前预览（可能不完整） */
+                            const partial = this.extractHtml(this.rawStream);
+                            if (partial && partial.includes('<')) {
+                                this.generatedCode = partial;
+                                this.syncPreview();
+                            }
+                        });
+
+                        const finalHtml = this.extractHtml(this.rawStream);
+                        if (!finalHtml || !/<html[\s>]/i.test(finalHtml)) {
+                            this.errorMsg = '未能解析出完整 HTML，请重试或更换模型。';
+                            this.generatedCode = this.rawStream.trim();
+                        } else {
+                            this.generatedCode = finalHtml;
+                        }
+                        this.syncPreview();
+                        this.showToast(styleOnly ? '已按新风格重新生成' : '贺卡生成完成', 'success');
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = e.message || '生成失败，请稍后重试';
+                    } finally {
+                        this.isLoading = false;
+                        this.$nextTick(() => {
+                            if (window.lucide) lucide.createIcons();
+                            this.refreshHighlight();
+                            this.syncPreview();
+                        });
+                    }
+                },
+
+                /**
+                 * DeepSeek Chat Completions 流式请求
+                 * @param {Array} messages OpenAI 格式消息列表
+                 * @param {(content: string, reasoning: string) => void} onDelta
+                 */
+                async streamDeepSeek(messages, onDelta) {
+                    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages,
+                            stream: true,
+                            temperature: 0.88
+                        })
+                    });
+
+                    if (!resp.ok) {
+                        const errData = await resp.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || ('API 错误 ' + resp.status));
+                    }
+
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const raw = line.slice(6).trim();
+                            if (raw === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(raw);
+                                const delta = parsed.choices[0]?.delta || {};
+                                const r = delta.reasoning_content || '';
+                                const c = delta.content || '';
+                                if (r || c) onDelta(c, r);
+                            } catch (err) { /* 跳过损坏行 */ }
+                        }
+                    }
+                },
+
+                /** 复制 HTML 到剪贴板 */
+                async copyCode() {
+                    const t = this.generatedCode;
+                    if (!t) {
+                        this.showToast('暂无代码可复制', 'error');
+                        return;
+                    }
+                    try {
+                        await navigator.clipboard.writeText(t);
+                        this.showToast('已复制到剪贴板', 'success');
+                    } catch (e) {
+                        const ta = document.createElement('textarea');
+                        ta.value = t;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        this.showToast('已复制到剪贴板', 'success');
+                    }
+                },
+
+                /** 新标签页打开贺卡 */
+                openInNewWindow() {
+                    if (!this.generatedCode) return;
+                    const w = window.open('about:blank', '_blank');
+                    if (w) {
+                        w.document.open();
+                        w.document.write(this.generatedCode);
+                        w.document.close();
+                    } else {
+                        this.showToast('请允许弹出窗口', 'error');
+                    }
+                },
+
+                /** 下载为 .html 文件 */
+                downloadHtml() {
+                    if (!this.generatedCode) return;
+                    const name = ((this.form.recipient || '贺卡').replace(/[^\w\u4e00-\u9fa5\-]/g, '_')) + '_' + Date.now() + '.html';
+                    const blob = new Blob([this.generatedCode], { type: 'text/html;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = name;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showToast('已开始下载', 'success');
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

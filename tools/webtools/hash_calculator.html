@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>哈希计算器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-900 min-h-screen text-white font-sans" x-data="hashApp()" x-init="init()">
+
+    <header class="bg-slate-800/50 backdrop-blur-md border-b border-slate-700">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-700 text-slate-400 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold">🔐 哈希计算器</h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Input -->
+        <div class="bg-slate-800 rounded-2xl border border-slate-700 p-6 mb-8">
+            <h3 class="text-lg font-bold mb-4">输入文本</h3>
+            
+            <textarea 
+                x-model="input"
+                @input="calculate()"
+                placeholder="输入要计算哈希值的文本..."
+                rows="6"
+                class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none text-white"
+            ></textarea>
+
+            <div class="flex items-center justify-between mt-4">
+                <div class="text-sm text-slate-400">
+                    字符数: <span x-text="input.length"></span>
+                </div>
+                <button @click="input = ''" class="text-sm text-slate-400 hover:text-white transition-colors">
+                    清空
+                </button>
+            </div>
+        </div>
+
+        <!-- Hash Results -->
+        <div class="space-y-4">
+            
+            <!-- MD5 -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h4 class="font-bold text-lg">MD5</h4>
+                        <p class="text-xs text-slate-400">128-bit 哈希值</p>
+                    </div>
+                    <button @click="copyText(hashes.md5)" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                        <i class="fa-regular fa-copy w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-4 font-mono text-sm break-all text-emerald-400">
+                    <span x-text="hashes.md5 || '等待输入...'"></span>
+                </div>
+            </div>
+
+            <!-- SHA-1 -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h4 class="font-bold text-lg">SHA-1</h4>
+                        <p class="text-xs text-slate-400">160-bit 哈希值</p>
+                    </div>
+                    <button @click="copyText(hashes.sha1)" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                        <i class="fa-regular fa-copy w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-4 font-mono text-sm break-all text-blue-400">
+                    <span x-text="hashes.sha1 || '等待输入...'"></span>
+                </div>
+            </div>
+
+            <!-- SHA-256 -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h4 class="font-bold text-lg">SHA-256</h4>
+                        <p class="text-xs text-slate-400">256-bit 哈希值 (推荐)</p>
+                    </div>
+                    <button @click="copyText(hashes.sha256)" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                        <i class="fa-regular fa-copy w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-4 font-mono text-sm break-all text-purple-400">
+                    <span x-text="hashes.sha256 || '等待输入...'"></span>
+                </div>
+            </div>
+
+            <!-- SHA-512 -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h4 class="font-bold text-lg">SHA-512</h4>
+                        <p class="text-xs text-slate-400">512-bit 哈希值</p>
+                    </div>
+                    <button @click="copyText(hashes.sha512)" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                        <i class="fa-regular fa-copy w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-4 font-mono text-sm break-all text-amber-400">
+                    <span x-text="hashes.sha512 || '等待输入...'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="mt-8 bg-indigo-900/30 border border-indigo-700/50 rounded-xl p-6">
+            <h4 class="font-bold text-indigo-300 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info w-4 h-4"></i>
+                关于哈希算法
+            </h4>
+            <div class="text-sm text-indigo-200 space-y-2">
+                <p>• <strong>MD5</strong>: 速度快但安全性较低,适合非安全场景的校验</p>
+                <p>• <strong>SHA-1</strong>: 已被证明存在碰撞漏洞,不推荐用于安全场景</p>
+                <p>• <strong>SHA-256</strong>: 目前最常用的安全哈希算法,推荐使用</p>
+                <p>• <strong>SHA-512</strong>: 更高安全性,适合对安全要求极高的场景</p>
+            </div>
+        </div>
+
+        <!-- Quick Examples -->
+        <div class="mt-6 bg-slate-800 rounded-xl border border-slate-700 p-6">
+            <h4 class="font-bold mb-3">快速示例</h4>
+            <div class="grid md:grid-cols-3 gap-2">
+                <button @click="input = 'Hello World'; calculate()" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors text-left">
+                    Hello World
+                </button>
+                <button @click="input = '123456'; calculate()" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors text-left">
+                    123456
+                </button>
+                <button @click="input = 'password'; calculate()" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors text-left">
+                    password
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function hashApp() {
+            return {
+                input: '',
+                hashes: {
+                    md5: '',
+                    sha1: '',
+                    sha256: '',
+                    sha512: ''
+                },
+
+                init() {
+                    // icons removed
+                },
+
+                calculate() {
+                    if (!this.input) {
+                        this.hashes = { md5: '', sha1: '', sha256: '', sha512: '' };
+                        return;
+                    }
+
+                    if (typeof CryptoJS !== 'undefined') {
+                        this.hashes.md5 = CryptoJS.MD5(this.input).toString();
+                        this.hashes.sha1 = CryptoJS.SHA1(this.input).toString();
+                        this.hashes.sha256 = CryptoJS.SHA256(this.input).toString();
+                        this.hashes.sha512 = CryptoJS.SHA512(this.input).toString();
+                    }
+
+                    // icons removed
+                },
+
+                copyText(text) {
+                    if (!text) return;
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('已复制到剪贴板');
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_hash_calculator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

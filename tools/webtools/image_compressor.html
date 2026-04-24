@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地图片压缩 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans" x-data="compressorApp()" x-init="init()">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-800">🖼️ 本地图片压缩</h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        
+        <!-- Upload Area -->
+        <div 
+            @drop.prevent="handleDrop($event)"
+            @dragover.prevent
+            @dragenter="isDragging = true"
+            @dragleave="isDragging = false"
+            :class="isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 bg-white'"
+            class="border-2 border-dashed rounded-2xl p-12 text-center transition-all mb-8"
+        >
+            <input 
+                type="file" 
+                id="fileInput"
+                @change="handleFileSelect($event)"
+                accept="image/*"
+                multiple
+                class="hidden"
+            />
+            <label for="fileInput" class="cursor-pointer">
+                <div class="w-20 h-20 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl text-indigo-600"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">拖拽图片到这里或点击上传</h3>
+                <p class="text-slate-500 text-sm">支持 JPG, PNG, WebP 格式，可批量上传</p>
+            </label>
+        </div>
+
+        <!-- Settings -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8" x-show="images.length > 0">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">压缩设置</h3>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        质量: <span x-text="quality + '%'"></span>
+                    </label>
+                    <input 
+                        type="range" 
+                        x-model.number="quality"
+                        min="10" 
+                        max="100" 
+                        step="5"
+                        class="w-full"
+                    />
+                    <div class="flex justify-between text-xs text-slate-400 mt-1">
+                        <span>低</span>
+                        <span>高</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">最大宽度 (px)</label>
+                    <input 
+                        type="number" 
+                        x-model.number="maxWidth"
+                        placeholder="留空不限制"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">输出格式</label>
+                    <select 
+                        x-model="outputFormat"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    >
+                        <option value="original">保持原格式</option>
+                        <option value="jpeg">JPEG</option>
+                        <option value="png">PNG</option>
+                        <option value="webp">WebP</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button 
+                    @click="compressAll()"
+                    :disabled="processing"
+                    class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-bolt"></i>
+                    <span x-show="!processing">开始压缩</span>
+                    <span x-show="processing">压缩中...</span>
+                </button>
+                <button 
+                    @click="downloadAll()"
+                    :disabled="!hasCompressed"
+                    class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-download"></i>
+                    下载全部
+                </button>
+            </div>
+        </div>
+
+        <!-- Images List -->
+        <div class="space-y-4" x-show="images.length > 0">
+            <template x-for="(img, index) in images" :key="img.id">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <div class="flex gap-4">
+                        <!-- Preview -->
+                        <div class="w-24 h-24 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                            <img :src="img.preview" class="w-full h-full object-cover" />
+                        </div>
+
+                        <!-- Info -->
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-medium text-slate-800 truncate mb-2" x-text="img.name">image.jpg</h4>
+                            
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div class="text-xs text-slate-500">原始大小</div>
+                                    <div class="font-medium text-slate-700" x-text="formatSize(img.originalSize)">0 KB</div>
+                                </div>
+                                <div x-show="img.compressed">
+                                    <div class="text-xs text-slate-500">压缩后</div>
+                                    <div class="font-medium text-emerald-600" x-text="formatSize(img.compressedSize)">0 KB</div>
+                                </div>
+                            </div>
+
+                            <div x-show="img.compressed" class="mt-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 bg-slate-200 rounded-full h-2">
+                                        <div 
+                                            class="bg-emerald-500 h-2 rounded-full transition-all"
+                                            :style="'width: ' + (100 - img.compressionRatio) + '%'"
+                                        ></div>
+                                    </div>
+                                    <span class="text-xs font-medium text-emerald-600" x-text="'减少 ' + img.compressionRatio + '%'"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex flex-col gap-2">
+                            <button 
+                                x-show="img.compressed"
+                                @click="downloadSingle(img)"
+                                class="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg text-sm transition-colors"
+                            >
+                                下载
+                            </button>
+                            <button 
+                                @click="removeImage(index)"
+                                class="px-4 py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-sm transition-colors"
+                            >
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="images.length === 0" class="text-center py-12 text-slate-400">
+            <p>还没有上传图片</p>
+        </div>
+
+        <!-- Info -->
+        <div class="mt-8 bg-indigo-50 rounded-xl p-6 border border-indigo-100">
+            <h4 class="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved"></i>
+                隐私保护
+            </h4>
+            <ul class="text-sm text-indigo-800 space-y-1">
+                <li>• 所有图片在浏览器本地处理，不会上传到服务器</li>
+                <li>• 压缩完成后可立即下载，保护您的隐私</li>
+                <li>• 支持批量处理，提高工作效率</li>
+            </ul>
+        </div>
+    </main>
+
+    <script>
+        function compressorApp() {
+            return {
+                images: [],
+                quality: 80,
+                maxWidth: null,
+                outputFormat: 'original',
+                processing: false,
+                isDragging: false,
+
+                init() {
+                    // init
+                },
+
+                handleFileSelect(event) {
+                    this.addFiles(event.target.files);
+                },
+
+                handleDrop(event) {
+                    this.isDragging = false;
+                    this.addFiles(event.dataTransfer.files);
+                },
+
+                addFiles(files) {
+                    Array.from(files).forEach(file => {
+                        if (!file.type.startsWith('image/')) return;
+
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.images.push({
+                                id: Date.now() + Math.random(),
+                                name: file.name,
+                                file: file,
+                                preview: e.target.result,
+                                originalSize: file.size,
+                                compressedSize: null,
+                                compressedBlob: null,
+                                compressed: false,
+                                compressionRatio: 0
+                            });
+                            // icon update removed
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                },
+
+                removeImage(index) {
+                    this.images.splice(index, 1);
+                },
+
+                async compressAll() {
+                    this.processing = true;
+                    
+                    for (let img of this.images) {
+                        await this.compressImage(img);
+                    }
+                    
+                    this.processing = false;
+                },
+
+                async compressImage(img) {
+                    return new Promise((resolve) => {
+                        const image = new Image();
+                        image.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = image.width;
+                            let height = image.height;
+
+                            // Resize if maxWidth is set
+                            if (this.maxWidth && width > this.maxWidth) {
+                                height = (height * this.maxWidth) / width;
+                                width = this.maxWidth;
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(image, 0, 0, width, height);
+
+                            // Determine output format
+                            let mimeType = img.file.type;
+                            if (this.outputFormat !== 'original') {
+                                mimeType = `image/${this.outputFormat}`;
+                            }
+
+                            canvas.toBlob((blob) => {
+                                img.compressedBlob = blob;
+                                img.compressedSize = blob.size;
+                                img.compressed = true;
+                                img.compressionRatio = Math.round((1 - blob.size / img.originalSize) * 100);
+                                resolve();
+                            }, mimeType, this.quality / 100);
+                        };
+                        image.src = img.preview;
+                    });
+                },
+
+                downloadSingle(img) {
+                    if (!img.compressedBlob) return;
+                    
+                    const url = URL.createObjectURL(img.compressedBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'compressed_' + img.name;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                },
+
+                downloadAll() {
+                    this.images.forEach(img => {
+                        if (img.compressed) {
+                            setTimeout(() => this.downloadSingle(img), 100);
+                        }
+                    });
+                },
+
+                formatSize(bytes) {
+                    if (bytes < 1024) return bytes + ' B';
+                    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                },
+
+                get hasCompressed() {
+                    return this.images.some(img => img.compressed);
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_image_compressor.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QRCode 二维码生成</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); min-height: 100vh; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">📱 QRCode.js</h1>
+    <p class="text-white/60 mt-1">纯 JavaScript 二维码生成库</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-6">
+  <!-- 生成器 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🔧 二维码生成器</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <div>
+          <label class="text-white/70 text-sm block mb-2">内容</label>
+          <textarea id="qr-text" rows="3" class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white resize-none" placeholder="输入文本或 URL...">https://example.com</textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-white/70 text-sm block mb-2">尺寸</label>
+            <select id="qr-size" class="w-full px-3 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+              <option value="128">128 x 128</option>
+              <option value="200" selected>200 x 200</option>
+              <option value="256">256 x 256</option>
+              <option value="300">300 x 300</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-white/70 text-sm block mb-2">容错级别</label>
+            <select id="qr-level" class="w-full px-3 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+              <option value="L">L - 7%</option>
+              <option value="M" selected>M - 15%</option>
+              <option value="Q">Q - 25%</option>
+              <option value="H">H - 30%</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-white/70 text-sm block mb-2">前景色</label>
+            <input type="color" id="qr-dark" value="#000000" class="w-full h-10 rounded-lg cursor-pointer">
+          </div>
+          <div>
+            <label class="text-white/70 text-sm block mb-2">背景色</label>
+            <input type="color" id="qr-light" value="#ffffff" class="w-full h-10 rounded-lg cursor-pointer">
+          </div>
+        </div>
+        <button onclick="generateQR()" class="w-full px-4 py-3 bg-blue-600 rounded-xl hover:bg-blue-700 font-bold">
+          生成二维码
+        </button>
+      </div>
+      <div class="flex flex-col items-center justify-center">
+        <div id="qrcode" class="bg-white p-4 rounded-xl"></div>
+        <button onclick="downloadQR()" class="mt-4 px-4 py-2 bg-emerald-600 rounded-lg hover:bg-emerald-700">
+          📥 下载图片
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 快速生成 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚡ 快速生成</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <button onclick="quickQR('url')" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="text-2xl mb-1">🔗</div>
+        <div class="font-bold">网页链接</div>
+      </button>
+      <button onclick="quickQR('wifi')" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="text-2xl mb-1">📶</div>
+        <div class="font-bold">WiFi 连接</div>
+      </button>
+      <button onclick="quickQR('email')" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="text-2xl mb-1">📧</div>
+        <div class="font-bold">发送邮件</div>
+      </button>
+      <button onclick="quickQR('phone')" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="text-2xl mb-1">📞</div>
+        <div class="font-bold">拨打电话</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- 批量生成 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📦 批量生成</h3>
+    <textarea id="batch-input" rows="4" class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white resize-none mb-4" placeholder="每行一个内容...">https://example.com
+https://google.com
+https://github.com</textarea>
+    <button onclick="batchGenerate()" class="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 font-bold">批量生成</button>
+    <div id="batch-result" class="mt-4 flex flex-wrap gap-4"></div>
+  </div>
+
+  <!-- 代码示例 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📝 代码示例</h3>
+    <div class="bg-slate-900/80 p-4 rounded-xl overflow-x-auto">
+      <pre class="text-sm font-mono text-slate-300">// 基础用法
+new QRCode(document.getElementById("qrcode"), "https://example.com");
+
+// 高级配置
+new QRCode(document.getElementById("qrcode"), {
+  text: "https://example.com",
+  width: 256,
+  height: 256,
+  colorDark: "#000000",
+  colorLight: "#ffffff",
+  correctLevel: QRCode.CorrectLevel.H
+});
+
+// 更新内容
+qrcode.clear();
+qrcode.makeCode("新内容");</pre>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+let qrcodeEl = null;
+
+async function generateQR() {
+  const text = document.getElementById('qr-text').value || 'https://example.com';
+  const size = parseInt(document.getElementById('qr-size').value);
+  const level = document.getElementById('qr-level').value;
+  const dark = document.getElementById('qr-dark').value;
+  const light = document.getElementById('qr-light').value;
+  
+  const container = document.getElementById('qrcode');
+  container.innerHTML = '';
+  
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  
+  await QRCode.toCanvas(canvas, text, {
+    width: size,
+    margin: 2,
+    color: {
+      dark: dark,
+      light: light
+    },
+    errorCorrectionLevel: level
+  });
+  
+  qrcodeEl = canvas;
+}
+
+function downloadQR() {
+  if (!qrcodeEl) {
+    alert('请先生成二维码');
+    return;
+  }
+  
+  const link = document.createElement('a');
+  link.download = 'qrcode.png';
+  link.href = qrcodeEl.toDataURL('image/png');
+  link.click();
+}
+
+const quickTemplates = {
+  url: 'https://example.com',
+  wifi: 'WIFI:T:WPA;S:MyNetwork;P:MyPassword;;',
+  email: 'mailto:example@email.com?subject=Hello&body=Hi there!',
+  phone: 'tel:+86138888888'
+};
+
+function quickQR(type) {
+  document.getElementById('qr-text').value = quickTemplates[type];
+  generateQR();
+}
+
+async function batchGenerate() {
+  const lines = document.getElementById('batch-input').value.split('\n').filter(l => l.trim());
+  const container = document.getElementById('batch-result');
+  container.innerHTML = '';
+  
+  for (const text of lines) {
+    const div = document.createElement('div');
+    div.className = 'bg-white p-2 rounded-lg';
+    
+    const canvas = document.createElement('canvas');
+    div.appendChild(canvas);
+    
+    await QRCode.toCanvas(canvas, text.trim(), { width: 100, margin: 1 });
+    
+    const label = document.createElement('div');
+    label.className = 'text-xs text-slate-600 text-center mt-1 truncate';
+    label.style.maxWidth = '100px';
+    label.textContent = text.trim();
+    div.appendChild(label);
+    
+    container.appendChild(div);
+  }
+}
+
+// 初始化
+generateQR();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

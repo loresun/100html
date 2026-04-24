@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考试出题器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #e0f2fe 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2563eb; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spin-slow { animation: spin-slow 2s linear infinite; }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+        .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .toast-enter { animation: fadeInUp 0.3s ease-out; }
+
+        .question-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .question-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px -8px rgba(37, 99, 235, 0.15);
+        }
+        .question-card.selected {
+            border-color: #bfdbfe;
+            background: rgba(239, 246, 255, 0.5);
+        }
+        .question-card.deselected {
+            opacity: 0.45;
+            border-color: #e2e8f0;
+        }
+
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid #e2e8f0;
+            color: #64748b;
+            background: white;
+        }
+        .chip.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid #e2e8f0;
+            font-size: 0.875rem;
+            background: white;
+        }
+        .checkbox-label:hover { border-color: #93c5fd; }
+        .checkbox-label.checked {
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .prose h1 { font-size: 1.25rem; }
+        .prose h2 { font-size: 1.125rem; }
+        .prose h3 { font-size: 1rem; }
+    </style>
+
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#2563eb',
+                    'primary-light': '#3b82f6',
+                    'primary-dark': '#1d4ed8',
+                }
+            }
+        }
+    }
+    </script>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+<div x-data="examGeneratorApp()" x-init="init()" class="min-h-screen">
+
+    <!-- 导航栏 -->
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-blue-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                <i data-lucide="clipboard-list" class="text-primary h-6 w-6"></i>
+                <span class="font-bold text-xl text-slate-900">考试出题器</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="hidden sm:inline text-xs text-slate-400">教育培训 · 智能出题</span>
+                <button @click="showSettings = true"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-blue-50 text-slate-600 transition-colors text-sm">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">设置</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 步骤进度条 -->
+        <div class="mb-10">
+            <div class="flex items-center justify-between max-w-3xl mx-auto">
+                <template x-for="(s, idx) in steps" :key="idx">
+                    <div class="flex items-center" :class="idx < steps.length - 1 ? 'flex-1' : ''">
+                        <div class="flex flex-col items-center relative">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300"
+                                :class="currentStep > idx + 1 ? 'bg-primary text-white shadow-lg shadow-blue-200' :
+                                         currentStep === idx + 1 ? 'bg-primary text-white shadow-lg shadow-blue-200 ring-4 ring-blue-100' :
+                                         'bg-white text-slate-400 border-2 border-slate-200'"
+                                x-text="currentStep > idx + 1 ? '✓' : idx + 1">
+                            </div>
+                            <span class="absolute -bottom-6 whitespace-nowrap text-xs font-medium"
+                                :class="currentStep >= idx + 1 ? 'text-primary' : 'text-slate-400'"
+                                x-text="s"></span>
+                        </div>
+                        <div x-show="idx < steps.length - 1"
+                            class="flex-1 h-1 mx-3 rounded-full bg-slate-200 overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500"
+                                :class="currentStep > idx + 1 ? 'bg-primary w-full' : 'bg-slate-200 w-0'"
+                                :style="currentStep === idx + 2 ? 'width: 50%; background: #2563eb;' :
+                                         currentStep > idx + 1 ? 'width: 100%;' : 'width: 0;'">
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ======================== 步骤 1: 出题设置 ======================== -->
+        <div x-show="currentStep === 1" x-transition:enter="animate-fade-in" class="mt-8">
+            <div class="glass-card rounded-2xl shadow-lg p-6 sm:p-8 border border-blue-100">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="p-2.5 bg-blue-100 rounded-xl">
+                        <i data-lucide="pencil-line" class="w-5 h-5 text-primary"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">出题设置</h2>
+                        <p class="text-sm text-slate-500">填写科目、范围和题型要求，AI 将智能批量生成试题</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- 科目/主题 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">科目 / 主题 <span class="text-red-400">*</span></label>
+                        <input type="text" x-model="form.subject"
+                            placeholder="例如：高中物理、Python编程基础、初级会计实务..."
+                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all">
+                    </div>
+
+                    <!-- 知识范围 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">知识范围 <span class="text-red-400">*</span></label>
+                        <textarea x-model="form.scope" rows="3"
+                            placeholder="描述考试覆盖的具体知识点，例如：牛顿三定律、力的合成与分解、摩擦力、圆周运动..."
+                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all resize-none"></textarea>
+                    </div>
+
+                    <!-- 目标受众 -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">目标受众 <span class="text-red-400">*</span></label>
+                        <select x-model="form.audience"
+                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all bg-white">
+                            <option value="">请选择</option>
+                            <option value="小学">小学</option>
+                            <option value="初中">初中</option>
+                            <option value="高中">高中</option>
+                            <option value="大学">大学</option>
+                            <option value="职业考试">职业考试</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+
+                    <!-- 难度 -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">难度</label>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="d in difficultyOptions" :key="d">
+                                <button @click="form.difficulty = d"
+                                    class="chip" :class="form.difficulty === d ? 'active' : ''"
+                                    x-text="d"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 题型选择 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">题型选择 <span class="text-red-400">*</span></label>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                            <template x-for="qt in questionTypes" :key="qt.key">
+                                <label class="checkbox-label" :class="qt.checked ? 'checked' : ''"
+                                    @click="qt.checked = !qt.checked">
+                                    <span class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
+                                        :class="qt.checked ? 'bg-primary border-primary' : 'border-slate-300 bg-white'">
+                                        <svg x-show="qt.checked" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </span>
+                                    <span x-text="qt.label" class="font-medium"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 每种题型数量 -->
+                    <div class="md:col-span-2" x-show="selectedTypes.length > 0">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">每种题型数量</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <template x-for="qt in selectedTypes" :key="qt.key">
+                                <div class="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-3 py-2.5">
+                                    <span class="text-sm font-medium text-slate-700 whitespace-nowrap" x-text="qt.label"></span>
+                                    <input type="number" x-model.number="qt.count" min="1" max="50"
+                                        class="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-center focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none">
+                                    <span class="text-xs text-slate-400">题</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex items-center justify-between">
+                    <span class="text-sm text-slate-500" x-show="totalQuestionCount > 0">
+                        共计 <span class="font-bold text-primary" x-text="totalQuestionCount"></span> 道题
+                    </span>
+                    <button @click="generateQuestions()"
+                        :disabled="!canProceedStep1 || loadingQuestions"
+                        class="px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-lg shadow-blue-200 ml-auto">
+                        <template x-if="loadingQuestions">
+                            <i data-lucide="loader-2" class="w-4 h-4 spin-slow"></i>
+                        </template>
+                        <template x-if="!loadingQuestions">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </template>
+                        <span x-text="loadingQuestions ? 'AI 正在出题...' : '开始出题'"></span>
+                        <i data-lucide="arrow-right" class="w-4 h-4" x-show="!loadingQuestions"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== 步骤 2: 题目列表 ======================== -->
+        <div x-show="currentStep === 2" x-transition:enter="animate-fade-in" class="mt-8">
+            <div class="glass-card rounded-2xl shadow-lg p-6 sm:p-8 border border-blue-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-blue-100 rounded-xl">
+                            <i data-lucide="list-ordered" class="w-5 h-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">题目列表</h2>
+                            <p class="text-sm text-slate-500">AI 已生成以下题目，点击可启用/禁用题目</p>
+                        </div>
+                    </div>
+                    <button @click="currentStep = 1"
+                        class="text-sm text-slate-500 hover:text-primary flex items-center gap-1 transition-colors">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回修改
+                    </button>
+                </div>
+
+                <!-- 统计信息 -->
+                <div class="mb-5 p-4 bg-blue-50/60 rounded-xl border border-blue-100">
+                    <div class="flex flex-wrap gap-4 text-sm items-center">
+                        <span class="flex items-center gap-1.5 text-slate-600">
+                            <i data-lucide="file-question" class="w-4 h-4 text-primary"></i>
+                            共 <span class="font-bold text-primary" x-text="questions.length"></span> 道题
+                        </span>
+                        <span class="flex items-center gap-1.5 text-slate-600">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>
+                            已选 <span class="font-bold text-green-600" x-text="enabledQuestions.length"></span> 道
+                        </span>
+                        <div class="flex gap-1.5 ml-auto">
+                            <button @click="toggleAllQuestions(true)"
+                                class="px-3 py-1 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 transition-colors">全选</button>
+                            <button @click="toggleAllQuestions(false)"
+                                class="px-3 py-1 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 transition-colors">全不选</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 按题型分组展示 -->
+                <div class="space-y-6">
+                    <template x-for="group in groupedQuestions" :key="group.type">
+                        <div>
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="type-badge" :style="'background:' + getTypeBg(group.type) + '; color:' + getTypeColor(group.type)"
+                                    x-text="group.type"></span>
+                                <span class="text-xs text-slate-400" x-text="group.items.length + ' 题'"></span>
+                            </div>
+                            <div class="space-y-2">
+                                <template x-for="(q, qi) in group.items" :key="q._idx">
+                                    <div class="question-card bg-white rounded-xl p-4 border border-slate-100 shadow-sm cursor-pointer"
+                                        :class="q.enabled ? 'selected' : 'deselected'"
+                                        @click="q.enabled = !q.enabled">
+                                        <div class="flex items-start gap-3">
+                                            <div class="flex-shrink-0 mt-0.5">
+                                                <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold"
+                                                    :class="q.enabled ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'"
+                                                    x-text="q._idx + 1"></span>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center gap-2 mb-1.5">
+                                                    <span class="type-badge text-xs" :style="'background:' + getTypeBg(q.type) + '; color:' + getTypeColor(q.type)"
+                                                        x-text="q.type"></span>
+                                                    <span x-show="q.difficulty" class="text-xs text-slate-400" x-text="'难度: ' + q.difficulty"></span>
+                                                </div>
+                                                <div class="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap" x-text="q.content"></div>
+                                                <!-- 选项 (选择题) -->
+                                                <div x-show="q.options && q.options.length > 0" class="mt-2 space-y-1">
+                                                    <template x-for="(opt, oi) in (q.options || [])" :key="oi">
+                                                        <div class="text-sm text-slate-600 pl-2" x-text="opt"></div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            <div class="flex-shrink-0">
+                                                <span class="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
+                                                    :class="q.enabled ? 'bg-primary border-primary' : 'border-slate-300 bg-white'">
+                                                    <svg x-show="q.enabled" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button @click="generateAnswers()"
+                        :disabled="enabledQuestions.length === 0 || loadingAnswers"
+                        class="px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-lg shadow-blue-200">
+                        <template x-if="loadingAnswers">
+                            <i data-lucide="loader-2" class="w-4 h-4 spin-slow"></i>
+                        </template>
+                        <template x-if="!loadingAnswers">
+                            <i data-lucide="lightbulb" class="w-4 h-4"></i>
+                        </template>
+                        <span x-text="loadingAnswers ? 'AI 正在生成答案...' : '生成答案解析'"></span>
+                        <i data-lucide="arrow-right" class="w-4 h-4" x-show="!loadingAnswers"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== 步骤 3: 答案解析 ======================== -->
+        <div x-show="currentStep === 3" x-transition:enter="animate-fade-in" class="mt-8">
+            <div class="glass-card rounded-2xl shadow-lg p-6 sm:p-8 border border-blue-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-blue-100 rounded-xl">
+                            <i data-lucide="lightbulb" class="w-5 h-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">答案与解析</h2>
+                            <p class="text-sm text-slate-500">AI 为每道题生成参考答案和详细解析</p>
+                        </div>
+                    </div>
+                    <button @click="currentStep = 2"
+                        class="text-sm text-slate-500 hover:text-primary flex items-center gap-1 transition-colors">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回题目
+                    </button>
+                </div>
+
+                <!-- 生成进度 -->
+                <div x-show="loadingAnswers" class="mb-6 p-4 bg-blue-50/60 rounded-xl border border-blue-100">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="loader-2" class="w-5 h-5 text-primary spin-slow"></i>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium text-slate-700"
+                                x-text="'正在生成第 ' + (currentAnswerIdx + 1) + ' / ' + enabledQuestions.length + ' 道题的答案解析...'"></div>
+                            <div class="mt-2 h-2 bg-blue-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-primary rounded-full transition-all duration-500"
+                                    :style="'width: ' + (currentAnswerIdx / enabledQuestions.length * 100) + '%'"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 答案列表 -->
+                <div class="space-y-4">
+                    <template x-for="(q, qi) in enabledQuestions" :key="q._idx">
+                        <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                            <!-- 题目 -->
+                            <div class="px-5 py-4 border-b border-slate-50">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center text-xs font-bold"
+                                        x-text="qi + 1"></span>
+                                    <span class="type-badge text-xs" :style="'background:' + getTypeBg(q.type) + '; color:' + getTypeColor(q.type)"
+                                        x-text="q.type"></span>
+                                </div>
+                                <div class="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap" x-text="q.content"></div>
+                                <div x-show="q.options && q.options.length > 0" class="mt-2 space-y-0.5">
+                                    <template x-for="(opt, oi) in (q.options || [])" :key="oi">
+                                        <div class="text-sm text-slate-600 pl-2" x-text="opt"></div>
+                                    </template>
+                                </div>
+                            </div>
+                            <!-- 答案解析 -->
+                            <div class="px-5 py-4 bg-blue-50/30">
+                                <template x-if="q.answer">
+                                    <div>
+                                        <div class="flex items-center gap-1.5 mb-2">
+                                            <i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>
+                                            <span class="text-sm font-medium text-green-700">参考答案与解析</span>
+                                        </div>
+                                        <div class="prose prose-sm max-w-none text-slate-700" x-html="renderMarkdown(q.answer)"></div>
+                                    </div>
+                                </template>
+                                <template x-if="!q.answer && loadingAnswers && currentAnswerIdx === qi">
+                                    <div class="flex items-center gap-2 text-sm text-slate-500">
+                                        <span class="pulse-dot w-2 h-2 rounded-full bg-primary"></span>
+                                        正在生成中...
+                                        <div x-show="streamingAnswer" class="mt-2 prose prose-sm max-w-none text-slate-700 w-full" x-html="renderMarkdown(streamingAnswer)"></div>
+                                    </div>
+                                </template>
+                                <template x-if="!q.answer && !(loadingAnswers && currentAnswerIdx === qi)">
+                                    <div class="text-sm text-slate-400 flex items-center gap-2">
+                                        <i data-lucide="hourglass" class="w-4 h-4"></i> 等待生成...
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="mt-6 flex justify-end" x-show="!loadingAnswers && allAnswersGenerated">
+                    <button @click="compileFinal()"
+                        class="px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary-dark transition-all flex items-center gap-2 shadow-lg shadow-blue-200">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <span>生成试卷</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== 步骤 4: 完整试卷 ======================== -->
+        <div x-show="currentStep === 4" x-transition:enter="animate-fade-in" class="mt-8">
+            <div class="glass-card rounded-2xl shadow-lg p-6 sm:p-8 border border-blue-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-blue-100 rounded-xl">
+                            <i data-lucide="file-text" class="w-5 h-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">试卷预览</h2>
+                            <p class="text-sm text-slate-500">包含试卷和答案，可分别导出</p>
+                        </div>
+                    </div>
+                    <button @click="currentStep = 3"
+                        class="text-sm text-slate-500 hover:text-primary flex items-center gap-1 transition-colors">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回解析
+                    </button>
+                </div>
+
+                <!-- 标签切换 -->
+                <div class="flex gap-2 mb-5 border-b border-slate-200 pb-3">
+                    <button @click="activeTab = 'exam'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                        :class="activeTab === 'exam' ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'">
+                        <i data-lucide="file-question" class="w-4 h-4 inline-block mr-1 -mt-0.5"></i> 试卷
+                    </button>
+                    <button @click="activeTab = 'answer'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                        :class="activeTab === 'answer' ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'">
+                        <i data-lucide="key" class="w-4 h-4 inline-block mr-1 -mt-0.5"></i> 答案
+                    </button>
+                </div>
+
+                <!-- 试卷内容 -->
+                <div x-show="activeTab === 'exam'" class="bg-white rounded-xl border border-slate-100 p-6 shadow-sm">
+                    <div class="prose prose-sm max-w-none text-slate-700 prose-headings:text-slate-900"
+                        x-html="renderMarkdown(examPaper)"></div>
+                </div>
+
+                <!-- 答案内容 -->
+                <div x-show="activeTab === 'answer'" class="bg-white rounded-xl border border-slate-100 p-6 shadow-sm">
+                    <div class="prose prose-sm max-w-none text-slate-700 prose-headings:text-slate-900"
+                        x-html="renderMarkdown(answerKey)"></div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="mt-6 flex flex-wrap gap-3 justify-end">
+                    <button @click="copyContent(activeTab === 'exam' ? examPaper : answerKey)"
+                        class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all flex items-center gap-2">
+                        <i data-lucide="copy" class="w-4 h-4"></i> 复制当前
+                    </button>
+                    <button @click="exportFile('exam')"
+                        class="px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-50 transition-all flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> 导出试卷
+                    </button>
+                    <button @click="exportFile('answer')"
+                        class="px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm font-medium text-green-700 hover:bg-green-50 transition-all flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> 导出答案
+                    </button>
+                    <button @click="resetAll()"
+                        class="px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-all flex items-center gap-2 shadow-lg shadow-blue-200">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新出题
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div x-show="showSettings" x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div @click.outside="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-slate-900">API 配置</h3>
+                <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">DeepSeek API Key</label>
+                    <input type="password" x-model="apiConfig.deepseek"
+                        placeholder="sk-..."
+                        class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">模型选择</label>
+                    <select x-model="apiConfig.model"
+                        class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none bg-white">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <button @click="showSettings = false"
+                    class="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors">取消</button>
+                <button @click="saveConfig()"
+                    class="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div x-show="toastMsg" x-transition:enter="toast-enter" x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-2"
+        class="fixed bottom-6 right-6 z-[200] bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl text-sm flex items-center gap-2">
+        <i data-lucide="check-circle" class="w-4 h-4 text-blue-400"></i>
+        <span x-text="toastMsg"></span>
+    </div>
+
+</div>
+
+<script>
+function examGeneratorApp() {
+    return {
+        /* ---- 基础状态 ---- */
+        steps: ['出题设置', '题目列表', '答案解析', '完整试卷'],
+        currentStep: 1,
+        showSettings: false,
+        toastMsg: '',
+        toastTimer: null,
+        activeTab: 'exam',
+
+        /* ---- API 配置 ---- */
+        apiConfig: {
+            deepseek: '',
+            model: 'deepseek-v4-flash'
+        },
+
+        /* ---- 难度选项 ---- */
+        difficultyOptions: ['简单', '中等', '困难', '混合'],
+
+        /* ---- 题型（含勾选状态与数量） ---- */
+        questionTypes: [
+            { key: 'choice',   label: '选择题', checked: true,  count: 10 },
+            { key: 'fill',     label: '填空题', checked: false, count: 5 },
+            { key: 'judge',    label: '判断题', checked: false, count: 5 },
+            { key: 'short',    label: '简答题', checked: false, count: 3 },
+            { key: 'essay',    label: '论述题', checked: false, count: 2 },
+            { key: 'calc',     label: '计算题', checked: false, count: 3 },
+        ],
+
+        /* ---- 表单数据 ---- */
+        form: {
+            subject: '',
+            scope: '',
+            audience: '',
+            difficulty: '中等',
+        },
+
+        /* ---- 题目数据 ---- */
+        questions: [],
+        loadingQuestions: false,
+
+        /* ---- 答案数据 ---- */
+        loadingAnswers: false,
+        currentAnswerIdx: 0,
+        streamingAnswer: '',
+
+        /* ---- 最终试卷 ---- */
+        examPaper: '',
+        answerKey: '',
+
+        /* ---- 计算属性 ---- */
+        get selectedTypes() {
+            return this.questionTypes.filter(qt => qt.checked);
+        },
+        get totalQuestionCount() {
+            return this.selectedTypes.reduce((sum, qt) => sum + (qt.count || 0), 0);
+        },
+        get canProceedStep1() {
+            return this.form.subject.trim() && this.form.scope.trim() && this.form.audience && this.selectedTypes.length > 0;
+        },
+        get enabledQuestions() {
+            return this.questions.filter(q => q.enabled);
+        },
+        get groupedQuestions() {
+            const groups = {};
+            this.questions.forEach(q => {
+                if (!groups[q.type]) groups[q.type] = [];
+                groups[q.type].push(q);
+            });
+            return Object.keys(groups).map(type => ({ type, items: groups[type] }));
+        },
+        get allAnswersGenerated() {
+            return this.enabledQuestions.length > 0 && this.enabledQuestions.every(q => q.answer);
+        },
+
+        /* ---- 初始化 ---- */
+        init() {
+            this.loadConfig();
+            this.$nextTick(() => lucide.createIcons());
+        },
+
+        /* ---- 配置管理（合并策略） ---- */
+        loadConfig() {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    this.apiConfig = { ...this.apiConfig, ...parsed };
+                } catch (e) { /* 忽略解析失败 */ }
+            }
+        },
+        saveConfig() {
+            const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+            localStorage.setItem('global_llm_config', JSON.stringify({
+                ...current,
+                deepseek: this.apiConfig.deepseek,
+                model: this.apiConfig.model
+            }));
+            this.showSettings = false;
+            this.showToast('配置已保存');
+        },
+
+        /* ---- Toast 通知 ---- */
+        showToast(msg) {
+            this.toastMsg = msg;
+            clearTimeout(this.toastTimer);
+            this.toastTimer = setTimeout(() => { this.toastMsg = ''; }, 2500);
+            this.$nextTick(() => lucide.createIcons());
+        },
+
+        /* ---- Markdown 渲染 ---- */
+        renderMarkdown(text) {
+            if (!text) return '';
+            try { return marked.parse(text); } catch { return text; }
+        },
+
+        /* ---- 题型颜色映射 ---- */
+        getTypeBg(type) {
+            const map = {
+                '选择题': '#eff6ff', '填空题': '#f0fdf4', '判断题': '#fefce8',
+                '简答题': '#fdf4ff', '论述题': '#fff7ed', '计算题': '#f0fdfa'
+            };
+            return map[type] || '#f1f5f9';
+        },
+        getTypeColor(type) {
+            const map = {
+                '选择题': '#2563eb', '填空题': '#16a34a', '判断题': '#ca8a04',
+                '简答题': '#9333ea', '论述题': '#ea580c', '计算题': '#0d9488'
+            };
+            return map[type] || '#475569';
+        },
+
+        /* ---- 批量切换题目启用状态 ---- */
+        toggleAllQuestions(state) {
+            this.questions.forEach(q => q.enabled = state);
+        },
+
+        /* ============================================
+           步骤 2: 批量生成题目（JSON 模式）
+           ============================================ */
+        async generateQuestions() {
+            if (!this.apiConfig.deepseek) { this.showSettings = true; return; }
+            this.loadingQuestions = true;
+            this.$nextTick(() => lucide.createIcons());
+
+            const typeRequirements = this.selectedTypes.map(
+                qt => `${qt.label}: ${qt.count}道`
+            ).join('、');
+
+            const systemPrompt = `你是一位专业的出题专家。根据用户提供的科目、知识范围和要求，生成高质量的考试题目。
+
+要求：
+1. 严格按照指定的题型和数量生成
+2. 题目内容紧扣知识范围，表述清晰准确
+3. 选择题必须提供 A/B/C/D 四个选项
+4. 难度分布合理，符合目标受众水平
+5. 每道题标注所属知识点
+
+请以 JSON 格式输出，结构如下：
+{
+  "questions": [
+    {
+      "type": "选择题",
+      "content": "题目内容",
+      "options": ["A. 选项1", "B. 选项2", "C. 选项3", "D. 选项4"],
+      "difficulty": "简单/中等/困难",
+      "knowledge_point": "相关知识点"
+    },
+    {
+      "type": "填空题",
+      "content": "题目内容（用____标记填空位置）",
+      "options": [],
+      "difficulty": "中等",
+      "knowledge_point": "相关知识点"
+    }
+  ]
+}
+
+注意：options 字段对于非选择题留空数组 []。判断题的 content 直接陈述，需要判断对错。`;
+
+            const userPrompt = `科目/主题：${this.form.subject}
+知识范围：${this.form.scope}
+目标受众：${this.form.audience}
+难度要求：${this.form.difficulty}
+题型与数量：${typeRequirements}
+总计：${this.totalQuestionCount} 道题
+
+请严格按照以上要求生成题目。`;
+
+            try {
+                const responseText = await this.callAPI(
+                    [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                    false, true
+                );
+                const parsed = JSON.parse(responseText);
+                this.questions = (parsed.questions || []).map((q, i) => ({
+                    ...q,
+                    _idx: i,
+                    enabled: true,
+                    answer: '',
+                    options: q.options || []
+                }));
+                this.currentStep = 2;
+                this.$nextTick(() => lucide.createIcons());
+            } catch (e) {
+                console.error('出题失败:', e);
+                this.showToast('出题失败，请重试');
+            } finally {
+                this.loadingQuestions = false;
+                this.$nextTick(() => lucide.createIcons());
+            }
+        },
+
+        /* ============================================
+           步骤 3: 逐题生成答案解析（流式）
+           ============================================ */
+        async generateAnswers() {
+            if (!this.apiConfig.deepseek) { this.showSettings = true; return; }
+            this.loadingAnswers = true;
+            this.currentAnswerIdx = 0;
+            this.currentStep = 3;
+            this.$nextTick(() => lucide.createIcons());
+
+            const enabled = this.enabledQuestions;
+
+            for (let i = 0; i < enabled.length; i++) {
+                this.currentAnswerIdx = i;
+                this.streamingAnswer = '';
+
+                const q = enabled[i];
+                const optionsText = q.options && q.options.length > 0
+                    ? '\n选项：\n' + q.options.join('\n')
+                    : '';
+
+                const systemPrompt = `你是一位经验丰富的教师，正在为学生编写参考答案和解析。
+
+请为以下考试题目提供：
+1. **参考答案**：给出明确的正确答案
+2. **解题思路**：分步骤说明解题过程
+3. **知识点解析**：讲解涉及的核心知识点
+4. **易错提醒**：指出常见错误和注意事项
+
+使用 Markdown 格式输出，层次清晰。`;
+
+                const userPrompt = `科目：${this.form.subject}（${this.form.audience}）
+题型：${q.type}
+题目：${q.content}${optionsText}
+
+请给出详细的参考答案和解析。`;
+
+                try {
+                    const result = await this.callAPI(
+                        [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                        true, false,
+                        (chunk) => { this.streamingAnswer += chunk; }
+                    );
+                    q.answer = result;
+                } catch (e) {
+                    console.error(`题目 ${i + 1} 答案生成失败:`, e);
+                    q.answer = `> 生成失败：${e.message}`;
+                }
+                this.streamingAnswer = '';
+            }
+
+            this.loadingAnswers = false;
+            this.$nextTick(() => lucide.createIcons());
+            this.showToast('全部答案解析已生成');
+        },
+
+        /* ============================================
+           步骤 4: 编排试卷和答案
+           ============================================ */
+        compileFinal() {
+            const enabled = this.enabledQuestions;
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+
+            /* ---- 试卷部分 ---- */
+            let exam = `# ${this.form.subject} 考试试卷\n\n`;
+            exam += `**考试时间**：____分钟 | **满分**：____分 | **适用对象**：${this.form.audience}\n\n`;
+            exam += `**出卷日期**：${dateStr}\n\n---\n\n`;
+            exam += `**注意事项：**\n1. 请在答题卡上作答，在试卷上作答无效\n2. 考试结束后，请将试卷和答题卡一并交回\n\n---\n\n`;
+
+            /* 按题型分组输出 */
+            const groups = {};
+            enabled.forEach(q => {
+                if (!groups[q.type]) groups[q.type] = [];
+                groups[q.type].push(q);
+            });
+
+            let globalNum = 0;
+            let sectionIdx = 0;
+            const sectionNames = ['一', '二', '三', '四', '五', '六', '七', '八'];
+            const typeScoreHint = {
+                '选择题': '每题____分',
+                '填空题': '每题____分',
+                '判断题': '每题____分',
+                '简答题': '每题____分',
+                '论述题': '每题____分',
+                '计算题': '每题____分',
+            };
+
+            Object.keys(groups).forEach(type => {
+                const items = groups[type];
+                exam += `## ${sectionNames[sectionIdx] || (sectionIdx + 1)}、${type}（共 ${items.length} 题，${typeScoreHint[type] || '每题____分'}，共____分）\n\n`;
+                items.forEach((q, i) => {
+                    globalNum++;
+                    exam += `**${globalNum}. ** ${q.content}\n\n`;
+                    if (q.options && q.options.length > 0) {
+                        q.options.forEach(opt => { exam += `${opt}\n\n`; });
+                    }
+                });
+                sectionIdx++;
+            });
+
+            /* ---- 答案部分 ---- */
+            let answer = `# ${this.form.subject} 参考答案与评分标准\n\n`;
+            answer += `**出卷日期**：${dateStr}\n\n---\n\n`;
+
+            globalNum = 0;
+            sectionIdx = 0;
+            Object.keys(groups).forEach(type => {
+                const items = groups[type];
+                answer += `## ${sectionNames[sectionIdx] || (sectionIdx + 1)}、${type}\n\n`;
+                items.forEach((q, i) => {
+                    globalNum++;
+                    answer += `### 第 ${globalNum} 题\n\n`;
+                    answer += `**题目：** ${q.content}\n\n`;
+                    if (q.answer) {
+                        answer += q.answer + '\n\n';
+                    }
+                    answer += `---\n\n`;
+                });
+                sectionIdx++;
+            });
+
+            this.examPaper = exam;
+            this.answerKey = answer;
+            this.currentStep = 4;
+            this.activeTab = 'exam';
+            this.$nextTick(() => lucide.createIcons());
+        },
+
+        /* ============================================
+           通用 API 调用（支持流式 / JSON 模式）
+           ============================================ */
+        async callAPI(messages, stream = false, jsonMode = false, onChunk = null) {
+            const body = {
+                model: this.apiConfig.model,
+                messages: messages,
+                temperature: 0.7,
+                stream: stream,
+            };
+            if (jsonMode) {
+                body.response_format = { type: 'json_object' };
+            }
+
+            const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`API 请求失败 (${response.status}): ${errText}`);
+            }
+
+            if (!stream) {
+                const data = await response.json();
+                return data.choices[0].message.content;
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const data = line.slice(6).trim();
+                    if (data === '[DONE]') continue;
+
+                    try {
+                        const parsed = JSON.parse(data);
+                        const delta = parsed.choices[0].delta;
+                        if (delta.reasoning_content) { /* V4 Pro 推理内容 */ }
+                        if (delta.content) {
+                            fullText += delta.content;
+                            if (onChunk) onChunk(delta.content);
+                        }
+                    } catch (e) { /* 跳过解析失败的行 */ }
+                }
+            }
+            return fullText;
+        },
+
+        /* ---- 复制内容 ---- */
+        async copyContent(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                this.showToast('已复制到剪贴板');
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                this.showToast('已复制到剪贴板');
+            }
+        },
+
+        /* ---- 导出 Markdown 文件 ---- */
+        exportFile(type) {
+            const content = type === 'exam' ? this.examPaper : this.answerKey;
+            const suffix = type === 'exam' ? '试卷' : '答案';
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${this.form.subject}_${suffix}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            this.showToast(`${suffix}文件已下载`);
+        },
+
+        /* ---- 重置所有状态 ---- */
+        resetAll() {
+            this.currentStep = 1;
+            this.form = { subject: '', scope: '', audience: '', difficulty: '中等' };
+            this.questionTypes.forEach(qt => { qt.checked = qt.key === 'choice'; qt.count = qt.key === 'choice' ? 10 : (qt.key === 'essay' ? 2 : qt.key === 'short' ? 3 : 5); });
+            this.questions = [];
+            this.examPaper = '';
+            this.answerKey = '';
+            this.activeTab = 'exam';
+            this.$nextTick(() => lucide.createIcons());
+        }
+    };
+}
+</script>
+</body>
+</html>

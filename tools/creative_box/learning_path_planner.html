@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习路径规划器 - AI创意生成器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header h1 {
+            color: #5E6AD2;
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header .subtitle {
+            color: #64748B;
+            font-size: 16px;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn-primary {
+            background: #5E6AD2;
+            color: white;
+            border: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: #4C63D2;
+            transform: translateY(-1px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card h3 {
+            color: #1E293B;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #E1E5E9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #5E6AD2;
+            box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .tag-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .tag {
+            background: #F1F5F9;
+            color: #64748B;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tag:hover, .tag.active {
+            background: #5E6AD2;
+            color: white;
+        }
+
+        .generate-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #5E6AD2, #4C63D2);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 16px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(94, 106, 210, 0.3);
+        }
+
+        .generate-btn:disabled {
+            background: #94A3B8;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .learning-path {
+            display: grid;
+            gap: 20px;
+        }
+
+        .path-overview {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #F1F3F5;
+        }
+
+        .overview-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+            background: #F8FAFC;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #5E6AD2;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748B;
+            margin-top: 4px;
+        }
+
+        .learning-stages {
+            display: grid;
+            gap: 16px;
+        }
+
+        .learning-stage {
+            background: white;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .stage-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stage-number {
+            background: #5E6AD2;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .stage-title {
+            color: #1E293B;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .stage-duration {
+            background: #F1F5F9;
+            color: #64748B;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        .stage-description {
+            color: #64748B;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .stage-modules {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .module-card {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .module-title {
+            font-weight: 600;
+            color: #1E293B;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .module-content {
+            font-size: 13px;
+            color: #64748B;
+            line-height: 1.5;
+        }
+
+        .module-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 11px;
+            color: #94A3B8;
+        }
+
+        .stage-resources {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #F1F5F9;
+        }
+
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .resource-item {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .resource-type {
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .resource-name {
+            color: #15803D;
+            margin-top: 2px;
+        }
+
+        .progress-tracker {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #F1F5F9;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #5E6AD2, #4C63D2);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #5E6AD2;
+            border: 1px solid #5E6AD2;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .btn-secondary:hover {
+            background: #5E6AD2;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .stage-modules {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 24px;
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .settings-panel.active {
+            right: 0;
+        }
+
+        .settings-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .settings-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1><i class="fas fa-route"></i> 学习路径规划器</h1>
+                <div class="subtitle">个性化定制专业学习路径，科学规划技能提升计划</div>
+            </div>
+            <div class="controls">
+                <select id="modelSelect">
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    <option value="doubao-seed-1-6-thinking-250615">豆包思维版</option>
+                    <option value="doubao-seed-1-6-250615">豆包标准版</option>
+                </select>
+                <button class="btn-primary" onclick="toggleSettings()">
+                    <i class="fas fa-cog"></i> 设置
+                </button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <h3><i class="fas fa-user-graduate"></i> 学习目标</h3>
+                <div class="form-group">
+                    <label for="learningGoal">学习目标</label>
+                    <input type="text" id="learningGoal" placeholder="例如：成为全栈开发工程师、掌握数据科学、学会UI设计等">
+                </div>
+                <div class="form-group">
+                    <label for="skillDomain">技能领域</label>
+                    <select id="skillDomain">
+                        <option value="programming">编程开发</option>
+                        <option value="data-science">数据科学</option>
+                        <option value="design">设计创意</option>
+                        <option value="marketing">数字营销</option>
+                        <option value="business">商业管理</option>
+                        <option value="language">语言学习</option>
+                        <option value="finance">金融投资</option>
+                        <option value="healthcare">医疗健康</option>
+                        <option value="education">教育培训</option>
+                        <option value="arts">艺术文化</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="currentLevel">当前水平</label>
+                    <select id="currentLevel">
+                        <option value="beginner">初学者</option>
+                        <option value="elementary">入门级</option>
+                        <option value="intermediate">中级</option>
+                        <option value="advanced">高级</option>
+                        <option value="expert">专家级</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="targetLevel">目标水平</label>
+                    <select id="targetLevel">
+                        <option value="elementary">入门级</option>
+                        <option value="intermediate">中级</option>
+                        <option value="advanced">高级</option>
+                        <option value="expert">专家级</option>
+                        <option value="master">大师级</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="existingSkills">已有技能</label>
+                    <textarea id="existingSkills" placeholder="列出您已经掌握的相关技能和经验"></textarea>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-calendar-alt"></i> 学习设置</h3>
+                <div class="form-group">
+                    <label for="learningTime">学习时长</label>
+                    <select id="learningTime">
+                        <option value="1-month">1个月</option>
+                        <option value="3-months">3个月</option>
+                        <option value="6-months">6个月</option>
+                        <option value="1-year">1年</option>
+                        <option value="2-years">2年</option>
+                        <option value="flexible">灵活安排</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="weeklyHours">每周学习时间</label>
+                    <select id="weeklyHours">
+                        <option value="5-10">5-10小时</option>
+                        <option value="10-20">10-20小时</option>
+                        <option value="20-30">20-30小时</option>
+                        <option value="30-40">30-40小时</option>
+                        <option value="40+">40小时以上</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="learningStyle">学习偏好</label>
+                    <select id="learningStyle">
+                        <option value="theory-practice">理论+实践</option>
+                        <option value="project-based">项目驱动</option>
+                        <option value="step-by-step">循序渐进</option>
+                        <option value="intensive">集中突破</option>
+                        <option value="self-paced">自主节奏</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>学习方式 (可多选)</label>
+                    <div class="tag-group">
+                        <span class="tag active" data-method="online-courses">在线课程</span>
+                        <span class="tag active" data-method="books">书籍阅读</span>
+                        <span class="tag" data-method="videos">视频教程</span>
+                        <span class="tag" data-method="practice">实战练习</span>
+                        <span class="tag" data-method="mentorship">导师指导</span>
+                        <span class="tag" data-method="community">社区学习</span>
+                        <span class="tag" data-method="bootcamp">训练营</span>
+                        <span class="tag" data-method="certification">认证考试</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="budget">预算范围</label>
+                    <select id="budget">
+                        <option value="free">免费资源</option>
+                        <option value="low">低预算 (<$100)</option>
+                        <option value="medium">中等预算 ($100-500)</option>
+                        <option value="high">高预算 ($500-2000)</option>
+                        <option value="unlimited">预算充足 (>$2000)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="learningChallenges">学习挑战</label>
+                    <textarea id="learningChallenges" placeholder="描述您在学习过程中可能遇到的困难或限制"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <button class="generate-btn" onclick="generateLearningPath()">
+                <i class="fas fa-magic"></i> 生成学习路径
+            </button>
+        </div>
+
+        <div class="results" id="results" style="display: none;">
+            <h3><i class="fas fa-map"></i> 个性化学习路径</h3>
+            <div id="learningPathContent" class="learning-path"></div>
+            
+            <div class="action-buttons">
+                <button class="btn-secondary" onclick="copyLearningPath()">
+                    <i class="fas fa-copy"></i> 复制路径
+                </button>
+                <button class="btn-secondary" onclick="downloadLearningPath()">
+                    <i class="fas fa-download"></i> 下载计划
+                </button>
+                <button class="btn-secondary" onclick="customizePath()">
+                    <i class="fas fa-edit"></i> 自定义调整
+                </button>
+                <button class="btn-secondary" onclick="trackProgress()">
+                    <i class="fas fa-chart-line"></i> 进度跟踪
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div class="settings-overlay" id="settingsOverlay" onclick="toggleSettings()"></div>
+    <div class="settings-panel" id="settingsPanel">
+        <h3><i class="fas fa-cog"></i> API 设置</h3>
+        <div class="form-group">
+            <label for="apiKey">API 密钥</label>
+            <input type="password" id="apiKey" placeholder="输入您的API密钥">
+        </div>
+        <div class="form-group">
+            <label for="apiUrl">API 地址</label>
+            <input type="text" id="apiUrl" value="https://api.deepseek.com/chat/completions">
+        </div>
+        <button class="btn-primary" onclick="saveSettings()">保存设置</button>
+        <button class="btn-primary" onclick="toggleSettings()" style="margin-left: 8px;">关闭</button>
+    </div>
+
+    <script>
+        // 全局变量
+        let selectedMethods = ['online-courses', 'books'];
+        let currentLearningPath = '';
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            initializeMethodTags();
+        });
+
+        // 设置面板控制
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            const overlay = document.getElementById('settingsOverlay');
+            panel.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // 保存设置
+        function saveSettings() {
+            const apiKey = document.getElementById('apiKey').value;
+            const apiUrl = document.getElementById('apiUrl').value;
+            const model = document.getElementById('modelSelect').value;
+
+            localStorage.setItem('learning_path_api_key', apiKey);
+            localStorage.setItem('learning_path_api_url', apiUrl);
+            localStorage.setItem('learning_path_model', model);
+
+            alert('设置已保存！');
+            toggleSettings();
+        }
+
+        // 加载设置
+        function loadSettings() {
+            const apiKey = localStorage.getItem('learning_path_api_key') || '';
+            const apiUrl = localStorage.getItem('learning_path_api_url') || 'https://api.deepseek.com/chat/completions';
+            const model = localStorage.getItem('learning_path_model') || 'deepseek-v4-flash';
+
+            document.getElementById('apiKey').value = apiKey;
+            document.getElementById('apiUrl').value = apiUrl;
+            document.getElementById('modelSelect').value = model;
+        }
+
+        // 初始化学习方式标签
+        function initializeMethodTags() {
+            const tags = document.querySelectorAll('.tag[data-method]');
+            tags.forEach(tag => {
+                tag.addEventListener('click', function() {
+                    const method = this.dataset.method;
+                    if (this.classList.contains('active')) {
+                        this.classList.remove('active');
+                        selectedMethods = selectedMethods.filter(m => m !== method);
+                    } else {
+                        this.classList.add('active');
+                        selectedMethods.push(method);
+                    }
+                });
+            });
+        }
+
+        // 生成学习路径
+        async function generateLearningPath() {
+            // 获取表单数据
+            const formData = {
+                goal: document.getElementById('learningGoal').value.trim(),
+                domain: document.getElementById('skillDomain').value,
+                currentLevel: document.getElementById('currentLevel').value,
+                targetLevel: document.getElementById('targetLevel').value,
+                existingSkills: document.getElementById('existingSkills').value.trim(),
+                learningTime: document.getElementById('learningTime').value,
+                weeklyHours: document.getElementById('weeklyHours').value,
+                learningStyle: document.getElementById('learningStyle').value,
+                budget: document.getElementById('budget').value,
+                challenges: document.getElementById('learningChallenges').value.trim(),
+                methods: selectedMethods
+            };
+
+            // 验证必填字段
+            if (!formData.goal) {
+                alert('请填写学习目标！');
+                return;
+            }
+
+            const button = document.querySelector('.generate-btn');
+            const results = document.getElementById('results');
+            
+            // 设置加载状态
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在规划学习路径...';
+
+            try {
+                // 构建提示词
+                const prompt = buildLearningPathPrompt(formData);
+                
+                // 调用AI API
+                const learningPath = await callAI([
+                    {
+                        role: "system",
+                        content: "你是一位专业的学习顾问和教育专家，擅长设计个性化的学习路径和技能发展方案。请提供科学、实用、可执行的学习计划。"
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ]);
+
+                // 显示结果
+                currentLearningPath = learningPath;
+                displayLearningPath(learningPath);
+                
+                results.style.display = 'block';
+                results.scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                console.error('生成失败:', error);
+                alert('生成失败，请检查API设置或网络连接：' + error.message);
+            } finally {
+                // 恢复按钮状态
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-magic"></i> 生成学习路径';
+            }
+        }
+
+        // 构建学习路径提示词
+        function buildLearningPathPrompt(data) {
+            const domainMap = {
+                'programming': '编程开发',
+                'data-science': '数据科学',
+                'design': '设计创意',
+                'marketing': '数字营销',
+                'business': '商业管理',
+                'language': '语言学习',
+                'finance': '金融投资',
+                'healthcare': '医疗健康',
+                'education': '教育培训',
+                'arts': '艺术文化'
+            };
+
+            const levelMap = {
+                'beginner': '初学者',
+                'elementary': '入门级',
+                'intermediate': '中级',
+                'advanced': '高级',
+                'expert': '专家级',
+                'master': '大师级'
+            };
+
+            const methodMap = {
+                'online-courses': '在线课程',
+                'books': '书籍阅读',
+                'videos': '视频教程',
+                'practice': '实战练习',
+                'mentorship': '导师指导',
+                'community': '社区学习',
+                'bootcamp': '训练营',
+                'certification': '认证考试'
+            };
+
+            return `请为以下学习需求设计详细的个性化学习路径：
+
+**学习目标：**
+- 学习目标：${data.goal}
+- 技能领域：${domainMap[data.domain]}
+- 当前水平：${levelMap[data.currentLevel]}
+- 目标水平：${levelMap[data.targetLevel]}
+- 已有技能：${data.existingSkills || '无'}
+
+**学习设置：**
+- 学习时长：${data.learningTime}
+- 每周时间：${data.weeklyHours}
+- 学习偏好：${data.learningStyle}
+- 学习方式：${data.methods.map(method => methodMap[method]).join('、')}
+- 预算范围：${data.budget}
+- 学习挑战：${data.challenges || '无特殊挑战'}
+
+请按以下JSON格式提供完整的学习路径方案：
+
+{
+  "pathOverview": {
+    "title": "学习路径标题",
+    "description": "路径总体描述",
+    "totalDuration": "总学习时长",
+    "estimatedHours": "预计总小时数",
+    "difficulty": "难度评估",
+    "successRate": "预期成功率"
+  },
+  "prerequisites": {
+    "requiredSkills": ["必需技能1", "必需技能2"],
+    "recommendedBackground": "推荐背景",
+    "preparationTime": "准备时间"
+  },
+  "learningStages": [
+    {
+      "stage": 1,
+      "title": "阶段标题",
+      "description": "阶段描述",
+      "duration": "阶段时长",
+      "objectives": ["目标1", "目标2", "目标3"],
+      "modules": [
+        {
+          "title": "模块标题",
+          "description": "模块描述",
+          "estimatedHours": "预计时长",
+          "difficulty": "难度级别",
+          "topics": ["主题1", "主题2"],
+          "deliverables": ["产出1", "产出2"]
+        }
+      ],
+      "resources": [
+        {
+          "type": "资源类型",
+          "name": "资源名称",
+          "description": "资源描述",
+          "cost": "费用",
+          "priority": "优先级"
+        }
+      ],
+      "milestones": ["里程碑1", "里程碑2"],
+      "assessments": ["评估方式1", "评估方式2"]
+    }
+  ],
+  "practicalProjects": [
+    {
+      "title": "项目标题",
+      "description": "项目描述",
+      "difficulty": "难度级别",
+      "estimatedTime": "预计时间",
+      "skills": ["技能1", "技能2"],
+      "deliverables": ["交付物1", "交付物2"]
+    }
+  ],
+  "careerPath": {
+    "entryLevelRoles": ["入门职位1", "入门职位2"],
+    "midLevelRoles": ["中级职位1", "中级职位2"],
+    "seniorRoles": ["高级职位1", "高级职位2"],
+    "salaryRange": "薪资范围",
+    "jobMarketOutlook": "就业前景"
+  },
+  "successMetrics": {
+    "skillAssessments": ["技能评估1", "技能评估2"],
+    "portfolioRequirements": ["作品集要求1", "作品集要求2"],
+    "certifications": ["认证1", "认证2"],
+    "networkingGoals": ["人脉目标1", "人脉目标2"]
+  },
+  "supportSystem": {
+    "mentorshipOptions": ["导师选项1", "导师选项2"],
+    "communityResources": ["社区资源1", "社区资源2"],
+    "studyGroups": ["学习小组1", "学习小组2"],
+    "troubleshooting": ["问题解决1", "问题解决2"]
+  },
+  "recommendations": ["建议1", "建议2", "建议3"],
+  "nextSteps": ["下一步行动1", "下一步行动2", "下一步行动3"]
+}
+
+请确保学习路径既科学合理又个性化，能够有效帮助用户达成学习目标。`;
+        }
+
+        // 显示学习路径
+        function displayLearningPath(learningPath) {
+            try {
+                const data = extractJSON(learningPath);
+                const container = document.getElementById('learningPathContent');
+                
+                container.innerHTML = `
+                    <div class="path-overview">
+                        <h4>${data.pathOverview.title}</h4>
+                        <p style="margin: 12px 0; color: #64748B;">${data.pathOverview.description}</p>
+                        
+                        <div class="overview-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">${data.pathOverview.totalDuration}</div>
+                                <div class="stat-label">总时长</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${data.pathOverview.estimatedHours}</div>
+                                <div class="stat-label">预计小时</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${data.pathOverview.difficulty}</div>
+                                <div class="stat-label">难度</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${data.pathOverview.successRate}</div>
+                                <div class="stat-label">成功率</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 16px; padding: 16px; background: #FEF3C7; border-radius: 8px;">
+                            <h5 style="color: #92400E; margin-bottom: 8px;">前置要求</h5>
+                            <p><strong>必需技能：</strong>${data.prerequisites.requiredSkills.join('、')}</p>
+                            <p><strong>推荐背景：</strong>${data.prerequisites.recommendedBackground}</p>
+                            <p><strong>准备时间：</strong>${data.prerequisites.preparationTime}</p>
+                        </div>
+                    </div>
+
+                    <div class="learning-stages">
+                        ${data.learningStages.map(stage => `
+                            <div class="learning-stage">
+                                <div class="stage-header">
+                                    <div class="stage-number">${stage.stage}</div>
+                                    <div class="stage-title">${stage.title}</div>
+                                    <div class="stage-duration">${stage.duration}</div>
+                                </div>
+                                
+                                <div class="stage-description">${stage.description}</div>
+                                
+                                <div style="margin-bottom: 16px;">
+                                    <strong>学习目标：</strong>
+                                    <ul style="margin: 8px 0 0 20px;">
+                                        ${stage.objectives.map(obj => `<li>${obj}</li>`).join('')}
+                                    </ul>
+                                </div>
+
+                                <div class="stage-modules">
+                                    ${stage.modules.map(module => `
+                                        <div class="module-card">
+                                            <div class="module-title">${module.title}</div>
+                                            <div class="module-content">${module.description}</div>
+                                            <div class="module-meta">
+                                                <span>${module.estimatedHours}</span>
+                                                <span>${module.difficulty}</span>
+                                            </div>
+                                            <div style="margin-top: 8px;">
+                                                <strong>主题：</strong>${module.topics.join('、')}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+
+                                <div class="stage-resources">
+                                    <h5 style="margin-bottom: 12px;">学习资源</h5>
+                                    <div class="resource-grid">
+                                        ${stage.resources.map(resource => `
+                                            <div class="resource-item">
+                                                <div class="resource-type">${resource.type}</div>
+                                                <div class="resource-name">${resource.name}</div>
+                                                <div style="font-size: 10px; color: #059669; margin-top: 4px;">
+                                                    ${resource.cost} • ${resource.priority}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+
+                                <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                    <div>
+                                        <strong>里程碑：</strong>
+                                        <ul style="margin: 4px 0 0 16px; font-size: 13px;">
+                                            ${stage.milestones.map(milestone => `<li>${milestone}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <strong>评估方式：</strong>
+                                        <ul style="margin: 4px 0 0 16px; font-size: 13px;">
+                                            ${stage.assessments.map(assessment => `<li>${assessment}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="path-overview">
+                        <h4>实践项目</h4>
+                        <div class="stage-modules">
+                            ${data.practicalProjects.map(project => `
+                                <div class="module-card">
+                                    <div class="module-title">${project.title}</div>
+                                    <div class="module-content">${project.description}</div>
+                                    <div class="module-meta">
+                                        <span>${project.estimatedTime}</span>
+                                        <span>${project.difficulty}</span>
+                                    </div>
+                                    <div style="margin-top: 8px;">
+                                        <strong>技能：</strong>${project.skills.join('、')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="path-overview">
+                        <h4>职业发展路径</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 16px 0;">
+                            <div>
+                                <h5>入门职位</h5>
+                                <ul style="margin: 8px 0 0 16px; font-size: 13px;">
+                                    ${data.careerPath.entryLevelRoles.map(role => `<li>${role}</li>`).join('')}
+                                </ul>
+                            </div>
+                            <div>
+                                <h5>中级职位</h5>
+                                <ul style="margin: 8px 0 0 16px; font-size: 13px;">
+                                    ${data.careerPath.midLevelRoles.map(role => `<li>${role}</li>`).join('')}
+                                </ul>
+                            </div>
+                            <div>
+                                <h5>高级职位</h5>
+                                <ul style="margin: 8px 0 0 16px; font-size: 13px;">
+                                    ${data.careerPath.seniorRoles.map(role => `<li>${role}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                        <p><strong>薪资范围：</strong>${data.careerPath.salaryRange}</p>
+                        <p><strong>就业前景：</strong>${data.careerPath.jobMarketOutlook}</p>
+                    </div>
+
+                    <div class="progress-tracker">
+                        <h4>学习进度跟踪</h4>
+                        <div>当前进度</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div style="font-size: 12px; color: #64748B;">开始学习后可以在这里跟踪您的进度</div>
+                    </div>
+
+                    <div class="path-overview">
+                        <h4>专家建议</h4>
+                        <ul style="margin: 12px 0 0 20px;">
+                            ${data.recommendations.map(rec => `<li style="margin-bottom: 8px;">${rec}</li>`).join('')}
+                        </ul>
+                        
+                        <h5 style="margin-top: 16px;">下一步行动</h5>
+                        <ol style="margin: 8px 0 0 20px;">
+                            ${data.nextSteps.map(step => `<li style="margin-bottom: 6px;">${step}</li>`).join('')}
+                        </ol>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('解析学习路径失败:', error);
+                document.getElementById('learningPathContent').innerHTML = `
+                    <div class="path-overview">
+                        <h4>学习路径规划</h4>
+                        <pre style="white-space: pre-wrap; font-family: inherit;">${learningPath}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        // 获取全局 DeepSeek Key
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        // API调用函数
+        async function callAI(messages) {
+            // 优先使用本地自定义 key，否则使用全局 key
+            const apiKey = localStorage.getItem('learning_path_api_key') || getGlobalDeepSeekKey();
+            const apiUrl = localStorage.getItem('learning_path_api_url') || 'https://api.deepseek.com/chat/completions';
+            const model = document.getElementById('modelSelect').value || 'deepseek-v4-flash';
+            
+            if (!apiKey) {
+                throw new Error('请先在设置中配置 API Key，或在主页配置全局 DeepSeek Key');
+            }
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    temperature: 0.7,
+                    max_tokens: 4000
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+
+        // 提取并解析 JSON（处理可能的 Markdown 代码块包裹）
+        function extractJSON(text) {
+            // 尝试直接解析
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                // 尝试从 Markdown 代码块中提取
+                const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+                if (jsonMatch) {
+                    return JSON.parse(jsonMatch[1].trim());
+                }
+                // 尝试查找 JSON 对象边界
+                const start = text.indexOf('{');
+                const end = text.lastIndexOf('}');
+                if (start !== -1 && end !== -1 && end > start) {
+                    return JSON.parse(text.slice(start, end + 1));
+                }
+                throw new Error('无法解析 JSON: ' + text.substring(0, 100));
+            }
+        }
+
+        // 复制学习路径
+        function copyLearningPath() {
+            copyText(currentLearningPath);
+        }
+
+        // 下载学习路径
+        function downloadLearningPath() {
+            try {
+                const data = extractJSON(currentLearningPath);
+                const content = `
+# ${data.pathOverview.title}
+
+## 路径概述
+${data.pathOverview.description}
+
+**总学习时长：** ${data.pathOverview.totalDuration}
+**预计总小时数：** ${data.pathOverview.estimatedHours}
+**难度评估：** ${data.pathOverview.difficulty}
+**预期成功率：** ${data.pathOverview.successRate}
+
+## 前置要求
+- **必需技能：** ${data.prerequisites.requiredSkills.join('、')}
+- **推荐背景：** ${data.prerequisites.recommendedBackground}
+- **准备时间：** ${data.prerequisites.preparationTime}
+
+## 学习阶段
+
+${data.learningStages.map(stage => `
+### 阶段 ${stage.stage}: ${stage.title} (${stage.duration})
+
+${stage.description}
+
+**学习目标：**
+${stage.objectives.map(obj => `- ${obj}`).join('\n')}
+
+**学习模块：**
+${stage.modules.map(module => `
+#### ${module.title}
+- **描述：** ${module.description}
+- **预计时长：** ${module.estimatedHours}
+- **难度级别：** ${module.difficulty}
+- **主题：** ${module.topics.join('、')}
+- **产出：** ${module.deliverables.join('、')}
+`).join('')}
+
+**学习资源：**
+${stage.resources.map(resource => `- **${resource.type}：** ${resource.name} (${resource.cost}, ${resource.priority})`).join('\n')}
+
+**里程碑：** ${stage.milestones.join('、')}
+**评估方式：** ${stage.assessments.join('、')}
+`).join('')}
+
+## 实践项目
+
+${data.practicalProjects.map(project => `
+### ${project.title}
+- **描述：** ${project.description}
+- **难度：** ${project.difficulty}
+- **预计时间：** ${project.estimatedTime}
+- **所需技能：** ${project.skills.join('、')}
+- **交付物：** ${project.deliverables.join('、')}
+`).join('')}
+
+## 职业发展路径
+
+**入门职位：** ${data.careerPath.entryLevelRoles.join('、')}
+**中级职位：** ${data.careerPath.midLevelRoles.join('、')}
+**高级职位：** ${data.careerPath.seniorRoles.join('、')}
+**薪资范围：** ${data.careerPath.salaryRange}
+**就业前景：** ${data.careerPath.jobMarketOutlook}
+
+## 成功指标
+
+**技能评估：** ${data.successMetrics.skillAssessments.join('、')}
+**作品集要求：** ${data.successMetrics.portfolioRequirements.join('、')}
+**认证建议：** ${data.successMetrics.certifications.join('、')}
+**人脉目标：** ${data.successMetrics.networkingGoals.join('、')}
+
+## 支持系统
+
+**导师选项：** ${data.supportSystem.mentorshipOptions.join('、')}
+**社区资源：** ${data.supportSystem.communityResources.join('、')}
+**学习小组：** ${data.supportSystem.studyGroups.join('、')}
+
+## 专家建议
+
+${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
+
+## 下一步行动
+
+${data.nextSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+
+---
+生成时间: ${new Date().toLocaleString()}
+生成工具: 学习路径规划器 - AI创意生成器
+                `.trim();
+
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `学习路径_${data.pathOverview.title}_${new Date().toISOString().split('T')[0]}.md`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('下载失败:', error);
+                alert('下载失败，请重试');
+            }
+        }
+
+        // 自定义路径
+        function customizePath() {
+            alert('自定义调整功能开发中，敬请期待！您可以根据实际情况调整学习计划。');
+        }
+
+        // 进度跟踪
+        function trackProgress() {
+            alert('进度跟踪功能开发中，敬请期待！将支持详细的学习进度记录和分析。');
+        }
+
+        // 复制文本到剪贴板
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const notification = document.createElement('div');
+                notification.textContent = '已复制到剪贴板！';
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #10B981;
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    z-index: 1000;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                `;
+                document.body.appendChild(notification);
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制');
+            });
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_learning_path_planner.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

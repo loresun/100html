@@ -1,0 +1,67 @@
+window.toolCollections = window.toolCollections || {};
+window.toolCollections.legal_tools = [
+    {
+        id: 'contract_reviewer',
+        name: '合同审查助手',
+        desc: '粘贴合同全文→逐条扫描风险点→标记不合理条款（高/中/低风险）→修改建议→导出审查报告。',
+        href: 'tools/legal_tools/contract_reviewer.html',
+        icon: 'fa-solid fa-file-contract',
+        category: 'legal_tools',
+        tags: ['职场'],
+        isNew: true,
+        complexity: 4,
+        iconBg: 'bg-slate-50',
+        iconColor: 'text-slate-600',
+        borderColor: 'slate-200',
+        hoverTextColor: 'text-slate-600',
+        linkColor: 'text-slate-600'
+    },
+    {
+        id: 'contract_drafter',
+        name: '合同/协议起草器',
+        desc: '选合同类型（租赁/劳动/合作/借款）→分步填写关键条款→AI生成法律文本→审阅调整。',
+        href: 'tools/legal_tools/contract_drafter.html',
+        icon: 'fa-solid fa-pen-to-square',
+        category: 'legal_tools',
+        tags: ['职场'],
+        isNew: true,
+        complexity: 4,
+        iconBg: 'bg-blue-50',
+        iconColor: 'text-blue-600',
+        borderColor: 'blue-200',
+        hoverTextColor: 'text-blue-600',
+        linkColor: 'text-blue-600'
+    },
+    {
+        id: 'privacy_policy_gen',
+        name: '隐私政策生成器',
+        desc: '业务类型+数据收集范围→生成符合规范的隐私政策→适配国内/GDPR法规，App上线必备。',
+        href: 'tools/legal_tools/privacy_policy_gen.html',
+        icon: 'fa-solid fa-shield-halved',
+        category: 'legal_tools',
+        tags: [],
+        isNew: true,
+        complexity: 3,
+        iconBg: 'bg-green-50',
+        iconColor: 'text-green-600',
+        borderColor: 'green-200',
+        hoverTextColor: 'text-green-600',
+        linkColor: 'text-green-600'
+    },
+    {
+        id: 'labor_dispute_guide',
+        name: '劳动纠纷指南',
+        desc: '描述纠纷情况→分析适用法条→维权路径+所需材料→仲裁/诉讼流程图，劳动者维权参考。',
+        href: 'tools/legal_tools/labor_dispute_guide.html',
+        icon: 'fa-solid fa-gavel',
+        category: 'legal_tools',
+        tags: ['职场'],
+        isNew: true,
+        complexity: 4,
+        iconBg: 'bg-amber-50',
+        iconColor: 'text-amber-600',
+        borderColor: 'amber-200',
+        hoverTextColor: 'text-amber-600',
+        linkColor: 'text-amber-600'
+    }
+];

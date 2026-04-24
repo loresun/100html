@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Audio Reactive Wave // HTML_SUPER</title>
+    <style>
+        body { margin: 0; background: #111; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        canvas { position: absolute; top: 0; left: 0; }
+        #start-btn { z-index: 10; padding: 20px 40px; font-size: 20px; background: transparent; border: 2px solid #fff; color: #fff; cursor: pointer; transition: 0.3s; }
+        #start-btn:hover { background: #fff; color: #000; }
+        .ui { position: absolute; top: 20px; left: 20px; z-index: 10; }
+        a { color: #fff; text-decoration: none; border-bottom: 1px solid #fff; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui"><a href="index.html">← BACK</a></div>
+    <button id="start-btn">ENABLE MICROPHONE</button>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const btn = document.getElementById('start-btn');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let audioCtx, analyser, source, dataArray;
+        let active = false;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        btn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                active = true;
+                btn.style.display = 'none';
+                animate();
+            } catch(e) {
+                btn.innerText = "Error: Mic Access Denied";
+            }
+        });
+
+        function animate() {
+            if(!active) return;
+            requestAnimationFrame(animate);
+            analyser.getByteFrequencyData(dataArray);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+
+            const cx = width / 2;
+            const cy = height / 2;
+            const radius = 100;
+            const bars = dataArray.length; // 128 usually
+            const step = (Math.PI * 2) / bars;
+
+            ctx.beginPath();
+            for(let i = 0; i < bars; i++) {
+                const val = dataArray[i];
+                const angle = i * step;
+                const r = radius + (val * 1.5);
+                
+                const x = cx + Math.cos(angle) * r;
+                const y = cy + Math.sin(angle) * r;
+                
+                // Color based on freq
+                ctx.strokeStyle = `hsl(${(i/bars)*360}, 100%, 50%)`;
+                ctx.lineWidth = 2;
+                
+                // Draw lines from center circle outward
+                ctx.moveTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.beginPath(); // Reset so colors don't mix weirdly
+            }
+            
+            // Inner circle
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius - 5, 0, Math.PI*2);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

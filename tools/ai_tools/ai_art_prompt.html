@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 绘图提示词生成器 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* 基础样式 - 采用彩虹渐变艺术风格 */
+        body {
+            background: linear-gradient(135deg, #fdf4ff 0%, #fce7f3 25%, #e0e7ff 50%, #cffafe 75%, #ecfccb 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #ec4899, #8b5cf6);
+            border-radius: 3px;
+        }
+
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+
+        /* 渐变彩虹边框 */
+        .rainbow-border {
+            position: relative;
+            background: white;
+        }
+
+        .rainbow-border::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6, #06b6d4, #10b981);
+            z-index: -1;
+        }
+
+        /* 平台卡片样式 */
+        .platform-card {
+            transition: all 0.3s ease;
+        }
+
+        .platform-card.active {
+            border-color: #8b5cf6;
+            background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
+        }
+
+        /* 风格标签 */
+        .style-tag {
+            transition: all 0.2s ease;
+        }
+
+        .style-tag:hover {
+            transform: scale(1.05);
+        }
+
+        .style-tag.active {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* Prompt 结果卡片 */
+        .prompt-result {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%);
+            color: #e0e7ff;
+        }
+
+        /* 参数选择器样式 */
+        .param-option {
+            transition: all 0.2s ease;
+        }
+
+        .param-option.active {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        /* 复制按钮动画 */
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 加载动画 */
+        @keyframes gradient-shift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .loading-gradient {
+            background: linear-gradient(270deg, #ec4899, #8b5cf6, #06b6d4, #10b981, #ec4899);
+            background-size: 400% 400%;
+            animation: gradient-shift 3s ease infinite;
+        }
+
+        /* 词库折叠区域 */
+        .keyword-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .keyword-section.expanded {
+            max-height: 500px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-pink-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <!-- 左侧：返回首页 -->
+                    <div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-palette text-pink-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">AI 绘图提示词生成器</span>
+                    </div>
+                    <!-- 右侧：模型切换 + 设置 -->
+                    <div class="flex items-center gap-4">
+                        <!-- V4 Flash/V4 Pro 模型切换 -->
+                        <div class="flex items-center gap-1 bg-pink-50 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-pink-600': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-pink-600': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showKeywordLib = true"
+                            class="text-slate-500 hover:text-pink-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-book-open h-4 w-4"></i>
+                            <span class="hidden sm:inline">词库</span>
+                        </button>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-pink-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：输入面板 -->
+            <div
+                class="w-full lg:w-2/5 bg-white/70 backdrop-blur-sm border-r border-pink-200 p-5 overflow-y-auto space-y-5">
+
+                <!-- 中文描述输入 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-pen-nib w-4 h-4 text-pink-600"></i>
+                        画面描述（中文） <span class="text-red-500">*</span>
+                    </label>
+                    <textarea v-model="input.description" rows="4"
+                        placeholder="用中文描述你想要生成的画面...&#10;&#10;例如：一位穿着白色连衣裙的少女站在樱花树下，阳光透过花瓣洒落，氛围浪漫梦幻"
+                        class="w-full bg-white border border-pink-200 rounded-xl p-4 text-sm outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition resize-none"></textarea>
+                </div>
+
+                <!-- 目标平台选择 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-desktop w-4 h-4 text-pink-600"></i>
+                        目标平台
+                    </label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div v-for="platform in platforms" :key="platform.value"
+                            @click="input.platform = platform.value"
+                            :class="['platform-card p-3 rounded-xl border cursor-pointer text-center', input.platform === platform.value ? 'active' : 'border-pink-200 bg-white hover:border-pink-300']">
+                            <span class="text-2xl block mb-1">{{ platform.icon }}</span>
+                            <span class="text-xs font-medium text-slate-700">{{ platform.label }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 风格选择 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-paintbrush w-4 h-4 text-pink-600"></i>
+                        画面风格
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        <button v-for="style in artStyles" :key="style.value" @click="toggleStyle(style.value)"
+                            :class="['style-tag px-3 py-1.5 text-xs font-medium rounded-full border transition', input.selectedStyles.includes(style.value) ? 'active' : 'bg-white border-pink-200 text-slate-600']">
+                            {{ style.icon }} {{ style.label }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 画面比例 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-regular fa-square w-4 h-4 text-pink-600"></i>
+                        画面比例
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        <button v-for="ratio in aspectRatios" :key="ratio.value"
+                            @click="input.aspectRatio = ratio.value"
+                            :class="['param-option px-3 py-1.5 text-xs font-medium rounded-lg border border-pink-200 transition', input.aspectRatio === ratio.value ? 'active' : 'bg-white text-slate-600 hover:border-pink-400']">
+                            {{ ratio.label }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 光线效果 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-sun w-4 h-4 text-pink-600"></i>
+                        光线效果
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        <button v-for="light in lightingOptions" :key="light.value"
+                            @click="input.lighting = light.value"
+                            :class="['param-option px-3 py-1.5 text-xs font-medium rounded-lg border border-pink-200 transition', input.lighting === light.value ? 'active' : 'bg-white text-slate-600 hover:border-pink-400']">
+                            {{ light.icon }} {{ light.label }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 镜头角度 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-camera w-4 h-4 text-pink-600"></i>
+                        镜头角度
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        <button v-for="angle in cameraAngles" :key="angle.value"
+                            @click="input.cameraAngle = angle.value"
+                            :class="['param-option px-3 py-1.5 text-xs font-medium rounded-lg border border-pink-200 transition', input.cameraAngle === angle.value ? 'active' : 'bg-white text-slate-600 hover:border-pink-400']">
+                            {{ angle.label }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 质量参数 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-sliders w-4 h-4 text-pink-600"></i>
+                        质量参数
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-1">质量 (--q)</span>
+                            <select v-model="input.quality"
+                                class="w-full bg-white border border-pink-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
+                                <option value="0.5">0.5（快速）</option>
+                                <option value="1">1（标准）</option>
+                                <option value="2">2（高质量）</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-1">风格化 (--s)</span>
+                            <select v-model="input.stylize"
+                                class="w-full bg-white border border-pink-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
+                                <option value="0">0（写实）</option>
+                                <option value="100">100（平衡）</option>
+                                <option value="250">250（默认）</option>
+                                <option value="500">500（艺术）</option>
+                                <option value="1000">1000（极致）</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 额外关键词 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-plus w-4 h-4 text-pink-600"></i>
+                        额外关键词 (可选)
+                    </label>
+                    <input type="text" v-model="input.extraKeywords" placeholder="输入额外的英文关键词，用逗号分隔"
+                        class="w-full bg-white border border-pink-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-pink-500 transition">
+                </div>
+
+                <!-- 生成按钮 - 使用 CSS 控制图标显示，避免 Vue/Lucide DOM 冲突 -->
+                <button @click="generatePrompt" :disabled="isGenerating || !input.description.trim()"
+                    class="w-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                    <span v-if="isGenerating" class="inline-flex items-center gap-2">
+                        <svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        <span>正在生成中...</span>
+                    </span>
+                    <span v-else class="inline-flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i>
+                        <span>🎨 生成 Prompt</span>
+                    </span>
+                </button>
+
+            </div>
+
+            <!-- 右侧：结果展示区 -->
+            <div
+                class="flex-grow bg-gradient-to-br from-pink-50/50 via-purple-50/50 to-indigo-50/50 p-6 overflow-y-auto">
+
+                <!-- 空状态 -->
+                <div v-if="!result && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400">
+                    <div
+                        class="w-24 h-24 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full flex items-center justify-center mb-6">
+                        <i class="fa-solid fa-palette w-12 h-12 text-pink-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-600 mb-2">AI 绘图提示词生成器</h3>
+                    <p class="text-center max-w-md">
+                        用中文描述画面，自动生成专业的英文 Prompt<br>
+                        <span class="text-pink-600 font-medium">支持 Midjourney · Stable Diffusion · DALL-E</span>
+                    </p>
+                </div>
+
+                <!-- 加载状态 -->
+                <div v-if="isGenerating && !result" class="h-full flex flex-col items-center justify-center">
+                    <div class="w-24 h-3 rounded-full loading-gradient mb-6"></div>
+                    <p class="text-slate-600 font-medium">{{ model === 'deepseek-v4-pro' ? '🧠 V4 Pro 深度思考中...' : '正在生成专业 Prompt...' }}</p>
+                    <p class="text-sm text-slate-400 mt-2">翻译并优化关键词中</p>
+                    <!-- V4 Pro 模式下显示实时思考过程 -->
+                    <div v-if="reasoningContent"
+                        class="mt-4 max-w-lg w-full bg-white/50 p-4 rounded-lg text-xs font-mono text-slate-600 max-h-32 overflow-hidden relative">
+                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-white/80 pointer-events-none">
+                        </div>
+                        {{ reasoningContent }}
+                    </div>
+                </div>
+
+                <!-- 结果展示 -->
+                <div v-if="result" class="max-w-4xl mx-auto space-y-6">
+
+                    <!-- V4 Pro 深度思考过程 (如果有) -->
+                    <div v-if="reasoningContent"
+                        class="bg-white rounded-2xl border border-purple-100 overflow-hidden animate-fade-in">
+                        <details class="group">
+                            <summary
+                                class="flex items-center justify-between px-5 py-4 cursor-pointer bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 transition">
+                                <span class="font-bold text-purple-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-brain w-4 h-4"></i>
+                                    🧠 V4 Pro 深度思考过程
+                                </span>
+                                <i
+                                    class="fa-solid fa-chevron-down w-4 h-4 text-purple-400 transition-transform group-open:rotate-180"></i>
+                            </summary>
+                            <div
+                                class="p-5 text-sm text-slate-600 font-mono whitespace-pre-wrap bg-slate-50 border-t border-purple-100 max-h-64 overflow-y-auto">
+                                {{ reasoningContent }}
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- 主 Prompt -->
+                    <div class="bg-white rounded-2xl border border-pink-100 overflow-hidden animate-fade-in shadow-lg">
+                        <div
+                            class="px-5 py-4 bg-gradient-to-r from-pink-50 to-purple-50 border-b border-pink-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">🎨</span>
+                                <h3 class="font-bold text-slate-800">主 Prompt（{{ getPlatformName() }}）</h3>
+                            </div>
+                            class="copy-btn flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-pink-500
+                            to-purple-500 text-white text-xs font-medium rounded-lg hover:shadow-lg transition">
+                            <i class="fa-regular fa-copy w-3 h-3"></i>
+                            复制
+                            </button>
+                        </div>
+                        <div class="p-5">
+                            <pre
+                                class="prompt-result rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono">{{ result.mainPrompt }}</pre>
+                        </div>
+                    </div>
+
+                    <!-- 负面提示词 -->
+                    <div class="bg-white rounded-2xl border border-pink-100 overflow-hidden animate-fade-in"
+                        style="animation-delay: 0.1s">
+                        <div
+                            class="px-5 py-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">🚫</span>
+                                <h3 class="font-bold text-slate-800">负面提示词 (Negative Prompt)</h3>
+                            </div>
+                            <button @click="copyPrompt(result.negativePrompt)"
+                                class="copy-btn flex items-center gap-1 px-3 py-1.5 bg-slate-600 text-white text-xs font-medium rounded-lg hover:bg-slate-700 transition">
+                                <i class="fa-regular fa-copy w-3 h-3"></i>
+                                复制
+                            </button>
+                        </div>
+                        <div class="p-5">
+                            <pre
+                                class="bg-slate-100 rounded-xl p-4 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-mono">{{ result.negativePrompt }}</pre>
+                        </div>
+                    </div>
+
+                    <!-- 参数建议 -->
+                    <div class="bg-white rounded-2xl border border-pink-100 overflow-hidden animate-fade-in"
+                        style="animation-delay: 0.2s">
+                        <div
+                            class="px-5 py-4 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">⚙️</span>
+                                <h3 class="font-bold text-slate-800">参数建议</h3>
+                            </div>
+                            <button @click="copyPrompt(result.parameters)"
+                                class="copy-btn flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition">
+                                <i class="fa-regular fa-copy w-3 h-3"></i>
+                                复制
+                            </button>
+                        </div>
+                        <div class="p-5">
+                            <pre
+                                class="bg-indigo-50 rounded-xl p-4 text-sm text-indigo-800 leading-relaxed whitespace-pre-wrap font-mono">{{ result.parameters }}</pre>
+                        </div>
+                    </div>
+
+                    <!-- 中文翻译对照 -->
+                    <div class="bg-white rounded-2xl border border-pink-100 overflow-hidden animate-fade-in"
+                        style="animation-delay: 0.3s">
+                        <div class="px-5 py-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">📝</span>
+                                <h3 class="font-bold text-slate-800">中英对照</h3>
+                            </div>
+                        </div>
+                        <div class="p-5 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                            {{ result.translation }}
+                        </div>
+                    </div>
+
+                    <!-- 一键复制完整命令 -->
+                    <div class="flex justify-center pt-4">
+                        <button @click="copyFullCommand"
+                            class="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition">
+                            <i class="fa-solid fa-terminal w-5 h-5"></i>
+                            复制完整命令
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- 词库弹窗 -->
+        <div v-if="showKeywordLib"
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 animate-fade-in max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-slate-900">🎨 AI 绘图词库</h3>
+                    <button @click="showKeywordLib = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- 词库分类 -->
+                <div class="space-y-4">
+                    <div v-for="category in keywordLibrary" :key="category.name"
+                        class="border border-pink-100 rounded-xl overflow-hidden">
+                        <div @click="toggleKeywordSection(category.name)"
+                            class="px-4 py-3 bg-gradient-to-r from-pink-50 to-purple-50 cursor-pointer flex items-center justify-between">
+                            <span class="font-bold text-slate-700">{{ category.icon }} {{ category.name }}</span>
+                            <i class="fa-solid transition-transform duration-300"
+                                :class="expandedKeywordSections.includes(category.name) ? 'fa-chevron-up rotate-180' : 'fa-chevron-down'"></i>
+                        </div>
+                        <div
+                            :class="['keyword-section', { expanded: expandedKeywordSections.includes(category.name) }]">
+                            <div class="p-4 flex flex-wrap gap-2">
+                                <span v-for="keyword in category.keywords" :key="keyword.en"
+                                    @click="addKeyword(keyword.en)"
+                                    class="px-2 py-1 bg-white border border-pink-200 rounded-lg text-xs cursor-pointer hover:bg-pink-50 hover:border-pink-400 transition">
+                                    <span class="text-slate-800">{{ keyword.en }}</span>
+                                    <span class="text-slate-400 ml-1">({{ keyword.cn }})</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div v-if="showSettings"
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-pink-500 outline-none"
+                            placeholder="sk-...">
+                        <p class="text-xs text-slate-500 mt-1">Key 将保存到本地，所有工具共享使用</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div v-if="toast.show"
+            class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in z-[200]">
+            <i class="fa-solid w-4 h-4"
+                :class="toast.icon === 'check' ? 'fa-check' : (toast.icon === 'alert-circle' ? 'fa-circle-exclamation' : (toast.icon === 'check-circle' ? 'fa-circle-check' : (toast.icon === 'plus' ? 'fa-plus' : (toast.icon === 'copy' ? 'fa-copy' : (toast.icon === 'terminal' ? 'fa-terminal' : 'fa-check')))))"></i>
+            <span class="text-sm">{{ toast.message }}</span>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * AI 绘图提示词生成器 - Vue 3 应用
+         * 功能：
+         * 1. 中文描述转英文 Prompt
+         * 2. 支持多个 AI 绘图平台
+         * 3. 内置丰富的风格和参数词库
+         * 4. 生成负面提示词和参数建议
+         */
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+
+
+                // ==================== 状态管理 ====================
+
+                const showSettings = ref(false);
+                const showKeywordLib = ref(false);
+                const expandedKeywordSections = ref([]);
+
+                // API 配置
+                const apiConfig = ref({
+                    deepseek: ''
+                });
+
+                // 模型选择 (V4 Flash/V4 Pro)
+                const model = ref('deepseek-v4-flash');
+
+                // 深度思考内容 (V4 Pro 模式)
+                const reasoningContent = ref('');
+
+                // 目标平台
+                const platforms = [
+                    { value: 'midjourney', label: 'Midjourney', icon: '🎭' },
+                    { value: 'sd', label: 'Stable Diffusion', icon: '🖼️' },
+                    { value: 'dalle', label: 'DALL-E', icon: '🤖' }
+                ];
+
+                // 艺术风格选项
+                const artStyles = [
+                    { value: 'realistic', label: '写实摄影', icon: '📷' },
+                    { value: 'anime', label: '动漫插画', icon: '🎌' },
+                    { value: 'oil', label: '油画艺术', icon: '🖌️' },
+                    { value: '3d', label: '3D渲染', icon: '🎮' },
+                    { value: 'pixel', label: '像素风格', icon: '👾' },
+                    { value: 'watercolor', label: '水彩画', icon: '🎨' },
+                    { value: 'cyberpunk', label: '赛博朋克', icon: '🌃' },
+                    { value: 'fantasy', label: '奇幻魔法', icon: '🧙' },
+                    { value: 'minimalist', label: '极简主义', icon: '⬜' },
+                    { value: 'vintage', label: '复古胶片', icon: '📼' }
+                ];
+
+                // 画面比例
+                const aspectRatios = [
+                    { value: '1:1', label: '1:1 正方形' },
+                    { value: '16:9', label: '16:9 横屏' },
+                    { value: '9:16', label: '9:16 竖屏' },
+                    { value: '4:3', label: '4:3 传统' },
+                    { value: '3:2', label: '3:2 相机' },
+                    { value: '21:9', label: '21:9 电影' }
+                ];
+
+                // 光线效果
+                const lightingOptions = [
+                    { value: 'natural', label: '自然光', icon: '☀️' },
+                    { value: 'golden', label: '金色时光', icon: '🌅' },
+                    { value: 'studio', label: '影棚光', icon: '💡' },
+                    { value: 'neon', label: '霓虹灯', icon: '🌈' },
+                    { value: 'dramatic', label: '戏剧光', icon: '🎭' },
+                    { value: 'soft', label: '柔和光', icon: '🌸' }
+                ];
+
+                // 镜头角度
+                const cameraAngles = [
+                    { value: 'front', label: '正面' },
+                    { value: 'side', label: '侧面' },
+                    { value: 'low', label: '仰视' },
+                    { value: 'high', label: '俯视' },
+                    { value: 'close', label: '特写' },
+                    { value: 'wide', label: '广角' },
+                    { value: 'aerial', label: '航拍' }
+                ];
+
+                // 词库
+                const keywordLibrary = [
+                    {
+                        name: '画面质量',
+                        icon: '✨',
+                        keywords: [
+                            { en: 'masterpiece', cn: '杰作' },
+                            { en: 'best quality', cn: '最高质量' },
+                            { en: 'ultra detailed', cn: '超级细节' },
+                            { en: '8k resolution', cn: '8K分辨率' },
+                            { en: 'photorealistic', cn: '照片级真实' },
+                            { en: 'highly detailed', cn: '高度细节' },
+                            { en: 'sharp focus', cn: '清晰对焦' },
+                            { en: 'intricate details', cn: '精细细节' },
+                            { en: 'professional', cn: '专业级' },
+                            { en: 'award winning', cn: '获奖作品' }
+                        ]
+                    },
+                    {
+                        name: '艺术风格',
+                        icon: '🎨',
+                        keywords: [
+                            { en: 'digital art', cn: '数字艺术' },
+                            { en: 'concept art', cn: '概念艺术' },
+                            { en: 'illustration', cn: '插画' },
+                            { en: 'oil painting', cn: '油画' },
+                            { en: 'watercolor', cn: '水彩' },
+                            { en: 'anime style', cn: '动漫风格' },
+                            { en: 'studio ghibli', cn: '吉卜力风格' },
+                            { en: 'pixar style', cn: '皮克斯风格' },
+                            { en: 'surrealism', cn: '超现实主义' },
+                            { en: 'impressionism', cn: '印象派' }
+                        ]
+                    },
+                    {
+                        name: '光线效果',
+                        icon: '💡',
+                        keywords: [
+                            { en: 'cinematic lighting', cn: '电影灯光' },
+                            { en: 'golden hour', cn: '黄金时刻' },
+                            { en: 'volumetric lighting', cn: '体积光' },
+                            { en: 'rim lighting', cn: '轮廓光' },
+                            { en: 'soft lighting', cn: '柔和光线' },
+                            { en: 'dramatic lighting', cn: '戏剧光线' },
+                            { en: 'neon lights', cn: '霓虹灯光' },
+                            { en: 'backlit', cn: '逆光' },
+                            { en: 'studio lighting', cn: '影棚灯光' },
+                            { en: 'natural light', cn: '自然光' }
+                        ]
+                    },
+                    {
+                        name: '镜头与构图',
+                        icon: '📷',
+                        keywords: [
+                            { en: 'close-up shot', cn: '特写镜头' },
+                            { en: 'wide angle', cn: '广角' },
+                            { en: 'portrait', cn: '人像' },
+                            { en: 'full body', cn: '全身' },
+                            { en: 'birds eye view', cn: '鸟瞰' },
+                            { en: 'low angle shot', cn: '仰拍' },
+                            { en: 'bokeh', cn: '背景虚化' },
+                            { en: 'depth of field', cn: '景深' },
+                            { en: 'symmetrical', cn: '对称构图' },
+                            { en: 'rule of thirds', cn: '三分法' }
+                        ]
+                    },
+                    {
+                        name: '氛围情感',
+                        icon: '🌈',
+                        keywords: [
+                            { en: 'dreamy', cn: '梦幻的' },
+                            { en: 'ethereal', cn: '空灵的' },
+                            { en: 'moody', cn: '忧郁的' },
+                            { en: 'vibrant', cn: '充满活力的' },
+                            { en: 'serene', cn: '宁静的' },
+                            { en: 'mysterious', cn: '神秘的' },
+                            { en: 'romantic', cn: '浪漫的' },
+                            { en: 'epic', cn: '史诗般的' },
+                            { en: 'cozy', cn: '温馨的' },
+                            { en: 'melancholic', cn: '忧伤的' }
+                        ]
+                    },
+                    {
+                        name: '材质纹理',
+                        icon: '🧱',
+                        keywords: [
+                            { en: 'glossy', cn: '光泽的' },
+                            { en: 'matte', cn: '哑光的' },
+                            { en: 'metallic', cn: '金属的' },
+                            { en: 'translucent', cn: '半透明的' },
+                            { en: 'textured', cn: '有纹理的' },
+                            { en: 'smooth', cn: '光滑的' },
+                            { en: 'rough', cn: '粗糙的' },
+                            { en: 'crystal', cn: '水晶的' },
+                            { en: 'fabric', cn: '织物的' },
+                            { en: 'wooden', cn: '木质的' }
+                        ]
+                    },
+                    {
+                        name: '色彩调色',
+                        icon: '🎭',
+                        keywords: [
+                            { en: 'vivid colors', cn: '鲜艳色彩' },
+                            { en: 'pastel colors', cn: '柔和色调' },
+                            { en: 'monochrome', cn: '单色' },
+                            { en: 'warm tones', cn: '暖色调' },
+                            { en: 'cool tones', cn: '冷色调' },
+                            { en: 'high contrast', cn: '高对比度' },
+                            { en: 'desaturated', cn: '低饱和' },
+                            { en: 'color splash', cn: '局部彩色' },
+                            { en: 'gradient', cn: '渐变色' },
+                            { en: 'neon colors', cn: '霓虹色' }
+                        ]
+                    },
+                    {
+                        name: '负面提示词',
+                        icon: '🚫',
+                        keywords: [
+                            { en: 'blurry', cn: '模糊' },
+                            { en: 'low quality', cn: '低质量' },
+                            { en: 'bad anatomy', cn: '解剖错误' },
+                            { en: 'extra limbs', cn: '多余肢体' },
+                            { en: 'deformed', cn: '变形' },
+                            { en: 'ugly', cn: '丑陋' },
+                            { en: 'duplicate', cn: '重复' },
+                            { en: 'watermark', cn: '水印' },
+                            { en: 'text', cn: '文字' },
+                            { en: 'cropped', cn: '裁切' }
+                        ]
+                    }
+                ];
+
+                // 用户输入
+                const input = reactive({
+                    description: '',
+                    platform: 'midjourney',
+                    selectedStyles: ['realistic'],
+                    aspectRatio: '1:1',
+                    lighting: 'natural',
+                    cameraAngle: 'front',
+                    quality: '1',
+                    stylize: '250',
+                    extraKeywords: ''
+                });
+
+                // 生成状态
+                const isGenerating = ref(false);
+                const result = ref(null);
+
+                // Toast 提示
+                const toast = reactive({
+                    show: false,
+                    message: '',
+                    icon: 'check'
+                });
+
+                // ==================== 辅助函数 ====================
+
+
+
+                // ==================== 生命周期 ====================
+
+                onMounted(() => {
+
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                        } catch (e) {
+                            console.error('Failed to parse apiConfig from localStorage', e);
+                        }
+                    }
+
+                });
+
+                // ==================== 方法 ====================
+
+                const showToast = (message, icon = 'check') => {
+                    toast.message = message;
+                    toast.icon = icon;
+                    toast.show = true;
+                    setTimeout(() => { toast.show = false; }, 2500);
+                };
+
+                const saveConfig = () => {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                    showToast('配置已保存', 'check');
+                };
+
+                const toggleStyle = (value) => {
+                    const idx = input.selectedStyles.indexOf(value);
+                    if (idx > -1) {
+                        input.selectedStyles.splice(idx, 1);
+                    } else {
+                        input.selectedStyles.push(value);
+                    }
+                };
+
+                const toggleKeywordSection = (name) => {
+                    const idx = expandedKeywordSections.value.indexOf(name);
+                    if (idx > -1) {
+                        expandedKeywordSections.value.splice(idx, 1);
+                    } else {
+                        expandedKeywordSections.value.push(name);
+                    }
+                };
+
+                const addKeyword = (keyword) => {
+                    if (input.extraKeywords) {
+                        input.extraKeywords += ', ' + keyword;
+                    } else {
+                        input.extraKeywords = keyword;
+                    }
+                    showToast(`已添加: ${keyword}`, 'plus');
+                };
+
+                const getPlatformName = () => {
+                    return platforms.find(p => p.value === input.platform)?.label || input.platform;
+                };
+
+                const getStyleNames = () => {
+                    return input.selectedStyles.map(s => artStyles.find(a => a.value === s)?.label).join('、');
+                };
+
+                const getLightingName = () => {
+                    return lightingOptions.find(l => l.value === input.lighting)?.label || input.lighting;
+                };
+
+                const getCameraAngleName = () => {
+                    return cameraAngles.find(c => c.value === input.cameraAngle)?.label || input.cameraAngle;
+                };
+
+                /**
+                 * 生成 Prompt
+                 */
+                const generatePrompt = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    isGenerating.value = true;
+                    result.value = null;
+                    reasoningContent.value = '';
+
+                    try {
+                        const systemPrompt = `你是一位专业的 AI 绘图 Prompt 工程师，精通 Midjourney、Stable Diffusion、DALL-E 等平台的提示词优化技术。
+
+你的任务是将中文画面描述转换为专业的英文 Prompt，并提供负面提示词和参数建议。
+
+输出要求：严格按照 JSON 格式返回。`;
+
+                        const userPrompt = `请将以下中文描述转换为专业的 AI 绘图 Prompt：
+
+【中文描述】
+${input.description}
+
+【配置参数】
+- 目标平台：${getPlatformName()}
+- 画面风格：${getStyleNames() || '默认'}
+- 画面比例：${input.aspectRatio}
+- 光线效果：${getLightingName()}
+- 镜头角度：${getCameraAngleName()}
+- 质量参数：--q ${input.quality}
+- 风格化：--s ${input.stylize}
+${input.extraKeywords ? `- 额外关键词：${input.extraKeywords}` : ''}
+
+请返回 JSON 格式：
+{
+  "mainPrompt": "完整的英文 Prompt，按照 ${input.platform} 平台格式优化，包含主题描述、风格关键词、质量标签等",
+  "negativePrompt": "负面提示词，避免生成低质量或不想要的元素",
+  "parameters": "平台特定的参数命令，如 --ar ${input.aspectRatio} --q ${input.quality} --s ${input.stylize}",
+  "translation": "中英对照说明，解释每个关键词的含义"
+}
+
+注意事项：
+1. 主 Prompt 要按重要性排序关键词
+2. 包含画面质量词（如 masterpiece, best quality）
+3. 负面提示词要全面避免常见问题
+4. 参数要符合 ${input.platform} 平台语法`;
+
+                        // 使用流式输出，支持 V4 Pro 的 reasoning_content
+                        let fullContent = '';
+                        await callDeepSeekStream(
+                            systemPrompt,
+                            userPrompt,
+                            (chunk) => { fullContent += chunk; },
+                            (reasoning) => { reasoningContent.value += reasoning; }
+                        );
+
+                        // 解析 JSON 结果
+                        let jsonStr = fullContent.trim();
+                        if (jsonStr.startsWith('```json')) {
+                            jsonStr = jsonStr.replace(/^```json/, '').replace(/```$/, '');
+                        } else if (jsonStr.startsWith('```')) {
+                            jsonStr = jsonStr.replace(/^```/, '').replace(/```$/, '');
+                        }
+
+                        result.value = JSON.parse(jsonStr);
+                        showToast('Prompt 生成成功！', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[AI Art Prompt] 生成失败:', error);
+                        showToast('生成失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        isGenerating.value = false;
+                        isGenerating.value = false;
+                    }
+                };
+
+                /**
+                 * 流式调用 DeepSeek API (支持 V4 Flash 和 V4 Pro)
+                 */
+                const callDeepSeekStream = async (systemPrompt, userContent, onChunk, onReasoning) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 未配置");
+
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: model.value,
+                                messages: [
+                                    { role: 'system', content: systemPrompt },
+                                    { role: 'user', content: userContent }
+                                ],
+                                stream: true,
+                                response_format: { type: 'json_object' }
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`API 请求失败: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
+
+                        for (const line of lines) {
+                            const data = line.replace('data:', '').trim();
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const json = JSON.parse(data);
+
+                                // 处理 reasoning_content (V4 Pro 模式)
+                                const reasoning = json.choices?.[0]?.delta?.reasoning_content;
+                                if (reasoning && onReasoning) {
+                                    onReasoning(reasoning);
+                                }
+
+                                // 处理普通内容
+                                const content = json.choices?.[0]?.delta?.content;
+                                if (content && onChunk) {
+                                    onChunk(content);
+                                }
+                            } catch (e) {
+                                // 忽略解析错误
+                            }
+                        }
+                    }
+                };
+
+                /**
+                 * 复制 Prompt
+                 */
+                const copyPrompt = (text) => {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showToast('已复制到剪贴板', 'copy');
+                    });
+                };
+
+                /**
+                 * 复制完整命令
+                 */
+                const copyFullCommand = () => {
+                    if (!result.value) return;
+
+                    let fullCommand = '';
+                    if (input.platform === 'midjourney') {
+                        fullCommand = `/imagine prompt: ${result.value.mainPrompt} ${result.value.parameters}`;
+                    } else if (input.platform === 'sd') {
+                        fullCommand = `Positive: ${result.value.mainPrompt}\n\nNegative: ${result.value.negativePrompt}\n\nParameters: ${result.value.parameters}`;
+                    } else {
+                        fullCommand = result.value.mainPrompt;
+                    }
+
+                    navigator.clipboard.writeText(fullCommand).then(() => {
+                        showToast('已复制完整命令', 'terminal');
+                    });
+                };
+
+                // ==================== 返回 ====================
+
+                return {
+
+                    showSettings,
+                    showKeywordLib,
+                    expandedKeywordSections,
+                    apiConfig,
+                    model,
+                    reasoningContent,
+                    platforms,
+                    artStyles,
+                    aspectRatios,
+                    lightingOptions,
+                    cameraAngles,
+                    keywordLibrary,
+                    input,
+                    isGenerating,
+                    result,
+                    toast,
+
+                    saveConfig,
+                    toggleStyle,
+                    toggleKeywordSection,
+                    addKeyword,
+                    getPlatformName,
+                    generatePrompt,
+                    copyPrompt,
+                    copyFullCommand
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_tools_ai_art_prompt.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

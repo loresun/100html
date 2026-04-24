@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>公共 API 演示库 - API 交易平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at top, rgba(16, 185, 129, 0.12), transparent 55%),
+        linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+      min-height: 100vh;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+  <div x-data="publicShowcase" class="min-h-screen flex flex-col">
+    <nav class="glass sticky top-0 z-40">
+      <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="flex items-center gap-3">
+          <a href="index.html" class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+            <i class="fa-solid fa-layer-group w-5 h-5"></i>
+          </a>
+          <div>
+            <p class="text-sm text-emerald-600 font-semibold">API 交易平台</p>
+            <h1 class="text-xl md:text-2xl font-bold">公共 API 演示库</h1>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 text-sm text-slate-500">
+          <i class="fa-solid fa-circle-info w-4 h-4"></i>
+          所有接口均为免费公开 API
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-1">
+      <section class="max-w-6xl mx-auto px-4 pt-8 pb-12">
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="glass rounded-3xl p-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-bold">随机人物卡</h3>
+                <p class="text-xs text-slate-500">RandomUser API</p>
+              </div>
+              <button @click="fetchUser" class="text-xs text-emerald-600 hover:text-emerald-700">刷新</button>
+            </div>
+            <template x-if="userLoading">
+              <div class="flex items-center gap-2 text-sm text-slate-500 mt-4">
+                <i class="fa-solid fa-spinner fa-spin w-4 h-4"></i>
+                读取人物资料...
+              </div>
+            </template>
+            <template x-if="!userLoading && !user">
+              <div class="text-sm text-slate-400 mt-4">暂无数据，点击刷新获取。</div>
+            </template>
+            <template x-if="user">
+              <div class="mt-4 flex items-center gap-4">
+                <img :src="user.avatar" class="w-16 h-16 rounded-2xl object-cover" alt="User">
+                <div>
+                  <p class="font-semibold" x-text="user.name"></p>
+                  <p class="text-xs text-slate-500" x-text="user.location"></p>
+                  <p class="text-xs text-slate-500" x-text="user.email"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div class="glass rounded-3xl p-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-bold">太空照片</h3>
+                <p class="text-xs text-slate-500">NASA APOD (DEMO_KEY)</p>
+              </div>
+              <button @click="fetchApod" class="text-xs text-emerald-600 hover:text-emerald-700">刷新</button>
+            </div>
+            <template x-if="apodLoading">
+              <div class="flex items-center gap-2 text-sm text-slate-500 mt-4">
+                <i class="fa-solid fa-spinner fa-spin w-4 h-4"></i>
+                拉取 NASA 图片...
+              </div>
+            </template>
+            <template x-if="!apodLoading && !apod">
+              <div class="text-sm text-slate-400 mt-4">暂无数据，点击刷新获取。</div>
+            </template>
+            <template x-if="apod">
+              <div class="mt-4">
+                <img :src="apod.image" class="w-full h-40 object-cover rounded-2xl" alt="NASA">
+                <p class="mt-3 text-sm font-semibold" x-text="apod.title"></p>
+                <p class="text-xs text-slate-500 line-clamp-3" x-text="apod.desc"></p>
+              </div>
+            </template>
+          </div>
+
+          <div class="glass rounded-3xl p-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-bold">今日趣味任务</h3>
+                <p class="text-xs text-slate-500">Bored API</p>
+              </div>
+              <button @click="fetchActivity" class="text-xs text-emerald-600 hover:text-emerald-700">刷新</button>
+            </div>
+            <template x-if="activityLoading">
+              <div class="flex items-center gap-2 text-sm text-slate-500 mt-4">
+                <i class="fa-solid fa-spinner fa-spin w-4 h-4"></i>
+                生成灵感...
+              </div>
+            </template>
+            <template x-if="!activityLoading && !activity">
+              <div class="text-sm text-slate-400 mt-4">暂无数据，点击刷新获取。</div>
+            </template>
+            <template x-if="activity">
+              <div class="mt-4">
+                <p class="text-lg font-semibold" x-text="activity.title"></p>
+                <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                  <span class="px-2 py-1 rounded-full bg-slate-100">类型：<span x-text="activity.type"></span></span>
+                  <span class="px-2 py-1 rounded-full bg-slate-100">参与人数：<span
+                      x-text="activity.participants"></span></span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div class="glass rounded-3xl p-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-bold">灵感语录</h3>
+                <p class="text-xs text-slate-500">Quotable API</p>
+              </div>
+              <button @click="fetchQuote" class="text-xs text-emerald-600 hover:text-emerald-700">刷新</button>
+            </div>
+            <template x-if="quoteLoading">
+              <div class="flex items-center gap-2 text-sm text-slate-500 mt-4">
+                <i class="fa-solid fa-spinner fa-spin w-4 h-4"></i>
+                获取语录...
+              </div>
+            </template>
+            <template x-if="!quoteLoading && !quote">
+              <div class="text-sm text-slate-400 mt-4">暂无数据，点击刷新获取。</div>
+            </template>
+            <template x-if="quote">
+              <div class="mt-4">
+                <p class="text-lg font-semibold" x-text="quote.content"></p>
+                <p class="text-xs text-slate-500 mt-2">—— <span x-text="quote.author"></span></p>
+              </div>
+            </template>
+          </div>
+
+          <div class="glass rounded-3xl p-6 shadow-sm lg:col-span-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-bold">猫咪小知识</h3>
+                <p class="text-xs text-slate-500">Cat Fact API</p>
+              </div>
+              <button @click="fetchCatFact" class="text-xs text-emerald-600 hover:text-emerald-700">刷新</button>
+            </div>
+            <template x-if="catLoading">
+              <div class="flex items-center gap-2 text-sm text-slate-500 mt-4">
+                <i class="fa-solid fa-spinner fa-spin w-4 h-4"></i>
+                召唤猫咪知识...
+              </div>
+            </template>
+            <template x-if="!catLoading && !catFact">
+              <div class="text-sm text-slate-400 mt-4">暂无数据，点击刷新获取。</div>
+            </template>
+            <template x-if="catFact">
+              <div class="mt-4 flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <i class="fa-solid fa-cat w-6 h-6"></i>
+                </div>
+                <p class="text-lg font-semibold" x-text="catFact"></p>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-slate-200 bg-white/70">
+      <div
+        class="max-w-6xl mx-auto px-4 py-6 text-xs text-slate-500 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <span>数据来源：RandomUser / NASA APOD / Bored API / Quotable / CatFact</span>
+        <span>点击刷新可获取最新内容</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('publicShowcase', () => ({
+        user: null,
+        apod: null,
+        activity: null,
+        quote: null,
+        catFact: '',
+        userLoading: false,
+        apodLoading: false,
+        activityLoading: false,
+        quoteLoading: false,
+        catLoading: false,
+        init() {
+          // 页面初始化时拉取所有数据
+          this.fetchAll();
+
+        },
+        fetchAll() {
+          // 并行刷新各类公开 API
+          this.fetchUser();
+          this.fetchApod();
+          this.fetchActivity();
+          this.fetchQuote();
+          this.fetchCatFact();
+        },
+        async fetchUser() {
+          // 获取随机人物数据
+          this.userLoading = true;
+          try {
+            const response = await fetch('https://randomuser.me/api/');
+            const data = await response.json();
+            const info = data.results[0];
+            this.user = {
+              name: `${info.name.first} ${info.name.last}`,
+              location: `${info.location.city}, ${info.location.country}`,
+              email: info.email,
+              avatar: info.picture.large
+            };
+          } catch (error) {
+            console.log('RandomUser API 异常', error);
+            this.user = null;
+          } finally {
+            this.userLoading = false;
+          }
+        },
+        async fetchApod() {
+          // 获取 NASA APOD 图片数据
+          this.apodLoading = true;
+          try {
+            const response = await fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY');
+            const data = await response.json();
+            this.apod = {
+              title: data.title,
+              desc: data.explanation,
+              image: data.url
+            };
+          } catch (error) {
+            console.log('NASA APOD API 异常', error);
+            this.apod = null;
+          } finally {
+            this.apodLoading = false;
+          }
+        },
+        async fetchActivity() {
+          // 获取趣味活动建议
+          this.activityLoading = true;
+          try {
+            const response = await fetch('https://www.boredapi.com/api/activity');
+            const data = await response.json();
+            this.activity = {
+              title: data.activity,
+              type: data.type,
+              participants: data.participants
+            };
+          } catch (error) {
+            console.log('Bored API 异常', error);
+            this.activity = null;
+          } finally {
+            this.activityLoading = false;
+          }
+        },
+        async fetchQuote() {
+          // 获取灵感语录
+          this.quoteLoading = true;
+          try {
+            const response = await fetch('https://api.quotable.io/random');
+            const data = await response.json();
+            this.quote = {
+              content: data.content,
+              author: data.author
+            };
+          } catch (error) {
+            console.log('Quotable API 异常', error);
+            this.quote = null;
+          } finally {
+            this.quoteLoading = false;
+          }
+        },
+        async fetchCatFact() {
+          // 获取猫咪冷知识
+          this.catLoading = true;
+          try {
+            const response = await fetch('https://catfact.ninja/fact');
+            const data = await response.json();
+            this.catFact = data.fact;
+          } catch (error) {
+            console.log('CatFact API 异常', error);
+            this.catFact = '';
+          } finally {
+            this.catLoading = false;
+          }
+        }
+      }));
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+    });
+  </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/api_public_showcase.md"></script>
+<!-- HELP-WIDGET-END -->
+  </body>
+
+</html>

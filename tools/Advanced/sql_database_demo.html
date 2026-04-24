@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web 前端数据库交互演示 (SQL Playground)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 AlaSQL 用于纯前端模拟 SQL 数据库 -->
+    <script src="https://cdn.jsdelivr.net/npm/alasql@1.7.3/dist/alasql.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .input-dark {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #fff;
+        }
+        .input-dark:focus {
+            border-color: #3b82f6;
+            ring: 2px solid rgba(59, 130, 246, 0.5);
+            outline: none;
+        }
+        /* Codemirror-ish style for textarea */
+        .code-editor {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
+        }
+        
+        /* Table Styles */
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .result-table th {
+            background-color: #1e293b;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #334155;
+            color: #94a3b8;
+        }
+        .result-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #334155;
+        }
+        .result-table tr:hover td {
+            background-color: #334155;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 glass-panel border-r border-gray-700 flex flex-col z-20">
+        <div class="p-6 border-b border-gray-700">
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
+                DB Master <span class="text-xs text-gray-400 font-normal block mt-1">Advanced Demo</span>
+            </h1>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="switchTab('connect')" id="nav-connect" class="nav-item w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 text-gray-300 transition-colors flex items-center gap-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span>连接配置 (Connection)</span>
+            </button>
+            <button onclick="switchTab('query')" id="nav-query" class="nav-item w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 text-gray-300 transition-colors flex items-center gap-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                <span>SQL 编辑器 (Query)</span>
+            </button>
+            <button onclick="switchTab('schema')" id="nav-schema" class="nav-item w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 text-gray-300 transition-colors flex items-center gap-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <span>数据库结构 (Schema)</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-gray-700 text-xs text-gray-500">
+            Powered by AlaSQL (In-Browser)
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col relative overflow-hidden bg-gradient-to-br from-gray-900 to-slate-900">
+        
+        <!-- Tab: Connection -->
+        <section id="tab-connect" class="tab-content absolute inset-0 p-8 overflow-y-auto hidden">
+            <div class="max-w-2xl mx-auto space-y-8">
+                <div class="text-center space-y-2">
+                    <h2 class="text-3xl font-bold text-white">数据库连接配置</h2>
+                    <p class="text-gray-400">模拟连接到 MySQL 或 PostgreSQL 数据库。在实际项目中，这通常需要 Node.js 后端支持。</p>
+                </div>
+
+                <div class="glass-panel p-8 rounded-2xl space-y-6">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-400">数据库类型 (Type)</label>
+                            <select class="w-full input-dark rounded-lg p-3">
+                                <option>MySQL</option>
+                                <option>PostgreSQL</option>
+                                <option>SQLite</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-400">主机地址 (Host)</label>
+                            <input type="text" value="127.0.0.1" class="w-full input-dark rounded-lg p-3">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-400">端口 (Port)</label>
+                            <input type="text" value="3306" class="w-full input-dark rounded-lg p-3">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-400">数据库名 (Database)</label>
+                            <input type="text" value="demo_db" class="w-full input-dark rounded-lg p-3">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-400">用户名 (User)</label>
+                            <input type="text" value="root" class="w-full input-dark rounded-lg p-3">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-gray-400">密码 (Password)</label>
+                            <input type="password" value="********" class="w-full input-dark rounded-lg p-3">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2 text-sm text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>演示模式：将使用浏览器本地内存数据库</span>
+                        </div>
+                        <button onclick="simulateConnection()" class="btn-primary px-8 py-3 rounded-lg font-semibold text-white shadow-lg">
+                            测试并连接
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Terminal-like Log -->
+                <div class="glass-panel p-4 rounded-xl font-mono text-xs text-green-400 h-40 overflow-y-auto" id="connection-log">
+                    <p class="opacity-50">> 等待连接...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Query Editor -->
+        <section id="tab-query" class="tab-content absolute inset-0 flex flex-col hidden">
+            <header class="h-16 border-b border-gray-700 flex items-center justify-between px-6 bg-slate-900/50">
+                <div class="flex items-center gap-4">
+                    <h2 class="font-bold text-white">SQL 编辑器</h2>
+                    <span class="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400">Connected to: Local Memory DB</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="loadSampleData()" class="px-3 py-1.5 text-xs font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded transition-colors">重置样例数据</button>
+                    <button onclick="runQuery()" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold text-white flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        运行查询 (Run)
+                    </button>
+                </div>
+            </header>
+
+            <div class="flex-1 flex flex-col">
+                <!-- Editor Area -->
+                <div class="h-1/3 border-b border-gray-700 relative group">
+                    <textarea id="sql-input" class="w-full h-full p-4 code-editor focus:outline-none resize-none" spellcheck="false" placeholder="输入 SQL 语句... (支持 SELECT, INSERT, UPDATE, DELETE)">SELECT * FROM users;</textarea>
+                </div>
+                
+                <!-- Results Area -->
+                <div class="flex-1 bg-[#1e293b] overflow-auto p-4" id="query-results">
+                    <!-- Results will appear here -->
+                    <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                        <svg class="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                        <p>点击 "运行查询" 查看结果</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Schema -->
+        <section id="tab-schema" class="tab-content absolute inset-0 p-8 overflow-y-auto hidden">
+            <h2 class="text-2xl font-bold text-white mb-6">当前数据库结构</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="schema-container">
+                <!-- Schema cards will be generated here -->
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // 初始化
+        let currentTab = 'connect';
+        
+        // 模拟数据库初始化
+        function initDB() {
+            try {
+                // 创建 users 表
+                alasql('CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT, name STRING, email STRING, role STRING, created_at DATE)');
+                
+                // 检查是否为空，为空则插入数据
+                const res = alasql('SELECT * FROM users');
+                if (res.length === 0) {
+                   loadSampleData();
+                }
+            } catch (e) {
+                console.error("DB Init Error", e);
+            }
+        }
+
+        function loadSampleData() {
+            alasql('DELETE FROM users');
+            alasql('INSERT INTO users VALUES (1, "张三", "zhangsan@example.com", "Admin", "2023-01-01")');
+            alasql('INSERT INTO users VALUES (2, "李四", "lisi@example.com", "Editor", "2023-02-15")');
+            alasql('INSERT INTO users VALUES (3, "王五", "wangwu@example.com", "User", "2023-03-20")');
+            alasql('INSERT INTO users VALUES (4, "Sarah Connor", "sarah@skynet.com", "Resistance", "2029-08-29")');
+            alasql('INSERT INTO users VALUES (5, "Tony Stark", "tony@stark.com", "Avenger", "2023-10-17")');
+            
+            showToast('样例数据已重置');
+            if(currentTab === 'query') runQuery();
+            renderSchema();
+        }
+
+        // 页面导航切换
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            
+            // Update active state in sidebar
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-blue-600', 'text-white', 'shadow-lg');
+                el.classList.add('text-gray-300', 'hover:bg-white/10');
+            });
+            const activeBtn = document.getElementById('nav-' + tabId);
+            activeBtn.classList.remove('text-gray-300', 'hover:bg-white/10');
+            activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-lg');
+
+            if (tabId === 'schema') renderSchema();
+        }
+
+        // 连接模拟
+        function simulateConnection() {
+            const log = document.getElementById('connection-log');
+            log.innerHTML = '';
+            
+            const steps = [
+                { msg: '> Resolving host 127.0.0.1...', delay: 200 },
+                { msg: '> Connecting to port 3306...', delay: 600 },
+                { msg: '> Handshake success. Verifying credentials...', delay: 1200 },
+                { msg: '> Authenticated as user "root".', delay: 1800 },
+                { msg: '<span class="text-emerald-300 font-bold">> CONNECTION ESTABLISHED SUCCESSFULLY.</span>', delay: 2200 }
+            ];
+
+            let totalDelay = 0;
+            steps.forEach(step => {
+                totalDelay += step.delay;
+                setTimeout(() => {
+                    log.innerHTML += `<div class="mb-1">${step.msg}</div>`;
+                    log.scrollTop = log.scrollHeight;
+                }, step.delay);
+            });
+
+            setTimeout(() => {
+                showToast("连接成功！即将跳转到 SQL 编辑器...", 2000);
+                setTimeout(() => switchTab('query'), 2000);
+            }, 2500);
+        }
+
+        // 执行 SQL
+        function runQuery() {
+            const sql = document.getElementById('sql-input').value;
+            const resultsDiv = document.getElementById('query-results');
+            
+            try {
+                const startTime = performance.now();
+                const res = alasql(sql);
+                const endTime = performance.now();
+                
+                const duration = (endTime - startTime).toFixed(2);
+                
+                // 处理结果展示
+                renderResults(res, duration);
+            } catch (err) {
+                resultsDiv.innerHTML = `
+                    <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+                        <div class="font-bold mb-1">SQL Execution Error:</div>
+                        <div>${err.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderResults(data, duration) {
+            const container = document.getElementById('query-results');
+            
+            if (!data || (Array.isArray(data) && data.length === 0)) {
+                container.innerHTML = `
+                    <div class="text-sm text-gray-400 mb-2">Query executed manually in ${duration}ms. Affected rows: 0</div>
+                    <div class="p-4 bg-gray-800/50 rounded text-gray-400 italic">无数据返回 (No data returned)</div>
+                `;
+                return;
+            }
+
+            // AlaSQL 可能返回单个对象或数组，或者对于 UPDATE/DELETE 返回影响行数
+            if (typeof data === 'number') {
+                 container.innerHTML = `
+                    <div class="text-sm text-green-400 mb-2">Query executed successfully in ${duration}ms.</div>
+                    <div class="p-4 bg-green-900/20 border border-green-500/30 rounded text-green-300">
+                        Affected Rows: ${data}
+                    </div>
+                `;
+                return;
+            }
+
+            // 确保是数组
+            const rows = Array.isArray(data) ? data : [data];
+            const keys = Object.keys(rows[0] || {});
+
+            if (keys.length === 0) {
+                 container.innerHTML = `
+                    <div class="text-sm text-gray-400 mb-2">Query executed in ${duration}ms.</div>
+                    <p class="text-gray-500">Query OK, but empty result set.</p>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="flex justify-between items-center mb-3">
+                    <div class="text-sm text-green-400">Success (${rows.length} rows, ${duration}ms)</div>
+                    <button class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-gray-300">Export CSV</button>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-gray-700">
+                    <table class="result-table w-full text-left">
+                        <thead>
+                            <tr>
+                                ${keys.map(k => `<th>${k}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(row => `
+                                <tr>
+                                    ${keys.map(k => `<td>${row[k]}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function renderSchema() {
+            const tables = alasql('SHOW TABLES');
+            const container = document.getElementById('schema-container');
+            container.innerHTML = '';
+
+            tables.forEach(t => {
+                const tableName = t.tableid;
+                // Get columns (mock way in alaSQL or query one row)
+                // alasql doesn't have robust DESCRIBE in simple mode sometimes, but let's try
+                // or just hardcode for demo? Let's use internal alasql.databases.db.tables
+                
+                const tableData = alasql.databases.alasql.tables[tableName];
+                const columns = tableData && tableData.columns ? tableData.columns : []; 
+                // Note: AlaSQL structure might vary, effectively we just want to show "users"
+                
+                // Fallback for demo visualization if columns are not easily accessible via standard SQL
+                const colHtml = alasql(`SELECT * FROM ${tableName} LIMIT 1`);
+                const colKeys = colHtml.length ? Object.keys(colHtml[0]) : ['id', '...'];
+
+                container.innerHTML += `
+                    <div class="glass-panel p-5 rounded-xl border-t-4 border-blue-500">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-lg text-white">${tableName}</h3>
+                            <span class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">Table</span>
+                        </div>
+                        <ul class="text-sm text-gray-400 space-y-2">
+                             ${colKeys.map(k => `
+                                <li class="flex items-center gap-2">
+                                    <svg class="w-3 h-3 text-gray-600" fill="currentColor" viewBox="0 0 24 24"><path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                                    ${k}
+                                </li>
+                             `).join('')}
+                        </ul>
+                        <div class="mt-4 pt-3 border-t border-gray-700/50 flex justify-end">
+                             <button onclick="document.getElementById('sql-input').value='SELECT * FROM ${tableName}'; switchTab('query'); runQuery();" class="text-xs text-blue-400 hover:text-blue-300">Select All &rarr;</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Toast Notification
+        function showToast(msg, duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-8 right-8 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-xl transform transition-all duration-300 translate-y-10 opacity-0 z-50 flex items-center gap-3';
+            toast.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> ${msg}`;
+            document.body.appendChild(toast);
+            
+            // Animation In
+            setTimeout(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            }, 100);
+
+            // Animation Out
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // Initialize
+        window.onload = function() {
+            initDB();
+            switchTab('connect');
+        };
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

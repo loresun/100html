@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工资可视化 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-cyan-50 min-h-screen font-sans text-slate-800" x-data="salaryApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-cyan-100 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-cyan-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-600 to-teal-600">
+                💰 工资可视化
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Inputs -->
+        <div class="lg:col-span-4 space-y-4">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-cyan-100">
+                <h2 class="font-bold text-lg mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-cyan-600"></i>
+                    薪资设置
+                </h2>
+                
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">税前月薪</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3.5 text-slate-400 font-bold">¥</span>
+                            <input type="number" x-model.number="salary" class="w-full pl-8 font-bold text-xl p-3 rounded-xl border border-slate-200 focus:border-cyan-500 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">公积金比例 (%)</label>
+                        <div class="flex items-center gap-4">
+                            <input type="range" min="5" max="12" step="1" x-model.number="housingRate" class="flex-1 accent-cyan-600">
+                            <span class="font-bold w-8 text-right" x-text="housingRate"></span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-slate-100">
+                        <div class="flex justify-between items-center cursor-pointer" @click="showAdvanced = !showAdvanced">
+                            <span class="text-xs font-bold text-slate-500 uppercase">社保基数设置</span>
+                            <i class="fa-solid fa-chevron-down text-slate-400 transition-transform" :class="showAdvanced ? 'rotate-180' : ''"></i>
+                        </div>
+                        
+                        <div x-show="showAdvanced" class="space-y-3 pt-2" x-transition>
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">社保汇缴基数</label>
+                                <input type="number" x-model.number="socialBase" class="w-full text-sm p-2 rounded border border-slate-200 bg-white" placeholder="自动">
+                                <p class="text-[10px] text-slate-400 mt-1">留空则默认等于税前月薪</p>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">公积金汇缴基数</label>
+                                <input type="number" x-model.number="housingBase" class="w-full text-sm p-2 rounded border border-slate-200 bg-white" placeholder="自动">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button @click="calculate()" class="w-full mt-6 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-cyan-600/20 transition-all">
+                    计算实发金额
+                </button>
+            </div>
+        </div>
+
+        <!-- Visualization -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Result Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-cyan-100 flex flex-col justify-center relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-6 opacity-5">
+                        <i class="fa-solid fa-wallet text-cyan-600 text-8xl opacity-10"></i>
+                    </div>
+                    <div class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">每月实发 (税后)</div>
+                    <div class="text-4xl font-black text-cyan-600 tracking-tight" x-text="formatCurrency(result.netPay)"></div>
+                    <div class="mt-2 text-xs font-bold px-2 py-1 bg-cyan-50 text-cyan-700 rounded-lg inline-block self-start">
+                        占比 <span x-text="((result.netPay/salary)*100).toFixed(1)"></span>%
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-cyan-100 flex flex-col justify-center gap-4">
+                    <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                        <span class="text-sm text-slate-500 font-bold">五险一金 (个人)</span>
+                        <span class="font-bold text-rose-500" x-text="formatCurrency(result.totalInsurance)"></span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-slate-50 pb-2">
+                        <span class="text-sm text-slate-500 font-bold">个人所得税</span>
+                        <span class="font-bold text-orange-500" x-text="formatCurrency(result.tax)"></span>
+                    </div>
+                    <div class="flex justify-between items-center pt-1">
+                        <span class="text-sm text-slate-500 font-bold">公积金账户入账</span>
+                        <span class="font-bold text-emerald-600" x-text="formatCurrency(result.housingFundTotal)"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-cyan-100 min-h-[300px] flex items-center justify-center">
+                 <div class="w-full max-w-md">
+                     <canvas id="salaryChart"></canvas>
+                 </div>
+            </div>
+
+            <!-- Detailed List -->
+            <div class="bg-white rounded-2xl shadow-sm border border-cyan-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                    <span class="font-bold text-slate-700">详细扣除项目</span>
+                    <span class="text-xs text-slate-400">(估算值，仅供参考)</span>
+                </div>
+                <div class="divide-y divide-slate-50">
+                    <div class="flex justify-between px-6 py-3 hover:bg-slate-50 transition-colors">
+                        <span class="text-sm text-slate-600">养老保险 (8%)</span>
+                        <span class="font-medium text-slate-800" x-text="formatCurrency(result.pension)"></span>
+                    </div>
+                    <div class="flex justify-between px-6 py-3 hover:bg-slate-50 transition-colors">
+                        <span class="text-sm text-slate-600">医疗保险 (2%)</span>
+                        <span class="font-medium text-slate-800" x-text="formatCurrency(result.medical)"></span>
+                    </div>
+                    <div class="flex justify-between px-6 py-3 hover:bg-slate-50 transition-colors">
+                        <span class="text-sm text-slate-600">失业保险 (0.5%)</span>
+                        <span class="font-medium text-slate-800" x-text="formatCurrency(result.unemployment)"></span>
+                    </div>
+                     <div class="flex justify-between px-6 py-3 hover:bg-slate-50 transition-colors">
+                        <span class="text-sm text-slate-600">住房公积金 (<span x-text="housingRate"></span>%)</span>
+                        <span class="font-medium text-slate-800" x-text="formatCurrency(result.housing)"></span>
+                    </div>
+                    <div class="flex justify-between px-6 py-3 hover:bg-slate-50 transition-colors bg-orange-50/30">
+                        <span class="text-sm text-slate-600">个人所得税</span>
+                        <span class="font-medium text-slate-800" x-text="formatCurrency(result.tax)"></span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function salaryApp() {
+            return {
+                salary: 15000,
+                housingRate: 7,
+                showAdvanced: false,
+                socialBase: null, // If null, use salary
+                housingBase: null,
+                
+                result: {
+                    pension: 0, medical: 0, unemployment: 0, housing: 0,
+                    totalInsurance: 0, tax: 0, netPay: 0, housingFundTotal: 0
+                },
+                chart: null,
+
+                init() {
+                    this.$watch('salary', () => this.calculate());
+                    this.$watch('housingRate', () => this.calculate());
+                    this.$watch('socialBase', () => this.calculate());
+                    this.$watch('housingBase', () => this.calculate());
+                    
+                    this.calculate();
+
+                },
+
+                calculate() {
+                    const sal = parseFloat(this.salary) || 0;
+                    const sBase = parseFloat(this.socialBase) || sal;
+                    const hBase = parseFloat(this.housingBase) || sal;
+                    
+                    // Simple logic for standard city (e.g., Shanghai approx)
+                    // Pension 8%, Medical 2%, Unemployment 0.5%
+                    const pension = sBase * 0.08;
+                    const medical = sBase * 0.02;
+                    const unemployment = sBase * 0.005;
+                    const housing = hBase * (this.housingRate / 100);
+                    
+                    const totalDeductionPreTax = pension + medical + unemployment + housing;
+                    
+                    // Tax Calculation (Simplified monthly)
+                    // Taxable Income = Salary - Deductions - Threshold(5000)
+                    // Assuming no special deductions for simplicity of this visualizer
+                    let taxable = sal - totalDeductionPreTax - 5000;
+                    if (taxable < 0) taxable = 0;
+                    
+                    let tax = 0;
+                    if (taxable <= 3000) tax = taxable * 0.03;
+                    else if (taxable <= 12000) tax = taxable * 0.1 - 210;
+                    else if (taxable <= 25000) tax = taxable * 0.2 - 1410;
+                    else if (taxable <= 35000) tax = taxable * 0.25 - 2660;
+                    else if (taxable <= 55000) tax = taxable * 0.3 - 4410;
+                    else if (taxable <= 80000) tax = taxable * 0.35 - 7160;
+                    else tax = taxable * 0.45 - 15160;
+                    
+                    const netPay = sal - totalDeductionPreTax - tax;
+                    
+                    this.result = {
+                        pension, medical, unemployment, housing,
+                        totalInsurance: totalDeductionPreTax,
+                        tax,
+                        netPay,
+                        housingFundTotal: housing * 2 // Company matches
+                    };
+                    
+                    this.updateChart();
+                },
+
+                updateChart() {
+                    const ctx = document.getElementById('salaryChart').getContext('2d');
+                    if (this.chart) this.chart.destroy();
+
+                    this.chart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['实发工资', '公积金', '社保', '个税'],
+                            datasets: [{
+                                data: [
+                                    this.result.netPay,
+                                    this.result.housing,
+                                    this.result.pension + this.result.medical + this.result.unemployment,
+                                    this.result.tax
+                                ],
+                                backgroundColor: [
+                                    '#0891b2', // Cyan-600
+                                    '#10b981', // Emerald-500
+                                    '#f43f5e', // Rose-500
+                                    '#f97316'  // Orange-500
+                                ],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { padding: 20 } },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                           const val = context.raw;
+                                           const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                           const pct = ((val / total) * 100).toFixed(1) + '%';
+                                           return ` ${context.label}: ¥${val.toFixed(0)} (${pct})`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                formatCurrency(num) {
+                    if (!num && num !== 0) return '¥0';
+                    return '¥' + num.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_salary_visualizer.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

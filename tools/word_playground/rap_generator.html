@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 说唱生成器 - 内容创作工坊</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /* 页面主背景：紫粉嘻哈渐变 */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(145deg, #1e0a3c 0%, #4c1d95 28%, #7c3aed 52%, #a855f7 78%, #c084fc 100%);
+      min-height: 100vh;
+    }
+
+    /* 涂鸦风标签：粗边框 + 轻微旋转 */
+    .graffiti-tag {
+      transform: rotate(-1.2deg);
+      border-width: 3px;
+      border-style: solid;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .graffiti-tag:hover {
+      transform: rotate(0deg) scale(1.02);
+    }
+    .graffiti-tag-active {
+      box-shadow: 4px 4px 0 #000;
+    }
+
+    /* 「开始 Freestyle」脉冲动画 */
+    @keyframes freestyle-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(232, 121, 249, 0.55), 0 0 24px rgba(168, 85, 247, 0.45); }
+      50% { box-shadow: 0 0 0 12px rgba(232, 121, 249, 0), 0 0 36px rgba(236, 72, 153, 0.55); }
+    }
+    .btn-freestyle-pulse {
+      animation: freestyle-pulse 2s ease-in-out infinite;
+    }
+
+    /* 歌词区：录音室暗色 + 节拍条背景 */
+    .studio-panel {
+      position: relative;
+      background: linear-gradient(180deg, #0c0518 0%, #1a0b2e 45%, #0f0720 100%);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      overflow: hidden;
+    }
+    .beat-bars {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 5px;
+      padding: 1.25rem;
+      pointer-events: none;
+      opacity: 0.22;
+    }
+    .beat-bar {
+      width: 7px;
+      flex: 0 0 auto;
+      border-radius: 4px 4px 0 0;
+      background: linear-gradient(to top, #6b21a8, #e879f9, #f0abfc);
+      transform-origin: bottom center;
+      animation: beat-jump 0.55s ease-in-out infinite alternate;
+    }
+    @keyframes beat-jump {
+      from { height: 12%; opacity: 0.5; }
+      to { height: 72%; opacity: 1; }
+    }
+
+    /* 韵脚霓虹高亮 */
+    .rap-rhyme {
+      color: #f0abfc;
+      text-shadow: 0 0 10px #e879f9, 0 0 20px rgba(232, 121, 249, 0.6);
+      font-weight: 700;
+    }
+
+    /* 歌词区 Markdown 排版微调 */
+    .rap-prose {
+      color: #e9d5ff;
+    }
+    .rap-prose :where(h1, h2, h3) {
+      color: #fae8ff;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+      font-weight: 800;
+    }
+    .rap-prose p { margin: 0.35rem 0; }
+    .rap-prose strong { color: #fef08a; }
+
+    /* 装饰音符轻微漂浮 */
+    @keyframes float-note {
+      0%, 100% { transform: translateY(0) rotate(-8deg); opacity: 0.12; }
+      50% { transform: translateY(-10px) rotate(6deg); opacity: 0.2; }
+    }
+    .deco-note {
+      animation: float-note 5s ease-in-out infinite;
+    }
+
+    .studio-scroll::-webkit-scrollbar {
+      width: 8px;
+    }
+    .studio-scroll::-webkit-scrollbar-thumb {
+      background: rgba(168, 85, 247, 0.45);
+      border-radius: 4px;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-100">
+  <div x-data="rapGenerator()" x-init="init()" class="min-h-screen flex flex-col pb-10 relative">
+
+    <!-- 背景装饰：麦克风 / 音符 -->
+    <div class="pointer-events-none fixed inset-0 overflow-hidden z-0">
+      <i data-lucide="mic-2" class="deco-note absolute top-24 right-[8%] w-32 h-32 text-fuchsia-300"></i>
+      <i data-lucide="music-2" class="deco-note absolute bottom-32 left-[6%] w-24 h-24 text-purple-300" style="animation-delay: 1.2s"></i>
+      <i data-lucide="disc-3" class="deco-note absolute top-1/2 left-[12%] w-20 h-20 text-violet-300/80" style="animation-delay: 2.5s"></i>
+    </div>
+
+    <!-- 顶部导航 -->
+    <nav class="relative z-50 bg-violet-950/70 backdrop-blur-md sticky top-0 border-b border-fuchsia-500/30">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer shrink-0" onclick="location.href='../../index.html'">
+          <i data-lucide="mic-2" class="text-fuchsia-400 h-7 w-7"></i>
+          <span class="font-black text-lg sm:text-xl tracking-tight text-white drop-shadow-md">AI 说唱生成器</span>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="hidden sm:flex bg-violet-900/80 rounded-lg p-0.5 text-xs border border-fuchsia-500/30">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-fuchsia-600 text-white shadow' : 'text-violet-200'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-fuchsia-600 text-white shadow' : 'text-violet-200'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-violet-200 hover:bg-violet-800/80"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-6 items-start">
+
+        <!-- 左侧：输入与选项 -->
+        <section class="bg-violet-950/60 backdrop-blur rounded-2xl border-2 border-fuchsia-500/40 shadow-2xl shadow-purple-900/50 p-5 space-y-4">
+          <h2 class="text-base font-black text-white flex items-center gap-2">
+            <i data-lucide="sliders-horizontal" class="w-5 h-5 text-fuchsia-400"></i>
+            创作参数
+          </h2>
+
+          <!-- Battle 模式开关（彩蛋） -->
+          <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-black/25 border border-fuchsia-500/25">
+            <div class="flex items-center gap-2">
+              <i data-lucide="swords" class="w-5 h-5 text-amber-400"></i>
+              <div>
+                <p class="text-sm font-bold text-white">Battle 模式</p>
+                <p class="text-xs text-violet-300">双主题对垒，生成互相 diss 的两段词</p>
+              </div>
+            </div>
+            <button type="button" @click="battleMode = !battleMode"
+              :class="battleMode ? 'bg-fuchsia-600' : 'bg-violet-800'"
+              class="relative w-12 h-7 rounded-full transition-colors border-2 border-fuchsia-400/50">
+              <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
+                :style="battleMode ? 'transform: translateX(1.25rem)' : ''"></span>
+            </button>
+          </div>
+
+          <!-- 主题输入 -->
+          <div>
+            <label class="block text-xs font-bold text-fuchsia-200 mb-1" x-text="battleMode ? '主题 A（红方）' : '主题 / 关键词'"></label>
+            <textarea x-model="theme" rows="3"
+              class="w-full rounded-xl border-2 border-violet-600/50 bg-violet-950/80 p-3 text-sm text-white placeholder-violet-400 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-400 resize-y"
+              placeholder="例如：996 加班、童年回忆、深圳生活…"></textarea>
+          </div>
+
+          <div x-show="battleMode" x-transition class="space-y-2">
+            <label class="block text-xs font-bold text-fuchsia-200 mb-1">主题 B（蓝方）</label>
+            <textarea x-model="themeB" rows="3"
+              class="w-full rounded-xl border-2 border-violet-600/50 bg-violet-950/80 p-3 text-sm text-white placeholder-violet-400 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-400 resize-y"
+              placeholder="对手主题，例如：摸鱼躺平、老家小城…"></textarea>
+          </div>
+
+          <!-- 风格 -->
+          <div>
+            <p class="text-xs font-bold text-fuchsia-200 mb-2">风格</p>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="s in styles" :key="s.id">
+                <button type="button" @click="styleId = s.id"
+                  :class="styleId === s.id ? 'graffiti-tag-active border-fuchsia-300 bg-fuchsia-600 text-white' : 'border-violet-400 bg-violet-800/80 text-violet-100'"
+                  class="graffiti-tag px-3 py-2 rounded-lg text-xs sm:text-sm">
+                  <span x-text="s.label"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- 段数 -->
+          <div>
+            <p class="text-xs font-bold text-fuchsia-200 mb-2">段数（Verse 数量）</p>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="n in [1,2,3]" :key="n">
+                <button type="button" @click="segments = n"
+                  :class="segments === n ? 'graffiti-tag-active border-yellow-300 bg-amber-500 text-black' : 'border-violet-400 bg-violet-800/80'"
+                  class="graffiti-tag px-4 py-2 rounded-lg text-sm font-black"
+                  x-text="n + ' 段'"></button>
+              </template>
+            </div>
+          </div>
+
+          <!-- 情绪 -->
+          <div>
+            <p class="text-xs font-bold text-fuchsia-200 mb-2">情绪基调</p>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="m in moods" :key="m">
+                <button type="button" @click="mood = m"
+                  :class="mood === m ? 'graffiti-tag-active border-pink-300 bg-pink-600 text-white' : 'border-violet-400 bg-violet-800/80 text-violet-100'"
+                  class="graffiti-tag px-3 py-1.5 rounded-lg text-xs sm:text-sm" x-text="m"></button>
+              </template>
+            </div>
+          </div>
+
+          <!-- 主按钮 -->
+          <div class="flex flex-col sm:flex-row gap-2 pt-1">
+            <button type="button" @click="startFreestyle(false)" :disabled="isGenerating"
+              class="btn-freestyle-pulse flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-black py-3.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed border-2 border-fuchsia-300/80">
+              <i x-show="!isGenerating" data-lucide="zap" class="w-5 h-5"></i>
+              <i x-show="isGenerating" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              <span x-text="isGenerating ? '正在 Freestyle…' : '开始 Freestyle'"></span>
+            </button>
+            <button type="button" @click="startFreestyle(true)" :disabled="isGenerating || !streamText"
+              class="sm:w-36 flex items-center justify-center gap-2 border-2 border-fuchsia-400/80 text-fuchsia-100 font-bold py-3.5 rounded-xl hover:bg-violet-800/80 disabled:opacity-40 disabled:cursor-not-allowed">
+              <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+              换一版
+            </button>
+          </div>
+
+          <p x-show="errorMsg" class="text-sm text-red-200 bg-red-950/60 border border-red-500/40 rounded-lg px-3 py-2" x-text="errorMsg"></p>
+        </section>
+
+        <!-- 右侧：歌词展示 -->
+        <section class="studio-panel rounded-2xl shadow-2xl min-h-[380px] flex flex-col">
+          <!-- 节拍条背景层 -->
+          <div class="beat-bars" aria-hidden="true">
+            <template x-for="i in 14" :key="i">
+              <div class="beat-bar" :style="'animation-delay:' + (i * 0.07) + 's;height:25%'"></div>
+            </template>
+          </div>
+
+          <div class="relative z-10 flex flex-col flex-1 min-h-[360px]">
+            <div class="px-4 py-3 border-b border-fuchsia-500/20 flex flex-wrap items-center justify-between gap-2 bg-black/30">
+              <span class="text-sm font-black text-fuchsia-200 flex items-center gap-2">
+                <i data-lucide="waves" class="w-4 h-4"></i>
+                歌词本
+              </span>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" @click="copyLyrics('plain')" :disabled="!streamText"
+                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-800/90 text-xs font-semibold border border-fuchsia-500/30 hover:bg-violet-700 disabled:opacity-40">
+                  <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                  复制纯文本
+                </button>
+                <button type="button" @click="copyLyrics('md')" :disabled="!streamText"
+                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-fuchsia-700/90 text-xs font-semibold border border-fuchsia-300/40 hover:bg-fuchsia-600 disabled:opacity-40">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                  复制带格式
+                </button>
+              </div>
+            </div>
+
+            <!-- V4 Pro 推理折叠 -->
+            <details x-show="reasoningText" class="mx-4 mt-3 border border-violet-600/50 rounded-lg bg-black/40 px-3 py-2 text-xs text-violet-200">
+              <summary class="cursor-pointer font-bold text-violet-300 select-none">🧠 深度思考过程（点击展开）</summary>
+              <pre class="mt-2 whitespace-pre-wrap text-violet-300/90 max-h-40 overflow-y-auto studio-scroll" x-text="reasoningText"></pre>
+            </details>
+
+            <!-- 生成中：原始流式文本 -->
+            <div x-show="isGenerating" class="flex-1 px-4 py-4 studio-scroll overflow-y-auto max-h-[min(62vh,520px)]">
+              <pre class="whitespace-pre-wrap text-sm text-violet-200/90 font-mono leading-relaxed" x-text="streamText"></pre>
+              <div class="flex items-center gap-2 mt-3 text-fuchsia-300/80 text-xs">
+                <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                流式输出中…
+              </div>
+            </div>
+
+            <!-- 完成后：Battle 左右分栏 或 单栏渲染 -->
+            <div x-show="!isGenerating && streamText" class="flex-1 px-4 py-4 studio-scroll overflow-y-auto max-h-[min(62vh,520px)]">
+              <!-- 普通模式 -->
+              <div x-show="!battleMode" class="rap-prose prose prose-invert max-w-none text-sm sm:text-base" x-html="displayHtmlSingle"></div>
+
+              <!-- Battle：左右对比 -->
+              <div x-show="battleMode" class="grid md:grid-cols-2 gap-4">
+                <div class="rounded-xl border-2 border-red-500/40 bg-red-950/20 p-3">
+                  <p class="text-xs font-black text-red-300 mb-2 flex items-center gap-1">
+                    <i data-lucide="flame" class="w-4 h-4"></i> 红方 · Diss 词
+                  </p>
+                  <div class="rap-prose prose prose-invert max-w-none text-sm" x-html="displayHtmlLeft"></div>
+                </div>
+                <div class="rounded-xl border-2 border-sky-500/40 bg-sky-950/20 p-3">
+                  <p class="text-xs font-black text-sky-300 mb-2 flex items-center gap-1">
+                    <i data-lucide="shield" class="w-4 h-4"></i> 蓝方 · Diss 词
+                  </p>
+                  <div class="rap-prose prose prose-invert max-w-none text-sm" x-html="displayHtmlRight"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div x-show="!isGenerating && !streamText"
+              class="flex-1 flex flex-col items-center justify-center text-violet-400/70 text-sm px-6 py-16">
+              <i data-lucide="music" class="w-14 h-14 mb-3 opacity-40"></i>
+              <p class="text-center">填好左边主题，点<strong class="text-fuchsia-300">「开始 Freestyle」</strong></p>
+              <p class="text-center text-xs mt-2 text-violet-500">支持韵脚高亮、Flow 节奏提示与 Battle 对垒</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- API 设置弹窗 -->
+    <div x-show="showSettings" x-transition.opacity
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60"
+      @keydown.escape.window="showSettings = false">
+      <div @click.away="showSettings = false" class="bg-violet-950 border-2 border-fuchsia-500/50 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 text-white">
+        <h3 class="text-lg font-black text-fuchsia-200">API 配置</h3>
+        <p class="text-xs text-violet-300">密钥保存在浏览器本地，与其他工具共用 <code class="bg-black/40 px-1 rounded text-fuchsia-300">global_llm_config</code>，保存时合并、不覆盖其他字段。</p>
+        <div>
+          <label class="block text-sm font-medium text-violet-200 mb-1">DeepSeek API Key</label>
+          <input type="password" x-model="apiConfig.deepseek"
+            class="w-full rounded-lg border border-violet-600 bg-violet-950/80 p-2.5 text-sm text-white" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-violet-200 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-violet-600 bg-violet-950/80 p-2.5 text-sm text-white">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-violet-200 hover:bg-violet-800/80">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-fuchsia-600 text-white font-bold hover:bg-fuchsia-500">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl bg-violet-950 border border-fuchsia-500/40 text-white text-sm shadow-lg flex items-center gap-2">
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * HTML 转义，防止 x-html 注入（仅展示模型输出时配合使用）
+     * @param {string} s
+     * @returns {string}
+     */
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /**
+     * 将带「（韵：X）」后缀的歌词行转为带高亮 HTML，其余行累积后用 marked 解析
+     * 逻辑与 tests/rap_generator_postprocess.test.mjs 保持同步
+     * @param {string} text
+     * @returns {string}
+     */
+    function processRapMarkdown(text) {
+      if (!text || typeof marked === 'undefined') return '';
+      const lines = text.split('\n');
+      const chunks = [];
+      let mdBuf = [];
+      const flushMd = () => {
+        if (mdBuf.length) {
+          const raw = mdBuf.join('\n');
+          if (raw.trim()) {
+            chunks.push(marked.parse(raw, { breaks: true }));
+          }
+          mdBuf = [];
+        }
+      };
+      // 支持全角或半角括号，冒号中英文
+      const rhymeRe = /^(\s*)(.+?)[（(]韵[：:](.+?)[）)]\s*$/;
+      for (const line of lines) {
+        const m = line.match(rhymeRe);
+        if (m) {
+          flushMd();
+          const body = m[2].replace(/\s+$/u, '');
+          let inner = '';
+          if (body.length > 0) {
+            const lastChar = body[body.length - 1];
+            inner = escapeHtml(body.slice(0, -1)) + '<span class="rap-rhyme">' + escapeHtml(lastChar) + '</span>';
+          }
+          chunks.push('<p class="rap-line mb-1 leading-relaxed">' + inner + '</p>');
+        } else {
+          mdBuf.push(line);
+        }
+      }
+      flushMd();
+      return chunks.join('\n');
+    }
+
+    /**
+     * Battle 分栏：按唯一分隔符切开（提示词要求模型原样输出该行）
+     * @param {string} text
+     * @returns {{ left: string, right: string }}
+     */
+    function splitBattleLyrics(text) {
+      const marker = '<<<BATTLE_SPLIT>>>';
+      const idx = text.indexOf(marker);
+      if (idx === -1) {
+        return { left: text, right: '' };
+      }
+      return {
+        left: text.slice(0, idx).trim(),
+        right: text.slice(idx + marker.length).trim()
+      };
+    }
+
+    /**
+     * 复制用：弱化 Markdown 标记为纯文本
+     * @param {string} md
+     * @returns {string}
+     */
+    function stripMarkdownLite(md) {
+      return String(md)
+        .replace(/（韵：[^）)]+[）)]/g, '')
+        .replace(/\(韵[:：][^)]+\)/g, '')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/#{1,6}\s*/g, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/^\s*[-*]\s+/gm, '• ')
+        .replace(/<<<BATTLE_SPLIT>>>/g, '\n---\n')
+        .trim();
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('rapGenerator', () => ({
+        theme: '',
+        themeB: '',
+        styleId: 'trap',
+        segments: 2,
+        mood: '热血',
+        battleMode: false,
+        styles: [
+          { id: 'oldschool', label: 'Old School' },
+          { id: 'trap', label: 'Trap' },
+          { id: 'freestyle', label: 'Freestyle' },
+          { id: 'dialect', label: '方言风' },
+          { id: 'guofeng', label: '国风说唱' }
+        ],
+        moods: ['热血', '搞笑', '感伤', '炫酷', '讽刺'],
+        streamText: '',
+        reasoningText: '',
+        displayHtmlSingle: '',
+        displayHtmlLeft: '',
+        displayHtmlRight: '',
+        isGenerating: false,
+        errorMsg: '',
+        showSettings: false,
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+        /** 记录上次用户主提示，用于「换一版」构造多轮对话 */
+        lastUserPrompt: '',
+
+        init() {
+          this.loadConfig();
+          if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true });
+          }
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+          this.$watch('battleMode', () => {
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          });
+        },
+
+        /** 从 localStorage 合并加载全局 LLM 配置 */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存 API 配置（合并策略，禁止整对象覆盖）
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          setTimeout(() => { this.toast.show = false; }, 2600);
+        },
+
+        /** 当前风格的中文说明（写入提示词） */
+        getStyleDescription() {
+          const map = {
+            oldschool: 'Old School：经典 Boom Bap、重鼓点、叙事感强',
+            trap: 'Trap：808、快速三连音感、暗黑或炫彩氛围',
+            freestyle: 'Freestyle：即兴感强、可穿插 wordplay、灵活换韵',
+            dialect: '方言风：任选一种汉语方言口吻（川渝/粤语/东北等注明），保持听懂度',
+            guofeng: '国风说唱：文言意象 + 现代 flow，可提及江湖、水墨、器乐感'
+          };
+          return map[this.styleId] || map.trap;
+        },
+
+        /**
+         * 系统提示词：约束输出结构、韵脚标注、Flow、Battle 分隔
+         */
+        getSystemPrompt() {
+          return `你是中文说唱词创作人，擅长押韵、双关与节奏感。请严格使用中文输出。
+
+【输出结构】
+1. 先用一级标题输出歌名，格式：# 歌名
+2. 使用 [Verse 1]、[Hook]、[Verse 2] 等标签分段（段数按用户要求）。
+3. 每一段下先写正常说唱歌词；**每一行歌词**单独一行，且行末必须追加韵脚标注，格式为：（韵：X）其中 X 为本行押韵的核心字（通常一个字，必要时两个）。
+   示例：我把黑夜踩碎在脚下滚烫（韵：烫）
+4. 歌词全部完成后，新增小节「## Flow 节奏提示」：用简短说明 + 符号示范重音与停顿：
+   - 用 · 表示重音，用 / 表示短停顿，用 // 表示长停顿
+   - 给 Hook 与至少一段 Verse 各 1～2 行节奏示范
+5. 语言要符合用户指定的风格与情绪，避免低俗人身攻击；Battle 模式允许「竞技式 diss」，但仍禁止违法、歧视与真实恶意。
+
+【Battle 模式额外规则】
+- 先完整输出「红方」站在主题 A 立场 diss 主题 B 的歌词（同样每行带（韵：X））。
+- 然后**单独一行**原样输出：<<<BATTLE_SPLIT>>>（三个尖括号英文大写，无空格）
+- 再输出「蓝方」站在主题 B 立场回击 diss 主题 A 的歌词。
+- 红蓝两部分各自包含歌名小标题（用 ## 红方 / ## 蓝方）。`;
+        },
+
+        /**
+         * 构造用户消息（非换一版）
+         */
+        buildUserPrompt() {
+          if (this.battleMode) {
+            return `【Battle 对垒】
+主题 A（红方）：${(this.theme || '').trim()}
+主题 B（蓝方）：${(this.themeB || '').trim()}
+风格：${this.getStyleDescription()}
+情绪基调：${this.mood}
+请按系统说明输出红方与蓝方两段 diss，中间用 <<<BATTLE_SPLIT>>> 分隔。`;
+          }
+          return `【主题 / 关键词】
+${(this.theme || '').trim()}
+
+【风格】${this.getStyleDescription()}
+【段数】请写 ${this.segments} 段 Verse（可有 Hook，段数指 Verse 主体数量）。
+【情绪基调】${this.mood}
+
+请按系统说明输出完整歌词与 Flow 节奏提示。`;
+        },
+
+        /**
+         * 流式调用 DeepSeek
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {function(string):void} onDelta
+         * @param {function(string):void} [onReasoning]
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.88
+            })
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || ('HTTP ' + response.status));
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) onReasoning(delta.reasoning_content);
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /** 根据当前文本刷新展示用 HTML */
+        refreshDisplayHtml() {
+          const t = this.streamText;
+          if (!t) {
+            this.displayHtmlSingle = '';
+            this.displayHtmlLeft = '';
+            this.displayHtmlRight = '';
+            return;
+          }
+          if (this.battleMode) {
+            const { left, right } = splitBattleLyrics(t);
+            this.displayHtmlLeft = processRapMarkdown(left);
+            this.displayHtmlRight = processRapMarkdown(right || '（未检测到分隔符，请换一版或检查模型是否输出 <<<BATTLE_SPLIT>>>）');
+            this.displayHtmlSingle = '';
+          } else {
+            this.displayHtmlSingle = processRapMarkdown(t);
+            this.displayHtmlLeft = '';
+            this.displayHtmlRight = '';
+          }
+        },
+
+        /**
+         * 开始生成或换一版
+         * @param {boolean} reroll 是否为换一版
+         */
+        async startFreestyle(reroll) {
+          this.errorMsg = '';
+          if (this.battleMode) {
+            if (!(this.theme || '').trim() || !(this.themeB || '').trim()) {
+              this.errorMsg = 'Battle 模式请填写主题 A 与主题 B。';
+              return;
+            }
+          } else if (!(this.theme || '').trim()) {
+            this.errorMsg = '请填写主题或关键词。';
+            return;
+          }
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先在设置中填写 DeepSeek API Key。';
+            return;
+          }
+
+          const messages = [{ role: 'system', content: this.getSystemPrompt() }];
+          /** 换一版前先缓存上一轮正文，供多轮对话引用，再清空流式区避免新旧拼接 */
+          const previousAssistant = reroll ? (this.streamText || '') : '';
+          if (reroll && previousAssistant && this.lastUserPrompt) {
+            messages.push({ role: 'user', content: this.lastUserPrompt });
+            messages.push({ role: 'assistant', content: previousAssistant });
+            messages.push({
+              role: 'user',
+              content: '换一版：在保持风格与结构要求的前提下，换一套意象与押韵词汇，Flow 提示也要重写，要有新鲜感，避免与上一版雷同。'
+            });
+          } else {
+            const up = this.buildUserPrompt();
+            this.lastUserPrompt = up;
+            messages.push({ role: 'user', content: up });
+          }
+
+          this.isGenerating = true;
+          this.streamText = '';
+          this.reasoningText = '';
+
+          try {
+            await this.streamDeepSeek(
+              messages,
+              (chunk) => { this.streamText += chunk; },
+              (r) => { this.reasoningText += r; }
+            );
+            this.refreshDisplayHtml();
+            this.showToast('生成完成', 'check-circle');
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败';
+            this.showToast(this.errorMsg, 'alert-circle');
+          } finally {
+            this.isGenerating = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /**
+         * 复制歌词
+         * @param {'plain'|'md'} mode
+         */
+        async copyLyrics(mode) {
+          if (!this.streamText) {
+            this.showToast('没有可复制的内容', 'alert-circle');
+            return;
+          }
+          const text = mode === 'plain' ? stripMarkdownLite(this.streamText) : this.streamText;
+          try {
+            await navigator.clipboard.writeText(text);
+            this.showToast(mode === 'plain' ? '已复制纯文本' : '已复制 Markdown 原文', 'copy');
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('已复制', 'copy');
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

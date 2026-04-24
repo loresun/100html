@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web 前端性能实验室 (Web Workers & Performance)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-top: 5px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .progress-bar { transition: width 0.2s ease; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div class="max-w-3xl w-full bg-gray-800/50 backdrop-blur-md border border-gray-700 rounded-2xl p-8 shadow-2xl">
+        <div class="text-center mb-10">
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                Performance Lab
+            </h1>
+            <p class="text-gray-400 mt-2">Main Thread vs. Web Worker Blocking Test</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Visual Indicator of UI Responsiveness -->
+            <div class="col-span-1 md:col-span-2 flex flex-col items-center justify-center p-6 bg-gray-900/50 rounded-xl border border-gray-700">
+                <div class="spinner mb-4"></div>
+                <p class="text-sm text-gray-400">FPS Indicator</p>
+                <p class="text-xs text-gray-500 mt-1">Check if this spinner freezes during calculation.</p>
+                
+                <div class="mt-4 text-center">
+                    <span id="fps-counter" class="text-2xl font-mono text-green-400">60</span> 
+                    <span class="text-xs text-gray-500">FPS</span>
+                </div>
+            </div>
+
+            <!-- Task 1: Main Thread -->
+            <div class="p-6 bg-red-900/10 border border-red-500/20 rounded-xl hover:border-red-500/40 transition-colors">
+                <div class="flex items-center gap-3 mb-4 text-red-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                    <h2 class="font-bold text-white">Main Thread (UI Blocking)</h2>
+                </div>
+                <p class="text-sm text-gray-400 mb-6 min-h-[40px]">
+                    Running heavy calculation directly on the UI thread. The page <b>will freeze</b>.
+                </p>
+                <div class="space-y-4">
+                    <button onclick="runMainThread()" id="btn-main" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition active:scale-95">
+                        Run Heavy Task
+                    </button>
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="progress-main" class="h-full bg-red-500 w-0"></div>
+                    </div>
+                    <div id="result-main" class="text-xs font-mono text-gray-400 text-right h-5">Ready</div>
+                </div>
+            </div>
+
+            <!-- Task 2: Web Worker -->
+            <div class="p-6 bg-green-900/10 border border-green-500/20 rounded-xl hover:border-green-500/40 transition-colors">
+                 <div class="flex items-center gap-3 mb-4 text-green-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <h2 class="font-bold text-white">Web Worker (Non-Blocking)</h2>
+                </div>
+                <p class="text-sm text-gray-400 mb-6 min-h-[40px]">
+                    Running calculation in a background thread. The UI <b>remains smooth</b>.
+                </p>
+                <div class="space-y-4">
+                    <button onclick="runWorker()" id="btn-worker" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition active:scale-95">
+                        Run Heavy Task
+                    </button>
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="progress-worker" class="h-full bg-green-500 w-0 progress-bar"></div>
+                    </div>
+                    <div id="result-worker" class="text-xs font-mono text-gray-400 text-right h-5">Ready</div>
+                </div>
+            </div>
+        
+        </div>
+        
+        <div class="mt-8 text-xs text-gray-500 text-center">
+            * Task: Finding the 5000th Prime number repeats 500 times (Simulated Heavy Load)
+        </div>
+    </div>
+
+    <!-- Worker Script Template (Blob) -->
+    <script id="worker-code" type="javascript/worker">
+        self.onmessage = function(e) {
+            const iterations = e.data;
+            let count = 0;
+            
+            function isPrime(num) {
+                for(let i = 2, s = Math.sqrt(num); i <= s; i++)
+                    if(num % i === 0) return false;
+                return num > 1;
+            }
+
+            // Simulate heavy work
+            for(let i = 0; i < iterations; i++) {
+                 // Find 3000th prime repeatedly
+                 let primesFound = 0;
+                 let num = 2;
+                 while(primesFound < 2000) {
+                     if(isPrime(num)) primesFound++;
+                     num++;
+                 }
+                 
+                 // Report progress every 10%
+                 if (i % (iterations / 10) === 0) {
+                     self.postMessage({ type: 'progress', value: (i / iterations) * 100 });
+                 }
+            }
+            
+            self.postMessage({ type: 'done', result: 'Completed' });
+        };
+    </script>
+
+    <script>
+        // FPS Counter
+        let lastTime = performance.now();
+        let frames = 0;
+        function loop() {
+            const now = performance.now();
+            frames++;
+            if (now - lastTime >= 1000) {
+                document.getElementById('fps-counter').innerText = frames;
+                frames = 0;
+                lastTime = now;
+            }
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        // Heavy Logic for Main Thread
+        function heavyTaskMain(iterations) {
+            function isPrime(num) {
+                for(let i = 2, s = Math.sqrt(num); i <= s; i++)
+                    if(num % i === 0) return false;
+                return num > 1;
+            }
+
+            // Note: This loop BLOCKS rendering updates, so progress bar won't update until END
+            // unless we break it up with setTimeout (which defeats the purpose of showing "Blocking")
+            // So we will run it all at once to prove it hangs.
+            
+            const start = performance.now();
+            for(let i = 0; i < iterations; i++) {
+                 let primesFound = 0;
+                 let num = 2;
+                 while(primesFound < 2000) {
+                     if(isPrime(num)) primesFound++;
+                     num++;
+                 }
+            }
+            return performance.now() - start;
+        }
+
+        // 1. Run Main Thread
+        function runMainThread() {
+            const btn = document.getElementById('btn-main');
+            const res = document.getElementById('result-main');
+            const prog = document.getElementById('progress-main');
+            
+            btn.disabled = true;
+            btn.innerText = 'Calculating... (Freezing)';
+            res.innerText = 'Processing...';
+            prog.style.width = '0%'; // Won't show effectively because it jumps to 100% after freeze
+            
+            // Allow UI to update "Calculating..." text before freezing
+            setTimeout(() => {
+                const duration = heavyTaskMain(500); // 500 iterations
+                
+                prog.style.width = '100%';
+                res.innerText = `Done in ${(duration/1000).toFixed(2)}s`;
+                btn.disabled = false;
+                btn.innerText = 'Run Heavy Task';
+            }, 50);
+        }
+
+        // 2. Run Worker
+        function runWorker() {
+            const btn = document.getElementById('btn-worker');
+            const res = document.getElementById('result-worker');
+            const prog = document.getElementById('progress-worker');
+            
+            btn.disabled = true;
+            prog.style.width = '0%';
+            res.innerText = 'Starting Worker...';
+
+            // Create Worker from Blob
+            const blob = new Blob([document.querySelector('#worker-code').textContent], { type: "text/javascript" });
+            const worker = new Worker(window.URL.createObjectURL(blob));
+
+            const start = performance.now();
+
+            worker.onmessage = function(e) {
+                if (e.data.type === 'progress') {
+                    prog.style.width = e.data.value + '%';
+                    res.innerText = `Progress: ${Math.round(e.data.value)}%`;
+                } else if (e.data.type === 'done') {
+                    const duration = performance.now() - start;
+                    prog.style.width = '100%';
+                    res.innerText = `Done in ${(duration/1000).toFixed(2)}s`;
+                    btn.disabled = false;
+                    worker.terminate();
+                }
+            };
+
+            worker.postMessage(500); // Same iterations
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书封面生成器 - AI Content Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .template-card {
+            transition: all 0.3s ease;
+        }
+
+        .template-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .template-card.selected {
+            ring: 4px;
+            ring-color: #ff6b6b;
+        }
+
+        .cover-preview {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .loading-shimmer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen p-4">
+    <div x-data="xhsCoverGen()" x-init="init()" class="max-w-7xl mx-auto">
+        <nav class="glass rounded-2xl shadow-2xl mb-6 p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                    <div class="p-2 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl">
+                        <i class="fa-solid fa-image text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-2xl text-slate-900">小红书封面生成器</h1>
+                        <p class="text-sm text-slate-500">AI 生成高点击率小红书封面</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 px-3 py-2 bg-pink-100 rounded-lg">
+                        <i class="fa-solid fa-microchip text-pink-600"></i>
+                        <span class="text-xs text-pink-600">当前模型:</span>
+                        <span class="text-sm font-medium text-pink-900" x-text="getModelDisplayName()"></span>
+                    </div>
+                    <button @click="showSettings = true"
+                        class="flex items-center gap-2 px-4 py-2 bg-pink-100 hover:bg-pink-200 rounded-lg transition text-pink-700">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>模型配置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-font text-pink-500"></i>
+                        封面内容
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">主标题</label>
+                            <textarea x-model="title" rows="2" placeholder="输入封面主标题..."
+                                class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">副标题（可选）</label>
+                            <input type="text" x-model="subtitle" placeholder="输入副标题..."
+                                class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">封面主题描述</label>
+                            <textarea x-model="themePrompt" rows="3" placeholder="描述封面整体风格、颜色、元素..."
+                                class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-layer-group text-pink-500"></i>
+                        选择模板
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button @click="template = 'contrast'"
+                            :class="template === 'contrast' ? 'ring-4 ring-pink-400' : ''"
+                            class="template-card p-3 rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 text-white text-center">
+                            <div class="text-xs font-medium">对比反差</div>
+                            <div class="text-xs opacity-70">黑底白字</div>
+                        </button>
+                        <button @click="template = 'bright'"
+                            :class="template === 'bright' ? 'ring-4 ring-pink-400' : ''"
+                            class="template-card p-3 rounded-xl bg-gradient-to-br from-yellow-300 to-orange-400 text-white text-center">
+                            <div class="text-xs font-medium">明亮鲜艳</div>
+                            <div class="text-xs opacity-70">暖色调</div>
+                        </button>
+                        <button @click="template = 'pastel'"
+                            :class="template === 'pastel' ? 'ring-4 ring-pink-400' : ''"
+                            class="template-card p-3 rounded-xl bg-gradient-to-br from-pink-200 to-purple-300 text-slate-800 text-center">
+                            <div class="text-xs font-medium">柔和粉彩</div>
+                            <div class="text-xs opacity-70">少女风</div>
+                        </button>
+                        <button @click="template = 'minimal'"
+                            :class="template === 'minimal' ? 'ring-4 ring-pink-400' : ''"
+                            class="template-card p-3 rounded-xl bg-white border-2 border-slate-200 text-slate-800 text-center">
+                            <div class="text-xs font-medium">极简白色</div>
+                            <div class="text-xs opacity-70">干净清爽</div>
+                        </button>
+                        <button @click="template = 'gradient'"
+                            :class="template === 'gradient' ? 'ring-4 ring-pink-400' : ''"
+                            class="template-card p-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center">
+                            <div class="text-xs font-medium">渐变霓虹</div>
+                            <div class="text-xs opacity-70">时尚潮流</div>
+                        </button>
+                        <button @click="template = 'dark'" :class="template === 'dark' ? 'ring-4 ring-pink-400' : ''"
+                            class="template-card p-3 rounded-xl bg-gradient-to-br from-slate-800 to-indigo-900 text-white text-center">
+                            <div class="text-xs font-medium">暗黑高级</div>
+                            <div class="text-xs opacity-70">神秘质感</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-sliders text-pink-500"></i>
+                        生成参数
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">封面尺寸</label>
+                            <select x-model="size" class="w-full rounded-lg border-slate-200 border p-2 text-sm">
+                                <option value="1080x1440">3:4 小红书标准 (1080×1440)</option>
+                                <option value="1080x1920">9:16 全屏竖版 (1080×1920)</option>
+                                <option value="1242x1660">3:4 高清 (1242×1660)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">生成数量</label>
+                            <select x-model.number="batchCount"
+                                class="w-full rounded-lg border-slate-200 border p-2 text-sm">
+                                <option value="1">1 张</option>
+                                <option value="2">2 张</option>
+                                <option value="4">4 张</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button @click="generate()" :disabled="isGenerating || !canGenerate()"
+                    :class="isGenerating ? 'bg-slate-400' : 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600'"
+                    class="w-full text-white font-bold py-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2">
+                    <i :class="isGenerating ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-wand-magic-sparkles'"
+                        class="text-lg"></i>
+                    <span x-text="isGenerating ? `生成中... ${generatedCount}/${totalCount}` : '生成封面'"></span>
+                </button>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-xl flex items-center gap-2 text-slate-900">
+                            <i class="fa-solid fa-images text-pink-500"></i>
+                            封面预览
+                        </h3>
+                        <div x-show="results.length > 0" class="flex gap-2">
+                            <button @click="downloadAll()"
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-download"></i>
+                                下载全部
+                            </button>
+                            <button @click="clearResults()"
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-trash-can"></i>
+                                清空
+                            </button>
+                        </div>
+                    </div>
+
+                    <div x-show="results.length === 0 && !isGenerating"
+                        class="flex flex-col items-center justify-center py-20 text-slate-400">
+                        <i class="fa-solid fa-image text-8xl mb-4 opacity-50"></i>
+                        <p class="text-lg font-medium">还没有生成封面</p>
+                        <p class="text-sm">选择模板，输入标题，开始生成</p>
+                    </div>
+
+                    <div x-show="isGenerating" class="grid grid-cols-2 gap-4">
+                        <template x-for="i in totalCount" :key="i">
+                            <div class="aspect-[3/4] rounded-xl bg-slate-200 loading-shimmer relative overflow-hidden">
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="!isGenerating && results.length > 0" class="grid grid-cols-2 gap-4">
+                        <template x-for="(result, idx) in results" :key="idx">
+                            <div class="relative group rounded-xl overflow-hidden shadow-lg">
+                                <img :src="result.url" :alt="result.title" class="w-full aspect-[3/4] object-cover">
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition p-4 flex flex-col justify-end">
+                                    <p class="text-white font-medium text-sm mb-2" x-text="result.title"></p>
+                                    <div class="flex gap-2">
+                                        <button @click="downloadImage(result)"
+                                            class="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm">
+                                            <i class="fa-solid fa-download text-white"></i>
+                                        </button>
+                                        <button @click="copyImageUrl(result)"
+                                            class="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm">
+                                            <i class="fa-solid fa-link text-white"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="absolute top-2 right-2 px-2 py-1 bg-black/50 rounded text-xs text-white"
+                                    x-text="result.template"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="showSettings" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+                <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-900">
+                    <i class="fa-solid fa-gear text-pink-500"></i>
+                    模型配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">选择模型</label>
+                        <select x-model="model" class="w-full rounded-lg border-slate-300 border p-3 bg-white">
+                            <option value="doubao-seedream-4.5">豆包 Seedream 4.5（推荐）</option>
+                            <option value="doubao-seedream-4.0">豆包 Seedream 4.0</option>
+                            <option value="nanobanana-flash">Google Gemini 2.5 Flash</option>
+                            <option value="nanobanana-pro">Google Gemini 3.0 Pro</option>
+                            <option value="google-imagen">谷歌 Imagen 3</option>
+                        </select>
+                    </div>
+                    <div x-show="model.startsWith('doubao')">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">API Key</label>
+                                <input type="password" x-model="apiConfig.apiKey" placeholder="输入 API Key"
+                                    class="w-full rounded-lg border-slate-300 border p-3">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Endpoint ID</label>
+                                <input type="text" x-model="apiConfig.endpointId" placeholder="ep-xxx"
+                                    class="w-full rounded-lg border-slate-300 border p-3">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">分辨率</label>
+                                <select x-model="apiConfig.size"
+                                    class="w-full rounded-lg border-slate-300 border p-3 bg-white">
+                                    <option value="2K">2K</option>
+                                    <option value="4K">4K</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" x-model="apiConfig.disableWatermark"
+                                        class="rounded border-slate-300">
+                                    <span class="text-sm text-slate-700">关闭水印</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div x-show="model.startsWith('nanobanana') || model === 'google-imagen'">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Google API Key</label>
+                        <input type="password" x-model="googleApiKey" placeholder="输入 Google API Key"
+                            class="w-full rounded-lg border-slate-300 border p-3">
+                        <p class="text-xs text-slate-500 mt-1">获取地址: <a href="https://aistudio.google.com/apikey"
+                                target="_blank" class="text-blue-500 hover:underline">Google AI Studio</a></p>
+                    </div>
+
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @click="showSettings = false"
+                        class="px-6 py-2 hover:bg-slate-100 rounded-lg text-slate-700">取消</button>
+                    <button @click="saveConfig()"
+                        class="bg-pink-500 text-white px-6 py-2 rounded-lg hover:bg-pink-600">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function xhsCoverGen() {
+            return {
+                showSettings: false,
+                isGenerating: false,
+                generatedCount: 0,
+                totalCount: 0,
+                progress: 0,
+                title: '',
+                subtitle: '',
+                themePrompt: '',
+                template: 'contrast',
+                size: '1080x1440',
+                batchCount: 1,
+                model: 'doubao-seedream-4.5',
+                results: [],
+
+                apiConfig: {
+                    apiKey: '',
+                    endpointId: 'doubao-seedream-4-5-251128',
+                    size: '2K',
+                    disableWatermark: true
+                },
+                googleApiKey: '',
+
+                init() {
+                    this.loadConfig();
+                },
+
+                loadConfig() {
+                    const saved = localStorage.getItem('xhs_cover_config');
+                    if (saved) {
+                        try {
+                            const data = JSON.parse(saved);
+                            this.model = data.model || this.model;
+                            this.apiConfig = { ...this.apiConfig, ...data.apiConfig };
+                            this.googleApiKey = data.googleApiKey || '';
+                        } catch (e) { }
+                    }
+                },
+
+                saveConfig() {
+                    localStorage.setItem('xhs_cover_config', JSON.stringify({
+                        model: this.model,
+                        apiConfig: this.apiConfig,
+                        googleApiKey: this.googleApiKey
+                    }));
+                    this.showSettings = false;
+                },
+
+                getModelDisplayName() {
+                    const names = {
+                        'doubao-seedream-4.5': '豆包 Seedream 4.5',
+                        'doubao-seedream-4.0': '豆包 Seedream 4.0',
+                        'nanobanana-flash': 'Gemini 2.5 Flash',
+                        'nanobanana-pro': 'Gemini 3.0 Pro',
+                        'google-imagen': '谷歌 Imagen 3'
+                    };
+                    return names[this.model] || '未配置';
+                },
+
+                canGenerate() {
+                    return this.title.trim() !== '' && this.themePrompt.trim() !== '';
+                },
+
+                async generate() {
+                    this.isGenerating = true;
+                    this.results = [];
+                    this.generatedCount = 0;
+                    this.totalCount = this.batchCount;
+
+                    try {
+                        for (let i = 0; i < this.batchCount; i++) {
+                            const prompt = this.buildPrompt();
+                            const result = await this.callImageAPI(prompt);
+                            if (result) {
+                                this.results.push({
+                                    ...result,
+                                    title: this.title,
+                                    template: this.getTemplateName()
+                                });
+                            }
+                            this.generatedCount++;
+                        }
+                    } catch (error) {
+                        alert(error.message || '生成失败');
+                    } finally {
+                        this.isGenerating = false;
+                    }
+                },
+
+                buildPrompt() {
+                    const templateStyles = {
+                        'contrast': 'High contrast dark background with bold white text. Minimalist design, dramatic lighting, professional quality.',
+                        'bright': 'Vibrant warm color palette with bright, energetic colors. Eye-catching design, professional photography style.',
+                        'pastel': 'Soft pastel color scheme with gentle, dreamy atmosphere. Cute and feminine style, clean and elegant.',
+                        'minimal': 'Clean white background with simple, modern design. Minimalist aesthetic, professional and fresh.',
+                        'gradient': 'Colorful neon gradient background with dynamic flowing colors. Modern and trendy style, eye-catching.',
+                        'dark': 'Dark premium background with mysterious atmosphere. High-end fashion magazine style, sophisticated lighting.'
+                    };
+
+                    return `Create a Xiaohongshu (Little Red Book) cover image with ${templateStyles[this.template]} style. 
+
+Title: "${this.title}"
+${this.subtitle ? `Subtitle: "${this.subtitle}"` : ''}
+
+Theme description: ${this.themePrompt}
+
+The image should be visually striking, attention-grabbing, and suitable for social media content. Professional quality, high resolution. Include the title text prominently in the design.`;
+                },
+
+                getTemplateName() {
+                    const names = {
+                        'contrast': '对比反差',
+                        'bright': '明亮鲜艳',
+                        'pastel': '柔和粉彩',
+                        'minimal': '极简白色',
+                        'gradient': '渐变霓虹',
+                        'dark': '暗黑高级'
+                    };
+                    return names[this.template] || this.template;
+                },
+
+                async callImageAPI(prompt) {
+                    const sizeMap = {
+                        '1080x1440': { width: 1080, height: 1440 },
+                        '1080x1920': { width: 1080, height: 1920 },
+                        '1242x1660': { width: 1242, height: 1660 }
+                    };
+
+                    if (this.model.startsWith('doubao')) {
+                        return await this.callDoubaoAPI(prompt, sizeMap[this.size]);
+                    } else if (this.model.startsWith('nanobanana')) {
+                        return await this.callNanoBananaAPI(prompt, sizeMap[this.size]);
+                    } else if (this.model === 'google-imagen') {
+                        return await this.callGoogleAPI(prompt, sizeMap[this.size]);
+                    }
+                    throw new Error('未选择的模型');
+                },
+
+                async callNanoBananaAPI(prompt, size) {
+                    if (!this.googleApiKey) throw new Error('请先配置 Google API Key');
+
+                    const modelId = this.model === 'nanobanana-pro' ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
+
+                    // Gemini API requires minimum 3,686,400 pixels (approx 1920x1920)
+                    // Scale up dimensions to meet this requirement while maintaining aspect ratio
+                    const minPixels = 3686400;
+                    const currentPixels = size.width * size.height;
+                    let finalWidth = size.width;
+                    let finalHeight = size.height;
+
+                    if (currentPixels < minPixels) {
+                        const scaleFactor = Math.sqrt(minPixels / currentPixels);
+                        finalWidth = Math.ceil(size.width * scaleFactor);
+                        finalHeight = Math.ceil(size.height * scaleFactor);
+                    }
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${this.googleApiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: {
+                                responseModalities: ['IMAGE'],
+                                imageGenerationConfig: {
+                                    width: finalWidth,
+                                    height: finalHeight,
+                                    outputCompressionQuality: 90,
+                                    outputFormat: 'PNG'
+                                }
+                            }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                        for (const part of data.candidates[0].content.parts) {
+                            if (part.inlineData && part.inlineData.data) {
+                                return { url: `data:image/png;base64,${part.inlineData.data}`, base64: part.inlineData.data };
+                            }
+                        }
+                    }
+                    throw new Error('API 返回格式错误');
+                },
+
+                async callDoubaoAPI(prompt, size) {
+                    if (!this.apiConfig.apiKey) throw new Error('请先配置 API Key');
+
+                    // 豆包 API 支持的尺寸映射 (按宽高比)
+                    // 3:4 -> 1728x2304, 9:16 -> 1440x2560, 3:2 -> 2496x1664
+                    const doubaoSizeMap = {
+                        '1080x1440': '1728x2304',  // 3:4
+                        '1080x1920': '1440x2560',  // 9:16
+                        '1242x1660': '1728x2304'   // 接近 3:4
+                    };
+
+                    // 使用原始尺寸查找对应的豆包支持尺寸
+                    const originalSize = `${size.width}x${size.height}`;
+                    const doubaoSize = doubaoSizeMap[originalSize] || '1728x2304';
+
+                    const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/images/generations', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.endpointId,
+                            prompt: prompt,
+                            size: doubaoSize,
+                            watermark: !this.apiConfig.disableWatermark
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.data && data.data[0]) {
+                        return { url: data.data[0].url || `data:image/png;base64,${data.data[0].b64_json}`, base64: data.data[0].b64_json };
+                    }
+                    throw new Error('API 返回格式错误');
+                },
+
+                async callGoogleAPI(prompt, size) {
+                    if (!this.googleApiKey) throw new Error('请先配置谷歌 API Key');
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImages?key=${this.googleApiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: prompt,
+                            imageSize: { width: size.width, height: size.height },
+                            generateImageResponse: { mimeType: 'image/png' }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.generatedImages && data.generatedImages[0]) {
+                        return { url: `data:image/png;base64,${data.generatedImages[0].generatedImage}`, base64: data.generatedImages[0].generatedImage };
+                    }
+                    throw new Error('API 返回格式错误');
+                },
+
+                downloadImage(result) {
+                    const a = document.createElement('a');
+                    a.href = result.url;
+                    a.download = `xhs_cover_${result.timestamp || Date.now()}.png`;
+                    a.click();
+                },
+
+                downloadAll() {
+                    this.results.forEach((result, idx) => {
+                        setTimeout(() => this.downloadImage(result), idx * 500);
+                    });
+                },
+
+                clearResults() {
+                    if (confirm('确定要清空所有结果吗？')) {
+                        this.results = [];
+                    }
+                },
+
+                copyImageUrl(result) {
+                    navigator.clipboard.writeText(result.url).then(() => {
+                        alert('链接已复制');
+                    });
+                }
+            }
+        }
+    </script>
+
+    <!-- HELP-WIDGET-START -->
+    <script src="../../help/help-widget-v2.js"></script>
+    <!-- HELP-WIDGET-END -->
+</body>
+
+</html>

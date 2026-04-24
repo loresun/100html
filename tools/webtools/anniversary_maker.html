@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>纪念日海报生成 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;700&family=Zhi+Mang+Xing&display=swap');
+        .font-serif { font-family: 'Noto Serif SC', serif; }
+        .font-cursive { font-family: 'Ma Shan Zheng', cursive; }
+        .font-art { font-family: 'Zhi Mang Xing', cursive; }
+        
+        /* Patterns */
+        .bg-pattern-dot { background-image: radial-gradient(rgba(0,0,0,0.1) 1px, transparent 1px); background-size: 20px 20px; }
+        .bg-pattern-line { background-image: linear-gradient(0deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent); background-size: 30px 30px; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-pink-50 min-h-screen font-sans text-slate-800" x-data="anniversaryApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-pink-100 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-pink-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-rose-600">
+                💝 纪念日海报生成
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- Controls -->
+        <div class="lg:col-span-4 space-y-6">
+            
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-pink-100">
+                <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-pen w-4 h-4 text-pink-500"></i>
+                    内容设置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">标题</label>
+                        <input type="text" x-model="title" class="w-full p-2 border border-slate-200 rounded-lg text-sm" placeholder="相识一周年">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">日期</label>
+                        <input type="date" x-model="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">寄语</label>
+                        <textarea x-model="message" class="w-full p-2 border border-slate-200 rounded-lg text-sm h-24 resize-none" placeholder="写下一句想说的话..."></textarea>
+                    </div>
+                     <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">背景图 (可选)</label>
+                        <input type="file" accept="image/*" @change="loadBg($event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-pink-100">
+                 <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-palette w-4 h-4 text-pink-500"></i>
+                    样式设置
+                </h3>
+                <div class="space-y-4">
+                     <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">主题色</label>
+                        <div class="flex gap-2">
+                            <template x-for="c in colors">
+                                <button @click="color = c" class="w-6 h-6 rounded-full border border-slate-200" :style="`background-color: ${c}`" :class="color === c && 'ring-2 ring-offset-2 ring-slate-400'"></button>
+                            </template>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">字体风格</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button @click="font = 'sans'" :class="font === 'sans' ? 'bg-pink-100 text-pink-700' : 'bg-slate-50'" class="py-1 px-2 rounded text-xs font-sans">现代黑体</button>
+                            <button @click="font = 'serif'" :class="font === 'serif' ? 'bg-pink-100 text-pink-700' : 'bg-slate-50'" class="py-1 px-2 rounded text-xs font-serif">优雅宋体</button>
+                             <button @click="font = 'cursive'" :class="font === 'cursive' ? 'bg-pink-100 text-pink-700' : 'bg-slate-50'" class="py-1 px-2 rounded text-xs font-cursive">手写书法</button>
+                        </div>
+                    </div>
+                     <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">纹理效果</label>
+                        <div class="grid grid-cols-3 gap-2">
+                             <button @click="pattern = 'none'" :class="pattern === 'none' ? 'bg-pink-100 text-pink-700' : 'bg-slate-50'" class="py-1 px-2 rounded text-xs">无</button>
+                             <button @click="pattern = 'dot'" :class="pattern === 'dot' ? 'bg-pink-100 text-pink-700' : 'bg-slate-50'" class="py-1 px-2 rounded text-xs">点阵</button>
+                             <button @click="pattern = 'line'" :class="pattern === 'line' ? 'bg-pink-100 text-pink-700' : 'bg-slate-50'" class="py-1 px-2 rounded text-xs">格纹</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button @click="download()" class="w-full py-4 bg-pink-600 hover:bg-pink-700 text-white rounded-xl font-bold shadow-lg shadow-pink-600/20 transition-all flex items-center justify-center gap-2 active:scale-95">
+                <i class="fa-solid fa-download w-5 h-5"></i>
+                保存海报
+            </button>
+        </div>
+
+        <!-- Preview -->
+        <div class="lg:col-span-8 flex items-center justify-center bg-slate-100/50 rounded-3xl p-8 border border-slate-200">
+            
+            <!-- Poster Element -->
+            <div id="poster" class="w-[375px] h-[600px] bg-white shadow-2xl relative overflow-hidden flex flex-col transition-all duration-300 transform hover:scale-[1.02]"
+                 :class="fontClass">
+                 
+                 <!-- Background Image/Color -->
+                 <div class="absolute inset-0 z-0 bg-cover bg-center transition-all duration-500"
+                      :style="bgImage ? `background-image: url(${bgImage})` : `background-color: ${color}15`"></div>
+                 
+                 <!-- Overlay for contrast if bg image -->
+                 <div x-show="bgImage" class="absolute inset-0 z-0 bg-black/20 backdrop-blur-[2px]"></div>
+
+                 <!-- Texture Pattern -->
+                 <div class="absolute inset-0 z-0 opacity-30 pointer-events-none" 
+                      :class="{ 'bg-pattern-dot': pattern === 'dot', 'bg-pattern-line': pattern === 'line' }"></div>
+
+                 <!-- Content Container -->
+                 <div class="relative z-10 flex-1 flex flex-col p-8 text-center items-center justify-center">
+                     
+                     <div class="w-16 h-1 bg-current opacity-50 mb-8 rounded-full" :style="`color: ${themeColor}`"></div>
+
+                     <h2 class="text-4xl leading-tight mb-2 font-bold" :style="`color: ${themeColor}`" x-text="title"></h2>
+                     
+                     <div class="flex items-center gap-2 mb-8 opacity-80" :style="`color: ${themeColor}`">
+                         <span class="text-sm uppercase tracking-widest" x-text="formatDate(date)"></span>
+                     </div>
+
+                     <div class="w-full h-px bg-current opacity-20 mb-8" :style="`color: ${themeColor}`"></div>
+
+                     <div class="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-sm border border-white/50 max-w-full">
+                         <div class="text-6xl font-bold mb-2 leading-none" :style="`color: ${color}`" x-text="daysCount"></div>
+                         <div class="text-xs uppercase tracking-widest text-slate-500 mb-4">DAYS TOGETHER</div>
+                         <p class="text-lg leading-relaxed text-slate-700 whitespace-pre-wrap" x-text="message"></p>
+                     </div>
+
+                     <div class="mt-auto pt-12 opacity-60 text-[10px] uppercase tracking-[0.2em]" :style="`color: ${themeColor}`">
+                         Created with Webtools
+                     </div>
+
+                 </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function anniversaryApp() {
+            return {
+                title: '我们结婚啦',
+                date: '2020-05-20',
+                message: '执子之手，与子偕老。\n感谢一路有你相伴。',
+                color: '#ec4899', // Pink-500
+                colors: ['#ec4899', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#64748b'],
+                font: 'cursive',
+                pattern: 'dot',
+                bgImage: null,
+
+                init() {
+
+                },
+                
+                loadBg(event) {
+                    const file = event.target.files[0];
+                    if(!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => this.bgImage = e.target.result;
+                    reader.readAsDataURL(file);
+                },
+
+                get daysCount() {
+                    if (!this.date) return 0;
+                    const start = new Date(this.date);
+                    const now = new Date();
+                    const diffTime = Math.abs(now - start);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    return diffDays;
+                },
+                
+                get themeColor() {
+                    return this.bgImage ? '#ffffff' : this.color;
+                },
+                
+                get fontClass() {
+                    if (this.font === 'serif') return 'font-serif';
+                    if (this.font === 'cursive') return 'font-cursive';
+                    return 'font-sans';
+                },
+
+                formatDate(d) {
+                    if(!d) return '';
+                    return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                },
+
+                download() {
+                    const poster = document.getElementById('poster');
+                    html2canvas(poster, { scale: 2, useCORS: true }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = `anniversary-${this.daysCount}days.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_anniversary_maker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

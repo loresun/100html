@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策顾问 - AI 创意生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #0ea5e9; /* Sky */
+            --secondary-color: #38bdf8;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-color: #1e293b;
+            --subtle-text: #64748b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+        }
+        .linear-gradient-bg {
+            background: linear-gradient(120deg, var(--primary-color), var(--secondary-color));
+        }
+        .main-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 24px;
+        }
+        .card {
+            background-color: var(--card-background);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+        .input-field {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: #f8fafc;
+        }
+        .hidden { display: none; }
+        .wizard-step {
+            display: none;
+        }
+        .wizard-step.active {
+            display: block;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <header class="linear-gradient-bg text-white text-center py-12 px-4 relative">
+        <!-- 设置按钮 -->
+        <button id="settings-btn" class="absolute top-4 right-4 text-white/80 hover:text-white transition-colors" title="API 设置">
+            <i class="fas fa-cog fa-lg"></i>
+        </button>
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">AI 决策顾问</h1>
+        <p class="mt-4 text-lg md:text-xl max-w-3xl mx-auto opacity-90">告别选择困难。通过结构化的决策矩阵和AI分析，让你的每个重要决定都清晰、理性和充满信心。</p>
+    </header>
+
+    <!-- 设置面板 -->
+    <div id="settings-panel" class="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="p-6 h-full overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">API 设置</h2>
+                <button id="close-settings-btn" class="text-gray-500 hover:text-gray-800 transition-colors">
+                    <i class="fas fa-times fa-lg"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="api-url" class="block text-sm font-medium text-gray-700 mb-1">API URL</label>
+                    <input type="text" id="api-url" class="input-field" placeholder="https://api.deepseek.com/chat/completions">
+                </div>
+                <div>
+                    <label for="api-key" class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                    <input type="password" id="api-key" class="input-field" placeholder="留空使用全局配置">
+                    <p class="text-xs text-gray-500 mt-1">留空将自动使用全局 DeepSeek Key</p>
+                </div>
+                <div>
+                    <label for="api-model" class="block text-sm font-medium text-gray-700 mb-1">模型</label>
+                    <select id="api-model" class="input-field">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+                <button id="save-settings-btn" class="btn btn-primary w-full mt-4">
+                    <i class="fas fa-save mr-2"></i>保存设置
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- 遮罩层 -->
+    <div id="settings-overlay" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
+
+    <main class="main-container">
+        <div class="card p-8">
+            <!-- Step 1: Define Dilemma -->
+            <div id="step-1" class="wizard-step active">
+                <h2 class="text-2xl font-bold mb-4">第一步：您面临的决策难题是？</h2>
+                <textarea id="dilemma-input" class="input-field" rows="3" placeholder="例如：我应该跳槽去一家初创公司，还是留在大公司？"></textarea>
+                <div class="text-right mt-6">
+                    <button id="next-to-step-2" class="btn btn-primary">下一步 <i class="fas fa-arrow-right ml-2"></i></button>
+                </div>
+            </div>
+
+            <!-- Step 2: Define Options -->
+            <div id="step-2" class="wizard-step">
+                <h2 class="text-2xl font-bold mb-4">第二步：有哪些备选方案？</h2>
+                <div id="options-container" class="space-y-3">
+                    <input type="text" class="input-field option-input" placeholder="方案一：例如，跳槽去StartUp A">
+                    <input type="text" class="input-field option-input" placeholder="方案二：例如，留在当前公司">
+                </div>
+                <button id="add-option-btn" class="btn bg-gray-200 text-gray-700 mt-4 text-sm"><i class="fas fa-plus mr-2"></i>添加更多方案</button>
+                <div class="flex justify-between mt-6">
+                    <button id="back-to-step-1" class="btn bg-gray-200 text-gray-700"><i class="fas fa-arrow-left mr-2"></i> 上一步</button>
+                    <button id="next-to-step-3" class="btn btn-primary">下一步 <i class="fas fa-arrow-right ml-2"></i></button>
+                </div>
+            </div>
+
+            <!-- Step 3: Rate Criteria -->
+            <div id="step-3" class="wizard-step">
+                 <div class="text-center hidden" id="criteria-loading">
+                    <div class="loader mx-auto"></div>
+                    <p class="text-slate-500 mt-4">正在请求AI为您生成评估维度...</p>
+                </div>
+                <div id="criteria-content" class="hidden">
+                    <h2 class="text-2xl font-bold mb-4">第三步：评估各方案（请为每个维度打分，1-10分）</h2>
+                    <div id="criteria-container">
+                        <!-- Criteria will be dynamically generated here -->
+                    </div>
+                     <div class="flex justify-between mt-6">
+                        <button id="back-to-step-2" class="btn bg-gray-200 text-gray-700"><i class="fas fa-arrow-left mr-2"></i> 上一步</button>
+                        <button id="analyze-btn" class="btn btn-primary"><i class="fas fa-chart-pie mr-2"></i> 请求AI分析</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 4: Results -->
+            <div id="step-4" class="wizard-step">
+                <div id="loading-indicator" class="text-center py-8">
+                    <div class="loader mx-auto"></div>
+                    <p class="text-slate-500 mt-4">AI顾问正在为您深度分析权衡...</p>
+                </div>
+                <div id="results-content" class="hidden">
+                    <h2 class="text-3xl font-bold mb-6 text-center">决策分析报告</h2>
+                    <div class="mb-8">
+                        <canvas id="results-chart"></canvas>
+                    </div>
+                    <div class="prose max-w-none">
+                        <h3 class="font-semibold">AI 综合建议：</h3>
+                        <p id="ai-recommendation"></p>
+                    </div>
+                    <div class="text-center mt-8">
+                         <button id="restart-btn" class="btn bg-gray-200 text-gray-700"><i class="fas fa-redo mr-2"></i> 重新开始</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // 获取全局 DeepSeek Key
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const steps = document.querySelectorAll('.wizard-step');
+        const dilemmaInput = document.getElementById('dilemma-input');
+        const optionsContainer = document.getElementById('options-container');
+        const criteriaContainer = document.getElementById('criteria-container');
+        const aiRecommendation = document.getElementById('ai-recommendation');
+        const resultsChartCanvas = document.getElementById('results-chart');
+        let chartInstance = null;
+        
+        // --- 设置面板 DOM 元素 ---
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const settingsOverlay = document.getElementById('settings-overlay');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const apiUrlInput = document.getElementById('api-url');
+        const apiKeyInput = document.getElementById('api-key');
+        const apiModelInput = document.getElementById('api-model');
+        
+        // --- 设置面板逻辑 ---
+        const STORAGE_PREFIX = 'decision_advisor_';
+        
+        // 打开/关闭设置面板
+        function openSettings() {
+            settingsPanel.classList.remove('translate-x-full');
+            settingsOverlay.classList.remove('hidden');
+        }
+        
+        function closeSettings() {
+            settingsPanel.classList.add('translate-x-full');
+            settingsOverlay.classList.add('hidden');
+        }
+        
+        // 加载设置
+        function loadSettings() {
+            apiUrlInput.value = localStorage.getItem(STORAGE_PREFIX + 'api_url') || 'https://api.deepseek.com/chat/completions';
+            apiKeyInput.value = localStorage.getItem(STORAGE_PREFIX + 'api_key') || '';
+            apiModelInput.value = localStorage.getItem(STORAGE_PREFIX + 'api_model') || 'deepseek-v4-flash';
+        }
+        
+        // 保存设置
+        function saveSettings() {
+            localStorage.setItem(STORAGE_PREFIX + 'api_url', apiUrlInput.value);
+            localStorage.setItem(STORAGE_PREFIX + 'api_key', apiKeyInput.value);
+            localStorage.setItem(STORAGE_PREFIX + 'api_model', apiModelInput.value);
+            closeSettings();
+            alert('设置已保存！');
+        }
+        
+        // 获取 API 配置（优先本地设置，fallback 到全局配置）
+        function getApiUrl() {
+            return localStorage.getItem(STORAGE_PREFIX + 'api_url') || 'https://api.deepseek.com/chat/completions';
+        }
+        
+        function getApiKey() {
+            const localKey = localStorage.getItem(STORAGE_PREFIX + 'api_key');
+            return localKey || getGlobalDeepSeekKey();
+        }
+        
+        function getApiModel() {
+            return localStorage.getItem(STORAGE_PREFIX + 'api_model') || 'deepseek-v4-flash';
+        }
+        
+        // 设置面板事件绑定
+        settingsBtn.addEventListener('click', openSettings);
+        closeSettingsBtn.addEventListener('click', closeSettings);
+        settingsOverlay.addEventListener('click', closeSettings);
+        saveSettingsBtn.addEventListener('click', saveSettings);
+        
+        // 初始化设置
+        loadSettings();
+        
+        let decisionData = {};
+
+        const navigateTo = (stepId) => {
+            steps.forEach(step => step.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        };
+
+        // 调用 API（使用动态获取的配置）
+        const callApi = async (systemContent, userContent) => {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                alert('请先配置 API Key！点击右上角齿轮图标进行设置，或在全局配置中设置 DeepSeek Key。');
+                return null;
+            }
+            
+            try {
+                const response = await fetch(getApiUrl(), {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${apiKey}` 
+                    },
+                    body: JSON.stringify({ 
+                        model: getApiModel(), 
+                        messages: [
+                            { role: 'system', content: systemContent }, 
+                            { role: 'user', content: userContent }
+                        ],
+                        temperature: 0.7
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error?.message || `API error: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                return data.choices[0].message.content;
+            } catch (error) {
+                console.error('API 调用失败:', error);
+                alert(`API调用失败: ${error.message}`);
+                return null;
+            }
+        }
+
+        document.getElementById('add-option-btn').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'input-field option-input';
+            input.placeholder = `方案${optionsContainer.children.length + 1}`;
+            optionsContainer.appendChild(input);
+        });
+
+        const generateCriteria = async () => {
+            const dilemma = dilemmaInput.value.trim();
+            if (!dilemma) { alert("请输入决策难题。"); return; }
+            
+            document.getElementById('criteria-loading').classList.remove('hidden');
+            document.getElementById('criteria-content').classList.add('hidden');
+            
+            const prompt = `针对决策难题：「${dilemma}」，请提出5个最关键、最中立的评估维度。请严格以JSON数组的格式返回，例如：["维度1", "维度2", "维度3", "维度4", "维度5"]。`;
+            const criteriaJson = await callApi("你是一个决策分析专家，能提供评估维度。", prompt);
+            
+            document.getElementById('criteria-loading').classList.add('hidden');
+            
+            if (!criteriaJson) {
+                navigateTo('step-2'); // Go back if API fails
+                return;
+            }
+
+            try {
+                const criteria = JSON.parse(criteriaJson.match(/\[.*\]/s)[0]);
+                const options = Array.from(document.querySelectorAll('.option-input')).map(input => input.value.trim()).filter(Boolean);
+                
+                criteriaContainer.innerHTML = '';
+                options.forEach(option => {
+                    const optionGroup = document.createElement('div');
+                    optionGroup.className = 'mb-6 p-4 border rounded-lg';
+                    optionGroup.innerHTML = `<h4 class="text-lg font-semibold mb-3">${option}</h4>`;
+                    
+                    criteria.forEach(criterion => {
+                        const id = `${option}-${criterion}`.replace(/[\s\W]/g, '-');
+                        const criterionRow = document.createElement('div');
+                        criterionRow.className = 'mb-3';
+                        criterionRow.innerHTML = `
+                            <label for="${id}" class="block text-sm mb-1">${criterion}: <span id="val-${id}">5</span>/10</label>
+                            <input type="range" id="${id}" min="1" max="10" value="5" class="w-full" data-option="${option}" data-criterion="${criterion}">
+                        `;
+                        optionGroup.appendChild(criterionRow);
+                        criterionRow.querySelector('input').addEventListener('input', e => {
+                            document.getElementById(`val-${id}`).textContent = e.target.value;
+                        });
+                    });
+                    criteriaContainer.appendChild(optionGroup);
+                });
+                document.getElementById('criteria-content').classList.remove('hidden');
+            } catch (e) {
+                alert("AI返回的评估维度格式有误，请返回上一步重试。");
+                 navigateTo('step-2');
+            }
+        };
+
+        const analyzeDecision = async () => {
+            navigateTo('step-4');
+            document.getElementById('loading-indicator').classList.remove('hidden');
+            document.getElementById('results-content').classList.add('hidden');
+            
+            decisionData.dilemma = dilemmaInput.value.trim();
+            decisionData.options = {};
+            document.querySelectorAll('#criteria-container input[type="range"]').forEach(input => {
+                const option = input.dataset.option;
+                const criterion = input.dataset.criterion;
+                if (!decisionData.options[option]) {
+                    decisionData.options[option] = {};
+                }
+                decisionData.options[option][criterion] = parseInt(input.value);
+            });
+
+            const prompt = `
+            我正在做一个决策，请你作为我的顾问。
+            决策难题: ${decisionData.dilemma}
+            以下是我的备选方案以及我对各方案在不同维度下的评分 (1-10分):
+            ${JSON.stringify(decisionData.options, null, 2)}
+
+            请基于以上数据，为我提供一份综合决策建议。请分析每个选项的优劣，并给出一个最终的、带有解释的推荐。请直接返回你的分析和建议文本。`;
+
+            const recommendation = await callApi("你是一位经验丰富的决策顾问。", prompt);
+            
+            document.getElementById('loading-indicator').classList.add('hidden');
+            document.getElementById('results-content').classList.remove('hidden');
+
+            if (recommendation) {
+                aiRecommendation.innerHTML = recommendation.replace(/\n/g, '<br>');
+                renderChart();
+            }
+        };
+        
+        const renderChart = () => {
+            const labels = Object.keys(decisionData.options);
+            const totalScores = labels.map(label => {
+                return Object.values(decisionData.options[label]).reduce((sum, score) => sum + score, 0);
+            });
+
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(resultsChartCanvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '综合得分',
+                        data: totalScores,
+                        backgroundColor: ['#38bdf8', '#a78bfa', '#f87171', '#fbbf24', '#34d399'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false }, title: { display: true, text: '各方案综合得分对比' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        };
+        
+        // --- Navigation ---
+        document.getElementById('next-to-step-2').addEventListener('click', () => navigateTo('step-2'));
+        document.getElementById('back-to-step-1').addEventListener('click', () => navigateTo('step-1'));
+        document.getElementById('next-to-step-3').addEventListener('click', async () => {
+            navigateTo('step-3');
+            await generateCriteria();
+        });
+        document.getElementById('back-to-step-2').addEventListener('click', () => navigateTo('step-2'));
+        document.getElementById('analyze-btn').addEventListener('click', analyzeDecision);
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            window.location.reload();
+        });
+    });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_decision_advisor.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html> 

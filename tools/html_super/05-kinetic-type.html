@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinetic Type / HTML_SUPER</title>
+    <!-- Variable Font (Inter for demo, but imagine a bolder display font) -->
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            margin: 0;
+            height: 200vh; /* Allow scrolling */
+            font-family: 'Manrope', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .nav {
+            position: fixed;
+            top: 40px;
+            left: 40px;
+            z-index: 100;
+            mix-blend-mode: difference;
+        }
+        a { color: #fff; text-decoration: none; font-weight: 700; text-transform: uppercase; }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            perspective: 1000px;
+            position: sticky;
+            top: 0;
+        }
+
+        /* Kinetic Text Container */
+        .kinetic-text {
+            font-size: 15vw;
+            font-weight: 800; /* Max weight for Variable font simulation */
+            line-height: 0.8;
+            text-align: center;
+            white-space: nowrap;
+            cursor: default;
+            user-select: none;
+            
+            /* Initial State */
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+
+        .word {
+            display: block;
+            transition: font-weight 0.2s, font-stretch 0.2s, letter-spacing 0.2s;
+        }
+        
+        .word:nth-child(1) { color: #ff0055; }
+        .word:nth-child(2) { color: #ffffff; mix-blend-mode: overlay; opacity: 0.8; }
+        .word:nth-child(3) { color: #00aaff; }
+
+        /* Mouse Follower for Distortion Lens */
+        .lens {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            backdrop-filter: invert(1) hue-rotate(180deg);
+            z-index: 10;
+            mix-blend-mode: exclusion;
+        }
+
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+
+    <div class="nav"><a href="index.html">← BACK</a></div>
+    
+    <div class="lens" id="lens"></div>
+
+    <div class="container">
+        <div class="kinetic-text" id="kinetic">
+            <div class="word" id="w1">FUTURE</div>
+            <div class="word" id="w2">IS</div>
+            <div class="word" id="w3">NOW</div>
+        </div>
+    </div>
+    
+    <div style="height: 100vh;"></div> <!-- Scroll spacer -->
+
+    <script>
+        const kinetic = document.getElementById('kinetic');
+        const lens = document.getElementById('lens');
+        const words = document.querySelectorAll('.word');
+        const maxScroll = window.innerHeight;
+
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Move Lens
+            lens.style.left = x + 'px';
+            lens.style.top = y + 'px';
+
+            // 3D Tilt Effect on Container logic
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            const rotateX = ((y - centerY) / centerY) * -20; // -20 to 20 deg
+            const rotateY = ((x - centerX) / centerX) * 20;
+
+            kinetic.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+
+            // "Variable Font" simulation (Manrope supports weight)
+            // Distort individual words based on distance to mouse
+            words.forEach(word => {
+                const rect = word.getBoundingClientRect();
+                const wordCenterX = rect.left + rect.width / 2;
+                const wordCenterY = rect.top + rect.height / 2;
+                
+                const dist = Math.sqrt(Math.pow(x - wordCenterX, 2) + Math.pow(y - wordCenterY, 2));
+                
+                // Max influence radius
+                const radius = 400;
+                if (dist < radius) {
+                    // Map distance to weight (closer = heavier or lighter)
+                    // Let's make it lighter when close
+                    const weight = 800 - ((1 - dist/radius) * 600); // 200 to 800
+                    const spacing = (1 - dist/radius) * 20; // 0 to 20px
+                    
+                    word.style.fontWeight = weight;
+                    word.style.letterSpacing = spacing + 'px';
+                } else {
+                    word.style.fontWeight = 800;
+                    word.style.letterSpacing = '0px';
+                }
+            });
+        });
+
+        // Scroll Effect
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY;
+            const progress = Math.min(scrollY / maxScroll, 1);
+            
+            // Split words apart on scroll
+            words[0].style.transform = `translateX(${progress * -100}%)`;
+            words[2].style.transform = `translateX(${progress * 100}%)`;
+            words[1].style.transform = `scale(${1 + progress})`;
+            words[1].style.filter = `blur(${progress * 20}px)`;
+        });
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

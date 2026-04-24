@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pdf-lib PDF编辑库</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #dc2626 0%, #1e1b4b 100%); min-height: 100vh; }
+    .mono { font-family: monospace; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">📄 pdf-lib</h1>
+    <p class="text-white/60 mt-1">纯前端创建和修改 PDF 文档</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-6">
+  <!-- 创建 PDF -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📝 创建 PDF 文档</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-3">
+        <input type="text" id="pdf-title" value="我的PDF文档" placeholder="标题" class="w-full px-4 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+        <textarea id="pdf-content" rows="4" placeholder="正文内容" class="w-full px-4 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white resize-none">这是使用 pdf-lib 在浏览器中生成的 PDF 文档。
+
+支持中文显示（使用嵌入字体）。
+纯前端实现，无需服务器！</textarea>
+        <div class="grid grid-cols-2 gap-2">
+          <select id="pdf-font-size" class="px-3 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+            <option value="12">12px 字号</option>
+            <option value="14" selected>14px 字号</option>
+            <option value="16">16px 字号</option>
+            <option value="20">20px 字号</option>
+          </select>
+          <select id="pdf-color" class="px-3 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+            <option value="0,0,0">黑色</option>
+            <option value="0.2,0.3,0.8" selected>蓝色</option>
+            <option value="0.8,0.2,0.2">红色</option>
+            <option value="0.2,0.6,0.2">绿色</option>
+          </select>
+        </div>
+        <button onclick="createPDF()" class="w-full px-4 py-3 bg-red-600 rounded-lg hover:bg-red-700 font-bold">
+          📄 生成并下载 PDF
+        </button>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-red-400 text-xs mb-2 font-bold">预览信息:</div>
+        <div id="preview-info" class="text-sm space-y-2">
+          <div>页面尺寸: <span class="text-cyan-300">A4 (595 x 842 pt)</span></div>
+          <div>标题位置: <span class="text-cyan-300">顶部居中</span></div>
+          <div>正文位置: <span class="text-cyan-300">左对齐</span></div>
+        </div>
+        <div id="create-result" class="mt-4 text-emerald-300"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 快速模板 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🎨 快速模板</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <button onclick="createInvoice()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-blue-300">🧾 发票模板</div>
+        <div class="text-xs text-white/50 mt-1">生成简单发票PDF</div>
+      </button>
+      <button onclick="createCertificate()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-emerald-300">📜 证书模板</div>
+        <div class="text-xs text-white/50 mt-1">生成荣誉证书PDF</div>
+      </button>
+      <button onclick="createReport()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-orange-300">📊 报告模板</div>
+        <div class="text-xs text-white/50 mt-1">生成简单报告PDF</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- 功能列表 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">✨ pdf-lib 功能</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="bg-slate-900/50 p-3 rounded-lg text-center">
+        <div class="text-2xl mb-1">📝</div>
+        <div class="text-sm">添加文本</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg text-center">
+        <div class="text-2xl mb-1">🖼️</div>
+        <div class="text-sm">插入图片</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg text-center">
+        <div class="text-2xl mb-1">📐</div>
+        <div class="text-sm">绘制形状</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg text-center">
+        <div class="text-2xl mb-1">🔗</div>
+        <div class="text-sm">合并PDF</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg text-center">
+        <div class="text-2xl mb-1">✂️</div>
+        <div class="text-sm">拆分PDF</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg text-center">
+        <div class="text-2xl mb-1">🔤</div>
+        <div class="text-sm">嵌入字体</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg text-center">
+        <div class="text-2xl mb-1">📋</div>
+        <div class="text-sm">表单填写</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg text-center">
+        <div class="text-2xl mb-1">🔒</div>
+        <div class="text-sm">元数据</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 代码示例 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📝 代码示例</h3>
+    <div class="bg-slate-900/80 p-4 rounded-xl overflow-x-auto">
+      <pre class="text-sm mono text-slate-300">import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+
+// 创建新 PDF
+const pdfDoc = await PDFDocument.create();
+
+// 添加页面
+const page = pdfDoc.addPage([595, 842]); // A4
+
+// 嵌入字体
+const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+// 绘制文本
+page.drawText('Hello, PDF!', {
+  x: 50,
+  y: 750,
+  size: 24,
+  font: font,
+  color: rgb(0, 0.5, 0.8)
+});
+
+// 保存并下载
+const pdfBytes = await pdfDoc.save();
+download(pdfBytes, 'document.pdf', 'application/pdf');</pre>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script>
+const { PDFDocument, rgb, StandardFonts } = PDFLib;
+
+async function createPDF() {
+  const title = document.getElementById('pdf-title').value || '未命名文档';
+  const content = document.getElementById('pdf-content').value || '';
+  const fontSize = parseInt(document.getElementById('pdf-font-size').value);
+  const colorParts = document.getElementById('pdf-color').value.split(',').map(Number);
+  
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]); // A4
+  
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  
+  // 标题
+  page.drawText(title, {
+    x: 50,
+    y: 780,
+    size: 24,
+    font,
+    color: rgb(...colorParts)
+  });
+  
+  // 分割线
+  page.drawLine({
+    start: { x: 50, y: 760 },
+    end: { x: 545, y: 760 },
+    thickness: 1,
+    color: rgb(0.7, 0.7, 0.7)
+  });
+  
+  // 正文 (简单换行处理)
+  const lines = content.split('\n');
+  let y = 730;
+  lines.forEach(line => {
+    page.drawText(line, {
+      x: 50,
+      y,
+      size: fontSize,
+      font,
+      color: rgb(0.2, 0.2, 0.2)
+    });
+    y -= fontSize + 6;
+  });
+  
+  // 页脚
+  page.drawText(`Generated by pdf-lib | ${new Date().toLocaleDateString()}`, {
+    x: 50,
+    y: 30,
+    size: 10,
+    font,
+    color: rgb(0.5, 0.5, 0.5)
+  });
+  
+  const pdfBytes = await pdfDoc.save();
+  download(pdfBytes, `${title}.pdf`);
+  
+  document.getElementById('create-result').textContent = `✅ PDF 已生成 (${(pdfBytes.length / 1024).toFixed(1)} KB)`;
+}
+
+async function createInvoice() {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  
+  page.drawText('INVOICE', { x: 50, y: 780, size: 28, font, color: rgb(0.2, 0.2, 0.8) });
+  page.drawText('#INV-2024-001', { x: 450, y: 780, size: 12, font, color: rgb(0.5, 0.5, 0.5) });
+  
+  page.drawLine({ start: { x: 50, y: 760 }, end: { x: 545, y: 760 }, thickness: 2, color: rgb(0.2, 0.2, 0.8) });
+  
+  const items = [
+    ['Item', 'Qty', 'Price'],
+    ['Web Development', '1', '$1,500'],
+    ['UI Design', '1', '$800'],
+    ['Consulting', '5h', '$500'],
+  ];
+  
+  let y = 700;
+  items.forEach((row, i) => {
+    row.forEach((cell, j) => {
+      page.drawText(cell, { x: 50 + j * 180, y, size: i === 0 ? 14 : 12, font, color: i === 0 ? rgb(0.2, 0.2, 0.2) : rgb(0.4, 0.4, 0.4) });
+    });
+    y -= 25;
+  });
+  
+  page.drawText('Total: $2,800', { x: 400, y: y - 20, size: 16, font, color: rgb(0.2, 0.2, 0.8) });
+  
+  const pdfBytes = await pdfDoc.save();
+  download(pdfBytes, 'invoice.pdf');
+}
+
+async function createCertificate() {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([842, 595]); // A4 横向
+  const font = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+  
+  // 边框
+  page.drawRectangle({ x: 20, y: 20, width: 802, height: 555, borderColor: rgb(0.6, 0.5, 0.2), borderWidth: 3 });
+  page.drawRectangle({ x: 30, y: 30, width: 782, height: 535, borderColor: rgb(0.6, 0.5, 0.2), borderWidth: 1 });
+  
+  page.drawText('Certificate of Achievement', { x: 250, y: 480, size: 32, font: fontBold, color: rgb(0.4, 0.3, 0.1) });
+  page.drawText('This is to certify that', { x: 330, y: 380, size: 16, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText('John Doe', { x: 350, y: 320, size: 28, font: fontBold, color: rgb(0.2, 0.2, 0.5) });
+  page.drawText('has successfully completed the course', { x: 280, y: 260, size: 16, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(new Date().toLocaleDateString(), { x: 370, y: 100, size: 12, font, color: rgb(0.5, 0.5, 0.5) });
+  
+  const pdfBytes = await pdfDoc.save();
+  download(pdfBytes, 'certificate.pdf');
+}
+
+async function createReport() {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  
+  page.drawText('Monthly Report', { x: 50, y: 780, size: 24, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
+  page.drawText('January 2024', { x: 50, y: 755, size: 14, font, color: rgb(0.5, 0.5, 0.5) });
+  
+  page.drawLine({ start: { x: 50, y: 740 }, end: { x: 545, y: 740 }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+  
+  page.drawText('Summary', { x: 50, y: 700, size: 16, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText('This month we achieved significant progress in all key metrics.', { x: 50, y: 675, size: 12, font, color: rgb(0.3, 0.3, 0.3) });
+  
+  page.drawText('Key Metrics', { x: 50, y: 620, size: 16, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  
+  // 简单柱状图
+  const data = [80, 120, 95, 150];
+  data.forEach((value, i) => {
+    const height = value;
+    page.drawRectangle({ x: 80 + i * 100, y: 480, width: 60, height, color: rgb(0.2, 0.5, 0.8) });
+    page.drawText(`${value}`, { x: 95 + i * 100, y: 480 + height + 5, size: 10, font, color: rgb(0.3, 0.3, 0.3) });
+  });
+  
+  const pdfBytes = await pdfDoc.save();
+  download(pdfBytes, 'report.pdf');
+}
+
+function download(data, filename) {
+  const blob = new Blob([data], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

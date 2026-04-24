@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 请求代码详解 | AI 基础知识</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0fdfa 100%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .code-block {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .annotation-line {
+            border-left: 3px solid;
+            padding-left: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .highlight-box {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .highlight-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15);
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .copy-btn {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .code-container:hover .copy-btn {
+            opacity: 1;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <div id="app" class="flex-grow flex flex-col">
+        <!-- Header -->
+        <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                    <div
+                        class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                        <i class="fa-solid fa-terminal text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl text-slate-900 tracking-tight">API 请求代码详解</h1>
+                        <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">AI 基础知识</p>
+                    </div>
+                </div>
+                <a href="../../index.html"
+                    class="text-slate-500 hover:text-emerald-600 transition flex items-center gap-1 text-sm">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    返回首页
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow py-8 px-4">
+            <div class="max-w-5xl mx-auto space-y-8">
+
+                <!-- Intro Section -->
+                <div class="glass-card rounded-2xl p-6 md:p-8">
+                    <div class="flex items-start gap-4">
+                        <div class="p-3 bg-emerald-100 rounded-lg text-emerald-600 shrink-0">
+                            <i class="fa-regular fa-lightbulb text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-900 mb-2">一段代码，理解 AI 对话的本质</h2>
+                            <p class="text-slate-600 leading-relaxed">
+                                当你在 ChatGPT 或 DeepSeek 网页上打字时，背后发生的其实就是一次 <strong class="text-emerald-600">API
+                                    请求</strong>。
+                                下面这段代码看起来很长，但别担心——我们会像拆礼物一样，一层一层把它拆开讲清楚。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- The Code Block -->
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <div class="bg-slate-800 text-white px-6 py-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex gap-2">
+                                <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                                <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                                <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                            </div>
+                            <span class="text-slate-400 text-sm font-medium">Terminal / 终端</span>
+                        </div>
+                        <button @click="copyCode"
+                            class="text-slate-400 hover:text-white transition flex items-center gap-1 text-sm">
+                            <i class="fa-regular fa-copy"></i>
+                            {{ copied ? '已复制!' : '复制代码' }}
+                        </button>
+                    </div>
+                    <div class="code-container relative">
+                        <pre class="code-block bg-slate-900 text-slate-100 p-6 overflow-x-auto"><code class="language-bash">curl https://api.deepseek.com/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DEEPSEEK_API_KEY}" \
+  -d '{
+        "model": "deepseek-v4-flash",
+        "messages": [
+          {"role": "system", "content": "You are a helpful assistant."},
+          {"role": "user", "content": "Hello!"}
+        ],
+        "stream": false
+      }'</code></pre>
+                    </div>
+                </div>
+
+                <!-- Explanation Sections -->
+                <div class="space-y-6">
+
+                    <!-- Part 1: curl -->
+                    <div class="highlight-box glass-card rounded-2xl p-6">
+                        <div class="flex items-start gap-4">
+                            <div class="step-number bg-blue-100 text-blue-600">1</div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-slate-900 mb-2">
+                                    <code class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-base">curl</code> 是什么？
+                                </h3>
+                                <p class="text-slate-600 mb-4">
+                                    <strong>curl</strong> 是一个命令行工具，作用就像是一个"快递员"——它帮你把请求送到指定的网址，然后把结果带回来。
+                                </p>
+                                <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                                    <p class="text-blue-800 text-sm">
+                                        <strong>生活化比喻：</strong><br>
+                                        想象你要给 DeepSeek 公司寄一封信。<code class="bg-blue-100 px-1 rounded">curl</code>
+                                        就是那个帮你送信的快递小哥，
+                                        <code
+                                            class="bg-blue-100 px-1 rounded">https://api.deepseek.com/chat/completions</code>
+                                        就是收件地址。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Part 2: Headers -->
+                    <div class="highlight-box glass-card rounded-2xl p-6">
+                        <div class="flex items-start gap-4">
+                            <div class="step-number bg-purple-100 text-purple-600">2</div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-slate-900 mb-2">
+                                    <code class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-base">-H</code>
+                                    请求头是什么意思？
+                                </h3>
+                                <p class="text-slate-600 mb-4">
+                                    <code class="bg-slate-100 px-1 rounded">-H</code> 代表
+                                    Header（请求头），就像信封上的信息——告诉对方这封信的格式和你的身份。
+                                </p>
+
+                                <div class="space-y-4">
+                                    <!-- Header 1 -->
+                                    <div class="annotation-line border-purple-400 bg-purple-50/50 rounded-r-lg p-4">
+                                        <code
+                                            class="text-purple-700 font-medium block mb-2">"Content-Type: application/json"</code>
+                                        <p class="text-slate-600 text-sm">
+                                            告诉服务器："我发给你的内容是 <strong>JSON 格式</strong> 的。"<br>
+                                            就像告诉收件人："这是一封中文信，请用中文阅读。"
+                                        </p>
+                                    </div>
+
+                                    <!-- Header 2 -->
+                                    <div class="annotation-line border-amber-400 bg-amber-50/50 rounded-r-lg p-4">
+                                        <code
+                                            class="text-amber-700 font-medium block mb-2">"Authorization: Bearer ${DEEPSEEK_API_KEY}"</code>
+                                        <p class="text-slate-600 text-sm">
+                                            这是你的 <strong>身份凭证</strong>（API Key），就像进入 VIP 会员区需要出示会员卡。<br>
+                                            <code class="bg-amber-100 px-1 rounded">${DEEPSEEK_API_KEY}</code>
+                                            是一个变量，需要替换成你在 DeepSeek 平台申请的真实 Key。
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Part 3: -d and JSON body -->
+                    <div class="highlight-box glass-card rounded-2xl p-6">
+                        <div class="flex items-start gap-4">
+                            <div class="step-number bg-emerald-100 text-emerald-600">3</div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-slate-900 mb-2">
+                                    <code class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-base">-d</code>
+                                    后面的内容是什么？
+                                </h3>
+                                <p class="text-slate-600 mb-4">
+                                    <code class="bg-slate-100 px-1 rounded">-d</code> 代表 Data（数据），就是你要发送的"信件内容"。这里的内容是用
+                                    JSON 格式写的。
+                                </p>
+
+                                <div class="bg-slate-900 rounded-xl p-5 mb-4 overflow-x-auto">
+                                    <pre class="code-block text-slate-100 text-sm"><code>{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+  ],
+  "stream": false
+}</code></pre>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                        <span
+                                            class="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs font-bold shrink-0">model</span>
+                                        <p class="text-slate-600 text-sm">选择使用哪个 AI 模型。<code
+                                                class="bg-slate-200 px-1 rounded">deepseek-v4-flash</code> 是 DeepSeek 的 V4 Flash
+                                            模型。</p>
+                                    </div>
+                                    <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                        <span
+                                            class="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs font-bold shrink-0">messages</span>
+                                        <p class="text-slate-600 text-sm">对话消息列表。包含角色（system/user/assistant）和内容。</p>
+                                    </div>
+                                    <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                        <span
+                                            class="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs font-bold shrink-0">stream</span>
+                                        <p class="text-slate-600 text-sm">是否流式输出。<code
+                                                class="bg-slate-200 px-1 rounded">false</code> 表示等 AI 全部生成完再返回。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Part 4: Messages Deep Dive -->
+                    <div class="highlight-box glass-card rounded-2xl p-6">
+                        <div class="flex items-start gap-4">
+                            <div class="step-number bg-rose-100 text-rose-600">4</div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-slate-900 mb-2">
+                                    <code class="bg-rose-100 text-rose-700 px-2 py-1 rounded text-base">messages</code>
+                                    里的角色是什么意思？
+                                </h3>
+                                <p class="text-slate-600 mb-4">
+                                    AI 对话就像一场舞台剧，不同角色有不同的职责：
+                                </p>
+
+                                <div class="grid md:grid-cols-3 gap-4">
+                                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-solid fa-sliders text-indigo-600"></i>
+                                            <span class="font-bold text-indigo-700">system</span>
+                                        </div>
+                                        <p class="text-indigo-600 text-sm">
+                                            <strong>导演</strong>：设定 AI 的性格、能力和行为规范。用户看不到，但会影响 AI 的全部回复。
+                                        </p>
+                                    </div>
+                                    <div class="bg-sky-50 border border-sky-100 rounded-xl p-4">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-regular fa-user text-sky-600"></i>
+                                            <span class="font-bold text-sky-700">user</span>
+                                        </div>
+                                        <p class="text-sky-600 text-sm">
+                                            <strong>观众/提问者</strong>：就是你！你输入的问题或指令。
+                                        </p>
+                                    </div>
+                                    <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-solid fa-robot text-emerald-600"></i>
+                                            <span class="font-bold text-emerald-700">assistant</span>
+                                        </div>
+                                        <p class="text-emerald-600 text-sm">
+                                            <strong>演员/AI</strong>：AI 的回复内容。多轮对话时需要把历史回复也传进去。
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Part 5: Advanced Parameters -->
+                    <div class="highlight-box glass-card rounded-2xl p-6">
+                        <div class="flex items-start gap-4">
+                            <div class="step-number bg-violet-100 text-violet-600">5</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <h3 class="text-lg font-bold text-slate-900">
+                                        高级参数：精细控制 AI 的行为
+                                    </h3>
+                                    <span
+                                        class="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs font-medium rounded-full">进阶</span>
+                                </div>
+                                <p class="text-slate-600 mb-5">
+                                    除了基础的 model 和 messages，你还可以加入这些参数来"微调"AI 的表现：
+                                </p>
+
+                                <!-- Temperature -->
+                                <div
+                                    class="mb-4 p-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-xl">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <i class="fa-solid fa-temperature-half text-orange-500"></i>
+                                        <code class="font-bold text-orange-700">"temperature"</code>
+                                        <span class="text-slate-500 text-sm">范围: 0 ~ 2</span>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mb-3">
+                                        <strong>创造力/随机性调节器</strong>。数值越高，回答越有创意但可能"跑偏"；数值越低，回答越稳定但可能"死板"。
+                                    </p>
+                                    <div class="flex items-center gap-2 text-xs">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">0 = 最确定</span>
+                                        <span class="text-slate-400">←</span>
+                                        <span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded">0.7 =
+                                            平衡（推荐）</span>
+                                        <span class="text-slate-400">→</span>
+                                        <span class="px-2 py-1 bg-orange-100 text-orange-700 rounded">2 = 最随机</span>
+                                    </div>
+                                    <div class="mt-3 p-3 bg-white/70 rounded-lg">
+                                        <p class="text-slate-500 text-xs">
+                                            <strong>使用场景：</strong>写代码/翻译用 0~0.3；日常对话用 0.7；创意写作/头脑风暴用 1.0+
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Max Tokens -->
+                                <div
+                                    class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <i class="fa-solid fa-i-cursor text-blue-500"></i>
+                                        <code class="font-bold text-blue-700">"max_tokens"</code>
+                                        <span class="text-slate-500 text-sm">整数</span>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mb-3">
+                                        <strong>回复长度上限</strong>。限制 AI 最多生成多少个 token（约等于 0.7 个汉字或 0.75 个英文单词）。
+                                    </p>
+                                    <div class="p-3 bg-white/70 rounded-lg">
+                                        <p class="text-slate-500 text-xs">
+                                            <strong>例如：</strong><code
+                                                class="bg-blue-100 px-1 rounded">"max_tokens": 1000</code> 约等于限制回复在 700
+                                            字左右。不设置则由模型自行决定长度。
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Top P -->
+                                <div
+                                    class="mb-4 p-4 bg-gradient-to-r from-purple-50 to-fuchsia-50 border border-purple-100 rounded-xl">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <i class="fa-solid fa-chart-pie text-purple-500"></i>
+                                        <code class="font-bold text-purple-700">"top_p"</code>
+                                        <span class="text-slate-500 text-sm">范围: 0 ~ 1</span>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mb-3">
+                                        <strong>核采样</strong>。另一种控制随机性的方式。0.1 表示只考虑概率最高的 10% 词汇，1 表示考虑所有词汇。
+                                    </p>
+                                    <div class="p-3 bg-white/70 rounded-lg">
+                                        <p class="text-slate-500 text-xs">
+                                            <strong>建议：</strong>通常只调 temperature 或 top_p 其中一个，同时调两个容易产生不可预期的结果。
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Stream -->
+                                <div
+                                    class="mb-4 p-4 bg-gradient-to-r from-cyan-50 to-sky-50 border border-cyan-100 rounded-xl">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <i class="fa-solid fa-water text-cyan-500"></i>
+                                        <code class="font-bold text-cyan-700">"stream"</code>
+                                        <span class="text-slate-500 text-sm">true / false</span>
+                                    </div>
+                                    <p class="text-slate-600 text-sm mb-3">
+                                        <strong>流式输出</strong>。设为 true 时，AI 会像打字一样一个字一个字返回，而不是等全部生成完再返回。
+                                    </p>
+                                    <div class="p-3 bg-white/70 rounded-lg">
+                                        <p class="text-slate-500 text-xs">
+                                            <strong>体验差异：</strong>ChatGPT 网页版那种"打字机效果"就是 stream=true 的效果，用户体验更好但代码处理更复杂。
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Frequency & Presence Penalty -->
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <div
+                                        class="p-4 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-100 rounded-xl">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-solid fa-repeat text-rose-500"></i>
+                                            <code class="font-bold text-rose-700 text-sm">"frequency_penalty"</code>
+                                        </div>
+                                        <p class="text-slate-600 text-xs">
+                                            <strong>重复惩罚</strong>（-2~2）。正数让 AI 避免重复已说过的话，适合长文写作。
+                                        </p>
+                                    </div>
+                                    <div
+                                        class="p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-100 rounded-xl">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-solid fa-wand-magic-sparkles text-teal-500"></i>
+                                            <code class="font-bold text-teal-700 text-sm">"presence_penalty"</code>
+                                        </div>
+                                        <p class="text-slate-600 text-xs">
+                                            <strong>话题惩罚</strong>（-2~2）。正数鼓励 AI 聊新话题，适合头脑风暴。
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Complete Example -->
+                                <div class="mt-5 p-4 bg-slate-900 rounded-xl overflow-x-auto">
+                                    <p class="text-slate-400 text-xs mb-2 flex items-center gap-1">
+                                        <i class="fa-solid fa-code"></i> 完整示例：带高级参数的请求
+                                    </p>
+                                    <pre class="code-block text-slate-100 text-sm"><code>{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {"role": "system", "content": "你是一个创意写作助手"},
+    {"role": "user", "content": "写一首关于春天的诗"}
+  ],
+  "temperature": 1.0,
+  "max_tokens": 500,
+  "top_p": 0.9,
+  "stream": true,
+  "frequency_penalty": 0.5
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Part 6: Understanding Response -->
+                    <div class="highlight-box glass-card rounded-2xl p-6">
+                        <div class="flex items-start gap-4">
+                            <div class="step-number bg-teal-100 text-teal-600">6</div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-slate-900 mb-2">
+                                    <code class="bg-teal-100 text-teal-700 px-2 py-1 rounded text-base">Response</code>
+                                    收到回信长什么样？
+                                </h3>
+                                <p class="text-slate-600 mb-4">
+                                    当你发送请求成功后，服务器会回给你一个 JSON 包裹。理解它，你才能把 AI 的话提取出来展示给用户。
+                                </p>
+
+                                <div class="bg-slate-900 rounded-xl p-5 mb-4 overflow-x-auto">
+                                    <pre class="code-block text-slate-100 text-sm"><code>{
+  "id": "chatcmpl-a1b2c3d4...",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "你好！我是 DeepSeek 智能助手，很高兴为你服务。"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 20,
+    "total_tokens": 30
+  }
+}</code></pre>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div class="flex items-start gap-3 p-3 bg-teal-50 rounded-lg">
+                                        <div
+                                            class="shrink-0 font-mono text-xs font-bold text-teal-700 bg-white border border-teal-200 px-2 py-1 rounded">
+                                            choices[0].message.content</div>
+                                        <p class="text-slate-600 text-sm">
+                                            <strong>最重要的数据！</strong>这就是 AI
+                                            真正回复的文本内容。写代码时通常这样提取：<code>data.choices[0].message.content</code>。
+                                        </p>
+                                    </div>
+                                    <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                        <div
+                                            class="shrink-0 font-mono text-xs font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded">
+                                            usage</div>
+                                        <p class="text-slate-600 text-sm">
+                                            <strong>账单明细</strong>。告诉你这次对话消耗了多少 Token（提示词+回答），用于计算成本。
+                                        </p>
+                                    </div>
+                                    <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                        <div
+                                            class="shrink-0 font-mono text-xs font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded">
+                                            finish_reason</div>
+                                        <p class="text-slate-600 text-sm">
+                                            <strong>结束原因</strong>。"stop" 表示正常说完；"length" 表示字数达到上限被迫截断。
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Part 7: Dev Tips -->
+                    <div class="highlight-box glass-card rounded-2xl p-6">
+                        <div class="flex items-start gap-4">
+                            <div class="step-number bg-amber-100 text-amber-600">7</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <h3 class="text-lg font-bold text-slate-900">
+                                        前端开发避坑指南
+                                    </h3>
+                                    <span
+                                        class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">经验</span>
+                                </div>
+                                <p class="text-slate-600 mb-5">
+                                    把 API 集成到网页时，新手容易踩这些坑：
+                                </p>
+
+                                <div class="grid md:grid-cols-2 gap-4">
+                                    <!-- Tip 1 -->
+                                    <div
+                                        class="p-4 bg-white border border-slate-200 rounded-xl hover:border-amber-400 transition">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-solid fa-shield-halved text-red-500"></i>
+                                            <h4 class="font-bold text-slate-800 text-sm">千万别暴露 API Key</h4>
+                                        </div>
+                                        <p class="text-slate-600 text-xs leading-relaxed">
+                                            浏览器端代码是对所有人可见的。在真实上线项目中，<strong>必须</strong>通过后端服务器转发请求，不要把 Key 直接写在前端 JS
+                                            里（除非像本站一样是纯本地教学演示）。
+                                        </p>
+                                    </div>
+
+                                    <!-- Tip 2 -->
+                                    <div
+                                        class="p-4 bg-white border border-slate-200 rounded-xl hover:border-amber-400 transition">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-solid fa-spinner fa-spin text-blue-500"></i>
+                                            <h4 class="font-bold text-slate-800 text-sm">记得加 Loading 状态</h4>
+                                        </div>
+                                        <p class="text-slate-600 text-xs leading-relaxed">
+                                            AI 响应通常需要几秒到几十秒。必须给按钮加上禁用状态和 Loading 动画，防止用户以为死机了而疯狂点击。
+                                        </p>
+                                    </div>
+
+                                    <!-- Tip 3 -->
+                                    <div
+                                        class="p-4 bg-white border border-slate-200 rounded-xl hover:border-amber-400 transition">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-solid fa-bolt text-orange-500"></i>
+                                            <h4 class="font-bold text-slate-800 text-sm">处理超时和错误</h4>
+                                        </div>
+                                        <p class="text-slate-600 text-xs leading-relaxed">
+                                            网络可能会断，ApiKey 可能会欠费。一定要用 <code>try...catch</code> 包裹代码，并给用户友好的错误提示（参考 <a
+                                                href="api_error_guide.html" class="text-indigo-600 hover:underline">API
+                                                错误指南</a>）。
+                                        </p>
+                                    </div>
+
+                                    <!-- Tip 4 -->
+                                    <div
+                                        class="p-4 bg-white border border-slate-200 rounded-xl hover:border-amber-400 transition">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <i class="fa-solid fa-code text-green-500"></i>
+                                            <h4 class="font-bold text-slate-800 text-sm">JSON 格式化</h4>
+                                        </div>
+                                        <p class="text-slate-600 text-xs leading-relaxed">
+                                            AI 返回的文本里可能包含 Markdown 符号（如 ```json ... ```）。在 <code>JSON.parse()</code>
+                                            之前，记得先清洗掉这些多余字符。
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 md:p-8 text-white">
+                        <div class="flex items-start gap-4">
+                            <div class="p-3 bg-white/20 rounded-lg shrink-0">
+                                <i class="fa-solid fa-wand-magic-sparkles text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-3">总结：一句话理解 API 请求</h3>
+                                <p class="text-emerald-50 leading-relaxed mb-4">
+                                    调用 AI API 就像写一封信：<br><br>
+                                    <strong class="text-white">curl</strong> = 快递公司<br>
+                                    <strong class="text-white">URL</strong> = 收件地址<br>
+                                    <strong class="text-white">Headers</strong> = 信封信息（格式 + 身份证明）<br>
+                                    <strong class="text-white">-d 后面的 JSON</strong> = 信件内容（你要问什么、用哪个模型）<br>
+                                    <strong class="text-white">高级参数</strong> = 额外要求（创造力、长度限制、是否打字机效果...）
+                                </p>
+                                <div class="flex flex-wrap gap-3">
+                                    <a href="json_intro.html"
+                                        class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 transition px-4 py-2 rounded-lg text-sm font-medium">
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                        下一篇：什么是 JSON？
+                                    </a>
+                                    <a href="llm_playground.html"
+                                        class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 transition px-4 py-2 rounded-lg text-sm font-medium">
+                                        <i class="fa-solid fa-flask"></i>
+                                        去实验室动手试试
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="py-6 text-center text-slate-400 text-sm border-t border-slate-200/60 bg-white/50">
+            <p>AI 基础知识系列 · 让 AI 技术更易懂</p>
+        </footer>
+
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+
+
+                const copied = ref(false);
+
+                const copyCode = async () => {
+                    const code = `curl https://api.deepseek.com/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer \${DEEPSEEK_API_KEY}" \\
+  -d '{
+        "model": "deepseek-v4-flash",
+        "messages": [
+          {"role": "system", "content": "You are a helpful assistant."},
+          {"role": "user", "content": "Hello!"}
+        ],
+        "stream": false
+      }'`;
+
+                    try {
+                        await navigator.clipboard.writeText(code);
+                        copied.value = true;
+                        setTimeout(() => copied.value = false, 2000);
+                    } catch (err) {
+                        console.error('Copy failed:', err);
+                    }
+                };
+
+                onMounted(() => {
+                    hljs.highlightAll();
+                });
+
+                return {
+
+                    copied,
+                    copyCode
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_basics_api_intro.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通用海报/社媒卡片结构生成器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 45%, #fdf2f8 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 3px;
+        }
+
+        .card-shadow {
+            box-shadow: 0 12px 32px rgba(79, 70, 229, 0.08);
+        }
+
+        .layout-card {
+            transition: all 0.25s ease;
+        }
+
+        .layout-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 36px rgba(79, 70, 229, 0.18);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="layoutGeneratorApp()" x-init="init()" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-indigo-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <div
+                            class="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+                            <i class="fa-solid fa-table-columns text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-lg text-slate-900">通用海报/社媒卡片结构生成器</h1>
+                            <p class="text-xs text-slate-500">输入主题与平台，一键生成版式结构 + 文案布局</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 text-sm">
+                        <a href="social_media_poster.html"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1">
+                            <i class="fa-solid fa-image text-xs"></i>
+                            社媒配图
+                        </a>
+                        <a href="xhs_cover_designer.html"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                            小红书封面
+                        </a>
+                        <button @click="generateLayouts"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition">
+                            生成结构方案
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main
+            class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <section class="lg:col-span-1 space-y-6">
+                <div class="bg-white rounded-2xl p-6 card-shadow border border-indigo-100">
+                    <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-pen-to-square text-indigo-500"></i>
+                        基础信息
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">主题/活动</label>
+                            <input type="text" x-model="form.topic" placeholder="例如：夏季防晒新品首发"
+                                class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">核心卖点关键词</label>
+                            <input type="text" x-model="form.keywords" placeholder="例如：清爽不油腻、SPF50+"
+                                class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-600">行动号召</label>
+                            <input type="text" x-model="form.cta" placeholder="例如：立即抢购 / 到店体验"
+                                class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-6 card-shadow border border-indigo-100">
+                    <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-laptop-mobile text-indigo-500"></i>
+                        目标平台
+                    </h2>
+                    <div class="grid grid-cols-3 gap-3">
+                        <template x-for="platform in platforms" :key="platform.id">
+                            <button @click="form.platform = platform.id"
+                                :class="form.platform === platform.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'"
+                                class="rounded-xl border px-3 py-2 text-sm font-medium transition">
+                                <span x-text="platform.label"></span>
+                                <span class="block text-[11px] opacity-75" x-text="platform.size"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-6 card-shadow border border-indigo-100">
+                    <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-palette text-indigo-500 text-xs"></i>
+                        版式与风格偏好
+                    </h2>
+                    <div class="space-y-3">
+                        <template x-for="style in styles" :key="style.id">
+                            <button @click="form.style = style.id"
+                                :class="form.style === style.id ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 hover:border-indigo-300'"
+                                class="w-full text-left border rounded-xl px-4 py-3 transition flex items-start gap-3">
+                                <div :class="style.color" class="h-10 w-10 rounded-xl"></div>
+                                <div>
+                                    <div class="font-semibold text-sm" x-text="style.label"></div>
+                                    <div class="text-xs text-slate-500" x-text="style.desc"></div>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-6 card-shadow border border-indigo-100">
+                    <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2 mb-4">
+                        <i class="fa-solid fa-sliders text-indigo-500"></i>
+                        输出设置
+                    </h2>
+                    <div class="space-y-4 text-sm text-slate-600">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" x-model="form.includeVisual" class="rounded text-indigo-600">
+                            包含主视觉建议（人物/场景/道具）
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" x-model="form.includeText" class="rounded text-indigo-600">
+                            输出推荐文案结构（标题/副标题/按钮）
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" x-model="form.includeTips" class="rounded text-indigo-600">
+                            输出排版细节（栅格/对齐/留白）
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="lg:col-span-2 space-y-6">
+                <div class="bg-white rounded-2xl p-6 border border-indigo-100 card-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900">生成的版式方案</h2>
+                            <p class="text-sm text-slate-500">基于主题与平台自动组合布局策略</p>
+                        </div>
+                        <button @click="generateLayouts"
+                            class="hidden sm:inline-flex items-center gap-2 text-sm text-indigo-600 font-medium hover:text-indigo-700">
+                            <i class="fa-solid fa-rotate text-xs"></i>
+                            重新生成
+                        </button>
+                    </div>
+                </div>
+
+                <template x-if="layouts.length === 0">
+                    <div class="bg-white rounded-2xl p-10 text-center border border-dashed border-indigo-200">
+                        <div class="mx-auto w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center">
+                            <i class="fa-solid fa-table-cells-large text-3xl text-indigo-400"></i>
+                        </div>
+                        <h3 class="mt-4 text-lg font-semibold text-slate-800">等待生成</h3>
+                        <p class="text-sm text-slate-500 mt-2">完善左侧信息并点击“生成结构方案”</p>
+                    </div>
+                </template>
+
+                <div class="grid md:grid-cols-2 gap-5">
+                    <template x-for="(layout, index) in layouts" :key="layout.id">
+                        <div class="layout-card bg-white rounded-2xl border border-indigo-100 p-5 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-semibold text-slate-900" x-text="layout.title"></h3>
+                                    <p class="text-xs text-slate-500" x-text="layout.subtitle"></p>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-600"
+                                    x-text="'方案 ' + (index + 1)"></span>
+                            </div>
+                            <div class="space-y-3 text-sm text-slate-600">
+                                <div>
+                                    <p class="font-semibold text-slate-700">版式结构</p>
+                                    <ul class="list-disc list-inside space-y-1">
+                                        <template x-for="line in layout.structure" :key="line">
+                                            <li x-text="line"></li>
+                                        </template>
+                                    </ul>
+                                </div>
+                                <template x-if="layout.copyBlocks.length">
+                                    <div>
+                                        <p class="font-semibold text-slate-700">文案布局</p>
+                                        <div class="space-y-2">
+                                            <template x-for="copy in layout.copyBlocks" :key="copy.label">
+                                                <div class="rounded-lg border border-slate-200 px-3 py-2">
+                                                    <p class="text-xs text-slate-400" x-text="copy.label"></p>
+                                                    <p class="text-sm text-slate-700" x-text="copy.text"></p>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="layout.visualHints.length">
+                                    <div>
+                                        <p class="font-semibold text-slate-700">主视觉建议</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <template x-for="hint in layout.visualHints" :key="hint">
+                                                <span class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600"
+                                                    x-text="hint"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="layout.layoutTips.length">
+                                    <div>
+                                        <p class="font-semibold text-slate-700">排版细节</p>
+                                        <ul class="list-disc list-inside space-y-1">
+                                            <template x-for="tip in layout.layoutTips" :key="tip">
+                                                <li x-text="tip"></li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="flex items-center justify-between text-xs text-slate-400">
+                                <span x-text="layout.tag"></span>
+                                <button @click="copyLayout(layout)"
+                                    class="text-indigo-600 hover:text-indigo-700 font-medium">复制方案</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        function layoutGeneratorApp() {
+            return {
+                form: {
+                    topic: '',
+                    keywords: '',
+                    cta: '',
+                    platform: 'xhs',
+                    style: 'clean',
+                    includeVisual: true,
+                    includeText: true,
+                    includeTips: true
+                },
+                platforms: [
+                    { id: 'xhs', label: '小红书', size: '1080x1440' },
+                    { id: 'weibo', label: '微博', size: '1080x1080' },
+                    { id: 'wechat', label: '朋友圈', size: '1080x1080' }
+                ],
+                styles: [
+                    { id: 'clean', label: '简洁留白', desc: '信息清晰、强调层级', color: 'bg-indigo-100' },
+                    { id: 'vibrant', label: '高能视觉', desc: '高对比色块、冲击感', color: 'bg-pink-100' },
+                    { id: 'soft', label: '治愈轻柔', desc: '柔和配色、轻盈排版', color: 'bg-emerald-100' },
+                    { id: 'business', label: '商务质感', desc: '稳重配色、专业感', color: 'bg-slate-200' }
+                ],
+                layouts: [],
+                init() {
+                    // 初始化图标已由 Font Awesome 自动处理
+                },
+                generateLayouts() {
+                    const topic = this.form.topic || '未命名主题';
+                    const keywords = this.form.keywords || '核心卖点';
+                    const cta = this.form.cta || '立即行动';
+                    const platformLabel = this.platforms.find(item => item.id === this.form.platform)?.label || '社媒';
+                    const styleLabel = this.styles.find(item => item.id === this.form.style)?.label || '通用风格';
+
+                    const structureTemplates = {
+                        xhs: [
+                            ['上方大标题占位，左对齐', '中部主视觉占 60% 面积', '底部信息条 + CTA 按钮'],
+                            ['顶部标签/栏目名', '中间大图 + 侧边卖点', '底部加粗标题 + CTA']
+                        ],
+                        weibo: [
+                            ['左侧主视觉，右侧信息卡', '顶部标题 + 口号', '底部按钮与品牌标识'],
+                            ['居中主视觉 + 渐变背景', '顶部短标题 + 重点卖点', '底部行动按钮']
+                        ],
+                        wechat: [
+                            ['居中大标题 + 副标题', '中部主视觉 + 轻量装饰', '底部口号 + CTA'],
+                            ['顶部标题条 + 品牌 Logo', '中部信息卡 + 卖点列表', '底部行动提示']
+                        ]
+                    };
+
+                    const copyTemplates = [
+                        {
+                            title: `${topic}`,
+                            subtitle: `${keywords}`,
+                            cta: `${cta}`
+                        },
+                        {
+                            title: `#${topic}`,
+                            subtitle: `亮点：${keywords}`,
+                            cta: `${cta}`
+                        },
+                        {
+                            title: `${topic} · ${styleLabel}`,
+                            subtitle: `3 个关键词：${keywords}`,
+                            cta: `${cta}`
+                        }
+                    ];
+
+                    const visualHints = {
+                        clean: ['极简背景', '清晰产品特写', '留白呼吸感'],
+                        vibrant: ['高饱和色块', '夸张人物表情', '动势线条'],
+                        soft: ['柔和渐变', '治愈系插画', '温暖场景'],
+                        business: ['深色背景', '几何图形', '金属质感点缀']
+                    };
+
+                    const layoutTips = {
+                        clean: ['采用 12 栅格，标题跨 8 栏', '主视觉与标题间距保持 32px'],
+                        vibrant: ['使用对角线切割构图', '强调标题字重与描边'],
+                        soft: ['文字区域居中对齐', '保持元素间距一致'],
+                        business: ['信息区与主视觉等分', '按钮保持统一尺寸']
+                    };
+
+                    const structureOptions = structureTemplates[this.form.platform] || structureTemplates.xhs;
+                    const layoutCount = 3;
+                    const results = [];
+
+                    for (let i = 0; i < layoutCount; i += 1) {
+                        const structure = structureOptions[i % structureOptions.length];
+                        const copy = copyTemplates[i % copyTemplates.length];
+                        results.push({
+                            id: `${this.form.platform}-${this.form.style}-${i}`,
+                            title: `${platformLabel} ${styleLabel}方案`,
+                            subtitle: `适配 ${platformLabel} 的版式结构与文案布局`,
+                            tag: `${platformLabel} · ${styleLabel}`,
+                            structure,
+                            copyBlocks: this.form.includeText ? [
+                                { label: '标题区', text: copy.title },
+                                { label: '副标题/卖点区', text: copy.subtitle },
+                                { label: '行动号召', text: copy.cta }
+                            ] : [],
+                            visualHints: this.form.includeVisual ? visualHints[this.form.style] : [],
+                            layoutTips: this.form.includeTips ? layoutTips[this.form.style] : []
+                        });
+                    }
+
+                    this.layouts = results;
+                },
+                copyLayout(layout) {
+                    const payload = [
+                        `【${layout.title}】`,
+                        '版式结构：',
+                        ...layout.structure.map(line => `- ${line}`),
+                        layout.copyBlocks.length ? '文案布局：' : '',
+                        ...layout.copyBlocks.map(copy => `- ${copy.label}: ${copy.text}`),
+                        layout.visualHints.length ? '主视觉建议：' : '',
+                        ...layout.visualHints.map(hint => `- ${hint}`),
+                        layout.layoutTips.length ? '排版细节：' : '',
+                        ...layout.layoutTips.map(tip => `- ${tip}`)
+                    ].filter(Boolean).join('\n');
+
+                    navigator.clipboard.writeText(payload).then(() => {
+                        alert('已复制到剪贴板');
+                    });
+                }
+            };
+        }
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_generation_social_media_layout_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

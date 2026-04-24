@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Store.js 本地存储</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/store/dist/store.legacy.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fdf2f8; color: #831843; }
+    .glass { background: white; border: 1px solid #fbcfe8; box-shadow: 0 4px 6px -1px rgba(219, 39, 119, 0.05); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-2xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-pink-900">📦 Store.js</h1>
+    <p class="text-pink-800/60 mt-2 text-lg">跨浏览器的 LocalStorage 封装库 (兼容老旧浏览器)</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-800 rounded-lg hover:bg-pink-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-2xl mx-auto space-y-6">
+
+  <!-- Info -->
+  <div class="p-4 bg-pink-100 text-pink-800 rounded-lg text-sm mb-6">
+    Store.js 会自动选择最佳的存储机制 (LocalStorage, GlobalStorage, UserData)，无需担心兼容性。
+  </div>
+
+  <!-- 操作 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-pink-900 mb-4 text-xl">用户偏好设置 (演示)</h3>
+    
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="text-pink-700">深色模式</span>
+        <input type="checkbox" id="pref-dark" onchange="savePrefs()" class="accent-pink-600 w-5 h-5">
+      </div>
+      
+      <div class="flex items-center justify-between">
+        <span class="text-pink-700">消息通知</span>
+        <input type="checkbox" id="pref-notif" onchange="savePrefs()" class="accent-pink-600 w-5 h-5">
+      </div>
+
+      <div>
+        <span class="text-pink-700 block mb-1">用户名</span>
+        <input type="text" id="pref-user" oninput="savePrefs()" class="w-full p-2 border border-pink-200 rounded text-sm" placeholder="Guest">
+      </div>
+    </div>
+    
+    <div class="mt-6 pt-6 border-t border-pink-100 text-center">
+      <button onclick="clearPrefs()" class="text-sm text-red-400 hover:text-red-600">重置所有设置</button>
+    </div>
+  </div>
+
+  <!-- 状态展示 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-pink-900 mb-2">Raw Storage content</h3>
+    <pre id="debug" class="bg-pink-50 p-3 rounded text-xs font-mono text-pink-600 overflow-x-auto">...</pre>
+  </div>
+
+</main>
+
+<script>
+  // 1. Load
+  function loadPrefs() {
+    const prefs = store.get('user_preferences') || {};
+    document.getElementById('pref-dark').checked = prefs.darkMode || false;
+    document.getElementById('pref-notif').checked = prefs.notifications || false;
+    document.getElementById('pref-user').value = prefs.username || '';
+    updateDebug();
+  }
+
+  // 2. Save
+  function savePrefs() {
+    const prefs = {
+      darkMode: document.getElementById('pref-dark').checked,
+      notifications: document.getElementById('pref-notif').checked,
+      username: document.getElementById('pref-user').value
+    };
+    store.set('user_preferences', prefs);
+    updateDebug();
+    
+    // Simulate Theme Change
+    document.body.style.background = prefs.darkMode ? '#831843' : '#fdf2f8'; // very rough demo
+    if(prefs.darkMode) alert('Saved! Background changed to simulate dark mode.');
+  }
+
+  // 3. Clear
+  function clearPrefs() {
+    store.remove('user_preferences');
+    loadPrefs();
+  }
+
+  function updateDebug() {
+    document.getElementById('debug').innerText = JSON.stringify(store.get('user_preferences'), null, 2);
+  }
+
+  // Init
+  if (!store.enabled) {
+      alert('Local storage is not supported by your browser.');
+  } else {
+      loadPrefs();
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/js_template_store.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

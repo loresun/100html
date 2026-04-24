@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>颜色转换器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans" x-data="colorApp()" x-init="init()">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-800">🎨 颜色转换器</h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Color Preview -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 mb-8">
+            <div class="flex items-center gap-8">
+                <div 
+                    class="w-48 h-48 rounded-2xl shadow-xl border-4 border-white ring-2 ring-slate-200 transition-all"
+                    :style="'background-color: ' + currentColor"
+                ></div>
+                <div class="flex-1">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-4">当前颜色</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <input 
+                                type="color" 
+                                x-model="currentColor"
+                                @input="updateFromHex()"
+                                class="w-16 h-16 rounded-lg border-2 border-slate-200 cursor-pointer"
+                            />
+                            <div class="flex-1">
+                                <div class="text-sm text-slate-500">选择颜色</div>
+                                <div class="text-lg font-mono font-bold" x-text="currentColor"></div>
+                            </div>
+                        </div>
+                        <button @click="randomColor()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-shuffle w-4 h-4"></i>
+                            随机颜色
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Format Converters -->
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+            
+            <!-- HEX -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h4 class="font-bold text-slate-800 mb-4">HEX</h4>
+                <div class="flex gap-2">
+                    <input 
+                        type="text" 
+                        x-model="hex"
+                        @input="updateFromHex()"
+                        placeholder="#000000"
+                        class="flex-1 px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
+                    />
+                    <button @click="copyText(hex)" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                        <i class="fa-regular fa-copy w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RGB -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h4 class="font-bold text-slate-800 mb-4">RGB</h4>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-sm text-slate-600">R</span>
+                        <input type="range" x-model.number="rgb.r" @input="updateFromRGB()" min="0" max="255" class="flex-1">
+                        <input type="number" x-model.number="rgb.r" @input="updateFromRGB()" min="0" max="255" class="w-16 px-2 py-1 border border-slate-200 rounded text-sm text-center">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-sm text-slate-600">G</span>
+                        <input type="range" x-model.number="rgb.g" @input="updateFromRGB()" min="0" max="255" class="flex-1">
+                        <input type="number" x-model.number="rgb.g" @input="updateFromRGB()" min="0" max="255" class="w-16 px-2 py-1 border border-slate-200 rounded text-sm text-center">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-sm text-slate-600">B</span>
+                        <input type="range" x-model.number="rgb.b" @input="updateFromRGB()" min="0" max="255" class="flex-1">
+                        <input type="number" x-model.number="rgb.b" @input="updateFromRGB()" min="0" max="255" class="w-16 px-2 py-1 border border-slate-200 rounded text-sm text-center">
+                    </div>
+                    <button @click="copyText(rgbString)" class="w-full mt-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm transition-colors font-mono">
+                        <span x-text="rgbString"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- HSL -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h4 class="font-bold text-slate-800 mb-4">HSL</h4>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-sm text-slate-600">H</span>
+                        <input type="range" x-model.number="hsl.h" @input="updateFromHSL()" min="0" max="360" class="flex-1">
+                        <input type="number" x-model.number="hsl.h" @input="updateFromHSL()" min="0" max="360" class="w-16 px-2 py-1 border border-slate-200 rounded text-sm text-center">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-sm text-slate-600">S</span>
+                        <input type="range" x-model.number="hsl.s" @input="updateFromHSL()" min="0" max="100" class="flex-1">
+                        <input type="number" x-model.number="hsl.s" @input="updateFromHSL()" min="0" max="100" class="w-16 px-2 py-1 border border-slate-200 rounded text-sm text-center">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-sm text-slate-600">L</span>
+                        <input type="range" x-model.number="hsl.l" @input="updateFromHSL()" min="0" max="100" class="flex-1">
+                        <input type="number" x-model.number="hsl.l" @input="updateFromHSL()" min="0" max="100" class="w-16 px-2 py-1 border border-slate-200 rounded text-sm text-center">
+                    </div>
+                    <button @click="copyText(hslString)" class="w-full mt-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm transition-colors font-mono">
+                        <span x-text="hslString"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RGBA -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h4 class="font-bold text-slate-800 mb-4">RGBA (带透明度)</h4>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-sm text-slate-600">A</span>
+                        <input type="range" x-model.number="alpha" min="0" max="100" class="flex-1">
+                        <input type="number" x-model.number="alpha" min="0" max="100" class="w-16 px-2 py-1 border border-slate-200 rounded text-sm text-center">
+                    </div>
+                    <button @click="copyText(rgbaString)" class="w-full mt-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm transition-colors font-mono">
+                        <span x-text="rgbaString"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Shades -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h4 class="font-bold text-slate-800 mb-4">色阶变化</h4>
+            <div class="grid grid-cols-5 gap-2">
+                <template x-for="shade in shades" :key="shade">
+                    <div 
+                        @click="currentColor = shade; updateFromHex()"
+                        class="aspect-square rounded-lg cursor-pointer hover:scale-105 transition-transform border-2 border-white shadow-md"
+                        :style="'background-color: ' + shade"
+                        :title="shade"
+                    ></div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function colorApp() {
+            return {
+                currentColor: '#3b82f6',
+                hex: '#3b82f6',
+                rgb: { r: 59, g: 130, b: 246 },
+                hsl: { h: 217, s: 91, l: 60 },
+                alpha: 100,
+
+                init() {
+                    this.updateFromHex();
+
+                },
+
+                updateFromHex() {
+                    this.currentColor = this.hex;
+                    const rgb = this.hexToRgb(this.hex);
+                    if (rgb) {
+                        this.rgb = rgb;
+                        this.hsl = this.rgbToHsl(rgb.r, rgb.g, rgb.b);
+                    }
+                },
+
+                updateFromRGB() {
+                    this.hex = this.rgbToHex(this.rgb.r, this.rgb.g, this.rgb.b);
+                    this.currentColor = this.hex;
+                    this.hsl = this.rgbToHsl(this.rgb.r, this.rgb.g, this.rgb.b);
+                },
+
+                updateFromHSL() {
+                    const rgb = this.hslToRgb(this.hsl.h, this.hsl.s, this.hsl.l);
+                    this.rgb = rgb;
+                    this.hex = this.rgbToHex(rgb.r, rgb.g, rgb.b);
+                    this.currentColor = this.hex;
+                },
+
+                hexToRgb(hex) {
+                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                    return result ? {
+                        r: parseInt(result[1], 16),
+                        g: parseInt(result[2], 16),
+                        b: parseInt(result[3], 16)
+                    } : null;
+                },
+
+                rgbToHex(r, g, b) {
+                    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                },
+
+                rgbToHsl(r, g, b) {
+                    r /= 255; g /= 255; b /= 255;
+                    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                    let h, s, l = (max + min) / 2;
+
+                    if (max === min) {
+                        h = s = 0;
+                    } else {
+                        const d = max - min;
+                        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                        switch (max) {
+                            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                            case g: h = ((b - r) / d + 2) / 6; break;
+                            case b: h = ((r - g) / d + 4) / 6; break;
+                        }
+                    }
+
+                    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+                },
+
+                hslToRgb(h, s, l) {
+                    h /= 360; s /= 100; l /= 100;
+                    let r, g, b;
+
+                    if (s === 0) {
+                        r = g = b = l;
+                    } else {
+                        const hue2rgb = (p, q, t) => {
+                            if (t < 0) t += 1;
+                            if (t > 1) t -= 1;
+                            if (t < 1/6) return p + (q - p) * 6 * t;
+                            if (t < 1/2) return q;
+                            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                            return p;
+                        };
+
+                        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                        const p = 2 * l - q;
+                        r = hue2rgb(p, q, h + 1/3);
+                        g = hue2rgb(p, q, h);
+                        b = hue2rgb(p, q, h - 1/3);
+                    }
+
+                    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+                },
+
+                randomColor() {
+                    this.hex = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+                    this.updateFromHex();
+                },
+
+                copyText(text) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('已复制: ' + text);
+                    });
+                },
+
+                get rgbString() {
+                    return `rgb(${this.rgb.r}, ${this.rgb.g}, ${this.rgb.b})`;
+                },
+
+                get rgbaString() {
+                    return `rgba(${this.rgb.r}, ${this.rgb.g}, ${this.rgb.b}, ${(this.alpha / 100).toFixed(2)})`;
+                },
+
+                get hslString() {
+                    return `hsl(${this.hsl.h}, ${this.hsl.s}%, ${this.hsl.l}%)`;
+                },
+
+                get shades() {
+                    const shades = [];
+                    for (let i = 0; i <= 100; i += 10) {
+                        const rgb = this.hslToRgb(this.hsl.h, this.hsl.s, i);
+                        shades.push(this.rgbToHex(rgb.r, rgb.g, rgb.b));
+                    }
+                    return shades;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_color_converter.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

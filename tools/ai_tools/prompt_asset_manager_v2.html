@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt 资产管理器</title>
+    <meta name="description" content="管理和测试你的 Prompt 资产库，支持版本控制、评审备注和 AI 对话测试">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+        }
+
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+            min-height: 100vh;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -8px rgba(99, 102, 241, 0.15);
+            border-color: #c7d2fe;
+        }
+
+        .modal-overlay {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .tab-active {
+            color: #6366f1;
+            border-bottom: 2px solid #6366f1;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.2s ease;
+        }
+
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+
+        .prose-content {
+            white-space: pre-wrap;
+            font-family: ui-monospace, monospace;
+            line-height: 1.6;
+        }
+
+        /* 版本卡片悬停预览样式 */
+        .version-card {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .version-card .version-preview {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+            background: white;
+            border-radius: 8px;
+            margin-top: 0;
+            padding: 0 12px;
+        }
+
+        .version-card:hover .version-preview,
+        .version-card.expanded .version-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 12px;
+            margin-top: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .version-card .expand-hint {
+            transition: opacity 0.2s ease;
+        }
+
+        .version-card:hover .expand-hint,
+        .version-card.expanded .expand-hint {
+            opacity: 0;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app">
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-indigo-100 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 py-4">
+                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-lg text-slate-900">Prompt 资产库</h1>
+                            <p class="text-xs text-slate-500">管理 · 版本控制 · AI 测试</p>
+                        </div>
+                    </div>
+                    <!-- 搜索和操作按钮 -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="relative">
+                            <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input v-model="filters.keyword" type="text" placeholder="搜索 Prompt..."
+                                class="pl-9 pr-4 py-2 w-56 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:border-indigo-300" />
+                        </div>
+                        <select v-model="filters.category"
+                            class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="all">全部分类</option>
+                            <option v-for="cat in categoryOptions" :key="cat" :value="cat">{{ cat }}</option>
+                        </select>
+                        <select v-model="filters.status"
+                            class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="all">全部状态</option>
+                            <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+                        </select>
+                        <button @click="filters.starred = filters.starred === 'starred' ? 'all' : 'starred'"
+                            :class="filters.starred === 'starred' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200'"
+                            class="px-3 py-2 rounded-xl border text-sm font-medium flex items-center gap-1.5 hover:border-amber-300 transition">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                            星标
+                        </button>
+                        <div class="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
+                        <input ref="importInput" type="file" accept=".csv" class="hidden" @change="handleImport" />
+                        <button @click="triggerImport"
+                            class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-600 hover:border-indigo-300 transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            导入
+                        </button>
+                        <button @click="exportCsv(false)"
+                            class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-600 hover:border-indigo-300 transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            导出
+                        </button>
+                        <button @click="exportCsv(true)"
+                            class="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-600 hover:border-indigo-300 transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                            备份
+                        </button>
+                        <button @click="openCreateModal"
+                            class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                            新建
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区：卡片网格 -->
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <!-- 统计信息 -->
+            <div class="flex items-center justify-between mb-6">
+                <p class="text-sm text-slate-500">共 <span class="font-semibold text-indigo-600">{{ filteredAssets.length
+                        }}</span> 个 Prompt</p>
+                <select v-model="filters.sort"
+                    class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <option value="update-desc">最近更新</option>
+                    <option value="status-asc">状态升序</option>
+                    <option value="status-desc">状态降序</option>
+                </select>
+            </div>
+
+            <!-- 空状态 -->
+            <div v-if="filteredAssets.length === 0" class="text-center py-20">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-indigo-50 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-700 mb-2">暂无 Prompt 资产</h3>
+                <p class="text-sm text-slate-500 mb-4">点击右上角「新建」创建你的第一个 Prompt</p>
+            </div>
+
+            <!-- 卡片网格 -->
+            <div v-else class="card-grid">
+                <div v-for="asset in filteredAssets" :key="asset.id" @click="openDetailModal(asset.id)"
+                    class="card p-5 cursor-pointer group">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full"
+                                    :class="statusBadgeClass(asset.status)">{{ statusLabel(asset.status) }}</span>
+                                <span v-if="asset.category"
+                                    class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">{{
+                                    asset.category }}</span>
+                            </div>
+                            <h3 class="font-semibold text-slate-800 group-hover:text-indigo-600 transition truncate">{{
+                                asset.title }}</h3>
+                            <p class="text-sm text-slate-500 mt-1.5 line-clamp-2">{{ asset.description || '暂无描述' }}</p>
+                        </div> <button @click.stop="toggleStar(asset.id)"
+                            class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition"
+                            :class="asset.starred ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'">
+                            <svg class="w-5 h-5" :fill="asset.starred ? 'currentColor' : 'none'" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg> </button>
+                    </div>
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100"> <span
+                            class="text-xs text-slate-400">{{ formatTime(asset.updatedAt) }}</span>
+                        <div class="flex items-center gap-2">
+                            <span v-if="asset.versions?.length" class="text-xs text-slate-400 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {{ asset.versions.length }} 版本
+                            </span>
+                            <button @click.stop="copyContent(asset.content)"
+                                class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">复制</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 详情弹窗 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <div v-if="detailModal.isOpen"
+                    class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay"
+                    @click.self="closeDetailModal">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl modal-content">
+                        <!-- 弹窗头部 -->
+                        <div class="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 rounded-t-2xl z-10">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0 pr-4">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-xs font-medium px-2 py-0.5 rounded-full"
+                                            :class="statusBadgeClass(currentAsset?.status)">{{
+                                            statusLabel(currentAsset?.status) }}</span>
+                                        <span v-if="currentAsset?.category"
+                                            class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">{{
+                                            currentAsset?.category }}</span>
+                                    </div>
+                                    <h2 v-if="detailModal.tab !== 'edit'" class="text-xl font-bold text-slate-800">{{
+                                        currentAsset?.title }}</h2>
+                                    <input v-else v-model="editForm.title"
+                                        class="text-xl font-bold text-slate-800 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button @click="toggleStar(currentAsset?.id)"
+                                        class="w-9 h-9 rounded-full flex items-center justify-center transition"
+                                        :class="currentAsset?.starred ? 'text-amber-500 bg-amber-50' : 'text-slate-400 hover:text-amber-400 hover:bg-amber-50'">
+                                        <svg class="w-5 h-5" :fill="currentAsset?.starred ? 'currentColor' : 'none'"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                        </svg>
+                                    </button>
+                                    <button @click="closeDetailModal"
+                                        class="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Tab 切换 -->
+                            <div class="flex gap-6 mt-4 border-b border-slate-100 -mb-4 -mx-6 px-6">
+                                <button @click="detailModal.tab = 'preview'" class="pb-3 text-sm font-medium transition"
+                                    :class="detailModal.tab === 'preview' ? 'tab-active' : 'text-slate-500 hover:text-slate-700'">预览</button>
+                                <button @click="switchToEdit" class="pb-3 text-sm font-medium transition"
+                                    :class="detailModal.tab === 'edit' ? 'tab-active' : 'text-slate-500 hover:text-slate-700'">编辑</button>
+                                <button @click="detailModal.tab = 'versions'"
+                                    class="pb-3 text-sm font-medium transition"
+                                    :class="detailModal.tab === 'versions' ? 'tab-active' : 'text-slate-500 hover:text-slate-700'">
+                                    历史版本 <span class="ml-1 text-xs bg-slate-100 px-1.5 py-0.5 rounded-full">{{
+                                        currentAsset?.versions?.length || 0 }}</span>
+                                </button>
+                                <button @click="detailModal.tab = 'reviews'" class="pb-3 text-sm font-medium transition"
+                                    :class="detailModal.tab === 'reviews' ? 'tab-active' : 'text-slate-500 hover:text-slate-700'">
+                                    评审备注 <span class="ml-1 text-xs bg-slate-100 px-1.5 py-0.5 rounded-full">{{
+                                        currentAsset?.reviewNotes?.length || 0 }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tab 内容区 -->
+                        <div class="p-6 max-h-[60vh] overflow-y-auto scrollbar-thin">
+                            <!-- 预览 Tab -->
+                            <div v-if="detailModal.tab === 'preview'">
+                                <p v-if="currentAsset?.description" class="text-sm text-slate-600 mb-4">{{
+                                    currentAsset.description }}</p>
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                    <pre class="prose-content text-sm text-slate-700">{{ currentAsset?.content }}</pre>
+                                </div>
+                                <div class="flex items-center gap-2 mt-4">
+                                    <span class="text-xs text-slate-400">创建：{{ formatTime(currentAsset?.createdAt)
+                                        }}</span>
+                                    <span class="text-slate-300">·</span>
+                                    <span class="text-xs text-slate-400">更新：{{ formatTime(currentAsset?.updatedAt)
+                                        }}</span>
+                                </div>
+                            </div>
+
+                            <!-- 编辑 Tab -->
+                            <div v-if="detailModal.tab === 'edit'" class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-600 mb-1 block">状态</label>
+                                        <select v-model="editForm.status"
+                                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                            <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{
+                                                s.label }}</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-600 mb-1 block">分类</label>
+                                        <input v-model="editForm.category"
+                                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                            placeholder="例如：营销、产品" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600 mb-1 block">描述</label>
+                                    <textarea v-model="editForm.description" rows="2"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        placeholder="该 Prompt 的用途、适用场景"></textarea>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600 mb-1 block">Prompt 内容</label>
+                                    <textarea v-model="editForm.content" rows="10"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        placeholder="输入 Prompt 模板内容..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- 历史版本 Tab -->
+                            <div v-if="detailModal.tab === 'versions'">
+                                <div v-if="!currentAsset?.versions?.length" class="text-center py-10 text-slate-400">
+                                    <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p>还没有历史版本，编辑保存后会自动生成</p>
+                                </div>
+                                <div v-else class="space-y-3">
+                                    <div v-for="ver in currentAsset.versions" :key="ver.id"
+                                        class="version-card bg-slate-50 border border-slate-200 rounded-xl p-4 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-xs text-slate-400">{{ formatTime(ver.updatedAt) }}
+                                                    </p>
+                                                    <span class="text-xs font-medium px-1.5 py-0.5 rounded"
+                                                        :class="statusBadgeClass(ver.status)">{{ statusLabel(ver.status)
+                                                        }}</span>
+                                                </div>
+                                                <p class="font-semibold text-slate-800 mt-1">{{ ver.title }}</p>
+                                                <p class="text-xs text-slate-500 mt-1">{{ ver.description || '无描述' }}
+                                                </p>
+                                                <p
+                                                    class="expand-hint text-xs text-indigo-500 mt-2 flex items-center gap-1">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg> 鼠标悬停查看内容 </p>
+                                            </div>
+                                            <div class="flex flex-col gap-2"> <button
+                                                    @click.stop="rollbackVersion(ver.id)"
+                                                    class="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">回滚</button>
+                                                <button @click.stop="copyContent(ver.content)"
+                                                    class="text-xs font-medium text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition">复制</button>
+                                                <button @click.stop="deleteVersion(ver.id)"
+                                                    class="text-xs font-medium text-rose-500 hover:text-rose-600 px-3 py-1.5 rounded-lg hover:bg-rose-50 transition">删除</button>
+                                            </div>
+                                        </div> <!-- 悬停展开的内容预览 -->
+                                        <div class="version-preview">
+                                            <p
+                                                class="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg> Prompt 内容 </p>
+                                            <pre
+                                                class="text-xs text-slate-700 whitespace-pre-wrap font-mono leading-relaxed">{{ ver.content }}</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div> <!-- 评审备注 Tab -->
+                            <div v-if="detailModal.tab === 'reviews'">
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3"> <input
+                                            v-model="reviewNote.reviewer"
+                                            class="sm:col-span-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                            placeholder="评审人" /> <textarea v-model="reviewNote.content" rows="2"
+                                            class="sm:col-span-2 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                            placeholder="写下评审意见或备注..."></textarea> <button @click="addReviewNote"
+                                            :disabled="!reviewNote.reviewer || !reviewNote.content"
+                                            class="sm:col-span-1 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 transition disabled:opacity-50 disabled:cursor-not-allowed">添加备注</button>
+                                    </div>
+                                </div>
+                                <div v-if="!currentAsset?.reviewNotes?.length" class="text-center py-10 text-slate-400">
+                                    <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                    <p>还没有评审记录</p>
+                                </div>
+                                <div v-else class="space-y-3">
+                                    <div v-for="note in currentAsset.reviewNotes" :key="note.id"
+                                        class="border border-slate-200 rounded-xl p-4">
+                                        <div class="flex items-center justify-between">
+                                            <p class="font-semibold text-slate-700">{{ note.reviewer }}</p>
+                                            <span class="text-xs text-slate-400">{{ formatTime(note.createdAt) }}</span>
+                                        </div>
+                                        <p class="text-sm text-slate-600 mt-2 whitespace-pre-line">{{ note.content }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 弹窗底部操作栏 -->
+                        <div
+                            class="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 rounded-b-2xl flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <button @click="copyContent(currentAsset?.content)"
+                                    class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                    复制
+                                </button>
+                                <button @click="openAiChat"
+                                    class="px-4 py-2 rounded-lg text-sm font-medium border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                    AI 对话测试
+                                </button>
+                                <button v-if="!detailModal.isCreating" @click="confirmDelete"
+                                    class="px-4 py-2 rounded-lg text-sm font-medium border border-rose-200 text-rose-600 hover:bg-rose-50 transition">删除</button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button v-if="detailModal.tab === 'edit'" @click="saveAsNew"
+                                    class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:border-indigo-300 transition">另存为新</button>
+                                <button v-if="detailModal.tab === 'edit'" @click="saveAsset"
+                                    :disabled="!editForm.title || !editForm.content"
+                                    class="px-5 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {{ detailModal.isCreating ? '创建' : '保存更新' }} </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+        </Teleport> <!-- AI 对话弹窗 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <div v-if="aiChat.isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay"
+                    @click.self="closeAiChat">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col" style="height: 80vh;">
+                        <!-- 头部 -->
+                        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"> <svg
+                                        class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg> AI 对话测试 </h3>
+                                <p class="text-xs text-slate-500 mt-0.5">当前 Prompt：{{ currentAsset?.title }}</p>
+                            </div>
+                            <div class="flex items-center gap-2"> <select v-model="aiChat.model"
+                                    class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                                </select> <button @click="closeAiChat"
+                                    class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg> </button> </div>
+                        </div> <!-- 对话区 -->
+                        <div class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin" ref="chatContainer">
+                            <div v-if="aiChat.messages.length === 0" class="text-center py-10 text-slate-400"> <svg
+                                    class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                <p class="text-sm">发送消息开始测试当前 Prompt</p>
+                                <p class="text-xs mt-1">Prompt 将作为 System 消息发送给 AI</p>
+                            </div>
+                            <div v-for="(msg, idx) in aiChat.messages" :key="idx"
+                                :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                                <div :class="msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'"
+                                    class="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap"> {{
+                                    msg.content }}
+                                </div>
+                            </div>
+                            <div v-if="aiChat.isLoading" class="flex justify-start">
+                                <div
+                                    class="bg-slate-100 text-slate-600 rounded-2xl px-4 py-2.5 text-sm flex items-center gap-2">
+                                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                        </path>
+                                    </svg>
+                                    思考中...
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 输入区 -->
+                        <div class="border-t border-slate-100 p-4">
+                            <div v-if="aiChat.error" class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-3">
+                                {{ aiChat.error }}</div>
+                            <div class="flex gap-2">
+                                <textarea v-model="aiChat.input" @keydown.enter.ctrl="sendMessage" rows="2"
+                                    class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    placeholder="输入消息... (Ctrl+Enter 发送)"></textarea>
+                                <button @click="sendMessage" :disabled="!aiChat.input.trim() || aiChat.isLoading"
+                                    class="px-4 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                    </svg>
+                                    发送
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-between mt-3">
+                                <p class="text-xs text-slate-400">Ctrl+Enter 发送 · API Key 从 localStorage 读取</p>
+                                <button @click="clearChat"
+                                    class="text-xs text-slate-500 hover:text-slate-700">清空对话</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+        </Teleport>
+
+        <!-- Toast 提示 -->
+        <Teleport to="body">
+            <transition name="fade">
+                <div v-if="toast.show"
+                    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium"
+                    :class="toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-rose-600 text-white'">
+                    {{ toast.message }}
+                </div>
+            </transition>
+        </Teleport>
+    </div>
+
+    <script>
+        // Fallback for generateUUID() in non-secure contexts
+        function generateUUID() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return {
+                    assets: [],
+                    filters: { keyword: '', category: 'all', status: 'all', starred: 'all', sort: 'update-desc' },
+                    statusOptions: [
+                        { value: 'draft', label: '草稿', badge: 'bg-slate-100 text-slate-600' },
+                        { value: 'review', label: '评审中', badge: 'bg-amber-100 text-amber-700' },
+                        { value: 'published', label: '已发布', badge: 'bg-green-100 text-green-700' },
+                        { value: 'deprecated', label: '弃用', badge: 'bg-rose-100 text-rose-600' },
+                    ],
+                    detailModal: { isOpen: false, assetId: null, tab: 'preview', isCreating: false },
+                    editForm: { title: '', description: '', content: '', status: 'draft', category: '', starred: false },
+                    reviewNote: { reviewer: '', content: '' },
+                    aiChat: { isOpen: false, model: 'deepseek-v4-flash', messages: [], input: '', isLoading: false, error: '' },
+                    toast: { show: false, message: '', type: 'success' }
+                };
+            },
+            computed: {
+                categoryOptions() {
+                    return [...new Set(this.assets.map(a => a.category).filter(c => c && c.trim()))];
+                },
+                filteredAssets() {
+                    let list = [...this.assets];
+                    if (this.filters.status !== 'all') list = list.filter(a => a.status === this.filters.status);
+                    if (this.filters.category !== 'all') list = list.filter(a => a.category === this.filters.category);
+                    if (this.filters.starred === 'starred') list = list.filter(a => a.starred);
+                    if (this.filters.keyword.trim()) {
+                        const kw = this.filters.keyword.toLowerCase();
+                        list = list.filter(a => [a.title, a.description, a.content, a.category].filter(Boolean).some(v => v.toLowerCase().includes(kw)));
+                    }
+                    const orderMap = { draft: 0, review: 1, published: 2, deprecated: 3 };
+                    list.sort((a, b) => {
+                        if (this.filters.sort === 'update-desc') return b.updatedAt - a.updatedAt;
+                        const diff = (orderMap[a.status] ?? 0) - (orderMap[b.status] ?? 0);
+                        return this.filters.sort === 'status-asc' ? diff || b.updatedAt - a.updatedAt : -diff || b.updatedAt - a.updatedAt;
+                    });
+                    return list;
+                },
+                currentAsset() { return this.assets.find(a => a.id === this.detailModal.assetId) || null; }
+            },
+            mounted() { this.loadAssets(); },
+            methods: {
+                // 工具方法
+                statusLabel(v) { return this.statusOptions.find(o => o.value === v)?.label || v || '-'; },
+                statusBadgeClass(v) { return this.statusOptions.find(o => o.value === v)?.badge || 'bg-slate-100 text-slate-600'; },
+                formatTime(ts) {
+                    if (!ts) return '-';
+                    return new Date(ts).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                },
+                showToast(msg, type = 'success') {
+                    this.toast = { show: true, message: msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2000);
+                },
+                copyContent(content) {
+                    if (!content) return;
+                    navigator.clipboard?.writeText(content).then(() => this.showToast('已复制到剪贴板'));
+                },
+                // 数据持久化
+                loadAssets() {
+                    const saved = localStorage.getItem('prompt_asset_manager_assets');
+                    if (saved) {
+                        this.assets = JSON.parse(saved).map(a => ({
+                            ...a, category: a.category || '', starred: Boolean(a.starred),
+                            versions: a.versions || [], reviewNotes: a.reviewNotes || [], aiResults: a.aiResults || []
+                        }));
+                    } else {
+                        const now = Date.now();
+                        this.assets = [
+                            { id: generateUUID(), title: '新品发布脚本 Prompt', description: '用于新品发布会的结构化脚本模板', content: '请根据产品信息生成发布会脚本，包含开场、核心亮点、用户案例、收尾 CTA。', status: 'draft', category: '营销', starred: true, createdAt: now, updatedAt: now, versions: [], reviewNotes: [], aiResults: [] },
+                            { id: generateUUID(), title: '客服投诉安抚 Prompt', description: '适用于处理情绪激动的客户投诉场景', content: '你是一名资深客服，请根据客户投诉内容给出同理心回复，并提供明确解决步骤与时间预期。', status: 'review', category: '客服', starred: false, createdAt: now, updatedAt: now, versions: [], reviewNotes: [], aiResults: [] },
+                            { id: generateUUID(), title: '产品竞品分析 Prompt', description: '用于快速生成竞品对比分析框架', content: '请基于输入的竞品信息，输出功能、价格、差异化与机会点的分析结构。', status: 'published', category: '产品', starred: true, createdAt: now, updatedAt: now, versions: [], reviewNotes: [], aiResults: [] },
+                        ];
+                        this.persist();
+                    }
+                },
+                persist() { localStorage.setItem('prompt_asset_manager_assets', JSON.stringify(this.assets)); },
+                // 星标
+                toggleStar(id) {
+                    const asset = this.assets.find(a => a.id === id);
+                    if (asset) { asset.starred = !asset.starred; asset.updatedAt = Date.now(); this.persist(); }
+                },
+                // 弹窗操作
+                openDetailModal(id) {
+                    const asset = this.assets.find(a => a.id === id);
+                    if (!asset) return;
+                    this.detailModal = { isOpen: true, assetId: id, tab: 'preview', isCreating: false };
+                    this.syncEditForm(asset);
+                },
+                openCreateModal() {
+                    this.detailModal = { isOpen: true, assetId: null, tab: 'edit', isCreating: true };
+                    this.editForm = { title: '', description: '', content: '', status: 'draft', category: '', starred: false };
+                },
+                closeDetailModal() { this.detailModal.isOpen = false; this.detailModal.assetId = null; },
+                switchToEdit() {
+                    this.detailModal.tab = 'edit';
+                    if (this.currentAsset) this.syncEditForm(this.currentAsset);
+                },
+                syncEditForm(asset) {
+                    this.editForm = { title: asset.title, description: asset.description, content: asset.content, status: asset.status, category: asset.category || '', starred: asset.starred };
+                },
+                // 保存
+                saveAsset() {
+                    if (this.detailModal.isCreating) {
+                        const now = Date.now();
+                        const newAsset = { id: generateUUID(), ...this.editForm, createdAt: now, updatedAt: now, versions: [], reviewNotes: [], aiResults: [] };
+                        this.assets.unshift(newAsset);
+                        this.detailModal.assetId = newAsset.id;
+                        this.detailModal.isCreating = false;
+                        this.showToast('创建成功');
+                    } else {
+                        const asset = this.currentAsset;
+                        if (!asset) return;
+                        asset.versions.unshift({ id: generateUUID(), title: asset.title, description: asset.description, content: asset.content, status: asset.status, category: asset.category, starred: asset.starred, updatedAt: asset.updatedAt });
+                        Object.assign(asset, this.editForm, { updatedAt: Date.now() });
+                        this.showToast('保存成功');
+                    }
+                    this.persist();
+                },
+                saveAsNew() {
+                    const now = Date.now();
+                    const newAsset = { id: generateUUID(), ...this.editForm, title: this.editForm.title + ' - 副本', createdAt: now, updatedAt: now, versions: [], reviewNotes: [], aiResults: [] };
+                    this.assets.unshift(newAsset);
+                    this.detailModal.assetId = newAsset.id;
+                    this.persist();
+                    this.showToast('另存成功');
+                },
+                confirmDelete() {
+                    if (!confirm('确定删除该 Prompt 资产？')) return;
+                    this.assets = this.assets.filter(a => a.id !== this.detailModal.assetId);
+                    this.persist();
+                    this.closeDetailModal();
+                    this.showToast('已删除');
+                },
+                // 版本回滚 - 将选中的历史版本更新时间为最新，成为当前版本（不创建副本）
+                rollbackVersion(verId) {
+                    const asset = this.currentAsset;
+                    const verIndex = asset?.versions?.findIndex(v => v.id === verId);
+                    if (!asset || verIndex === -1 || verIndex === undefined) return;
+                    const ver = asset.versions[verIndex];
+                    // 先将当前内容保存为历史版本（插入到版本列表中该位置之后）
+                    const currentSnapshot = {
+                        id: generateUUID(),
+                        title: asset.title,
+                        description: asset.description,
+                        content: asset.content,
+                        status: asset.status,
+                        category: asset.category,
+                        starred: asset.starred,
+                        updatedAt: asset.updatedAt
+                    };
+                    // 用选中的版本内容更新当前资产
+                    Object.assign(asset, {
+                        title: ver.title,
+                        description: ver.description,
+                        content: ver.content,
+                        status: ver.status,
+                        category: ver.category || '',
+                        starred: ver.starred,
+                        updatedAt: Date.now()
+                    });
+                    // 从版本列表中移除选中的版本，并将原当前版本插入其位置
+                    asset.versions.splice(verIndex, 1, currentSnapshot);
+                    this.syncEditForm(asset);
+                    this.persist();
+                    this.showToast('已回滚');
+                },
+                // 删除历史版本
+                deleteVersion(verId) {
+                    const asset = this.currentAsset;
+                    if (!asset) return;
+                    const verIndex = asset.versions.findIndex(v => v.id === verId);
+                    if (verIndex === -1) return;
+                    if (!confirm('确定删除该历史版本？此操作不可恢复。')) return;
+                    asset.versions.splice(verIndex, 1);
+                    this.persist();
+                    this.showToast('版本已删除');
+                },
+                // 评审备注
+                addReviewNote() {
+                    if (!this.currentAsset || !this.reviewNote.reviewer || !this.reviewNote.content) return;
+                    this.currentAsset.reviewNotes.unshift({ id: generateUUID(), reviewer: this.reviewNote.reviewer, content: this.reviewNote.content, createdAt: Date.now() });
+                    this.reviewNote = { reviewer: '', content: '' };
+                    this.persist();
+                    this.showToast('备注已添加');
+                },
+                // AI 对话
+                openAiChat() { this.aiChat = { isOpen: true, model: 'deepseek-v4-flash', messages: [], input: '', isLoading: false, error: '' }; },
+                closeAiChat() { this.aiChat.isOpen = false; },
+                clearChat() { this.aiChat.messages = []; },
+                async sendMessage() {
+                    if (!this.aiChat.input.trim() || this.aiChat.isLoading) return;
+                    const apiKey = localStorage.getItem('deepseek_api_key') || localStorage.getItem('apiKey') || localStorage.getItem('deepseek');
+                    if (!apiKey) { this.aiChat.error = '请先在 LLM 注册中心配置 DeepSeek API Key'; return; }
+                    const userMsg = this.aiChat.input.trim();
+                    this.aiChat.input = '';
+                    this.aiChat.messages.push({ role: 'user', content: userMsg });
+                    this.aiChat.isLoading = true;
+                    this.aiChat.error = '';
+                    try {
+                        const messages = [{ role: 'system', content: this.currentAsset?.content || '你是一个智能助手' }, ...this.aiChat.messages];
+                        const res = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+                            body: JSON.stringify({ model: this.aiChat.model, messages, temperature: 0.7 })
+                        });
+                        if (!res.ok) throw new Error(`请求失败: ${res.status}`);
+                        const data = await res.json();
+                        const reply = data.choices?.[0]?.message?.content?.trim() || '无响应';
+                        this.aiChat.messages.push({ role: 'assistant', content: reply });
+                        this.$nextTick(() => { if (this.$refs.chatContainer) this.$refs.chatContainer.scrollTop = this.$refs.chatContainer.scrollHeight; });
+                    } catch (e) { this.aiChat.error = e.message; }
+                    finally { this.aiChat.isLoading = false; }
+                },
+                // 导入导出
+                triggerImport() { this.$refs.importInput.value = ''; this.$refs.importInput.click(); },
+                handleImport(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const rows = this.parseCsv(ev.target.result);
+                        if (rows.length <= 1) return;
+                        const headers = rows[0].map(h => h.trim());
+                        const imported = rows.slice(1).map(row => {
+                            const data = {}; headers.forEach((h, i) => { data[h] = row[i] ?? ''; });
+                            return this.normalizeAsset(data);
+                        }).filter(a => a.content || a.title);
+                        if (!imported.length) return;
+                        const replace = this.assets.length > 0 ? confirm('是否覆盖现有数据？确定=覆盖，取消=合并') : true;
+                        if (replace) this.assets = imported;
+                        else {
+                            const ids = new Set(this.assets.map(a => a.id));
+                            imported.forEach(a => { if (ids.has(a.id)) a.id = generateUUID(); });
+                            this.assets = [...imported, ...this.assets];
+                        }
+                        this.persist();
+                        this.showToast('导入成功');
+                    };
+                    reader.readAsText(file);
+                },
+                parseCsv(text) {
+                    const rows = []; let cur = '', row = [], inQ = false;
+                    for (let i = 0; i < text.length; i++) {
+                        const c = text[i], n = text[i + 1];
+                        if (c === '"') { if (inQ && n === '"') { cur += '"'; i++; } else inQ = !inQ; }
+                        else if (c === ',' && !inQ) { row.push(cur); cur = ''; }
+                        else if ((c === '\n' || c === '\r') && !inQ) { if (c === '\r' && n === '\n') i++; row.push(cur); if (row.length > 1 || row[0]) rows.push(row); row = []; cur = ''; }
+                        else cur += c;
+                    }
+                    row.push(cur); if (row.length > 1 || row[0]) rows.push(row);
+                    return rows;
+                },
+                normalizeAsset(raw) {
+                    const now = Date.now(), pj = (v, d) => { try { return v ? JSON.parse(v) : d; } catch { return d; } };
+                    return { id: raw.id || generateUUID(), title: raw.title || '未命名', description: raw.description || '', content: raw.content || '', status: ['draft', 'review', 'published', 'deprecated'].includes(raw.status) ? raw.status : 'draft', category: raw.category || '', starred: raw.starred === 'true' || raw.starred === true, createdAt: Number(raw.createdAt) || now, updatedAt: Number(raw.updatedAt) || now, versions: pj(raw.versions, []), reviewNotes: pj(raw.reviewNotes, []), aiResults: pj(raw.aiResults, []) };
+                },
+                exportCsv(backup) {
+                    const h = ['id', 'title', 'description', 'content', 'status', 'category', 'starred', 'createdAt', 'updatedAt', 'versions', 'reviewNotes', 'aiResults'];
+                    const esc = v => { const t = v == null ? '' : String(v); return t.includes('"') || t.includes(',') || t.includes('\n') ? `"${t.replace(/"/g, '""')}"` : t; };
+                    const rows = [h.join(','), ...this.assets.map(a => [a.id, a.title, a.description, a.content, a.status, a.category, a.starred, a.createdAt, a.updatedAt, JSON.stringify(a.versions || []), JSON.stringify(a.reviewNotes || []), JSON.stringify(a.aiResults || [])].map(esc).join(','))];
+                    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                    const a = document.createElement('a');
+                    const d = new Date(), st = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+                    a.href = URL.createObjectURL(blob);
+                    a.download = backup ? `prompt_backup_${st}.csv` : 'prompt_export.csv';
+                    a.click();
+                    this.showToast(backup ? '备份成功' : '导出成功');
+                }
+            }
+        }).mount('#app');
+    </script>
+
+    <!-- HELP-WIDGET-START -->
+    <script>
+        (function () {
+            // 确保在 Vue 挂载后延迟加载帮助组件
+            if (window.Vue) {
+                setTimeout(function () {
+                    var script = document.createElement('script');
+                    script.src = '../../help/help-widget-v2.js';
+                    script.setAttribute('data-help-doc', '../../docs/help/ai_tools_prompt_asset_manager_v2.md');
+                    document.head.appendChild(script);
+                }, 100);
+            }
+        })();
+    </script>
+    <!-- HELP-WIDGET-END -->
+</body>
+
+</html>

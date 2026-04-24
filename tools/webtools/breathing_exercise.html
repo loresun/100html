@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4-7-8 呼吸冥想 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .breathing-circle {
+            transition: all 4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .float {
+            animation: float 6s ease-in-out infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 min-h-screen text-white font-sans overflow-hidden" x-data="breathingApp()" x-init="init()">
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative">
+        
+        <!-- Background Stars -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-white rounded-full opacity-60 float"></div>
+            <div class="absolute top-1/3 right-1/3 w-1 h-1 bg-white rounded-full opacity-40" style="animation-delay: 1s"></div>
+            <div class="absolute bottom-1/4 left-1/3 w-1.5 h-1.5 bg-white rounded-full opacity-50 float" style="animation-delay: 2s"></div>
+            <div class="absolute top-2/3 right-1/4 w-1 h-1 bg-white rounded-full opacity-30 float" style="animation-delay: 3s"></div>
+        </div>
+
+        <!-- Back Button -->
+        <a href="./index.html" class="absolute top-4 left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-colors z-10">
+            <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+        </a>
+
+        <!-- Main Content -->
+        <div class="relative z-10 text-center max-w-2xl w-full">
+            
+            <!-- Title -->
+            <h1 class="text-3xl font-bold mb-2 opacity-90">4-7-8 呼吸法</h1>
+            <p class="text-white/60 mb-12 text-sm">缓解焦虑 · 改善睡眠 · 放松身心</p>
+
+            <!-- Breathing Circle -->
+            <div class="relative w-80 h-80 mx-auto mb-12">
+                <!-- Outer Ring -->
+                <div class="absolute inset-0 rounded-full border-2 border-white/20"></div>
+                
+                <!-- Animated Circle -->
+                <div 
+                    class="breathing-circle absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400/40 to-purple-500/40 backdrop-blur-xl shadow-2xl flex items-center justify-center"
+                    :style="circleStyle"
+                >
+                    <div class="text-center">
+                        <div class="text-6xl font-bold mb-2" x-text="countdown">4</div>
+                        <div class="text-xl opacity-80" x-text="phaseText">准备开始</div>
+                    </div>
+                </div>
+
+                <!-- Glow Effect -->
+                <div 
+                    class="breathing-circle absolute inset-0 rounded-full blur-3xl opacity-50"
+                    :style="glowStyle"
+                ></div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-8">
+                <div class="grid grid-cols-3 gap-4 text-sm">
+                    <div class="text-center">
+                        <div class="text-3xl mb-2">🌬️</div>
+                        <div class="font-medium mb-1">吸气</div>
+                        <div class="text-white/60">4 秒</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl mb-2">⏸️</div>
+                        <div class="font-medium mb-1">屏息</div>
+                        <div class="text-white/60">7 秒</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl mb-2">💨</div>
+                        <div class="font-medium mb-1">呼气</div>
+                        <div class="text-white/60">8 秒</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center justify-center gap-4">
+                <button 
+                    @click="toggleBreathing()"
+                    class="w-16 h-16 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                >
+                    <i :class="isRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'" class="w-8 h-8"></i>
+                </button>
+                
+                <button 
+                    @click="reset()"
+                    class="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                >
+                    <i class="fa-solid fa-rotate-left w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="mt-12 flex items-center justify-center gap-8 text-sm">
+                <div class="text-center">
+                    <div class="text-2xl font-bold" x-text="completedCycles">0</div>
+                    <div class="text-white/60">完成轮次</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold" x-text="totalTime">0</div>
+                    <div class="text-white/60">总时长(分)</div>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="mt-8 text-xs text-white/40 max-w-md mx-auto">
+                💡 建议每天练习 3-4 次，每次 4-8 个呼吸循环
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function breathingApp() {
+            return {
+                isRunning: false,
+                phase: 'ready', // ready, inhale, hold, exhale
+                countdown: 4,
+                completedCycles: 0,
+                totalTime: 0,
+                interval: null,
+                startTime: null,
+
+                init() {
+                    const saved = localStorage.getItem('webtools_breathing');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        this.completedCycles = data.completedCycles || 0;
+                        this.totalTime = data.totalTime || 0;
+                    }
+
+                },
+
+                toggleBreathing() {
+                    if (this.isRunning) {
+                        this.pause();
+                    } else {
+                        this.start();
+                    }
+                },
+
+                start() {
+                    this.isRunning = true;
+                    if (!this.startTime) {
+                        this.startTime = Date.now();
+                    }
+                    
+                    if (this.phase === 'ready') {
+                        this.phase = 'inhale';
+                        this.countdown = 4;
+                    }
+                    
+                    this.runCycle();
+                },
+
+                pause() {
+                    this.isRunning = false;
+                    if (this.interval) {
+                        clearInterval(this.interval);
+                    }
+                    
+                    if (this.startTime) {
+                        const elapsed = Math.floor((Date.now() - this.startTime) / 60000);
+                        this.totalTime += elapsed;
+                        this.startTime = null;
+                        this.saveData();
+                    }
+                },
+
+                reset() {
+                    this.pause();
+                    this.phase = 'ready';
+                    this.countdown = 4;
+
+                },
+
+                runCycle() {
+                    if (this.interval) clearInterval(this.interval);
+                    
+                    this.interval = setInterval(() => {
+                        if (!this.isRunning) return;
+                        
+                        this.countdown--;
+                        
+                        if (this.countdown <= 0) {
+                            this.nextPhase();
+                        }
+                    }, 1000);
+                },
+
+                nextPhase() {
+                    if (this.phase === 'inhale') {
+                        this.phase = 'hold';
+                        this.countdown = 7;
+                    } else if (this.phase === 'hold') {
+                        this.phase = 'exhale';
+                        this.countdown = 8;
+                    } else if (this.phase === 'exhale') {
+                        this.completedCycles++;
+                        this.saveData();
+                        this.phase = 'inhale';
+                        this.countdown = 4;
+                    }
+                },
+
+                saveData() {
+                    localStorage.setItem('webtools_breathing', JSON.stringify({
+                        completedCycles: this.completedCycles,
+                        totalTime: this.totalTime
+                    }));
+                },
+
+                get phaseText() {
+                    const map = {
+                        ready: '准备开始',
+                        inhale: '缓慢吸气',
+                        hold: '屏住呼吸',
+                        exhale: '缓慢呼气'
+                    };
+                    return map[this.phase] || '准备开始';
+                },
+
+                get circleStyle() {
+                    const scales = {
+                        ready: 0.6,
+                        inhale: 1,
+                        hold: 1,
+                        exhale: 0.6
+                    };
+                    const scale = scales[this.phase] || 0.6;
+                    return `transform: scale(${scale})`;
+                },
+
+                get glowStyle() {
+                    const colors = {
+                        ready: 'rgba(139, 92, 246, 0.3)',
+                        inhale: 'rgba(34, 211, 238, 0.5)',
+                        hold: 'rgba(168, 85, 247, 0.5)',
+                        exhale: 'rgba(236, 72, 153, 0.5)'
+                    };
+                    const scales = {
+                        ready: 0.6,
+                        inhale: 1.2,
+                        hold: 1.2,
+                        exhale: 0.6
+                    };
+                    return `background: ${colors[this.phase]}; transform: scale(${scales[this.phase]})`;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_breathing_exercise.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

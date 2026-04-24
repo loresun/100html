@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>饮食日记 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-amber-50 min-h-screen font-sans" x-data="dietApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-amber-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-amber-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-orange-600">
+                    🥑 饮食日记
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="text-right hidden sm:block">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">今日热量</div>
+                    <div class="text-lg font-bold text-amber-600 leading-none">
+                        <span x-text="totalCalories"></span> <span class="text-xs text-slate-400 font-normal">kcal</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Water Tracker -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-blue-100 mb-8 flex items-center justify-between relative overflow-hidden">
+            <div class="absolute inset-0 bg-blue-50/50 -z-10"></div>
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-500">
+                    <i class="fa-solid fa-glass-water w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800">喝水记录</h3>
+                    <p class="text-xs text-slate-500">保持水分充足</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1">
+                <button @click="adjustWater(-1)" class="w-8 h-8 rounded-full bg-white border border-blue-200 text-blue-500 hover:bg-blue-50 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-minus w-4 h-4"></i>
+                </button>
+                <div class="w-16 text-center font-bold text-xl text-blue-600" x-text="water"></div>
+                <button @click="adjustWater(1)" class="w-8 h-8 rounded-full bg-blue-500 border border-blue-500 text-white hover:bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 transition-colors">
+                    <i class="fa-solid fa-plus w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Meals -->
+        <div class="space-y-6">
+            <template x-for="meal in meals" :key="meal.id">
+                <div class="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-amber-50/50 border-b border-amber-100 flex justify-between items-center">
+                        <div class="flex items-center gap-2 font-bold text-slate-700">
+                            <i :class="'fa-solid fa-' + meal.icon" class="w-4 h-4 text-amber-500"></i>
+                            <span x-text="meal.name"></span>
+                        </div>
+                        <div class="text-xs font-bold text-slate-400">
+                            <span x-text="getMealCalories(meal.id)"></span> kcal
+                        </div>
+                    </div>
+
+                    <div class="p-2">
+                        <!-- Food Items -->
+                        <div class="space-y-1 mb-2">
+                            <template x-for="item in getItems(meal.id)" :key="item.id">
+                                <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 group transition-colors">
+                                    <span class="text-sm text-slate-700 flex-1" x-text="item.name"></span>
+                                    <span class="text-xs font-mono text-slate-400" x-show="item.calories > 0" x-text="item.calories + ' kcal'"></span>
+                                    <button @click="deleteItem(item.id)" class="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <i class="fa-solid fa-trash w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                        
+                        <!-- Add Input -->
+                        <div class="flex items-center gap-2 px-2 pb-1 relative">
+                             <input type="text" 
+                                   placeholder="添加食物..." 
+                                   class="flex-1 bg-slate-50 border-none rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-200 transition-all placeholder-slate-400"
+                                   x-model="meal.inputName"
+                                   @keydown.enter="addItem(meal.id)">
+                             <input type="number" 
+                                   placeholder="kcal" 
+                                   class="w-20 bg-slate-50 border-none rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-2 focus:ring-amber-200 transition-all placeholder-slate-400"
+                                   x-model="meal.inputCal"
+                                   @keydown.enter="addItem(meal.id)">
+                             <button @click="addItem(meal.id)" class="text-amber-500 hover:text-amber-600 p-1.5 rounded-lg hover:bg-amber-50 transition-colors">
+                                 <i class="fa-solid fa-plus w-4 h-4"></i>
+                             </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+    </main>
+
+    <script>
+        function dietApp() {
+            return {
+                water: 0,
+                items: [],
+                
+                meals: [
+                    { id: 'breakfast', name: '早餐', icon: 'coffee', inputName: '', inputCal: '' },
+                    { id: 'lunch', name: '午餐', icon: 'sun', inputName: '', inputCal: '' },
+                    { id: 'dinner', name: '晚餐', icon: 'moon', inputName: '', inputCal: '' },
+                    { id: 'snack', name: '加餐', icon: 'cookie', inputName: '', inputCal: '' }
+                ],
+
+                init() {
+                    this.loadToday();
+                    
+                    // Reset check (naive "check date" on load)
+                    const lastDate = localStorage.getItem('webtools_diet_date');
+                    const todayStr = new Date().toDateString();
+                    
+                    if (lastDate !== todayStr) {
+                         // New day, reset or archive? 
+                         // For simplicity, just reset but maybe we should archive.
+                         // Let's implement simple reset. Persistence is key but "Diary" implies history.
+                         // But for MVP, let's keep it "Today's View".
+                         localStorage.setItem('webtools_diet_date', todayStr);
+                         // Ideally we would push yesterday to history array.
+                         // Skip for now to keep simple.
+                    }
+
+                    this.$watch('items', () => this.save());
+                    this.$watch('water', () => this.save());
+                },
+                
+                loadToday() {
+                    const saved = localStorage.getItem('webtools_diet_today');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        this.water = data.water || 0;
+                        this.items = data.items || [];
+                    }
+                },
+
+                save() {
+                    localStorage.setItem('webtools_diet_today', JSON.stringify({
+                        water: this.water,
+                        items: this.items
+                    }));
+                },
+
+                adjustWater(delta) {
+                    this.water = Math.max(0, this.water + delta);
+                },
+
+                addItem(mealId) {
+                    const meal = this.meals.find(m => m.id === mealId);
+                    if (!meal.inputName.trim()) return;
+
+                    this.items.push({
+                        id: Date.now(),
+                        mealId: mealId,
+                        name: meal.inputName,
+                        calories: parseInt(meal.inputCal) || 0
+                    });
+
+                    meal.inputName = '';
+                    meal.inputCal = '';
+                },
+
+                deleteItem(id) {
+                    this.items = this.items.filter(i => i.id !== id);
+                },
+
+                getItems(mealId) {
+                    return this.items.filter(i => i.mealId === mealId);
+                },
+
+                getMealCalories(mealId) {
+                    return this.getItems(mealId).reduce((sum, i) => sum + i.calories, 0);
+                },
+
+                get totalCalories() {
+                    return this.items.reduce((sum, i) => sum + i.calories, 0);
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_diet_diary.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

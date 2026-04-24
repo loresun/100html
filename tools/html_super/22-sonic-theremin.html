@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Sonic Theremin // HTML_SUPER</title>
+    <style>
+        body { margin: 0; background: #111; overflow: hidden; font-family: sans-serif; color: #fff; }
+        .ui { position: absolute; top: 20px; left: 20px; z-index: 10; }
+        #webcam { position: absolute; bottom: 20px; right: 20px; width: 160px; height: 120px; opacity: 0.3; transform: scaleX(-1); border: 1px solid #fff; }
+        .indicator {
+            position: absolute; width: 20px; height: 20px; background: #ff0055; border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; mix-blend-mode: difference;
+            box-shadow: 0 0 20px #ff0055; transition: 0.1s;
+        }
+        h1 { margin: 0; font-size: 2rem; }
+        p { color: #888; }
+        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #fff; border: none; margin-top: 10px; }
+        a { color: #fff; text-decoration: none; border-bottom: 1px solid #fff; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui">
+        <a href="index.html">← BACK</a>
+        <h1>Air Theremin</h1>
+        <p>Left/Right = Pitch. Up/Down = Volume. <br>Move bright object (or hand) to play.</p>
+        <button id="start">START AUDIO & VIDEO</button>
+        <div id="status" style="margin-top: 10px; font-family: monospace;">WAITING...</div>
+    </div>
+    
+    <video id="webcam" autoplay playsinline muted></video>
+    <div class="indicator" id="tracker"></div>
+    <canvas id="viz"></canvas>
+
+    <script>
+        // Use a simple tracking algorithm: Find the BRIGHTEST pixel area (or just max motion)
+        // Let's use Max Motion Center Mass for robustness
+        
+        const video = document.getElementById('webcam');
+        const startBtn = document.getElementById('start');
+        const tracker = document.getElementById('tracker');
+        const status = document.getElementById('status');
+        const canvas = document.getElementById('viz');
+        const ctx = canvas.getContext('2d');
+        
+        let audioCtx, osc, gainNode;
+        let isPlaying = false;
+        
+        // Motion Tracking vars
+        const processCanvas = document.createElement('canvas'); // hidden
+        const processCtx = processCanvas.getContext('2d');
+        let prevPixels = null;
+        let pWidth = 64, pHeight = 48; // processing resolution
+        
+        let targetX = 0.5, targetY = 0.5; // Normalized 0-1
+        let curX = 0.5, curY = 0.5;       // Smoothed
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        startBtn.addEventListener('click', async () => {
+            // Init Audio
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            osc = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.value = 440;
+            gainNode.gain.value = 0;
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            
+            // Init Video
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    processCanvas.width = pWidth;
+                    processCanvas.height = pHeight;
+                    loop();
+                };
+                startBtn.style.display = 'none';
+                isPlaying = true;
+                status.innerText = "ACTIVE - MOVE HAND";
+            } catch(e) {
+                status.innerText = "ERROR: " + e.message;
+            }
+        });
+
+        function loop() {
+            if(!isPlaying) return;
+            
+            // 1. Process Video for Motion Center
+            processCtx.drawImage(video, 0, 0, pWidth, pHeight);
+            const imageData = processCtx.getImageData(0, 0, pWidth, pHeight);
+            const pixels = imageData.data;
+            
+            let sumX = 0, sumY = 0, count = 0;
+            
+            if (prevPixels) {
+                for (let i = 0; i < pixels.length; i += 4) {
+                    // Diff in Green channel
+                    const diff = Math.abs(pixels[i+1] - prevPixels[i+1]);
+                    if (diff > 25) { // Threshold
+                         const idx = i / 4;
+                         const x = idx % pWidth;
+                         const y = Math.floor(idx / pWidth);
+                         
+                         sumX += x;
+                         sumY += y;
+                         count++;
+                    }
+                }
+            }
+            prevPixels = pixels; // Store ref (it copies actually? no, getImageData creates new Uint8ClampedArray)
+            
+            // If significant motion detected
+            if (count > 10) {
+                const avgX = (sumX / count) / pWidth;
+                const avgY = (sumY / count) / pHeight;
+                
+                // Flip X because webcam is mirrored usually
+                targetX = 1 - avgX;
+                targetY = avgY;
+                
+                status.innerText = `X: ${targetX.toFixed(2)} Y: ${targetY.toFixed(2)}`;
+            } else {
+                 // Decay to silence if no movement? optional.
+            }
+
+            // Smooth values
+            curX += (targetX - curX) * 0.1;
+            curY += (targetY - curY) * 0.1;
+
+            // map to screen
+            const screenX = curX * window.innerWidth;
+            const screenY = curY * window.innerHeight;
+            tracker.style.left = screenX + 'px';
+            tracker.style.top = screenY + 'px';
+
+            // 2. Synthesize Sound
+            // Freq: 100Hz to 1000Hz based on X
+            const freq = 100 + (curX * 900);
+            osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+            
+            // Vol: 0 (bottom) to 1 (top) -> Actually theremin usually Vol is Y (Top loud? Bottom silent?)
+            // Let's do Bottom=Silent (1.0) -> Top=Loud (0.0 in coords)
+            const vol = 1 - curY;
+            gainNode.gain.setTargetAtTime(vol * 0.5, audioCtx.currentTime, 0.1); 
+
+            // 3. Visualize
+            // Draw trails
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, 10 + vol * 50, 0, Math.PI * 2);
+            ctx.strokeStyle = `hsl(${curX * 360}, 100%, 50%)`;
+            ctx.lineWidth = 5;
+            ctx.stroke();
+
+            requestAnimationFrame(loop);
+        }
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

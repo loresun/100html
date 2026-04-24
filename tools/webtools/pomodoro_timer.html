@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>专注番茄钟 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .gradient-text {
+            background: linear-gradient(135deg, #4f46e5 0%, #ec4899 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(79, 70, 229, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+        }
+        .breathing {
+            animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen font-sans" x-data="pomodoroApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="absolute top-0 w-full z-10 p-4">
+        <div class="max-w-xl mx-auto flex items-center justify-between">
+            <a href="./index.html" class="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <div class="text-sm font-medium text-white/40 tracking-widest uppercase">Deep Focus</div>
+            <button @click="showSettings = !showSettings" class="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors">
+                <i class="fa-solid fa-gear w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        
+        <!-- Background Decoration -->
+        <div class="absolute inset-0 z-0">
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] animate-pulse"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/20 rounded-full blur-[100px]" style="animation-delay: 1s"></div>
+        </div>
+
+        <div class="relative z-10 w-full max-w-md text-center">
+            
+            <!-- Mode Switcher -->
+            <div class="bg-white/10 backdrop-blur-md p-1 rounded-full inline-flex mb-12">
+                <button 
+                    @click="setMode('work')" 
+                    class="px-6 py-2 rounded-full text-sm font-medium transition-all"
+                    :class="mode === 'work' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-white/60 hover:text-white'"
+                >
+                    专注
+                </button>
+                <button 
+                    @click="setMode('shortBreak')" 
+                    class="px-6 py-2 rounded-full text-sm font-medium transition-all"
+                    :class="mode === 'shortBreak' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' : 'text-white/60 hover:text-white'"
+                >
+                    短休
+                </button>
+                <button 
+                    @click="setMode('longBreak')" 
+                    class="px-6 py-2 rounded-full text-sm font-medium transition-all"
+                    :class="mode === 'longBreak' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-white/60 hover:text-white'"
+                >
+                    长休
+                </button>
+            </div>
+
+            <!-- Timer Display -->
+            <div class="mb-16 relative">
+                <!-- Progress Circle Svg would go here, simpler text for now -->
+                <div class="text-[8rem] font-bold tabular-nums tracking-tighter leading-none" x-text="formattedTime">
+                    25:00
+                </div>
+                <div class="text-white/40 mt-4 text-lg" x-text="statusMessage">
+                    准备开始专注
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center justify-center gap-6">
+                <button 
+                    @click="toggleTimer"
+                    class="w-20 h-20 rounded-full bg-white text-slate-900 flex items-center justify-center hover:scale-105 transition-transform active:scale-95 shadow-xl shadow-white/10"
+                    :class="{'breathing': isRunning}"
+                >
+                    <i :class="isRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'" class="w-8 h-8"></i>
+                </button>
+                
+                <button 
+                    @click="resetTimer"
+                    class="w-14 h-14 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+                >
+                    <i class="fa-solid fa-rotate-left w-6 h-6"></i>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Task / Stats Footer -->
+        <div class="absolute bottom-8 left-0 w-full text-center px-4">
+             <div class="text-white/30 text-sm mb-2">今日专注次数</div>
+             <div class="flex items-center justify-center gap-2">
+                 <template x-for="i in completedPomodoros" :key="i">
+                     <div class="w-2 h-2 rounded-full bg-indigo-500 shadow shadow-indigo-500"></div>
+                 </template>
+                 <template x-for="i in (4 - (completedPomodoros % 4))" :key="'grey'+i">
+                    <div class="w-2 h-2 rounded-full bg-white/10"></div>
+                 </template>
+             </div>
+             <div class="text-white/60 mt-2 text-xs font-mono" x-text="completedPomodoros"></div>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div x-show="showSettings" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showSettings = false">
+        <div class="bg-slate-800 rounded-2xl p-6 w-full max-w-sm border border-slate-700 shadow-2xl">
+            <h3 class="text-lg font-semibold mb-4">设置</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-2">时长 (分钟)</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-1">专注</span>
+                            <input type="number" x-model.number="settings.work" class="w-full bg-slate-700 border-none rounded-lg text-center text-white p-2">
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-1">短休</span>
+                            <input type="number" x-model.number="settings.shortBreak" class="w-full bg-slate-700 border-none rounded-lg text-center text-white p-2">
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-1">长休</span>
+                            <input type="number" x-model.number="settings.longBreak" class="w-full bg-slate-700 border-none rounded-lg text-center text-white p-2">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-300">自动开始休息</span>
+                    <button 
+                        @click="settings.autoBreak = !settings.autoBreak" 
+                        class="w-12 h-6 rounded-full transition-colors relative"
+                        :class="settings.autoBreak ? 'bg-indigo-600' : 'bg-slate-600'"
+                    >
+                        <span class="absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform" :class="{'translate-x-6': settings.autoBreak}"></span>
+                    </button>
+                </div>
+            </div>
+
+            <button @click="saveSettings()" class="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition-colors">确定</button>
+        </div>
+    </div>
+
+    <script>
+        function pomodoroApp() {
+            return {
+                mode: 'work', // work, shortBreak, longBreak
+                timeLeft: 25 * 60,
+                isRunning: false,
+                interval: null,
+                completedPomodoros: 0,
+                showSettings: false,
+                
+                settings: {
+                    work: 25,
+                    shortBreak: 5,
+                    longBreak: 15,
+                    autoBreak: false
+                },
+
+                get formattedTime() {
+                    const m = Math.floor(this.timeLeft / 60).toString().padStart(2, '0');
+                    const s = (this.timeLeft % 60).toString().padStart(2, '0');
+                    return `${m}:${s}`;
+                },
+                
+                get statusMessage() {
+                    if (this.isRunning) return this.mode === 'work' ? '保持专注...' : '休息一下...';
+                    return this.mode === 'work' ? '准备开始专注' : '准备开始休息';
+                },
+
+                init() {
+                    const saved = localStorage.getItem('pomodoro_settings');
+                    if (saved) {
+                        this.settings = { ...this.settings, ...JSON.parse(saved) };
+                        this.timeLeft = this.settings.work * 60;
+                    }
+                    this.completedPomodoros = parseInt(localStorage.getItem('pomodoro_count') || '0');
+                },
+
+                setMode(m) {
+                    this.mode = m;
+                    this.isRunning = false;
+                    clearInterval(this.interval);
+                    this.timeLeft = this.settings[m] * 60;
+                },
+
+                toggleTimer() {
+                    if (this.isRunning) {
+                        this.pauseTimer();
+                    } else {
+                        this.startTimer();
+                    }
+                },
+
+                startTimer() {
+                    this.isRunning = true;
+                    this.interval = setInterval(() => {
+                        if (this.timeLeft > 0) {
+                            this.timeLeft--;
+                            document.title = `${this.formattedTime} - 番茄钟`;
+                        } else {
+                            this.completeTimer();
+                        }
+                    }, 1000);
+                },
+
+                pauseTimer() {
+                    this.isRunning = false;
+                    clearInterval(this.interval);
+                    document.title = '专注番茄钟 | Webtools';
+                },
+
+                resetTimer() {
+                    this.pauseTimer();
+                    this.timeLeft = this.settings[this.mode] * 60;
+                },
+
+                completeTimer() {
+                    this.pauseTimer();
+                    // Play sound (simulated logic)
+                    if (this.mode === 'work') {
+                        this.completedPomodoros++;
+                        localStorage.setItem('pomodoro_count', this.completedPomodoros);
+                        if (this.settings.autoBreak) {
+                             const nextMode = this.completedPomodoros % 4 === 0 ? 'longBreak' : 'shortBreak';
+                             this.setMode(nextMode);
+                             this.startTimer();
+                        } else {
+                             alert('专注完成！休息一下吧。');
+                             // Switch mode hint
+                             const nextMode = this.completedPomodoros % 4 === 0 ? 'longBreak' : 'shortBreak';
+                             this.setMode(nextMode);
+                        }
+                    } else {
+                        alert('休息结束，准备开始新的专注！');
+                        this.setMode('work');
+                    }
+                },
+                
+                saveSettings() {
+                    localStorage.setItem('pomodoro_settings', JSON.stringify(this.settings));
+                    this.showSettings = false;
+                    if (!this.isRunning) {
+                        this.timeLeft = this.settings[this.mode] * 60;
+                    }
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_pomodoro_timer.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

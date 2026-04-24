@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>营养餐计划 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-lime-50 min-h-screen font-sans" x-data="mealApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-lime-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-lime-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-lime-600 to-emerald-600">
+                    🥗 营养餐计划
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button @click="generateShoppingList()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2 text-sm font-medium">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span class="hidden sm:inline">生成采购单</span>
+                </button>
+                <button @click="clearWeek()" class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="清空本周">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Weekly Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-7 gap-4 mb-8">
+            <template x-for="(day, dIdx) in days" :key="dIdx">
+                <div class="flex flex-col gap-3">
+                    <!-- Day Header -->
+                    <div class="text-center py-2 rounded-xl bg-white border border-lime-100 shadow-sm font-bold text-slate-700" 
+                         :class="isToday(dIdx) ? 'bg-lime-100 text-lime-700 border-lime-300' : ''">
+                        <span x-text="day"></span>
+                    </div>
+
+                    <!-- Meal Slots -->
+                    <div class="flex flex-col gap-3 flex-1">
+                        <template x-for="type in mealTypes" :key="type.id">
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-3 min-h-[100px] flex flex-col group hover:border-lime-300 transition-colors relative"
+                                 @click="editSlot(dIdx, type.id)">
+                                
+                                <div class="flex items-center gap-1.5 mb-2 opacity-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    <i :class="getIconClass(type.icon)" class="text-xs"></i>
+                                    <span x-text="type.name"></span>
+                                </div>
+                                
+                                <div class="flex-1 text-sm text-slate-700 leading-snug whitespace-pre-wrap" x-text="getMeal(dIdx, type.id) || '...'"></div>
+                                
+                                <div class="absolute inset-0 bg-lime-50/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer rounded-xl">
+                                    <i class="fa-solid fa-pen text-lime-600"></i>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+    </main>
+
+    <!-- Edit Modal -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" @click.away="showModal = false">
+            <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <span x-text="days[activeDay]"></span>
+                <span class="text-slate-300">/</span>
+                <span x-text="getMealTypeName(activeType)"></span>
+            </h3>
+            
+            <div class="space-y-4">
+                <textarea x-model="editingContent" rows="4" class="w-full rounded-xl border-slate-200 border p-4 text-slate-700 outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-200 text-lg placeholder-slate-300" placeholder="例如: 燕麦片, 牛奶, 煎蛋..."></textarea>
+                
+                <!-- Quick Tags -->
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="tag in commonDidhes" :key="tag">
+                        <button @click="addToContent(tag)" class="px-3 py-1 bg-slate-100 hover:bg-lime-100 text-slate-600 hover:text-lime-700 rounded-full text-xs transition-colors">
+                            <span x-text="'+ ' + tag"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-3">
+                <button @click="showModal = false" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-medium hover:bg-slate-200">取消</button>
+                <button @click="saveSlot()" class="flex-1 py-3 rounded-xl bg-lime-600 text-white font-medium hover:bg-lime-700 shadow-lg shadow-lime-600/20">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shopping List Modal -->
+    <div x-show="showShopping" x-cloak class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col" @click.away="showShopping = false">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping text-emerald-500"></i>
+                    本周采购清单
+                </h3>
+                <button @click="showShopping = false" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1">
+                <p class="text-sm text-slate-500 mb-4">根据食谱自动生成的食材清单（已去重）：</p>
+                <ul class="space-y-2">
+                     <template x-for="item in shoppingList" :key="item">
+                        <li class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg">
+                            <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                            <span class="text-slate-700" x-text="item"></span>
+                        </li>
+                     </template>
+                     <li x-show="shoppingList.length === 0" class="text-center text-slate-400 py-4">无内容</li>
+                </ul>
+            </div>
+            
+            <div class="p-6 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button @click="copyShoppingList()" class="w-full py-3 bg-white border border-slate-300 text-slate-700 rounded-xl font-medium hover:border-emerald-500 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-copy"></i>
+                    复制到剪贴板
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function mealApp() {
+            return {
+                days: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                mealTypes: [
+                    { id: 'breakfast', name: '早餐', icon: 'coffee' },
+                    { id: 'lunch', name: '午餐', icon: 'sun' },
+                    { id: 'dinner', name: '晚餐', icon: 'moon' },
+                    { id: 'snack', name: '加餐', icon: 'apple' }
+                ],
+                commonDidhes: ['燕麦', '牛奶', '鸡蛋', '全麦面包', '鸡胸肉', '西兰花', '米饭', '苹果', '坚果', '酸奶', '牛肉', '沙拉'],
+                
+                meals: {}, // Structure: { "0_breakfast": "Content", "0_lunch": "..." }
+                
+                showModal: false,
+                activeDay: 0,
+                activeType: 'breakfast',
+                editingContent: '',
+
+                showShopping: false,
+                shoppingList: [],
+
+                init() {
+                    const saved = localStorage.getItem('webtools_meals');
+                    if (saved) {
+                        this.meals = JSON.parse(saved);
+                    }
+                    this.$watch('meals', () => {
+                        localStorage.setItem('webtools_meals', JSON.stringify(this.meals));
+                    }, { deep: true });
+                    
+                    // init
+                },
+
+                getMeal(dayIdx, typeId) {
+                    return this.meals[`${dayIdx}_${typeId}`] || '';
+                },
+
+                editSlot(dayIdx, typeId) {
+                    this.activeDay = dayIdx;
+                    this.activeType = typeId;
+                    this.editingContent = this.getMeal(dayIdx, typeId);
+                    this.showModal = true;
+                },
+
+                saveSlot() {
+                    if (this.editingContent.trim()) {
+                        this.meals[`${this.activeDay}_${this.activeType}`] = this.editingContent.trim();
+                    } else {
+                        delete this.meals[`${this.activeDay}_${this.activeType}`];
+                    }
+                    this.showModal = false;
+                    // Trigger reactivity if needed, usually $watch handles it
+                    this.meals = { ...this.meals };
+                },
+
+                addToContent(tag) {
+                    if (this.editingContent) {
+                        this.editingContent += ', ' + tag;
+                    } else {
+                        this.editingContent = tag;
+                    }
+                },
+
+                getMealTypeName(id) {
+                    const t = this.mealTypes.find(x => x.id === id);
+                    return t ? t.name : id;
+                },
+                
+                isToday(idx) {
+                    // JS Day: 0=Sun, 1=Mon...
+                    // My days: 0=Mon, 6=Sun
+                    const today = new Date().getDay(); // 0-6
+                    const mappedToday = today === 0 ? 6 : today - 1;
+                    return idx === mappedToday;
+                },
+
+                clearWeek() {
+                    if(confirm('确定清空本周所有计划吗？')) {
+                        this.meals = {};
+                    }
+                },
+
+                generateShoppingList() {
+                    // Naive extraction: split by commas, newlines, spaces
+                    const allText = Object.values(this.meals).join(', ');
+                    const items = allText.split(/[,，\n]/)
+                                      .map(s => s.trim())
+                                      .filter(s => s.length > 0);
+                    
+                    // Unique
+                    this.shoppingList = [...new Set(items)];
+                    this.showShopping = true;
+                    // icons update
+                },
+                
+                copyShoppingList() {
+                    const text = this.shoppingList.join('\n');
+                    navigator.clipboard.writeText(text).then(() => alert('已复制'));
+                },
+                
+                getIconClass(iconName) {
+                    const map = {
+                        'coffee': 'fa-solid fa-mug-hot',
+                        'sun': 'fa-solid fa-sun',
+                        'moon': 'fa-solid fa-moon',
+                        'apple': 'fa-solid fa-apple-whole'
+                    };
+                    return map[iconName] || 'fa-solid fa-' + iconName;
+            }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_meal_planner.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

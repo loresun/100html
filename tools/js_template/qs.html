@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>qs 查询字符串处理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f766e 0%, #0f172a 100%); min-height: 100vh; }
+    .mono { font-family: monospace; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">🔗 qs 查询字符串</h1>
+    <p class="text-white/60 mt-1">URL 查询字符串解析与序列化库</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-6">
+
+  <!-- 序列化 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📤 对象 → 查询字符串 (stringify)</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label class="text-white/70 text-sm block mb-2">输入 JSON 对象:</label>
+        <textarea id="obj-input" rows="6" class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white mono text-sm">{
+  "name": "张三",
+  "age": 25,
+  "skills": ["JavaScript", "Python"],
+  "profile": {
+    "city": "北京",
+    "level": "高级"
+  }
+}</textarea>
+        <button onclick="doStringify()" class="mt-3 w-full px-4 py-2 bg-teal-600 rounded-lg hover:bg-teal-700 font-bold">
+          序列化 →
+        </button>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-teal-400 text-xs mb-2 font-bold">输出结果:</div>
+        <div id="stringify-result" class="mono text-sm text-emerald-300 break-all"></div>
+        <button onclick="copyResult('stringify-result')" class="mt-3 px-3 py-1 bg-slate-700 rounded text-sm">📋 复制</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 解析 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📥 查询字符串 → 对象 (parse)</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label class="text-white/70 text-sm block mb-2">输入查询字符串:</label>
+        <textarea id="qs-input" rows="3" class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white mono text-sm">name=张三&age=25&skills[0]=JavaScript&skills[1]=Python</textarea>
+        <button onclick="doParse()" class="mt-3 w-full px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 font-bold">
+          ← 解析
+        </button>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-purple-400 text-xs mb-2 font-bold">解析结果:</div>
+        <pre id="parse-result" class="mono text-sm text-cyan-300 whitespace-pre-wrap"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配置选项 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚙️ 配置选项演示</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <button onclick="demoArrayFormat()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-blue-300">数组格式</div>
+        <div class="text-xs text-white/50 mt-1">indices / brackets / repeat / comma</div>
+      </button>
+      <button onclick="demoEncoding()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-emerald-300">编码选项</div>
+        <div class="text-xs text-white/50 mt-1">encode / encodeValuesOnly</div>
+      </button>
+      <button onclick="demoNesting()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-orange-300">嵌套对象</div>
+        <div class="text-xs text-white/50 mt-1">allowDots / depth</div>
+      </button>
+      <button onclick="demoFilter()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-pink-300">过滤器</div>
+        <div class="text-xs text-white/50 mt-1">filter function</div>
+      </button>
+    </div>
+    <div id="config-output" class="mt-4 bg-slate-900/60 p-4 rounded-xl mono text-sm min-h-[100px]"></div>
+  </div>
+
+  <!-- 实际应用 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">💡 实际应用场景</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-lg mb-2">🔍</div>
+        <div class="font-bold text-teal-300">搜索参数</div>
+        <div class="text-xs text-white/50 mt-2">构建复杂搜索URL</div>
+        <code class="text-xs text-white/40 mt-2 block">?q=手机&price[min]=1000&price[max]=5000</code>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-lg mb-2">📊</div>
+        <div class="font-bold text-teal-300">API 调用</div>
+        <div class="text-xs text-white/50 mt-2">传递复杂参数</div>
+        <code class="text-xs text-white/40 mt-2 block">?filters[status]=active&sort[field]=date</code>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-lg mb-2">📄</div>
+        <div class="font-bold text-teal-300">表单序列化</div>
+        <div class="text-xs text-white/50 mt-2">处理嵌套表单数据</div>
+        <code class="text-xs text-white/40 mt-2 block">user[name]=Tom&user[email]=a@b.com</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- 对比原生 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚖️ qs vs URLSearchParams</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/20">
+            <th class="text-left py-2 px-3 text-white/70">特性</th>
+            <th class="text-left py-2 px-3 text-teal-400">qs</th>
+            <th class="text-left py-2 px-3 text-blue-400">URLSearchParams</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/10">
+          <tr>
+            <td class="py-2 px-3">嵌套对象</td>
+            <td class="py-2 px-3 text-emerald-400">✅ 完美支持</td>
+            <td class="py-2 px-3 text-red-400">❌ 不支持</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-3">数组格式</td>
+            <td class="py-2 px-3 text-emerald-400">✅ 多种格式</td>
+            <td class="py-2 px-3 text-orange-400">⚠️ 仅追加</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-3">自定义编码</td>
+            <td class="py-2 px-3 text-emerald-400">✅ 支持</td>
+            <td class="py-2 px-3 text-red-400">❌ 不支持</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-3">原生支持</td>
+            <td class="py-2 px-3 text-orange-400">需引入库</td>
+            <td class="py-2 px-3 text-emerald-400">✅ 浏览器原生</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/qs@6.12.1/dist/qs.js"></script>
+<script>
+// 序列化
+function doStringify() {
+  try {
+    const obj = JSON.parse(document.getElementById('obj-input').value);
+    const result = Qs.stringify(obj, { encode: false });
+    document.getElementById('stringify-result').textContent = result;
+  } catch (e) {
+    document.getElementById('stringify-result').innerHTML = `<span class="text-red-400">JSON 解析错误: ${e.message}</span>`;
+  }
+}
+
+// 解析
+function doParse() {
+  const qs = document.getElementById('qs-input').value.trim();
+  try {
+    const result = Qs.parse(qs);
+    document.getElementById('parse-result').textContent = JSON.stringify(result, null, 2);
+  } catch (e) {
+    document.getElementById('parse-result').innerHTML = `<span class="text-red-400">解析错误: ${e.message}</span>`;
+  }
+}
+
+// 复制
+function copyResult(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => alert('已复制!'));
+}
+
+// 配置演示
+function demoArrayFormat() {
+  const arr = { colors: ['red', 'green', 'blue'] };
+  const output = document.getElementById('config-output');
+  output.innerHTML = `
+    <div class="text-blue-300 font-bold mb-2">数组格式选项:</div>
+    <div class="space-y-2 text-sm">
+      <div><span class="text-white/50">indices:</span> <span class="text-emerald-300">${Qs.stringify(arr, { arrayFormat: 'indices' })}</span></div>
+      <div><span class="text-white/50">brackets:</span> <span class="text-emerald-300">${Qs.stringify(arr, { arrayFormat: 'brackets' })}</span></div>
+      <div><span class="text-white/50">repeat:</span> <span class="text-emerald-300">${Qs.stringify(arr, { arrayFormat: 'repeat' })}</span></div>
+      <div><span class="text-white/50">comma:</span> <span class="text-emerald-300">${Qs.stringify(arr, { arrayFormat: 'comma' })}</span></div>
+    </div>
+  `;
+}
+
+function demoEncoding() {
+  const obj = { name: '中文', url: 'https://example.com' };
+  const output = document.getElementById('config-output');
+  output.innerHTML = `
+    <div class="text-emerald-300 font-bold mb-2">编码选项:</div>
+    <div class="space-y-2 text-sm">
+      <div><span class="text-white/50">默认编码:</span><br><span class="text-cyan-300 break-all">${Qs.stringify(obj)}</span></div>
+      <div><span class="text-white/50">不编码:</span><br><span class="text-cyan-300 break-all">${Qs.stringify(obj, { encode: false })}</span></div>
+    </div>
+  `;
+}
+
+function demoNesting() {
+  const obj = { user: { profile: { city: '北京' } } };
+  const output = document.getElementById('config-output');
+  output.innerHTML = `
+    <div class="text-orange-300 font-bold mb-2">嵌套对象处理:</div>
+    <div class="space-y-2 text-sm">
+      <div><span class="text-white/50">默认:</span><br><span class="text-cyan-300">${Qs.stringify(obj, { encode: false })}</span></div>
+      <div><span class="text-white/50">allowDots:</span><br><span class="text-cyan-300">${Qs.stringify(obj, { encode: false, allowDots: true })}</span></div>
+    </div>
+  `;
+}
+
+function demoFilter() {
+  const obj = { name: 'test', password: 'secret', age: 25 };
+  const filtered = Qs.stringify(obj, {
+    filter: (prefix, value) => prefix === 'password' ? undefined : value
+  });
+  const output = document.getElementById('config-output');
+  output.innerHTML = `
+    <div class="text-pink-300 font-bold mb-2">过滤器 (排除 password):</div>
+    <div class="text-sm">
+      <div class="text-white/50 mb-1">原始对象: ${JSON.stringify(obj)}</div>
+      <div class="text-emerald-300">结果: ${filtered}</div>
+    </div>
+  `;
+}
+
+// 初始化
+doStringify();
+doParse();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

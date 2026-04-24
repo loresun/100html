@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PapaParse CSV 解析</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    /* Custom Scrollbar for table */
+    .table-container { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f1f5f9; }
+    .table-container::-webkit-scrollbar { width: 8px; height: 8px; }
+    .table-container::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center mb-12">
+  <div>
+    <h1 class="text-3xl font-bold text-slate-800">📄 PapaParse CSV 解析</h1>
+    <p class="text-slate-500 mt-1">浏览器端的强大 CSV 解析器，支持从文件或文本导入</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">← 返回导航</a>
+</header>
+
+<main class="max-w-5xl mx-auto space-y-8">
+
+  <!-- Controls -->
+  <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
+    
+    <div class="flex-1 min-w-[300px]">
+      <label class="block text-sm font-medium text-slate-700 mb-2">输入 CSV 内容</label>
+      <textarea id="csv-input" rows="4" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-mono text-xs">Name,Role,Location,Experience
+Alice,Designer,New York,5 years
+Bob,Developer,London,3 years
+Charlie,Manager,Tokyo,8 years
+David,Intern,Berlin,1 year</textarea>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <button onclick="parseText()" class="px-6 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition shadow-lg shadow-emerald-100">
+        解析文本
+      </button>
+      <div class="relative overflow-hidden inline-block">
+        <button class="w-full px-6 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition text-center">
+          📂 上传文件
+        </button>
+        <input type="file" id="file-upload" accept=".csv" class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" onchange="parseFile(this)">
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+      <h3 class="font-bold text-slate-700">解析结果</h3>
+      <span id="row-count" class="text-xs text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">0 行数据</span>
+    </div>
+    
+    <div class="table-container overflow-x-auto max-h-[500px]">
+      <table class="w-full text-left border-collapse">
+        <thead class="bg-slate-50 sticky top-0">
+          <tr id="table-head">
+            <!-- Headers injected here -->
+            <th class="p-4 text-sm font-medium text-slate-500 uppercase tracking-wider text-center">No Data</th>
+          </tr>
+        </thead>
+        <tbody id="table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+          <!-- Rows injected here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const tableHead = document.getElementById('table-head');
+  const tableBody = document.getElementById('table-body');
+  const rowCount = document.getElementById('row-count');
+
+  function parseText() {
+    const text = document.getElementById('csv-input').value;
+    Papa.parse(text, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        renderTable(results.data, results.meta.fields);
+      }
+    });
+  }
+
+  function parseFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        renderTable(results.data, results.meta.fields);
+      }
+    });
+  }
+
+  function renderTable(data, headers) {
+    rowCount.textContent = `${data.length} 行数据`;
+
+    // Render Headers
+    tableHead.innerHTML = headers.map(h => `<th class="p-4 font-bold text-slate-600 border-b border-slate-200">${h}</th>`).join('');
+
+    // Render Body
+    tableBody.innerHTML = data.map(row => `
+      <tr class="hover:bg-slate-50 transition-colors">
+        ${headers.map(h => `<td class="p-4 whitespace-nowrap">${row[h] || ''}</td>`).join('')}
+      </tr>
+    `).join('');
+  }
+
+  // Initial load
+  parseText();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

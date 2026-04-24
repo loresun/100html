@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 编解码 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans" x-data="base64App()" x-init="init()">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-800">🔐 Base64 编解码</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="mode = 'text'" :class="mode === 'text' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg text-sm transition-colors">
+                    文本
+                </button>
+                <button @click="mode = 'image'" :class="mode === 'image' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg text-sm transition-colors">
+                    图片
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- Text Mode -->
+        <div x-show="mode === 'text'" x-transition class="grid md:grid-cols-2 gap-6">
+            
+            <!-- Encode -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-800">编码 (Encode)</h3>
+                    <button @click="clearEncode()" class="text-xs text-slate-500 hover:text-slate-700">清空</button>
+                </div>
+                
+                <textarea 
+                    x-model="plainText"
+                    @input="encode()"
+                    placeholder="输入要编码的文本..."
+                    rows="10"
+                    class="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4"
+                ></textarea>
+
+                <div class="mb-4">
+                    <div class="text-sm text-slate-600 mb-2">编码结果</div>
+                    <div class="relative">
+                        <textarea 
+                            :value="encodedText"
+                            readonly
+                            rows="6"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg font-mono text-sm resize-none"
+                        ></textarea>
+                        <button 
+                            @click="copyText(encodedText)"
+                            class="absolute top-2 right-2 p-2 bg-white hover:bg-slate-100 rounded-lg shadow-sm transition-colors"
+                        >
+                            <i class="fa-solid fa-copy w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-xs text-slate-500">
+                    原文: <span x-text="plainText.length"></span> 字符 | 
+                    编码后: <span x-text="encodedText.length"></span> 字符
+                </div>
+            </div>
+
+            <!-- Decode -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-800">解码 (Decode)</h3>
+                    <button @click="clearDecode()" class="text-xs text-slate-500 hover:text-slate-700">清空</button>
+                </div>
+                
+                <textarea 
+                    x-model="encodedInput"
+                    @input="decode()"
+                    placeholder="输入要解码的 Base64 文本..."
+                    rows="10"
+                    class="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4 font-mono text-sm"
+                ></textarea>
+
+                <div class="mb-4">
+                    <div class="text-sm text-slate-600 mb-2">解码结果</div>
+                    <div class="relative">
+                        <textarea 
+                            :value="decodedText"
+                            readonly
+                            rows="6"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg resize-none"
+                        ></textarea>
+                        <button 
+                            @click="copyText(decodedText)"
+                            class="absolute top-2 right-2 p-2 bg-white hover:bg-slate-100 rounded-lg shadow-sm transition-colors"
+                        >
+                            <i class="fa-solid fa-copy w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div x-show="decodeError" class="text-xs text-rose-600">
+                    <i class="fa-solid fa-circle-exclamation w-3 h-3 inline"></i>
+                    解码失败,请检查输入是否为有效的 Base64
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Mode -->
+        <div x-show="mode === 'image'" x-transition>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                
+                <!-- Image to Base64 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">图片 → Base64</h3>
+                    
+                    <div 
+                        @drop.prevent="handleDrop($event)"
+                        @dragover.prevent
+                        class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center mb-4 hover:border-indigo-500 transition-colors"
+                    >
+                        <input 
+                            type="file" 
+                            id="imageInput"
+                            @change="handleImageSelect($event)"
+                            accept="image/*"
+                            class="hidden"
+                        />
+                        <label for="imageInput" class="cursor-pointer">
+                            <div class="w-16 h-16 mx-auto mb-3 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <i class="fa-solid fa-image w-8 h-8 text-indigo-600"></i>
+                            </div>
+                            <p class="text-slate-600 mb-2">点击或拖拽图片到这里</p>
+                            <p class="text-xs text-slate-400">支持 JPG, PNG, GIF, WebP</p>
+                        </label>
+                    </div>
+
+                    <div x-show="imagePreview" class="mb-4">
+                        <img :src="imagePreview" class="max-w-full h-auto rounded-lg border border-slate-200" />
+                    </div>
+
+                    <div x-show="imageBase64">
+                        <div class="text-sm text-slate-600 mb-2">Base64 编码</div>
+                        <div class="relative">
+                            <textarea 
+                                :value="imageBase64"
+                                readonly
+                                rows="8"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs resize-none"
+                            ></textarea>
+                            <button 
+                                @click="copyText(imageBase64)"
+                                class="absolute top-2 right-2 p-2 bg-white hover:bg-slate-100 rounded-lg shadow-sm transition-colors"
+                            >
+                                <i class="fa-solid fa-copy w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-2">
+                            长度: <span x-text="imageBase64.length.toLocaleString()"></span> 字符
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Base64 to Image -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Base64 → 图片</h3>
+                    
+                    <textarea 
+                        x-model="base64Input"
+                        @input="decodeImage()"
+                        placeholder="粘贴 Base64 编码的图片数据..."
+                        rows="8"
+                        class="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none mb-4 font-mono text-xs"
+                    ></textarea>
+
+                    <div x-show="decodedImage" class="mb-4">
+                        <div class="text-sm text-slate-600 mb-2">预览</div>
+                        <img :src="decodedImage" class="max-w-full h-auto rounded-lg border border-slate-200" />
+                    </div>
+
+                    <button 
+                        x-show="decodedImage"
+                        @click="downloadImage()"
+                        class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                    >
+                        下载图片
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function base64App() {
+            return {
+                mode: 'text',
+                plainText: '',
+                encodedText: '',
+                encodedInput: '',
+                decodedText: '',
+                decodeError: false,
+                imagePreview: '',
+                imageBase64: '',
+                base64Input: '',
+                decodedImage: '',
+
+                init() {
+
+                },
+
+                encode() {
+                    try {
+                        this.encodedText = btoa(unescape(encodeURIComponent(this.plainText)));
+                    } catch (e) {
+                        this.encodedText = '';
+                    }
+                },
+
+                decode() {
+                    this.decodeError = false;
+                    try {
+                        this.decodedText = decodeURIComponent(escape(atob(this.encodedInput)));
+                    } catch (e) {
+                        this.decodedText = '';
+                        this.decodeError = true;
+                    }
+                },
+
+                clearEncode() {
+                    this.plainText = '';
+                    this.encodedText = '';
+                },
+
+                clearDecode() {
+                    this.encodedInput = '';
+                    this.decodedText = '';
+                    this.decodeError = false;
+                },
+
+                handleImageSelect(event) {
+                    const file = event.target.files[0];
+                    if (file) this.processImage(file);
+                },
+
+                handleDrop(event) {
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.processImage(file);
+                    }
+                },
+
+                processImage(file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.imagePreview = e.target.result;
+                        this.imageBase64 = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                decodeImage() {
+                    if (!this.base64Input) {
+                        this.decodedImage = '';
+                        return;
+                    }
+                    
+                    try {
+                        // Check if it's a data URL or just base64
+                        if (this.base64Input.startsWith('data:')) {
+                            this.decodedImage = this.base64Input;
+                        } else {
+                            this.decodedImage = 'data:image/png;base64,' + this.base64Input;
+                        }
+                    } catch (e) {
+                        this.decodedImage = '';
+                    }
+                },
+
+                downloadImage() {
+                    const link = document.createElement('a');
+                    link.href = this.decodedImage;
+                    link.download = 'image.png';
+                    link.click();
+                },
+
+                copyText(text) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('已复制到剪贴板');
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_base64_converter.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

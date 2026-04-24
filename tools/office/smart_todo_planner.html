@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能待办清单 - AI 优先级排序与时间管理</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+
+        .primary {
+            color: #9333ea;
+        }
+
+        .bg-primary {
+            background-color: #9333ea;
+        }
+
+        .border-primary {
+            border-color: #9333ea;
+        }
+
+        .hover\:bg-primary:hover {
+            background-color: #9333ea;
+        }
+
+        .focus\:ring-primary:focus {
+            --tw-ring-color: #9333ea;
+        }
+        /* Markdown 渲染样式 */
+        .prose .inline-code {
+            background-color: #f3e8ff;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            color: #9333ea;
+        }
+        .prose pre {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+        }
+        .prose pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        .prose blockquote {
+            border-left: 4px solid #c084fc;
+            padding-left: 1rem;
+            color: #6b7280;
+            font-style: italic;
+        }
+        .prose h1, .prose h2, .prose h3, .prose h4 {
+            color: #1e293b;
+            font-weight: 700;
+        }
+        .prose a {
+            color: #9333ea;
+            text-decoration: underline;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="bg-slate-50">
+    <div id="app" v-cloak>
+        <!-- 导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i class="fa-solid fa-list-check primary text-xl"></i>
+                    <span class="font-bold text-xl text-slate-900">智能待办清单</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button @click="showSettings = true"
+                        class="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                        <i class="fa-solid fa-gear text-sm"></i>
+                        <span class="hidden sm:inline">设置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- 左侧输入区 -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- 待办事项输入 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-list primary text-lg"></i>
+                            输入待办事项
+                        </h3>
+                        <textarea v-model="form.todos"
+                            placeholder="每行一个任务，例如：&#10;完成项目报告&#10;回复客户邮件&#10;健身房锻炼1小时&#10;预约牙医检查&#10;学习 Vue.js 教程&#10;..."
+                            class="w-full h-64 p-4 border border-slate-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm font-mono"></textarea>
+                        <p class="text-xs text-slate-500 mt-2">💡 每行一个任务，AI 会自动分析优先级和时间</p>
+                    </div>
+
+                    <!-- 分析选项 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-sliders primary text-lg"></i>
+                            分析选项
+                        </h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.prioritize"
+                                    class="rounded text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-slate-700">优先级排序（艾森豪威尔矩阵）</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.estimateTime"
+                                    class="rounded text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-slate-700">智能时间估算</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.detectDependencies"
+                                    class="rounded text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-slate-700">检测任务依赖关系</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.categorize"
+                                    class="rounded text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-slate-700">自动分类（工作/生活/学习等）</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.suggestOrder"
+                                    class="rounded text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-slate-700">建议最佳执行顺序</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 时间约束 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-clock primary text-lg"></i>
+                            可用时间（可选）
+                        </h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">今日可用时间</label>
+                                <select v-model="form.availableTime"
+                                    class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-purple-500">
+                                    <option value="">不限制</option>
+                                    <option value="2h">2 小时</option>
+                                    <option value="4h">4 小时</option>
+                                    <option value="6h">6 小时</option>
+                                    <option value="8h">8 小时（全天）</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">时间偏好</label>
+                                <select v-model="form.timePreference"
+                                    class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-purple-500">
+                                    <option value="morning">上午效率高</option>
+                                    <option value="afternoon">下午效率高</option>
+                                    <option value="evening">晚上效率高</option>
+                                    <option value="anytime">无偏好</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 生成按钮 -->
+                    <button @click="analyzeTodos" :disabled="isLoading || !form.todos"
+                        class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                        <i v-if="isLoading" class="fa-solid fa-spinner fa-spin text-lg"></i>
+                        <i v-else class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                        <span>{{ isLoading ? '分析中...' : '开始 AI 智能分析' }}</span>
+                    </button>
+                </div>
+
+                <!-- 右侧结果区 -->
+                <div class="lg:col-span-3 space-y-6">
+                    <!-- 空状态 -->
+                    <div v-if="!result && !isLoading" class="bg-white rounded-2xl shadow-sm p-12 text-center">
+                        <i class="fa-solid fa-brain text-6xl mx-auto text-slate-300 mb-4"></i>
+                        <p class="text-slate-500">输入待办事项后点击"开始 AI 智能分析"</p>
+                        <p class="text-sm text-slate-400 mt-2">AI 会自动排序、估时、分类并给出时间管理建议</p>
+                    </div>
+
+                    <!-- 结果展示 -->
+                    <div v-if="result || isLoading" class="space-y-6">
+                        <!-- V4 Pro 思考过程 -->
+                        <div v-if="reasoning" class="bg-white rounded-2xl shadow-sm p-6">
+                            <details class="group">
+                                <summary
+                                    class="cursor-pointer text-sm font-medium text-slate-600 flex items-center gap-2 hover:text-slate-900">
+                                    <i class="fa-solid fa-brain text-xs"></i>
+                                    <span>🧠 深度分析过程（点击展开）</span>
+                                    <i
+                                        class="fa-solid fa-chevron-down text-xs ml-auto group-open:rotate-180 transition-transform"></i>
+                                </summary>
+                                <div
+                                    class="mt-4 p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap max-h-96 overflow-y-auto">
+                                    {{ reasoning }}
+                                </div>
+                            </details>
+                        </div>
+
+                        <!-- 分析结果 -->
+                        <div class="bg-white rounded-2xl shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-list-check primary text-lg"></i>
+                                    智能分析结果
+                                </h3>
+                                <!-- 显示模式切换 -->
+                                <div v-if="result" class="flex items-center gap-2">
+                                    <button @click="displayMode = 'rendered'" 
+                                        :class="['text-xs px-2 py-1 rounded-md transition-colors', displayMode === 'rendered' ? 'bg-purple-100 text-purple-700' : 'text-slate-400 hover:text-slate-600']">
+                                        <i class="fa-solid fa-eye mr-1"></i>渲染
+                                    </button>
+                                    <button @click="displayMode = 'text'" 
+                                        :class="['text-xs px-2 py-1 rounded-md transition-colors', displayMode === 'text' ? 'bg-purple-100 text-purple-700' : 'text-slate-400 hover:text-slate-600']">
+                                        <i class="fa-solid fa-file-lines mr-1"></i>原文
+                                    </button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button @click="copyResult" :disabled="!result"
+                                        class="flex items-center gap-2 px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50">
+                                        <i class="fa-solid fa-copy text-xs"></i>
+                                        <span>复制</span>
+                                    </button>
+                                    <button @click="exportResult" :disabled="!result"
+                                        class="flex items-center gap-2 px-3 py-2 text-sm bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg transition-colors disabled:opacity-50">
+                                        <i class="fa-solid fa-download text-xs"></i>
+                                        <span>导出</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="isLoading" class="flex items-center justify-center py-12">
+                                <i class="fa-solid fa-spinner fa-spin text-3xl text-purple-600"></i>
+                                <span class="ml-3 text-amber-600 text-sm"><i class="fa-solid fa-clock mr-1"></i>分析中...</span>
+                            </div>
+
+                            <!-- 渲染模式 -->
+                            <div v-if="displayMode === 'rendered'" class="prose prose-slate max-w-none" v-html="markedParse(result)"></div>
+                            <!-- 原文模式 -->
+                            <div v-else class="prose prose-slate max-w-none">
+                                <pre class="whitespace-pre-wrap text-sm font-mono text-slate-600 bg-slate-50 p-4 rounded-xl">{{ result }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                    API 配置
+                </h3>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            DeepSeek API Key
+                            <a href="https://platform.deepseek.com/api_keys" target="_blank"
+                                class="text-purple-600 hover:underline text-xs ml-2">获取 Key</a>
+                        </label>
+                        <input type="password" v-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">推荐使用 V4 Pro 获得更智能的优先级分析</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                        取消
+                    </button>
+                    <button @click="saveConfig"
+                        class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const renderIcon = (name, options = {}) => {
+                    const iconMap = {
+                        'list-checks': 'fa-solid fa-list-check',
+                        'settings': 'fa-solid fa-gear',
+                        'clipboard-list': 'fa-solid fa-clipboard-list',
+                        'sliders': 'fa-solid fa-sliders',
+                        'clock': 'fa-solid fa-clock',
+                        'loader-2': 'fa-solid fa-spinner fa-spin',
+                        'sparkles': 'fa-solid fa-wand-magic-sparkles',
+                        'brain': 'fa-solid fa-brain',
+                        'chevron-down': 'fa-solid fa-chevron-down',
+                        'copy': 'fa-solid fa-copy',
+                        'download': 'fa-solid fa-download'
+                    };
+                    const cls = typeof options === 'string' ? options : (options.class || 'w-5 h-5');
+                    const faClass = iconMap[name] || `fa-solid fa-${name}`;
+                    return `<i class="${faClass} ${cls}"></i>`;
+                };
+
+                const showSettings = ref(false);
+                const isLoading = ref(false);
+                const reasoning = ref('');
+                const result = ref('');
+                const displayMode = ref('rendered'); // 显示模式: rendered(渲染) 或 text(原文)
+
+                const apiConfig = reactive({
+                    deepseek: '',
+                    model: 'deepseek-v4-pro'
+                });
+
+                const form = reactive({
+                    todos: '',
+                    prioritize: true,
+                    estimateTime: true,
+                    detectDependencies: true,
+                    categorize: true,
+                    suggestOrder: true,
+                    availableTime: '',
+                    timePreference: 'anytime'
+                });
+
+                // 加载配置
+                onMounted(() => {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            Object.assign(apiConfig, JSON.parse(saved));
+                        } catch (e) {
+                            console.error('Failed to parse global_llm_config', e);
+                        }
+                    }
+                });
+
+                // Markdown 解析函数（支持换行）
+                const markedParse = (text) => {
+                    return marked.parse(text, { breaks: true, gfm: true });
+                };
+
+                // 保存配置（合并策略）
+                function saveConfig() {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    const merged = { ...current, ...apiConfig };
+                    localStorage.setItem('global_llm_config', JSON.stringify(merged));
+                    showSettings.value = false;
+                }
+
+                // 调用 DeepSeek API
+                async function callDeepSeek(messages) {
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: messages,
+                                stream: true,
+                                temperature: 0.3
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`API 调用失败: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content) {
+                                        reasoning.value += delta.reasoning_content;
+                                    }
+
+                                    if (delta.content) {
+                                        result.value += delta.content;
+                                    }
+                                } catch (e) {
+                                    console.error('Parse error:', e);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 分析待办事项
+                async function analyzeTodos() {
+                    if (!apiConfig.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    reasoning.value = '';
+                    result.value = '';
+
+                    try {
+                        let analysisRequirements = [];
+                        if (form.prioritize) analysisRequirements.push('使用艾森豪威尔矩阵（重要性×紧急度）进行优先级排序');
+                        if (form.estimateTime) analysisRequirements.push('为每个任务估算所需时间');
+                        if (form.detectDependencies) analysisRequirements.push('检测任务之间的依赖关系');
+                        if (form.categorize) analysisRequirements.push('自动分类（工作/生活/学习/健康/社交等）');
+                        if (form.suggestOrder) analysisRequirements.push('建议最佳执行顺序（考虑依赖、能量消耗、时间偏好）');
+
+                        const timePrefMap = {
+                            morning: '上午效率最高',
+                            afternoon: '下午效率最高',
+                            evening: '晚上效率最高',
+                            anytime: '无时间偏好'
+                        };
+
+                        let contextInfo = `时间偏好：${timePrefMap[form.timePreference]}`;
+                        if (form.availableTime) {
+                            contextInfo += `\n今日可用时间：${form.availableTime}`;
+                        }
+
+                        const systemPrompt = `你是一位专业的时间管理专家，擅长使用艾森豪威尔矩阵和 GTD 方法帮助用户高效管理待办事项。
+
+你的任务是分析用户提供的待办事项列表，并进行智能分析和排序。
+
+**分析要求**：
+${analysisRequirements.map((req, i) => `${i + 1}. ${req}`).join('\n')}
+
+**用户信息**：
+${contextInfo}
+
+**输出格式**（使用 Markdown）：
+
+## 📊 艾森豪威尔矩阵分类
+
+### 🔴 重要且紧急（立即执行）
+- [ ] 任务名称 | ⏱️ 预计X分钟/小时 | 🏷️ 分类
+
+### 🟡 重要但不紧急（计划执行）
+- [ ] 任务名称 | ⏱️ 预计X分钟/小时 | 🏷️ 分类
+
+### 🟠 紧急但不重要（委托/简化）
+- [ ] 任务名称 | ⏱️ 预计X分钟/小时 | 🏷️ 分类
+
+### ⚪ 不重要不紧急（考虑删除）
+- [ ] 任务名称 | ⏱️ 预计X分钟/小时 | 🏷️ 分类
+
+---
+
+## ✅ 今日推荐执行清单（按优先级排序）
+
+1. **任务名称** - ⏱️ X分钟 - 原因：为什么优先做这个
+2. ...
+
+---
+
+## 🔗 任务依赖关系（如有）
+
+- 任务 A → 任务 B（需先完成 A）
+
+---
+
+## 💡 时间管理建议
+
+- 针对用户的具体情况，给出3-5条实用建议
+- 包括：任务分解、时间块分配、能量管理等
+
+注意：
+- 基于任务描述推断优先级，合理解释
+- 时间估算要实际可行（考虑准备时间、休息等）
+- 建议要具体、可执行`;
+
+                        const userPrompt = `我的待办事项清单：
+
+${form.todos}`;
+
+                        await callDeepSeek([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]);
+
+                    } catch (error) {
+                        console.error('分析失败:', error);
+                        result.value = `❌ 分析失败：${error.message}\n\n请检查 API Key 是否正确，或稍后重试。`;
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                // 复制结果
+                async function copyResult() {
+                    try {
+                        let fullText = '';
+                        if (reasoning.value) {
+                            fullText += '=== 深度分析过程 ===\n\n' + reasoning.value + '\n\n';
+                        }
+                        fullText += '=== 分析结果 ===\n\n' + result.value;
+
+                        await navigator.clipboard.writeText(fullText);
+                        alert('✅ 已复制到剪贴板');
+                    } catch (err) {
+                        alert('❌ 复制失败，请手动复制');
+                    }
+                }
+
+                // 导出结果
+                function exportResult() {
+                    let content = `# 智能待办清单分析\n\n`;
+                    content += `生成时间：${new Date().toLocaleString('zh-CN')}\n\n`;
+                    content += `---\n\n`;
+
+                    if (reasoning.value) {
+                        content += `## 深度分析过程\n\n${reasoning.value}\n\n---\n\n`;
+                    }
+
+                    content += `## 分析结果\n\n${result.value}`;
+
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `待办清单分析_${new Date().getTime()}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+
+                return {
+                    renderIcon,
+                    showSettings,
+                    isLoading,
+                    reasoning,
+                    result,
+                    apiConfig,
+                    form,
+                    markedParse,
+                    displayMode,
+                    saveConfig,
+                    analyzeTodos,
+                    copyResult,
+                    exportResult
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_smart_todo_planner.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

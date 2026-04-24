@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会议纪要转行动 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0284c7',
+                        'primary-light': '#0ea5e9',
+                        'primary-dark': '#0369a1',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #ecfeff 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #0284c7; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(2, 132, 199, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+        }
+        .pulse-active { animation: pulse-ring 1.5s ease-out infinite; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer-loading {
+            background: linear-gradient(90deg, #e0f2fe 25%, #bae6fd 50%, #e0f2fe 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .chain-line {
+            width: 3px;
+            background: linear-gradient(to bottom, #0284c7, #38bdf8);
+            position: relative;
+        }
+        .chain-line::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid #38bdf8;
+        }
+        .chain-line-done {
+            background: linear-gradient(to bottom, #16a34a, #22c55e);
+        }
+        .chain-line-done::after {
+            border-top-color: #22c55e;
+        }
+
+        .chain-node {
+            transition: all 0.3s ease;
+            border: 2px solid #e5e7eb;
+        }
+        .chain-node:hover {
+            transform: translateX(4px);
+            box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.1);
+        }
+        .chain-node.active {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1);
+        }
+        .chain-node.completed {
+            border-color: #16a34a;
+        }
+
+        .editable-output {
+            transition: all 0.2s ease;
+        }
+        .editable-output:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+        }
+
+        .priority-badge-high {
+            background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;
+        }
+        .priority-badge-mid {
+            background: #fffbeb; color: #d97706; border: 1px solid #fde68a;
+        }
+        .priority-badge-low {
+            background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;
+        }
+
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px -4px rgba(0,0,0,0.1);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="meetingToActionApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-sky-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-sky-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="list-checks" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">会议纪要转行动</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">会议记录 → 高效执行</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-primary transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-sky-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow overflow-y-auto">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+                <!-- 顶部操作栏 -->
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="workflow" class="w-6 h-6 text-primary"></i>
+                            会议转行动链路
+                        </h1>
+                        <p class="text-sm text-slate-500 mt-1">会议纪要 → 提炼决议 → 分解待办 → 跟进邮件 → 下次议程</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button @click="runFullChain"
+                            :disabled="isAnyStepRunning || !inputData.content.trim()"
+                            class="bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all text-sm">
+                            <template x-if="isAnyStepRunning">
+                                <i data-lucide="loader-2" class="animate-spin w-4 h-4"></i>
+                            </template>
+                            <template x-if="!isAnyStepRunning">
+                                <i data-lucide="zap" class="w-4 h-4"></i>
+                            </template>
+                            <span x-text="isAnyStepRunning ? '链路运行中...' : '⚡ 一键运行全链路'"></span>
+                        </button>
+                        <button @click="exportAllOutputs"
+                            :disabled="!hasAnyOutput"
+                            class="bg-white border border-sky-300 text-sky-700 font-medium px-4 py-2.5 rounded-xl hover:bg-sky-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition text-sm">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            导出全部
+                        </button>
+                        <button @click="resetChain"
+                            class="bg-white border border-slate-200 text-slate-500 font-medium px-4 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-2 transition text-sm">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            重置
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 链路节点 ==================== -->
+                <div class="space-y-0">
+
+                    <!-- Step 1: 输入会议纪要 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': currentStep === 0, 'completed': steps[0].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[0].status === 'completed' ? 'bg-green-500' : 'bg-primary'">
+                                    <template x-if="steps[0].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[0].status !== 'completed'">
+                                        <span>1</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="file-text" class="w-4 h-4 text-primary"></i>
+                                        输入会议纪要
+                                    </h3>
+                                    <p class="text-xs text-slate-500">粘贴会议记录、速记或转录文本</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="steps[0].status === 'completed' ? 'bg-green-100 text-green-700' :
+                                            steps[0].status === 'running' ? 'bg-sky-100 text-sky-700' :
+                                            'bg-slate-100 text-slate-500'"
+                                    x-text="steps[0].status === 'completed' ? '✓ 已就绪' :
+                                            steps[0].status === 'running' ? '编辑中' : '等待输入'">
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 会议元信息 -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">
+                                    <i data-lucide="bookmark" class="w-3 h-3 inline-block mr-1"></i>会议主题
+                                </label>
+                                <input type="text" x-model="inputData.title" @input="onInputChange"
+                                    placeholder="如：Q2 产品迭代规划会"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">
+                                    <i data-lucide="calendar" class="w-3 h-3 inline-block mr-1"></i>会议日期
+                                </label>
+                                <input type="date" x-model="inputData.date" @input="onInputChange"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">
+                                    <i data-lucide="users" class="w-3 h-3 inline-block mr-1"></i>参会人员 <span class="text-slate-400">(可选)</span>
+                                </label>
+                                <input type="text" x-model="inputData.participants" @input="onInputChange"
+                                    placeholder="如：张三、李四、王五"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition">
+                            </div>
+                        </div>
+
+                        <!-- 会议内容 -->
+                        <textarea x-model="inputData.content"
+                            @input="onInputChange"
+                            rows="8"
+                            placeholder="在此粘贴会议记录、讨论纪要或语音转录文本...&#10;&#10;示例：&#10;张总：这个季度我们需要重点推进用户增长，目前DAU增长放缓...&#10;李总：建议从渠道合作和内容运营两个方向着手...&#10;王经理：技术侧需要完成推荐算法的优化，预计需要3周..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition resize-y"></textarea>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-slate-400" x-text="'字符数: ' + inputData.content.length"></span>
+                            <span class="text-xs" :class="inputData.content.length > 200 ? 'text-green-600' : 'text-sky-600'"
+                                x-text="inputData.content.length > 200 ? '✓ 内容充足' : '建议粘贴 200 字以上的会议记录'"></span>
+                        </div>
+                    </div>
+
+                    <!-- Chain connector 1→2 -->
+                    <div class="flex justify-start ml-[29px]">
+                        <div class="chain-line h-8" :class="steps[0].status === 'completed' ? 'chain-line-done' : ''"></div>
+                    </div>
+
+                    <!-- Step 2: AI提炼决议 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': steps[1].status === 'running', 'completed': steps[1].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[1].status === 'completed' ? 'bg-green-500' :
+                                            steps[1].status === 'running' ? 'bg-primary pulse-active' : 'bg-slate-300'">
+                                    <template x-if="steps[1].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[1].status === 'running'">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    </template>
+                                    <template x-if="steps[1].status === 'pending'">
+                                        <span>2</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="gavel" class="w-4 h-4 text-primary"></i>
+                                        AI 提炼决议
+                                    </h3>
+                                    <p class="text-xs text-slate-500">提取关键决策、讨论要点与达成共识</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="getStatusClass(steps[1].status)"
+                                    x-text="getStatusLabel(steps[1].status)">
+                                </span>
+                                <button @click="runStep(1)"
+                                    :disabled="steps[1].status === 'running' || steps[0].status !== 'completed'"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
+                                    <span x-text="steps[1].status === 'completed' ? '重新运行' : '运行'"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[1].status === 'running' && !steps[1].output" class="shimmer-loading h-24 rounded-xl"></div>
+                        <div x-show="steps[1].output" x-transition>
+                            <textarea x-model="steps[1].output"
+                                rows="8"
+                                class="editable-output w-full bg-sky-50/50 border border-sky-200 rounded-xl p-4 text-sm leading-relaxed resize-y"></textarea>
+                            <div class="flex items-center justify-end mt-1 gap-2">
+                                <button @click="copyText(steps[1].output)" class="text-xs text-slate-400 hover:text-primary flex items-center gap-1 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[1].status === 'pending' && !steps[1].output"
+                            class="text-center py-6 text-slate-300">
+                            <i data-lucide="arrow-up" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p class="text-sm">等待上一步完成</p>
+                        </div>
+                    </div>
+
+                    <!-- Chain connector 2→3 -->
+                    <div class="flex justify-start ml-[29px]">
+                        <div class="chain-line h-8" :class="steps[1].status === 'completed' ? 'chain-line-done' : ''"></div>
+                    </div>
+
+                    <!-- Step 3: AI分解待办 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': steps[2].status === 'running', 'completed': steps[2].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[2].status === 'completed' ? 'bg-green-500' :
+                                            steps[2].status === 'running' ? 'bg-primary pulse-active' : 'bg-slate-300'">
+                                    <template x-if="steps[2].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[2].status === 'running'">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    </template>
+                                    <template x-if="steps[2].status === 'pending'">
+                                        <span>3</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="square-check-big" class="w-4 h-4 text-primary"></i>
+                                        AI 分解待办
+                                    </h3>
+                                    <p class="text-xs text-slate-500">将决议拆解为可执行任务，含负责人、截止日期、优先级</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="getStatusClass(steps[2].status)"
+                                    x-text="getStatusLabel(steps[2].status)">
+                                </span>
+                                <button @click="runStep(2)"
+                                    :disabled="steps[2].status === 'running' || steps[1].status !== 'completed'"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
+                                    <span x-text="steps[2].status === 'completed' ? '重新运行' : '运行'"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[2].status === 'running' && !steps[2].output && actionItems.length === 0" class="shimmer-loading h-32 rounded-xl"></div>
+
+                        <!-- 待办任务卡片列表 -->
+                        <div x-show="actionItems.length > 0" x-transition class="space-y-3 mb-3">
+                            <template x-for="(item, idx) in actionItems" :key="idx">
+                                <div class="task-card bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                                <span class="text-xs font-bold px-2 py-0.5 rounded-full"
+                                                    :class="item.priority === '高' ? 'priority-badge-high' :
+                                                            item.priority === '中' ? 'priority-badge-mid' :
+                                                            'priority-badge-low'"
+                                                    x-text="item.priority + '优先级'"></span>
+                                                <span x-show="item.owner" class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <i data-lucide="user" class="w-3 h-3"></i>
+                                                    <span x-text="item.owner"></span>
+                                                </span>
+                                                <span x-show="item.deadline" class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <i data-lucide="clock" class="w-3 h-3"></i>
+                                                    <span x-text="item.deadline"></span>
+                                                </span>
+                                            </div>
+                                            <p class="text-sm text-slate-800 leading-relaxed" x-text="item.task"></p>
+                                            <p x-show="item.detail" class="text-xs text-slate-500 mt-1" x-text="item.detail"></p>
+                                        </div>
+                                        <span class="flex-shrink-0 text-lg font-bold text-slate-300" x-text="'#' + (idx + 1)"></span>
+                                    </div>
+                                </div>
+                            </template>
+                            <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+                                <span x-text="'共 ' + actionItems.length + ' 项待办'"></span>
+                                <div class="flex items-center gap-3">
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span> 高: <span x-text="actionItems.filter(i => i.priority === '高').length"></span></span>
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> 中: <span x-text="actionItems.filter(i => i.priority === '中').length"></span></span>
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-400"></span> 低: <span x-text="actionItems.filter(i => i.priority === '低').length"></span></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- JSON 源码可编辑区 -->
+                        <div x-show="steps[2].output" x-transition>
+                            <details class="group">
+                                <summary class="cursor-pointer text-xs text-slate-400 hover:text-primary transition flex items-center gap-1 py-1">
+                                    <i data-lucide="code" class="w-3 h-3"></i>
+                                    查看/编辑 JSON 源码
+                                </summary>
+                                <div class="mt-2">
+                                    <textarea x-model="steps[2].output"
+                                        @input="parseActionItems"
+                                        rows="6"
+                                        class="editable-output w-full bg-slate-800 text-green-400 border border-slate-600 rounded-xl p-4 text-xs font-mono leading-relaxed resize-y"></textarea>
+                                </div>
+                            </details>
+                            <div class="flex items-center justify-end mt-1 gap-2">
+                                <button @click="copyText(steps[2].output)" class="text-xs text-slate-400 hover:text-primary flex items-center gap-1 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i> 复制 JSON
+                                </button>
+                            </div>
+                        </div>
+
+                        <div x-show="steps[2].status === 'pending' && !steps[2].output && actionItems.length === 0"
+                            class="text-center py-6 text-slate-300">
+                            <i data-lucide="arrow-up" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p class="text-sm">等待上一步完成</p>
+                        </div>
+                    </div>
+
+                    <!-- Chain connector 3→4 -->
+                    <div class="flex justify-start ml-[29px]">
+                        <div class="chain-line h-8" :class="steps[2].status === 'completed' ? 'chain-line-done' : ''"></div>
+                    </div>
+
+                    <!-- Step 4: AI生成跟进邮件 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': steps[3].status === 'running', 'completed': steps[3].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[3].status === 'completed' ? 'bg-green-500' :
+                                            steps[3].status === 'running' ? 'bg-primary pulse-active' : 'bg-slate-300'">
+                                    <template x-if="steps[3].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[3].status === 'running'">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    </template>
+                                    <template x-if="steps[3].status === 'pending'">
+                                        <span>4</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="mail" class="w-4 h-4 text-primary"></i>
+                                        AI 生成跟进邮件
+                                    </h3>
+                                    <p class="text-xs text-slate-500">根据决议和待办生成发给参会人员的跟进邮件</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="getStatusClass(steps[3].status)"
+                                    x-text="getStatusLabel(steps[3].status)">
+                                </span>
+                                <button @click="runStep(3)"
+                                    :disabled="steps[3].status === 'running' || steps[2].status !== 'completed'"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
+                                    <span x-text="steps[3].status === 'completed' ? '重新运行' : '运行'"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[3].status === 'running' && !steps[3].output" class="shimmer-loading h-24 rounded-xl"></div>
+                        <div x-show="steps[3].output" x-transition>
+                            <div class="prose prose-sm max-w-none bg-violet-50/50 border border-violet-200 rounded-xl p-4 mb-2"
+                                x-html="renderMarkdown(steps[3].output)"></div>
+                            <details class="group">
+                                <summary class="cursor-pointer text-xs text-slate-400 hover:text-primary transition flex items-center gap-1 py-1">
+                                    <i data-lucide="pencil" class="w-3 h-3"></i>
+                                    编辑邮件原文
+                                </summary>
+                                <div class="mt-2">
+                                    <textarea x-model="steps[3].output"
+                                        rows="8"
+                                        class="editable-output w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed resize-y"></textarea>
+                                </div>
+                            </details>
+                            <div class="flex items-center justify-end mt-1 gap-2">
+                                <button @click="copyText(steps[3].output)" class="text-xs text-slate-400 hover:text-primary flex items-center gap-1 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[3].status === 'pending' && !steps[3].output"
+                            class="text-center py-6 text-slate-300">
+                            <i data-lucide="arrow-up" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p class="text-sm">等待上一步完成</p>
+                        </div>
+                    </div>
+
+                    <!-- Chain connector 4→5 -->
+                    <div class="flex justify-start ml-[29px]">
+                        <div class="chain-line h-8" :class="steps[3].status === 'completed' ? 'chain-line-done' : ''"></div>
+                    </div>
+
+                    <!-- Step 5: AI生成下次会议议程 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': steps[4].status === 'running', 'completed': steps[4].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[4].status === 'completed' ? 'bg-green-500' :
+                                            steps[4].status === 'running' ? 'bg-primary pulse-active' : 'bg-slate-300'">
+                                    <template x-if="steps[4].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[4].status === 'running'">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    </template>
+                                    <template x-if="steps[4].status === 'pending'">
+                                        <span>5</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="calendar-clock" class="w-4 h-4 text-primary"></i>
+                                        AI 生成下次会议议程
+                                    </h3>
+                                    <p class="text-xs text-slate-500">基于未解决事项和待办跟进情况，建议下次会议议程</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="getStatusClass(steps[4].status)"
+                                    x-text="getStatusLabel(steps[4].status)">
+                                </span>
+                                <button @click="runStep(4)"
+                                    :disabled="steps[4].status === 'running' || steps[3].status !== 'completed'"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
+                                    <span x-text="steps[4].status === 'completed' ? '重新运行' : '运行'"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[4].status === 'running' && !steps[4].output" class="shimmer-loading h-24 rounded-xl"></div>
+                        <div x-show="steps[4].output" x-transition>
+                            <div class="prose prose-sm max-w-none bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 mb-2"
+                                x-html="renderMarkdown(steps[4].output)"></div>
+                            <details class="group">
+                                <summary class="cursor-pointer text-xs text-slate-400 hover:text-primary transition flex items-center gap-1 py-1">
+                                    <i data-lucide="pencil" class="w-3 h-3"></i>
+                                    编辑议程原文
+                                </summary>
+                                <div class="mt-2">
+                                    <textarea x-model="steps[4].output"
+                                        rows="8"
+                                        class="editable-output w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed resize-y"></textarea>
+                                </div>
+                            </details>
+                            <div class="flex items-center justify-end mt-1 gap-2">
+                                <button @click="copyText(steps[4].output)" class="text-xs text-slate-400 hover:text-primary flex items-center gap-1 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[4].status === 'pending' && !steps[4].output"
+                            class="text-center py-6 text-slate-300">
+                            <i data-lucide="arrow-up" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p class="text-sm">等待上一步完成</p>
+                        </div>
+                    </div>
+
+                    <!-- 完成标志 -->
+                    <div x-show="allStepsCompleted" x-transition class="mt-6 text-center animate-fade-in">
+                        <div class="inline-flex items-center gap-2 bg-green-100 text-green-700 font-bold px-6 py-3 rounded-full shadow-sm">
+                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                            全链路处理完成！可导出 Markdown 文档
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 底部提示 -->
+                <div class="mt-10 mb-6 bg-sky-50 border border-sky-200 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="lightbulb" class="w-5 h-5 text-primary flex-shrink-0 mt-0.5"></i>
+                        <div class="text-xs text-sky-800 space-y-1">
+                            <p class="font-medium">使用技巧</p>
+                            <ul class="space-y-0.5 text-sky-700">
+                                <li>• 点击「一键运行全链路」可自动按顺序执行全部 5 个步骤</li>
+                                <li>• 每个步骤的输出可手动编辑后再传递给下一步</li>
+                                <li>• 填写参会人员可让 AI 更精准地分配待办负责人</li>
+                                <li>• 待办事项支持优先级（高/中/低）可视化展示</li>
+                                <li>• 全链路完成后可一键导出完整的 Markdown 文档</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in" @click.outside="showSettings = false">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-sky-500 outline-none"
+                            placeholder="sk-...">
+                        <p class="text-xs text-slate-500 mt-1">
+                            <i data-lucide="lock" class="w-3 h-3 inline-block mr-1"></i>
+                            Key 仅保存在本地浏览器，所有工具共享使用
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">默认模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-sky-500 outline-none bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in z-[200]">
+            <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+            <span class="text-sm" x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * 会议纪要转行动 - Alpine.js 应用
+         *
+         * 五步链路工作流：
+         * 1. 输入会议纪要（含标题、日期、参会人）
+         * 2. AI 提炼决议 - 提取关键决策和讨论要点（流式输出）
+         * 3. AI 分解待办 - 拆解为带负责人/截止日/优先级的任务列表（JSON 模式）
+         * 4. AI 生成跟进邮件 - 草拟发给参会人员的跟进邮件（流式输出）
+         * 5. AI 生成下次会议议程 - 基于未解决事项建议下次议程（流式输出）
+         *
+         * 支持一键全链路运行、单步运行、输出编辑、Markdown 导出。
+         */
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('meetingToActionApp', () => ({
+                // ==================== 状态管理 ====================
+                showSettings: false,
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+                toast: { show: false, message: '', icon: 'check' },
+                currentStep: 0,
+
+                /** 会议输入数据 */
+                inputData: {
+                    title: '',
+                    date: new Date().toISOString().slice(0, 10),
+                    participants: '',
+                    content: ''
+                },
+
+                /** 从 JSON 解析出的待办事项列表 */
+                actionItems: [],
+
+                /**
+                 * 五个步骤的状态和输出
+                 * status: 'pending' | 'running' | 'completed'
+                 */
+                steps: [
+                    { name: '输入会议纪要',     status: 'pending', output: '' },
+                    { name: 'AI提炼决议',       status: 'pending', output: '' },
+                    { name: 'AI分解待办',       status: 'pending', output: '' },
+                    { name: 'AI生成跟进邮件',   status: 'pending', output: '' },
+                    { name: 'AI生成下次会议议程', status: 'pending', output: '' },
+                ],
+
+                // ==================== 计算属性 ====================
+                get isAnyStepRunning() {
+                    return this.steps.some(s => s.status === 'running');
+                },
+                get hasAnyOutput() {
+                    return this.steps.some((s, i) => i > 0 && s.output);
+                },
+                get allStepsCompleted() {
+                    return this.steps.every(s => s.status === 'completed');
+                },
+
+                // ==================== 生命周期 ====================
+                init() {
+                    this.loadConfig();
+                    this.refreshIcons();
+                },
+
+                // ==================== 配置管理 ====================
+
+                /** 从 localStorage 加载全局 API 配置（合并策略） */
+                loadConfig() {
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        }
+                    } catch (e) {
+                        console.warn('[MeetingToAction] 配置加载失败:', e);
+                    }
+                },
+
+                /** 保存配置到 localStorage（合并策略，不覆盖其他工具的配置） */
+                saveConfig() {
+                    try {
+                        const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        localStorage.setItem('global_llm_config', JSON.stringify({
+                            ...current,
+                            deepseek: this.apiConfig.deepseek,
+                            model: this.apiConfig.model
+                        }));
+                        this.showSettings = false;
+                        this.showToast('配置已保存', 'check-circle');
+                    } catch (e) {
+                        this.showToast('配置保存失败', 'alert-circle');
+                    }
+                },
+
+                // ==================== 工具方法 ====================
+
+                refreshIcons() {
+                    setTimeout(() => { try { lucide.createIcons(); } catch(e) {} }, 50);
+                },
+
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    try { return marked.parse(text); } catch(e) { return text; }
+                },
+
+                getStatusClass(status) {
+                    if (status === 'completed') return 'bg-green-100 text-green-700';
+                    if (status === 'running') return 'bg-sky-100 text-sky-700';
+                    return 'bg-slate-100 text-slate-500';
+                },
+
+                getStatusLabel(status) {
+                    if (status === 'completed') return '✓ 已完成';
+                    if (status === 'running') return '⏳ 运行中...';
+                    return '等待中';
+                },
+
+                /** 当用户编辑输入区域时，判断是否标记第一步完成 */
+                onInputChange() {
+                    if (this.inputData.content.trim().length > 0) {
+                        this.steps[0].status = 'completed';
+                        this.steps[0].output = this.buildInputContext();
+                    } else {
+                        this.steps[0].status = 'pending';
+                        this.steps[0].output = '';
+                    }
+                },
+
+                /** 组装完整的输入上下文（供后续步骤使用） */
+                buildInputContext() {
+                    let ctx = '';
+                    if (this.inputData.title) ctx += `会议主题：${this.inputData.title}\n`;
+                    if (this.inputData.date) ctx += `会议日期：${this.inputData.date}\n`;
+                    if (this.inputData.participants) ctx += `参会人员：${this.inputData.participants}\n`;
+                    ctx += `\n会议纪要内容：\n${this.inputData.content}`;
+                    return ctx;
+                },
+
+                /** 从 JSON 字符串解析待办事项列表 */
+                parseActionItems() {
+                    try {
+                        const raw = this.steps[2].output;
+                        const parsed = JSON.parse(raw);
+                        this.actionItems = Array.isArray(parsed) ? parsed : (parsed.items || parsed.tasks || parsed.action_items || []);
+                        this.refreshIcons();
+                    } catch (e) {
+                        /* JSON 未完成或格式异常，保持当前列表不变 */
+                    }
+                },
+
+                /** 复制文本到剪贴板 */
+                async copyText(text) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        this.showToast('已复制到剪贴板', 'copy');
+                    } catch (err) {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        this.showToast('已复制到剪贴板', 'copy');
+                    }
+                },
+
+                // ==================== API 调用核心 ====================
+
+                /**
+                 * 流式调用 DeepSeek API
+                 * @param {string} systemPrompt - 系统提示词
+                 * @param {string} userContent - 用户输入内容
+                 * @param {number} stepIndex - 当前步骤索引，用于实时更新输出
+                 * @returns {Promise<string>} - 最终完整的响应文本
+                 */
+                async callStreamingAPI(systemPrompt, userContent, stepIndex) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userContent }
+                            ],
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errBody = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${errBody}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    let fullText = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6).trim();
+                                if (data === '[DONE]') continue;
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices?.[0]?.delta;
+                                    if (delta?.content) {
+                                        fullText += delta.content;
+                                        this.steps[stepIndex].output = fullText;
+                                    }
+                                } catch (e) { /* 跳过解析失败的行 */ }
+                            }
+                        }
+                    }
+                    return fullText;
+                },
+
+                /**
+                 * 非流式调用 DeepSeek API（JSON 模式，用于步骤3待办分解）
+                 * @param {string} systemPrompt - 系统提示词
+                 * @param {string} userContent - 用户输入内容
+                 * @returns {Promise<string>} - API 返回的 JSON 文本
+                 */
+                async callJsonAPI(systemPrompt, userContent) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userContent }
+                            ],
+                            stream: false,
+                            temperature: 0.5,
+                            response_format: { type: 'json_object' }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errBody = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${errBody}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content || '';
+                },
+
+                // ==================== 步骤执行 ====================
+
+                /**
+                 * 执行指定步骤
+                 * @param {number} stepIndex - 步骤索引 (1-4)
+                 */
+                async runStep(stepIndex) {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    this.steps[stepIndex].status = 'running';
+                    this.steps[stepIndex].output = '';
+                    if (stepIndex === 2) this.actionItems = [];
+                    this.currentStep = stepIndex;
+                    this.refreshIcons();
+
+                    try {
+                        switch (stepIndex) {
+                            case 1: await this.runExtractDecisions(); break;
+                            case 2: await this.runBreakdownActions(); break;
+                            case 3: await this.runFollowUpEmail(); break;
+                            case 4: await this.runNextAgenda(); break;
+                        }
+                        this.steps[stepIndex].status = 'completed';
+                        this.showToast(`${this.steps[stepIndex].name} 完成`, 'check-circle');
+                    } catch (error) {
+                        console.error(`[MeetingToAction] 步骤 ${stepIndex} 失败:`, error);
+                        this.steps[stepIndex].status = 'pending';
+                        this.showToast(`${this.steps[stepIndex].name} 失败: ${error.message}`, 'alert-circle');
+                    }
+                    this.refreshIcons();
+                },
+
+                /** 步骤2: 提炼决议 - 流式输出 */
+                async runExtractDecisions() {
+                    const systemPrompt = `你是一位资深会议纪要分析师。请从以下会议记录中提炼关键信息。
+
+要求：
+1. **会议摘要**：用 3-5 句话概括本次会议的核心内容
+2. **关键决策**：列出会议中明确做出的决定（用编号列表）
+3. **讨论要点**：列出重要的讨论议题和各方观点
+4. **待解决问题**：列出会议中提及但未解决的问题
+5. **达成共识**：总结与会者达成一致的事项
+
+请用以下 Markdown 格式输出：
+## 📋 会议摘要
+（内容）
+
+## ✅ 关键决策
+1. （决策1）
+2. （决策2）
+...
+
+## 💬 讨论要点
+- （要点1）
+- （要点2）
+...
+
+## ❓ 待解决问题
+- （问题1）
+- （问题2）
+...
+
+## 🤝 达成共识
+- （共识1）
+- （共识2）
+...
+
+以中文输出，保留关键人名和术语。`;
+
+                    await this.callStreamingAPI(systemPrompt, this.steps[0].output, 1);
+                },
+
+                /** 步骤3: 分解待办 - JSON 模式 */
+                async runBreakdownActions() {
+                    const participantsHint = this.inputData.participants
+                        ? `\n参会人员包括：${this.inputData.participants}。请优先从参会人中选择负责人。`
+                        : '\n如果会议记录中提到了具体人名，请将其设为负责人；否则用「待定」。';
+
+                    const systemPrompt = `你是一位项目管理专家。请将以下会议决议和讨论要点分解为具体的可执行待办事项。
+
+要求：以 JSON 格式输出，结构如下：
+{
+  "items": [
+    {
+      "task": "任务描述（一句话，简洁明确）",
+      "detail": "补充说明（如有必要，否则留空字符串）",
+      "owner": "负责人姓名",
+      "deadline": "截止日期或时间描述（如：本周五、3个工作日内、2026-04-10）",
+      "priority": "高/中/低"
+    }
+  ]
+}
+
+分配规则：
+- 优先级判断：紧急且重要=高，重要不紧急=中，日常跟进=低
+- 每个决策至少对应 1 个待办事项
+- 未解决问题也应转化为待办（如：调研、讨论、确认等）${participantsHint}
+- 以中文输出`;
+
+                    const rawResponse = await this.callJsonAPI(systemPrompt, this.steps[1].output);
+                    this.steps[2].output = rawResponse;
+                    this.parseActionItems();
+                },
+
+                /** 步骤4: 生成跟进邮件 - 流式输出 */
+                async runFollowUpEmail() {
+                    const meetingTitle = this.inputData.title || '（未指定主题）';
+                    const meetingDate = this.inputData.date || '（未指定日期）';
+                    const participants = this.inputData.participants || '各位同事';
+
+                    const systemPrompt = `你是一位职场沟通专家。请根据以下会议决议和待办事项，撰写一封专业的会后跟进邮件。
+
+邮件信息：
+- 会议主题：${meetingTitle}
+- 会议日期：${meetingDate}
+- 收件人：${participants}
+
+邮件要求：
+1. 语气专业、简洁、友好
+2. 邮件结构：
+   - 邮件主题行（Subject）
+   - 开头：感谢参会 + 简要回顾
+   - 主体：关键决策汇总 + 待办事项列表（含负责人和截止日）
+   - 结尾：下次会议时间安排 + 礼貌结语
+3. 待办事项以表格或清单形式呈现，一目了然
+4. 以中文输出，使用 Markdown 格式`;
+
+                    const combinedInput = `## 会议决议\n${this.steps[1].output}\n\n## 待办事项\n${this.steps[2].output}`;
+                    await this.callStreamingAPI(systemPrompt, combinedInput, 3);
+                },
+
+                /** 步骤5: 生成下次会议议程 - 流式输出 */
+                async runNextAgenda() {
+                    const meetingTitle = this.inputData.title || '团队会议';
+
+                    const systemPrompt = `你是一位会议组织者。请根据本次会议的未解决问题、待办事项跟进情况，为下次会议制定建议议程。
+
+要求：
+1. 议程结构清晰，包含：
+   - 建议的会议主题
+   - 建议的会议时间（基于待办截止日期推算）
+   - 上次待办跟进回顾（5-10分钟）
+   - 本次重点讨论议题（每项含预估时长）
+   - 新增需讨论事项
+   - 预留自由讨论时间
+2. 议题优先级排序（先讨论高优先级事项）
+3. 每个议题标注预估讨论时间
+4. 总时长控制在 60 分钟以内
+5. 以 Markdown 格式输出，以中文撰写
+
+格式参考：
+# 📅 下次会议议程建议
+
+**会议主题**：XXX
+**建议时间**：XXXX
+**预计时长**：XX 分钟
+
+## 议程安排
+
+| 序号 | 议题 | 时长 | 说明 |
+|------|------|------|------|
+| 1 | ... | Xmin | ... |
+...
+
+## 📝 会前准备事项
+- ...`;
+
+                    const combinedInput = `## 上次会议决议\n${this.steps[1].output}\n\n## 当前待办事项\n${this.steps[2].output}\n\n## 上次会议主题：${meetingTitle}`;
+                    await this.callStreamingAPI(systemPrompt, combinedInput, 4);
+                },
+
+                // ==================== 全链路运行 ====================
+
+                /** 一键运行全部步骤（按顺序依次执行） */
+                async runFullChain() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+                    if (!this.inputData.content.trim()) {
+                        this.showToast('请先粘贴会议纪要内容', 'alert-circle');
+                        return;
+                    }
+
+                    this.steps[0].status = 'completed';
+                    this.steps[0].output = this.buildInputContext();
+
+                    for (let i = 1; i <= 4; i++) {
+                        await this.runStep(i);
+                        if (this.steps[i].status !== 'completed') {
+                            this.showToast(`链路在第 ${i + 1} 步中断，请检查后重试`, 'alert-circle');
+                            return;
+                        }
+                    }
+
+                    this.showToast('全链路处理完成！', 'check-circle');
+                },
+
+                // ==================== 重置和导出 ====================
+
+                /** 重置所有步骤状态和输出 */
+                resetChain() {
+                    this.steps.forEach((step) => {
+                        step.status = 'pending';
+                        step.output = '';
+                    });
+                    this.actionItems = [];
+                    this.currentStep = 0;
+                    this.inputData = {
+                        title: '',
+                        date: new Date().toISOString().slice(0, 10),
+                        participants: '',
+                        content: ''
+                    };
+                    this.refreshIcons();
+                    this.showToast('链路已重置', 'rotate-ccw');
+                },
+
+                /** 导出全部链路输出为 Markdown 文档 */
+                exportAllOutputs() {
+                    const now = new Date();
+                    const dateStr = now.toLocaleString('zh-CN');
+                    const title = this.inputData.title || '会议纪要';
+
+                    let md = `# ${title} - 会议纪要转行动\n\n`;
+                    md += `> 生成时间: ${dateStr}\n`;
+                    if (this.inputData.date) md += `> 会议日期: ${this.inputData.date}\n`;
+                    if (this.inputData.participants) md += `> 参会人员: ${this.inputData.participants}\n`;
+                    md += `\n---\n\n`;
+
+                    /* 原始会议纪要摘要 */
+                    if (this.inputData.content) {
+                        md += `## 📄 原始会议记录\n\n`;
+                        md += this.inputData.content.substring(0, 1000);
+                        if (this.inputData.content.length > 1000) md += '\n\n...(已截断)';
+                        md += `\n\n---\n\n`;
+                    }
+
+                    /* 步骤2: 决议 */
+                    if (this.steps[1].output) {
+                        md += this.steps[1].output + '\n\n---\n\n';
+                    }
+
+                    /* 步骤3: 待办事项 */
+                    if (this.actionItems.length > 0) {
+                        md += `## ✅ 待办事项清单\n\n`;
+                        md += `| # | 任务 | 负责人 | 截止日期 | 优先级 |\n`;
+                        md += `|---|------|--------|----------|--------|\n`;
+                        this.actionItems.forEach((item, idx) => {
+                            md += `| ${idx + 1} | ${item.task} | ${item.owner || '待定'} | ${item.deadline || '待定'} | ${item.priority || '中'} |\n`;
+                        });
+                        md += `\n---\n\n`;
+                    }
+
+                    /* 步骤4: 跟进邮件 */
+                    if (this.steps[3].output) {
+                        md += `## 📧 跟进邮件草稿\n\n`;
+                        md += this.steps[3].output + '\n\n---\n\n';
+                    }
+
+                    /* 步骤5: 下次会议议程 */
+                    if (this.steps[4].output) {
+                        md += this.steps[4].output + '\n\n';
+                    }
+
+                    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const safeName = (this.inputData.title || '会议纪要').replace(/[\/\\:*?"<>|]/g, '_');
+                    a.download = `${safeName}_行动计划_${now.toISOString().slice(0, 10)}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    this.showToast('已导出 Markdown 文档', 'download');
+                }
+            }));
+        });
+    </script>
+
+</body>
+
+</html>

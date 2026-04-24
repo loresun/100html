@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>p5.js 创意编程</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fff1f2; color: #881337; }
+    .glass { background: white; border: 1px solid #fecdd3; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.05); }
+    canvas { border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #fda4af; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold text-rose-900">🎨 p5.js</h1>
+    <p class="text-rose-800/60 mt-2 text-lg">让编码变得对艺术家、设计师、教育者和初学者均可访问</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-rose-200 text-rose-800 rounded-lg hover:bg-rose-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+  <!-- 画布容器 -->
+  <div class="lg:col-span-2">
+    <div class="glass p-4 rounded-3xl flex justify-center items-center bg-white min-h-[500px]" id="canvas-container">
+      <!-- Canvas will be injected here -->
+    </div>
+    <p class="text-center text-sm text-rose-400 mt-4">移动鼠标与粒子互动</p>
+  </div>
+
+  <!-- 参数控制 -->
+  <div class="space-y-6">
+    <div class="glass p-6 rounded-2xl bg-white/80">
+      <h3 class="font-bold text-lg text-rose-900 mb-6">🎛️ 参数调整</h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-rose-700 mb-1">连线距离阈值</label>
+          <input type="range" id="threshold" min="50" max="250" value="100" class="w-full accent-rose-500">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-rose-700 mb-1">粒子数量 (需重置)</label>
+          <input type="range" id="particle-count" min="20" max="150" value="50" class="w-full accent-rose-500">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-rose-700 mb-1">粒子活动速度</label>
+          <input type="range" id="speed" min="1" max="10" value="2" class="w-full accent-rose-500">
+        </div>
+      </div>
+
+      <button onclick="resetSketch()" class="mt-8 w-full py-3 bg-rose-500 text-white font-bold rounded-xl hover:bg-rose-600 shadow-lg shadow-rose-500/20 transition-transform active:scale-95">
+        🔄 重置画布
+      </button>
+    </div>
+
+    <div class="bg-rose-100 p-4 rounded-xl border border-rose-200 text-sm text-rose-900">
+      <p>这是一个经典的粒子网络效果。p5.js 基于 Processing，具有非常友好的绘图 API。</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let particles = [];
+  let thresholdVal = 100;
+  let countVal = 50;
+  let speedVal = 2;
+
+  function setup() {
+    // 创建画布并放入容器
+    const container = document.getElementById('canvas-container');
+    const canvas = createCanvas(container.clientWidth - 32, 500);
+    canvas.parent('canvas-container');
+    
+    initParticles();
+  }
+
+  function windowResized() {
+    const container = document.getElementById('canvas-container');
+    resizeCanvas(container.clientWidth - 32, 500);
+  }
+
+  function initParticles() {
+    particles = [];
+    countVal = parseInt(document.getElementById('particle-count').value);
+    for(let i=0; i<countVal; i++){
+      particles.push(new Particle());
+    }
+  }
+
+  function draw() {
+    background(255); // 白色背景
+    
+    // 更新参数
+    thresholdVal = parseInt(document.getElementById('threshold').value);
+    const baseSpeed = parseInt(document.getElementById('speed').value);
+    speedVal = map(baseSpeed, 1, 10, 0.5, 5);
+
+    // 更新与绘制粒子
+    particles.forEach(p => {
+      p.update();
+      p.draw();
+      p.checkEdges();
+    });
+
+    // 连线逻辑
+    stroke(255, 0, 100, 50); // 也是粉色系
+    for(let i=0; i<particles.length; i++){
+      for(let j=i+1; j<particles.length; j++){
+        let d = dist(particles[i].pos.x, particles[i].pos.y, particles[j].pos.x, particles[j].pos.y);
+        if(d < thresholdVal){
+          // 距离越近线越粗
+          strokeWeight(map(d, 0, thresholdVal, 2, 0));
+          line(particles[i].pos.x, particles[i].pos.y, particles[j].pos.x, particles[j].pos.y);
+        }
+      }
+      
+      // 与鼠标互动
+      let dMouse = dist(particles[i].pos.x, particles[i].pos.y, mouseX, mouseY);
+      if(dMouse < 150){
+        stroke(0, 150, 255, 100); // 蓝色互动
+        line(particles[i].pos.x, particles[i].pos.y, mouseX, mouseY);
+      }
+    }
+  }
+
+  // 粒子类
+  class Particle {
+    constructor(){
+      this.pos = createVector(random(width), random(height));
+      this.vel = p5.Vector.random2D().mult(random(0.5, 2));
+      this.size = random(3, 8);
+      this.color = color(255, random(100, 200), random(100, 200));
+    }
+
+    update(){
+      this.pos.add(this.vel.copy().mult(speedVal * 0.5));
+    }
+
+    draw(){
+      noStroke();
+      fill(this.color);
+      circle(this.pos.x, this.pos.y, this.size);
+    }
+
+    checkEdges(){
+      if(this.pos.x < 0 || this.pos.x > width) this.vel.x *= -1;
+      if(this.pos.y < 0 || this.pos.y > height) this.vel.y *= -1;
+    }
+  }
+
+  function resetSketch() {
+    initParticles();
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

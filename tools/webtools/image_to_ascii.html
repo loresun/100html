@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转 ASCII 艺术 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .ascii-art { font-family: 'Courier New', Courier, monospace; line-height: 0.6; letter-spacing: 0; white-space: pre; overflow-x: auto; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-zinc-50 min-h-screen font-sans text-slate-800" x-data="asciiApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-zinc-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-zinc-100 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-zinc-600 to-slate-800">
+                📟 图片转 ASCII 艺术
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+        <!-- Controls -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-zinc-200">
+                <label class="block w-full text-center py-2 px-4 bg-zinc-800 hover:bg-black text-white rounded-xl font-bold cursor-pointer transition-colors shadow-lg active:scale-95 mb-4">
+                    上传图片
+                    <input type="file" class="hidden" accept="image/*" @change="loadImage($event)">
+                </label>
+
+                <div class="space-y-4">
+                     <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">宽度 (字符数)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" min="20" max="200" step="1" x-model="width" @input="generate()" class="flex-1 accent-zinc-800">
+                            <span class="text-xs font-mono w-8 text-right" x-text="width"></span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">反色 (Invert)</label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" x-model="inverted" @change="generate()" class="rounded text-zinc-900 focus:ring-zinc-900">
+                            <span class="text-sm">黑色背景模式</span>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">字符集 (Charset)</label>
+                        <select x-model="charsetIndex" @change="generate()" class="w-full text-sm border-zinc-200 rounded-lg p-2">
+                            <option value="0">标准 (Standard)</option>
+                            <option value="1">精简 (Simple)</option>
+                            <option value="2">复杂 (Complex)</option>
+                            <option value="3">方块 (Blocks)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button @click="copy()" class="w-full py-3 bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-xl font-bold shadow-sm transition-colors flex items-center justify-center gap-2" :disabled="!output">
+                <i class="fa-regular fa-copy"></i> 复制文本
+            </button>
+        </div>
+
+        <!-- Output -->
+        <div class="lg:col-span-3">
+             <div class="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden min-h-[500px] flex items-center justify-center relative bg-white" :class="inverted && '!bg-black'">
+                <div x-show="!output" class="text-slate-400 flex flex-col items-center">
+                     <i class="fa-solid fa-image text-6xl mb-4 opacity-20"></i>
+                     <span>等待上传...</span>
+                 </div>
+                 
+                 <pre x-show="output" class="ascii-art text-[10px] sm:text-xs md:text-sm text-center p-4 w-full h-full overflow-auto select-all" 
+                      :class="inverted ? 'text-white' : 'text-black'"
+                      x-text="output"></pre>
+                      
+                 <!-- Hidden Canvas for Processing -->
+                 <canvas id="canvas" class="hidden"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function asciiApp() {
+            return {
+                width: 100,
+                output: '',
+                inverted: false,
+                img: null,
+                charsetIndex: 0,
+                // Charsets from dark to light
+                charsets: [
+                    '@%#*+=-:. ', // Standard
+                    '@#-. ',       // Simple
+                    '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`\'. ', // Complex
+                    '█▓▒░ ', // Blocks
+                ],
+
+                init() {
+                    // init
+                },
+
+                loadImage(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.img = new Image();
+                        this.img.onload = () => this.generate();
+                        this.img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                generate() {
+                    if (!this.img) return;
+
+                    const canvas = document.getElementById('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    const ratio = this.img.height / this.img.width;
+                    const w = parseInt(this.width);
+                    // Adjust height to account for font aspect ratio (approx 0.5-0.6)
+                    // But our line-height is 0.6, so we assume roughly 1:1 visually if we adjust h
+                    // Actually standard ascii art: 1 pixel = 1 char. Char height > char width usually.
+                    // To maintain aspect ratio: newH = newW * ratio * (charW / charH)
+                    // Courier New roughly 0.6 aspect ratio
+                    const h = Math.floor(w * ratio * 0.5); 
+
+                    canvas.width = w;
+                    canvas.height = h;
+                    
+                    // Fill white first for transparency handling
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, w, h);
+                    
+                    ctx.drawImage(this.img, 0, 0, w, h);
+                    
+                    const imageData = ctx.getImageData(0, 0, w, h);
+                    const pixels = imageData.data;
+                    
+                    let chars = this.charsets[this.charsetIndex];
+                    if (this.inverted) {
+                         chars = chars.split('').reverse().join('');
+                    }
+
+                    let asciiStr = '';
+                    
+                    for (let i = 0; i < h; i++) {
+                        for (let j = 0; j < w; j++) {
+                            const offset = (i * w + j) * 4;
+                            const r = pixels[offset];
+                            const g = pixels[offset + 1];
+                            const b = pixels[offset + 2];
+                            
+                            // Brightness calculation
+                            const brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                            
+                            // Map brightness to char
+                            const charIndex = Math.floor((brightness / 255) * (chars.length - 1));
+                            asciiStr += chars[charIndex];
+                        }
+                        asciiStr += '\n';
+                    }
+                    
+                    this.output = asciiStr;
+                },
+                
+                copy() {
+                    if(!this.output) return;
+                    navigator.clipboard.writeText(this.output).then(() => {
+                        alert('已复制 ASCII 文本');
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_image_to_ascii.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

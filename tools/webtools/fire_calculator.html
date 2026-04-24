@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIRE 计算器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-orange-50 min-h-screen font-sans text-slate-800" x-data="fireApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-orange-100 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-orange-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-amber-600">
+                🔥 FIRE 财务自由计算器
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Inputs -->
+        <div class="lg:col-span-4 space-y-4">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
+                <div class="space-y-5">
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">当前年龄</label>
+                            <input type="number" x-model.number="currentAge" class="w-full font-bold p-3 rounded-xl border border-slate-200 focus:border-orange-500 outline-none transition-all">
+                        </div>
+                        <div>
+                             <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">预期年支出 (万)</label>
+                             <input type="number" x-model.number="annualExpense" class="w-full font-bold p-3 rounded-xl border border-slate-200 focus:border-orange-500 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">当前存款 (万)</label>
+                        <input type="number" x-model.number="currentSavings" class="w-full font-bold p-3 rounded-xl border border-slate-200 focus:border-orange-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">每年储蓄 (万)</label>
+                        <input type="number" x-model.number="annualSavings" class="w-full font-bold p-3 rounded-xl border border-slate-200 focus:border-orange-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">投资回报率 (%)</label>
+                        <div class="flex items-center gap-2">
+                             <input type="range" min="1" max="15" step="0.5" x-model.number="returnRate" class="flex-1 accent-orange-600">
+                             <span class="font-bold w-12 text-right" x-text="returnRate + '%'"></span>
+                        </div>
+                    </div>
+
+                    <div>
+                         <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">安全提现率 (%)</label>
+                         <div class="flex items-center gap-2">
+                              <input type="range" min="2" max="6" step="0.1" x-model.number="withdrawalRate" class="flex-1 accent-orange-600">
+                              <span class="font-bold w-12 text-right" x-text="withdrawalRate + '%'"></span>
+                         </div>
+                         <p class="text-[10px] text-slate-400 mt-1">经典法则建议 4% (25倍年支出)</p>
+                    </div>
+
+                </div>
+
+                <div class="mt-6 p-4 bg-orange-50 rounded-xl">
+                    <div class="text-xs font-bold text-orange-800 uppercase mb-1">你的 FIRE 目标金额</div>
+                    <div class="text-3xl font-black text-orange-600" x-text="formatCurrency(fireNumber)"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Highlight Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 flex flex-col justify-center text-center">
+                     <div class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">还需奋斗</div>
+                     <div class="text-4xl font-black text-slate-800" x-text="yearsToFire > 0 ? yearsToFire + ' 年' : '已达成!'"></div>
+                     <div class="text-sm text-orange-500 font-bold mt-2" x-text="'预计 ' + (currentAge + yearsToFire) + ' 岁退休'"></div>
+                 </div>
+                 
+                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 flex flex-col justify-center text-center">
+                     <div class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">进度</div>
+                     <div class="text-4xl font-black" :class="progress >= 100 ? 'text-emerald-500' : 'text-slate-800'" x-text="progress + '%'"></div>
+                     <div class="w-full h-2 bg-slate-100 rounded-full mt-4 overflow-hidden">
+                         <div class="h-full bg-orange-500 transition-all duration-1000" :style="`width: ${Math.min(progress, 100)}%`"></div>
+                     </div>
+                 </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 h-[400px]">
+                <canvas id="fireChart"></canvas>
+            </div>
+
+            <!-- Info -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 text-sm text-slate-500 leading-relaxed space-y-2">
+                <p><strong>FIRE (Financial Independence, Retire Early)</strong> 核心理念是积累足够的资产，依靠每年的投资收益覆盖生活支出。</p>
+                <p>计算逻辑：目标金额 = 年支出 / 提现率。例如年支出 10 万，提现率 4%，则需要 250 万本金。</p>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function fireApp() {
+            return {
+                currentAge: 30,
+                annualExpense: 12, // 万
+                currentSavings: 20, // 万
+                annualSavings: 10, // 万
+                returnRate: 5, // %
+                withdrawalRate: 4, // %
+                
+                chart: null,
+                yearsToFire: 0,
+
+                init() {
+                    const saved = localStorage.getItem('webtools_fire_config');
+                    if(saved) {
+                        const data = JSON.parse(saved);
+                        // Restore keys
+                        Object.keys(data).forEach(k => this[k] = data[k]);
+                    }
+
+                    this.$watch('currentAge', () => this.calculate());
+                    this.$watch('annualExpense', () => this.calculate());
+                    this.$watch('currentSavings', () => this.calculate());
+                    this.$watch('annualSavings', () => this.calculate());
+                    this.$watch('returnRate', () => this.calculate());
+                    this.$watch('withdrawalRate', () => this.calculate());
+                    
+                    this.calculate();
+                },
+
+                get fireNumber() {
+                    if (this.withdrawalRate <= 0) return 0;
+                    return this.annualExpense / (this.withdrawalRate / 100);
+                },
+
+                get progress() {
+                    if (this.fireNumber <= 0) return 0;
+                    return ((this.currentSavings / this.fireNumber) * 100).toFixed(1);
+                },
+                
+                formatCurrency(num) {
+                     return '¥' + num.toFixed(2) + '万';
+                },
+
+                calculate() {
+                    // Save config
+                    localStorage.setItem('webtools_fire_config', JSON.stringify({
+                        currentAge: this.currentAge,
+                        annualExpense: this.annualExpense,
+                        currentSavings: this.currentSavings,
+                        annualSavings: this.annualSavings,
+                        returnRate: this.returnRate,
+                        withdrawalRate: this.withdrawalRate
+                    }));
+
+                    const labels = [];
+                    const data = [];
+                    const target = [];
+                    
+                    let balance = this.currentSavings;
+                    let year = 0;
+                    const maxYears = 50; 
+                    const goal = this.fireNumber;
+                    
+                    let reached = false;
+                    this.yearsToFire = 0;
+
+                    // Simulate up to 50 years forward
+                    for (year = 0; year <= maxYears; year++) {
+                        labels.push(this.currentAge + year + '岁');
+                        data.push(balance);
+                        target.push(goal);
+                        
+                        if (!reached && balance >= goal) {
+                            this.yearsToFire = year;
+                            reached = true;
+                        }
+                        
+                        // Invest return + new savings
+                        const growth = balance * (this.returnRate / 100);
+                        balance += growth + this.annualSavings;
+                        
+                        // Stop simulation shortly after reaching goal to keep chart readable
+                        if (reached && year > this.yearsToFire + 5) break; 
+                    }
+                    
+                    if (!reached) this.yearsToFire = '>50'; // Did not reach in 50 years
+                    
+                    this.updateChart(labels, data, target);
+                },
+
+                updateChart(labels, data, targetLine) {
+                    const ctx = document.getElementById('fireChart').getContext('2d');
+                    if (this.chart) this.chart.destroy();
+
+                    this.chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: '资产成长曲线',
+                                    data: data,
+                                    borderColor: '#ea580c', // Orange-600
+                                    backgroundColor: 'rgba(234, 88, 12, 0.1)',
+                                    fill: true,
+                                    tension: 0.4
+                                },
+                                {
+                                    label: 'FIRE 目标线',
+                                    data: targetLine,
+                                    borderColor: '#10b981', // Emerald-500
+                                    borderDash: [5, 5],
+                                    pointRadius: 0,
+                                    fill: false
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            plugins: {
+                                legend: { position: 'top' },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => {
+                                            return ` ${context.dataset.label}: ¥${context.raw.toFixed(2)}万`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_fire_calculator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

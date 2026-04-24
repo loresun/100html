@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本大小写转换 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .mode-btn { padding: 0.5rem 0.75rem; border-radius: 0.5rem; border-width: 1px; font-size: 0.875rem; font-weight: 500; transition-property: all; transition-duration: 150ms; }
+        .mode-btn:hover { border-color: #c4b5fd; background-color: #f5f3ff; }
+        .mode-btn.active { background-color: #7c3aed; border-color: #7c3aed; color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .mode-btn.active:hover { background-color: #6d28d9; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-violet-50 min-h-screen font-sans text-slate-800" x-data="caseApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-violet-100 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-violet-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600">
+                Aa 文本大小写转换
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 md:grid-cols-2 gap-8 h-[calc(100vh-64px)] min-h-[600px]">
+
+        <!-- Input -->
+        <div class="flex flex-col h-full">
+            <div class="flex justify-between items-center mb-2 px-1">
+                <label class="text-xs font-bold text-slate-500 uppercase">Input</label>
+                <button @click="input = ''" class="text-xs text-rose-500 hover:underline">Clear</button>
+            </div>
+            <textarea 
+                x-model="input" 
+                class="flex-1 w-full bg-white rounded-2xl p-4 border border-violet-200 outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all resize-none shadow-sm text-slate-700 leading-relaxed custom-scrollbar"
+                placeholder="在此输入文本..."
+                spellcheck="false"
+            ></textarea>
+        </div>
+
+        <!-- Output & Controls -->
+        <div class="flex flex-col h-full space-y-4">
+            
+            <!-- Controls Grid -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-violet-100 grid grid-cols-2 gap-3">
+                <button @click="convert('upper')" class="mode-btn" :class="mode === 'upper' && 'active'">
+                    <span class="text-xs block opacity-60">UPPERCASE</span>
+                    HELLO WORLD
+                </button>
+                <button @click="convert('lower')" class="mode-btn" :class="mode === 'lower' && 'active'">
+                    <span class="text-xs block opacity-60">lowercase</span>
+                    hello world
+                </button>
+                
+                 <button @click="convert('title')" class="mode-btn" :class="mode === 'title' && 'active'">
+                    <span class="text-xs block opacity-60">Title Case</span>
+                    Hello World
+                </button>
+                <button @click="convert('sentence')" class="mode-btn" :class="mode === 'sentence' && 'active'">
+                    <span class="text-xs block opacity-60">Sentence case</span>
+                    Hello world.
+                </button>
+                
+                 <button @click="convert('camel')" class="mode-btn" :class="mode === 'camel' && 'active'">
+                    <span class="text-xs block opacity-60">camelCase</span>
+                    helloWorld
+                </button>
+                <button @click="convert('snake')" class="mode-btn" :class="mode === 'snake' && 'active'">
+                    <span class="text-xs block opacity-60">snake_case</span>
+                    hello_world
+                </button>
+                
+                <button @click="convert('kebab')" class="mode-btn" :class="mode === 'kebab' && 'active'">
+                    <span class="text-xs block opacity-60">kebab-case</span>
+                    hello-world
+                </button>
+                 <button @click="convert('pascal')" class="mode-btn" :class="mode === 'pascal' && 'active'">
+                    <span class="text-xs block opacity-60">PascalCase</span>
+                    HelloWorld
+                </button>
+                 <button @click="convert('alternating')" class="mode-btn" :class="mode === 'alternating' && 'active'">
+                    <span class="text-xs block opacity-60">aLtErNaTiNg</span>
+                    hElLo wOrLd
+                </button>
+                <button @click="convert('inverse')" class="mode-btn" :class="mode === 'inverse' && 'active'">
+                    <span class="text-xs block opacity-60">InVeRsE</span>
+                    HeLLo WoRLd
+                </button>
+            </div>
+
+            <!-- Output Area -->
+            <div class="flex-1 flex flex-col relative">
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase">Result</label>
+                    <div class="flex gap-3">
+                         <span x-show="copied" class="text-xs text-emerald-600 font-bold animate-fade-in flex items-center gap-1">
+                            <i class="fa-solid fa-check w-3 h-3"></i> Copied
+                        </span>
+                        <button @click="copy()" class="text-xs font-bold text-violet-600 hover:underline flex items-center gap-1">
+                             <i class="fa-solid fa-copy w-3 h-3"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                <textarea 
+                    x-model="output" 
+                    readonly
+                    class="flex-1 w-full bg-slate-100 rounded-2xl p-4 border border-violet-100/50 outline-none resize-none text-slate-600 leading-relaxed custom-scrollbar"
+                ></textarea>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function caseApp() {
+            return {
+                input: '',
+                output: '',
+                mode: '',
+                copied: false,
+
+                init() {
+                    // icons removed
+                    this.$watch('input', () => {
+                         if(this.mode) this.convert(this.mode);
+                    });
+                },
+
+                convert(type) {
+                    this.mode = type;
+                    const str = this.input;
+                    if(!str) {
+                        this.output = '';
+                        return;
+                    }
+                    
+                    switch(type) {
+                        case 'upper':
+                            this.output = str.toUpperCase();
+                            break;
+                        case 'lower':
+                             this.output = str.toLowerCase();
+                            break;
+                        case 'title':
+                             // Simple title case (capitalize first letter of each word)
+                             this.output = str.toLowerCase().replace(/(?:^|\s)\w/g, match => match.toUpperCase());
+                            break;
+                        case 'sentence':
+                             // Capitalize first letter of string and after [.!?]
+                             this.output = str.toLowerCase().replace(/(^\s*\w|[\.\!\?]\s*\w)/g, c => c.toUpperCase());
+                            break;
+                        case 'camel':
+                             this.output = str
+                                .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+                                    return index === 0 ? word.toLowerCase() : word.toUpperCase();
+                                })
+                                .replace(/\s+/g, '')
+                                .replace(/[-_]/g, ''); // Simplistic logic, better regex needed for robust mixed
+                             // Better approach for general text:
+                             // Split by non-alphanumeric, then join
+                             this.output = str.replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase()).replace(/^[A-Z]/, c => c.toLowerCase());
+                            break;
+                        case 'pascal':
+                             this.output = str.replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase()).replace(/^[a-z]/, c => c.toUpperCase());
+                             break;
+                        case 'snake':
+                            this.output = (str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g) || [])
+                                .map(x => x.toLowerCase())
+                                .join('_');
+                            break;
+                        case 'kebab':
+                             this.output = (str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g) || [])
+                                .map(x => x.toLowerCase())
+                                .join('-');
+                            break;
+                        case 'alternating':
+                             this.output = str.split('').map((c, i) => i % 2 === 0 ? c.toLowerCase() : c.toUpperCase()).join('');
+                            break;
+                        case 'inverse':
+                             this.output = str.split('').map(c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join('');
+                            break;
+                    }
+                },
+
+                copy() {
+                    if(!this.output) return;
+                    navigator.clipboard.writeText(this.output).then(() => {
+                        this.copied = true;
+                        setTimeout(() => this.copied = false, 2000);
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_text_case_converter.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

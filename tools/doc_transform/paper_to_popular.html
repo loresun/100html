@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文转科普 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        'primary-light': '#3b82f6',
+                        'primary-dark': '#1d4ed8',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #e0f2fe 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2563eb; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+        .pulse-active { animation: pulse-ring 1.5s ease-out infinite; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer-loading {
+            background: linear-gradient(90deg, #dbeafe 25%, #bfdbfe 50%, #dbeafe 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .chain-line {
+            width: 3px;
+            background: linear-gradient(to bottom, #2563eb, #3b82f6);
+            position: relative;
+        }
+        .chain-line::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid #3b82f6;
+        }
+        .chain-line-done {
+            background: linear-gradient(to bottom, #16a34a, #22c55e);
+        }
+        .chain-line-done::after {
+            border-top-color: #22c55e;
+        }
+
+        .chain-node {
+            transition: all 0.3s ease;
+            border: 2px solid #e5e7eb;
+        }
+        .chain-node:hover {
+            transform: translateX(4px);
+            box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.1);
+        }
+        .chain-node.active {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+        .chain-node.completed {
+            border-color: #16a34a;
+        }
+
+        .editable-output {
+            transition: all 0.2s ease;
+        }
+        .editable-output:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .prose-output h1, .prose-output h2, .prose-output h3 {
+            font-weight: 700;
+            margin-bottom: 0.5em;
+            margin-top: 1em;
+        }
+        .prose-output h1 { font-size: 1.25rem; }
+        .prose-output h2 { font-size: 1.125rem; }
+        .prose-output h3 { font-size: 1rem; }
+        .prose-output p { margin-bottom: 0.5em; line-height: 1.7; }
+        .prose-output ul, .prose-output ol { padding-left: 1.5em; margin-bottom: 0.5em; }
+        .prose-output li { margin-bottom: 0.25em; }
+        .prose-output blockquote {
+            border-left: 3px solid #2563eb;
+            padding-left: 1em;
+            color: #475569;
+            margin: 0.75em 0;
+        }
+        .prose-output code {
+            background: #f1f5f9;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .tab-btn {
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            background: #2563eb;
+            color: white;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="paperToPopular" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-blue-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="graduation-cap" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">论文转科普</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">学术论文 → 大众内容</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-blue-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-blue-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow overflow-y-auto">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+                <!-- 顶部操作栏 -->
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="workflow" class="w-6 h-6 text-blue-600"></i>
+                            论文转科普链路
+                        </h1>
+                        <p class="text-sm text-slate-500 mt-1">学术论文 → 通俗解读 → 博客文章 → 社交媒体 → 短视频脚本</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button @click="runFullChain"
+                            :disabled="isAnyStepRunning || !steps[0].output.trim()"
+                            class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all text-sm">
+                            <template x-if="isAnyStepRunning">
+                                <i data-lucide="loader-2" class="animate-spin w-4 h-4"></i>
+                            </template>
+                            <template x-if="!isAnyStepRunning">
+                                <i data-lucide="zap" class="w-4 h-4"></i>
+                            </template>
+                            <span x-text="isAnyStepRunning ? '链路运行中...' : '⚡ 一键运行全链路'"></span>
+                        </button>
+                        <button @click="exportAllOutputs"
+                            :disabled="!hasAnyOutput"
+                            class="bg-white border border-blue-300 text-blue-700 font-medium px-4 py-2.5 rounded-xl hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition text-sm">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            导出全部
+                        </button>
+                        <button @click="resetChain"
+                            class="bg-white border border-slate-200 text-slate-500 font-medium px-4 py-2.5 rounded-xl hover:bg-slate-50 flex items-center gap-2 transition text-sm">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            重置
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 链路节点 ==================== -->
+                <div class="space-y-0">
+
+                    <!-- Step 1: 输入论文 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': currentStep === 0, 'completed': steps[0].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[0].status === 'completed' ? 'bg-green-500' : 'bg-blue-500'">
+                                    <template x-if="steps[0].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[0].status !== 'completed'">
+                                        <span>1</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
+                                        输入论文内容
+                                    </h3>
+                                    <p class="text-xs text-slate-500">粘贴学术论文的摘要或全文内容</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="steps[0].status === 'completed' ? 'bg-green-100 text-green-700' :
+                                            steps[0].status === 'running' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-slate-100 text-slate-500'"
+                                    x-text="steps[0].status === 'completed' ? '✓ 已就绪' :
+                                            steps[0].status === 'running' ? '编辑中' : '等待输入'">
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 论文元信息 -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">论文标题 *</label>
+                                <input type="text" x-model="paperInfo.title" @input="onInputChange"
+                                    placeholder="如：Attention Is All You Need"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">学科领域 *</label>
+                                <select x-model="paperInfo.discipline" @change="onInputChange"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white">
+                                    <option value="">请选择学科</option>
+                                    <option value="计算机科学">计算机科学</option>
+                                    <option value="人工智能">人工智能</option>
+                                    <option value="医学">医学</option>
+                                    <option value="物理学">物理学</option>
+                                    <option value="心理学">心理学</option>
+                                    <option value="经济学">经济学</option>
+                                    <option value="生物学">生物学</option>
+                                    <option value="化学">化学</option>
+                                    <option value="社会学">社会学</option>
+                                    <option value="教育学">教育学</option>
+                                    <option value="环境科学">环境科学</option>
+                                    <option value="数学">数学</option>
+                                    <option value="天文学">天文学</option>
+                                    <option value="材料科学">材料科学</option>
+                                    <option value="法学">法学</option>
+                                    <option value="其他">其他</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 论文内容 -->
+                        <textarea x-model="steps[0].output"
+                            @input="onInputChange"
+                            rows="10"
+                            placeholder="在此粘贴论文摘要或全文...&#10;&#10;支持内容：&#10;• 论文摘要（Abstract）&#10;• 论文全文或部分章节&#10;• 论文的核心方法与结论&#10;• 中英文论文均可"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-y"></textarea>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-slate-400" x-text="'字符数: ' + steps[0].output.length"></span>
+                            <span class="text-xs" :class="steps[0].output.length > 200 ? 'text-green-600' : 'text-blue-600'"
+                                x-text="steps[0].output.length > 200 ? '✓ 内容充足' : '建议粘贴 200 字以上的论文内容'"></span>
+                        </div>
+                    </div>
+
+                    <!-- Chain connector 1→2 -->
+                    <div class="flex justify-start ml-[29px]">
+                        <div class="chain-line h-8" :class="steps[0].status === 'completed' ? 'chain-line-done' : ''"></div>
+                    </div>
+
+                    <!-- Step 2: AI通俗解读 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': steps[1].status === 'running', 'completed': steps[1].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[1].status === 'completed' ? 'bg-green-500' :
+                                            steps[1].status === 'running' ? 'bg-blue-500 pulse-active' : 'bg-slate-300'">
+                                    <template x-if="steps[1].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[1].status === 'running'">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    </template>
+                                    <template x-if="steps[1].status === 'pending'">
+                                        <span>2</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="lightbulb" class="w-4 h-4 text-blue-600"></i>
+                                        AI 通俗解读
+                                    </h3>
+                                    <p class="text-xs text-slate-500">用大白话解释论文解决了什么问题、关键发现和意义</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="getStatusClass(steps[1].status)"
+                                    x-text="getStatusLabel(steps[1].status)">
+                                </span>
+                                <button @click="runStep(1)"
+                                    :disabled="steps[1].status === 'running' || steps[0].status !== 'completed'"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
+                                    <span x-text="steps[1].status === 'completed' ? '重新运行' : '运行'"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[1].status === 'running' && !steps[1].output" class="shimmer-loading h-24 rounded-xl"></div>
+                        <div x-show="steps[1].output" x-transition>
+                            <div class="prose-output bg-blue-50/50 border border-blue-200 rounded-xl p-4 text-sm leading-relaxed mb-2"
+                                x-html="renderMarkdown(steps[1].output)"></div>
+                            <details class="group">
+                                <summary class="text-xs text-slate-400 cursor-pointer hover:text-blue-600 transition flex items-center gap-1">
+                                    <i data-lucide="pencil" class="w-3 h-3"></i> 编辑原文
+                                </summary>
+                                <textarea x-model="steps[1].output"
+                                    rows="8"
+                                    class="editable-output w-full mt-2 bg-blue-50/30 border border-blue-200 rounded-xl p-4 text-sm leading-relaxed resize-y"></textarea>
+                            </details>
+                            <div class="flex items-center justify-end mt-1 gap-2">
+                                <button @click="copyText(steps[1].output)" class="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[1].status === 'pending' && !steps[1].output"
+                            class="text-center py-6 text-slate-300">
+                            <i data-lucide="arrow-up" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p class="text-sm">等待上一步完成</p>
+                        </div>
+                    </div>
+
+                    <!-- Chain connector 2→3 -->
+                    <div class="flex justify-start ml-[29px]">
+                        <div class="chain-line h-8" :class="steps[1].status === 'completed' ? 'chain-line-done' : ''"></div>
+                    </div>
+
+                    <!-- Step 3: AI博客文章版 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': steps[2].status === 'running', 'completed': steps[2].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[2].status === 'completed' ? 'bg-green-500' :
+                                            steps[2].status === 'running' ? 'bg-blue-500 pulse-active' : 'bg-slate-300'">
+                                    <template x-if="steps[2].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[2].status === 'running'">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    </template>
+                                    <template x-if="steps[2].status === 'pending'">
+                                        <span>3</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="pen-line" class="w-4 h-4 text-blue-600"></i>
+                                        AI 博客文章版
+                                    </h3>
+                                    <p class="text-xs text-slate-500">改写为约 500 字的科普博客，融入故事元素</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="getStatusClass(steps[2].status)"
+                                    x-text="getStatusLabel(steps[2].status)">
+                                </span>
+                                <button @click="runStep(2)"
+                                    :disabled="steps[2].status === 'running' || steps[1].status !== 'completed'"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
+                                    <span x-text="steps[2].status === 'completed' ? '重新运行' : '运行'"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[2].status === 'running' && !steps[2].output" class="shimmer-loading h-24 rounded-xl"></div>
+                        <div x-show="steps[2].output" x-transition>
+                            <div class="prose-output bg-indigo-50/50 border border-indigo-200 rounded-xl p-4 text-sm leading-relaxed mb-2"
+                                x-html="renderMarkdown(steps[2].output)"></div>
+                            <details class="group">
+                                <summary class="text-xs text-slate-400 cursor-pointer hover:text-blue-600 transition flex items-center gap-1">
+                                    <i data-lucide="pencil" class="w-3 h-3"></i> 编辑原文
+                                </summary>
+                                <textarea x-model="steps[2].output"
+                                    rows="10"
+                                    class="editable-output w-full mt-2 bg-indigo-50/30 border border-indigo-200 rounded-xl p-4 text-sm leading-relaxed resize-y"></textarea>
+                            </details>
+                            <div class="flex items-center justify-between mt-1">
+                                <span class="text-xs text-slate-400" x-text="'约 ' + steps[2].output.length + ' 字'"></span>
+                                <button @click="copyText(steps[2].output)" class="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[2].status === 'pending' && !steps[2].output"
+                            class="text-center py-6 text-slate-300">
+                            <i data-lucide="arrow-up" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p class="text-sm">等待上一步完成</p>
+                        </div>
+                    </div>
+
+                    <!-- Chain connector 3→4 -->
+                    <div class="flex justify-start ml-[29px]">
+                        <div class="chain-line h-8" :class="steps[2].status === 'completed' ? 'chain-line-done' : ''"></div>
+                    </div>
+
+                    <!-- Step 4: AI社交媒体版 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': steps[3].status === 'running', 'completed': steps[3].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[3].status === 'completed' ? 'bg-green-500' :
+                                            steps[3].status === 'running' ? 'bg-blue-500 pulse-active' : 'bg-slate-300'">
+                                    <template x-if="steps[3].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[3].status === 'running'">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    </template>
+                                    <template x-if="steps[3].status === 'pending'">
+                                        <span>4</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="share-2" class="w-4 h-4 text-blue-600"></i>
+                                        AI 社交媒体版
+                                    </h3>
+                                    <p class="text-xs text-slate-500">生成知乎回答（200-400字）+ 小红书笔记（100-200字）</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="getStatusClass(steps[3].status)"
+                                    x-text="getStatusLabel(steps[3].status)">
+                                </span>
+                                <button @click="runStep(3)"
+                                    :disabled="steps[3].status === 'running' || steps[2].status !== 'completed'"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
+                                    <span x-text="steps[3].status === 'completed' ? '重新运行' : '运行'"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[3].status === 'running' && !steps[3].output" class="shimmer-loading h-24 rounded-xl"></div>
+                        <div x-show="steps[3].output" x-transition>
+                            <!-- 平台标签切换 -->
+                            <div class="flex items-center gap-2 mb-3">
+                                <button @click="socialTab = 'all'"
+                                    :class="socialTab === 'all' ? 'active' : ''"
+                                    class="tab-btn text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-medium">
+                                    全部
+                                </button>
+                                <button @click="socialTab = 'zhihu'"
+                                    :class="socialTab === 'zhihu' ? 'active' : ''"
+                                    class="tab-btn text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-medium">
+                                    知乎版
+                                </button>
+                                <button @click="socialTab = 'xhs'"
+                                    :class="socialTab === 'xhs' ? 'active' : ''"
+                                    class="tab-btn text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-medium">
+                                    小红书版
+                                </button>
+                            </div>
+                            <div class="prose-output bg-violet-50/50 border border-violet-200 rounded-xl p-4 text-sm leading-relaxed mb-2"
+                                x-html="renderSocialContent()"></div>
+                            <details class="group">
+                                <summary class="text-xs text-slate-400 cursor-pointer hover:text-blue-600 transition flex items-center gap-1">
+                                    <i data-lucide="pencil" class="w-3 h-3"></i> 编辑原文
+                                </summary>
+                                <textarea x-model="steps[3].output"
+                                    rows="12"
+                                    class="editable-output w-full mt-2 bg-violet-50/30 border border-violet-200 rounded-xl p-4 text-sm leading-relaxed resize-y"></textarea>
+                            </details>
+                            <div class="flex items-center justify-end mt-1 gap-2">
+                                <button @click="copyText(steps[3].output)" class="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i> 复制全部
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[3].status === 'pending' && !steps[3].output"
+                            class="text-center py-6 text-slate-300">
+                            <i data-lucide="arrow-up" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p class="text-sm">等待上一步完成</p>
+                        </div>
+                    </div>
+
+                    <!-- Chain connector 4→5 -->
+                    <div class="flex justify-start ml-[29px]">
+                        <div class="chain-line h-8" :class="steps[3].status === 'completed' ? 'chain-line-done' : ''"></div>
+                    </div>
+
+                    <!-- Step 5: AI短视频脚本版 -->
+                    <div class="chain-node rounded-2xl bg-white p-6 shadow-sm"
+                        :class="{ 'active': steps[4].status === 'running', 'completed': steps[4].status === 'completed' }">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                    :class="steps[4].status === 'completed' ? 'bg-green-500' :
+                                            steps[4].status === 'running' ? 'bg-blue-500 pulse-active' : 'bg-slate-300'">
+                                    <template x-if="steps[4].status === 'completed'">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="steps[4].status === 'running'">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    </template>
+                                    <template x-if="steps[4].status === 'pending'">
+                                        <span>5</span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="clapperboard" class="w-4 h-4 text-blue-600"></i>
+                                        AI 短视频脚本版
+                                    </h3>
+                                    <p class="text-xs text-slate-500">60 秒短视频脚本，含开头钩子、正文讲解和结尾引导</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2.5 py-1 rounded-full"
+                                    :class="getStatusClass(steps[4].status)"
+                                    x-text="getStatusLabel(steps[4].status)">
+                                </span>
+                                <button @click="runStep(4)"
+                                    :disabled="steps[4].status === 'running' || steps[3].status !== 'completed'"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
+                                    <span x-text="steps[4].status === 'completed' ? '重新运行' : '运行'"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[4].status === 'running' && !steps[4].output" class="shimmer-loading h-24 rounded-xl"></div>
+                        <div x-show="steps[4].output" x-transition>
+                            <div class="prose-output bg-sky-50/50 border border-sky-200 rounded-xl p-4 text-sm leading-relaxed mb-2"
+                                x-html="renderMarkdown(steps[4].output)"></div>
+                            <details class="group">
+                                <summary class="text-xs text-slate-400 cursor-pointer hover:text-blue-600 transition flex items-center gap-1">
+                                    <i data-lucide="pencil" class="w-3 h-3"></i> 编辑原文
+                                </summary>
+                                <textarea x-model="steps[4].output"
+                                    rows="10"
+                                    class="editable-output w-full mt-2 bg-sky-50/30 border border-sky-200 rounded-xl p-4 text-sm leading-relaxed resize-y"></textarea>
+                            </details>
+                            <div class="flex items-center justify-end mt-1 gap-2">
+                                <button @click="copyText(steps[4].output)" class="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div x-show="steps[4].status === 'pending' && !steps[4].output"
+                            class="text-center py-6 text-slate-300">
+                            <i data-lucide="arrow-up" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p class="text-sm">等待上一步完成</p>
+                        </div>
+                    </div>
+
+                    <!-- 完成标志 -->
+                    <div x-show="allStepsCompleted" x-transition class="mt-6 text-center animate-fade-in">
+                        <div class="inline-flex items-center gap-2 bg-green-100 text-green-700 font-bold px-6 py-3 rounded-full shadow-sm">
+                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                            全部链路处理完成！
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 使用技巧 -->
+                <div class="mt-10 mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="lightbulb" class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"></i>
+                        <div class="text-xs text-blue-800 space-y-1">
+                            <p class="font-medium">使用技巧</p>
+                            <ul class="space-y-0.5 text-blue-700">
+                                <li>• 点击「一键运行全链路」自动按顺序执行所有步骤</li>
+                                <li>• 每步输出可手动编辑后再传给下一步，灵活调整内容</li>
+                                <li>• 社交媒体版支持「知乎/小红书」分标签查看</li>
+                                <li>• 建议填写论文标题和学科领域，让 AI 生成更专业的内容</li>
+                                <li>• 支持中英文论文，英文论文会自动翻译为中文科普</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in" @click.outside="showSettings = false">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="sk-...">
+                        <p class="text-xs text-slate-500 mt-1">
+                            <i data-lucide="lock" class="w-3 h-3 inline-block mr-1"></i>
+                            Key 仅保存在本地浏览器，所有工具共享使用
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">默认模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in z-[200]">
+            <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+            <span class="text-sm" x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * 论文转科普 - Alpine.js 应用
+         *
+         * 五步处理链路：论文输入 → 通俗解读 → 博客文章 → 社交媒体版 → 短视频脚本
+         * 每一步的输出作为下一步的上下文，逐步将学术论文转化为多种大众化内容。
+         */
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('paperToPopular', () => ({
+
+                // ==================== 状态管理 ====================
+                showSettings: false,
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+                toast: { show: false, message: '', icon: 'check' },
+                currentStep: 0,
+                socialTab: 'all',
+
+                /** 论文元信息 */
+                paperInfo: {
+                    title: '',
+                    discipline: '',
+                },
+
+                /**
+                 * 五个步骤的状态和输出
+                 * status: 'pending' | 'running' | 'completed'
+                 */
+                steps: [
+                    { name: '输入论文',       status: 'pending', output: '' },
+                    { name: 'AI通俗解读',    status: 'pending', output: '' },
+                    { name: 'AI博客文章版',   status: 'pending', output: '' },
+                    { name: 'AI社交媒体版',   status: 'pending', output: '' },
+                    { name: 'AI短视频脚本版', status: 'pending', output: '' },
+                ],
+
+                // ==================== 计算属性 ====================
+                get isAnyStepRunning() {
+                    return this.steps.some(s => s.status === 'running');
+                },
+                get hasAnyOutput() {
+                    return this.steps.some((s, i) => i > 0 && s.output);
+                },
+                get allStepsCompleted() {
+                    return this.steps.every(s => s.status === 'completed');
+                },
+
+                /**
+                 * 构建论文描述字符串，注入各步骤的 system prompt
+                 */
+                get paperDesc() {
+                    let parts = [];
+                    if (this.paperInfo.title) parts.push(`论文标题：「${this.paperInfo.title}」`);
+                    if (this.paperInfo.discipline) parts.push(`学科领域：${this.paperInfo.discipline}`);
+                    return parts.length > 0 ? parts.join('，') : '（未提供论文元信息）';
+                },
+
+                // ==================== 生命周期 ====================
+                init() {
+                    this.loadConfig();
+                    this.refreshIcons();
+                },
+
+                // ==================== 配置管理 ====================
+
+                /** 从 localStorage 加载全局 API 配置（合并策略） */
+                loadConfig() {
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        }
+                    } catch (e) {
+                        console.warn('[PaperToPopular] 配置加载失败:', e);
+                    }
+                },
+
+                /** 保存配置到 localStorage（合并策略，不覆盖其他工具的配置） */
+                saveConfig() {
+                    try {
+                        const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        localStorage.setItem('global_llm_config', JSON.stringify({
+                            ...current,
+                            deepseek: this.apiConfig.deepseek,
+                            model: this.apiConfig.model
+                        }));
+                        this.showSettings = false;
+                        this.showToast('配置已保存', 'check-circle');
+                    } catch (e) {
+                        this.showToast('配置保存失败', 'alert-circle');
+                    }
+                },
+
+                // ==================== 工具方法 ====================
+
+                refreshIcons() {
+                    setTimeout(() => { try { lucide.createIcons(); } catch(e) {} }, 50);
+                },
+
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    try { return marked.parse(text); } catch(e) { return text; }
+                },
+
+                /**
+                 * 渲染社交媒体内容，根据当前 tab 过滤显示
+                 * 全文中包含知乎和小红书两段，以 Markdown 分隔符区分
+                 */
+                renderSocialContent() {
+                    const text = this.steps[3].output;
+                    if (!text) return '';
+
+                    if (this.socialTab === 'all') {
+                        return this.renderMarkdown(text);
+                    }
+
+                    const sections = text.split(/(?=#{1,3}\s*(?:【?知乎|【?小红书))/i);
+                    for (const section of sections) {
+                        if (this.socialTab === 'zhihu' && /知乎/i.test(section.substring(0, 40))) {
+                            return this.renderMarkdown(section.trim());
+                        }
+                        if (this.socialTab === 'xhs' && /小红书/i.test(section.substring(0, 40))) {
+                            return this.renderMarkdown(section.trim());
+                        }
+                    }
+                    return this.renderMarkdown(text);
+                },
+
+                getStatusClass(status) {
+                    if (status === 'completed') return 'bg-green-100 text-green-700';
+                    if (status === 'running') return 'bg-blue-100 text-blue-700';
+                    return 'bg-slate-100 text-slate-500';
+                },
+
+                getStatusLabel(status) {
+                    if (status === 'completed') return '✓ 已完成';
+                    if (status === 'running') return '⏳ 运行中...';
+                    return '等待中';
+                },
+
+                /** 输入变更时自动判断第一步是否就绪 */
+                onInputChange() {
+                    if (this.steps[0].output.trim().length > 0 &&
+                        this.paperInfo.title.trim().length > 0 &&
+                        this.paperInfo.discipline.length > 0) {
+                        this.steps[0].status = 'completed';
+                    } else {
+                        this.steps[0].status = 'pending';
+                    }
+                },
+
+                async copyText(text) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        this.showToast('已复制到剪贴板', 'copy');
+                    } catch (err) {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        this.showToast('已复制到剪贴板', 'copy');
+                    }
+                },
+
+                // ==================== API 调用核心 ====================
+
+                /**
+                 * 流式调用 DeepSeek API
+                 * @param {string} systemPrompt - 系统提示词
+                 * @param {string} userContent - 用户输入
+                 * @param {number} stepIndex - 步骤索引，实时写入 steps[stepIndex].output
+                 * @returns {Promise<string>} 完整响应文本
+                 */
+                async callStreamingAPI(systemPrompt, userContent, stepIndex) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userContent }
+                            ],
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errBody = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${errBody}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    let fullText = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6).trim();
+                                if (data === '[DONE]') continue;
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices?.[0]?.delta;
+                                    if (delta?.reasoning_content) {
+                                        // V4 Pro 推理过程暂存（可按需展示）
+                                    }
+                                    if (delta?.content) {
+                                        fullText += delta.content;
+                                        this.steps[stepIndex].output = fullText;
+                                    }
+                                } catch (e) { /* 跳过解析失败的行 */ }
+                            }
+                        }
+                    }
+                    return fullText;
+                },
+
+                // ==================== 步骤执行逻辑 ====================
+
+                /**
+                 * 执行指定步骤
+                 * @param {number} stepIndex - 1~4（0 是输入步骤）
+                 */
+                async runStep(stepIndex) {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    this.steps[stepIndex].status = 'running';
+                    this.steps[stepIndex].output = '';
+                    this.currentStep = stepIndex;
+                    this.refreshIcons();
+
+                    try {
+                        switch (stepIndex) {
+                            case 1: await this.runPlainExplanation(); break;
+                            case 2: await this.runBlogVersion(); break;
+                            case 3: await this.runSocialMediaVersion(); break;
+                            case 4: await this.runVideoScript(); break;
+                        }
+                        this.steps[stepIndex].status = 'completed';
+                        this.showToast(`${this.steps[stepIndex].name} 完成`, 'check-circle');
+                    } catch (error) {
+                        console.error(`[PaperToPopular] 步骤 ${stepIndex} 失败:`, error);
+                        this.steps[stepIndex].status = 'pending';
+                        this.showToast(`${this.steps[stepIndex].name} 失败: ${error.message}`, 'alert-circle');
+                    }
+                    this.refreshIcons();
+                },
+
+                /** 步骤2: 通俗解读（流式） */
+                async runPlainExplanation() {
+                    const systemPrompt = `你是一位顶尖的科学传播专家，擅长将复杂的学术论文翻译成普通人能懂的语言。请对以下学术论文进行通俗解读。
+
+${this.paperDesc}
+
+请按以下结构输出：
+
+## 🔬 这篇论文在研究什么？
+用一段通俗易懂的话概括论文的研究问题，让没有专业背景的人也能理解。如果是英文论文，请用中文解读。
+
+## 💡 核心发现是什么？
+列出 2-4 个关键发现/结论，每个用简单比喻或生活场景类比来解释。
+
+## 🤔 为什么这项研究重要？
+说明这项研究的实际意义，对普通人生活、行业发展或科学进步有什么影响。
+
+## 🧪 研究方法简述
+用一两句话简单描述研究者是怎么做实验/分析的（不需要技术细节）。
+
+## 📊 一句话总结
+用一句话概括这篇论文的核心贡献。
+
+要求：
+- 完全避免使用术语黑话，如果必须用术语要加括号解释
+- 多用比喻、类比、生活场景举例
+- 语气亲切友好，像朋友在给你讲一个有趣的科学发现
+- 以中文输出`;
+
+                    await this.callStreamingAPI(systemPrompt, this.steps[0].output, 1);
+                },
+
+                /** 步骤3: 博客文章版（流式） */
+                async runBlogVersion() {
+                    const systemPrompt = `你是一位科技博客作家，文笔生动，善于讲故事。请根据以下论文的通俗解读，改写成一篇约 500 字的科普博客文章。
+
+${this.paperDesc}
+
+写作要求：
+1. **标题**：一个吸引人的中文标题（不要用论文原标题，要让人想点进来看）
+2. **开篇钩子**（1段）：用一个吸引人的场景、问题或故事切入，引发读者好奇
+3. **问题背景**（1段）：为什么科学家要研究这个问题？和我们的生活有什么关系？
+4. **核心发现**（2-3段）：用故事化的方式讲述研究发现，穿插生动的类比
+5. **意义与展望**（1段）：这项研究意味着什么？未来可能带来什么改变？
+6. **结尾**：一句引人深思或有启发的总结
+
+风格要求：
+- 像在和一位聪明但非专业的朋友聊天
+- 多用短句，节奏明快
+- 穿插具体数据让内容更有说服力（从论文中提取）
+- 适当使用修辞手法（比喻、设问、排比等）
+- 全篇约 500 字，不超过 800 字
+- 以中文 Markdown 格式输出`;
+
+                    const combinedInput = `## 论文原文摘要\n${this.steps[0].output}\n\n## 通俗解读\n${this.steps[1].output}`;
+                    await this.callStreamingAPI(systemPrompt, combinedInput, 2);
+                },
+
+                /** 步骤4: 社交媒体版（流式） */
+                async runSocialMediaVersion() {
+                    const systemPrompt = `你是一位全平台内容运营专家。请根据以下论文科普内容，生成两个不同平台的版本。请严格按照以下格式输出：
+
+${this.paperDesc}
+
+---
+
+## 【知乎回答版】
+
+请生成一篇知乎风格的回答（200-400字），要求：
+- 以"谢邀"或者直接回答问题的方式开头
+- 分析性、理性的语气，有理有据
+- 适当引用论文数据增强权威性
+- 逻辑清晰，分点阐述
+- 结尾可以抛出一个延伸问题引发讨论
+- 适合在知乎"如何看待xxx研究？"这类问题下回答
+
+---
+
+## 【小红书笔记版】
+
+请生成一篇小红书风格的笔记（100-200字），要求：
+- 标题带 emoji，吸引眼球（如"🔬天哪！科学家发现了..."）
+- 语气活泼、有感染力，像在和姐妹/朋友分享
+- 大量使用 emoji 作为视觉分隔（🔬💡✨🧠❤️🔥📖等）
+- 每段短小精悍（1-2句话），段间空行
+- 把复杂概念用口语化表达
+- 结尾加互动引导 + 3-5个 hashtag 标签
+- 整体轻松有趣，让人忍不住点赞收藏
+
+以中文 Markdown 格式输出。`;
+
+                    const combinedInput = `## 通俗解读\n${this.steps[1].output}\n\n## 博客文章版\n${this.steps[2].output}`;
+                    await this.callStreamingAPI(systemPrompt, combinedInput, 3);
+                },
+
+                /** 步骤5: 短视频脚本版（流式） */
+                async runVideoScript() {
+                    const systemPrompt = `你是一位科普短视频编剧，擅长制作抖音/B站风格的 60 秒科普视频脚本。请根据以下论文科普内容，生成一个短视频脚本。
+
+${this.paperDesc}
+
+请按以下结构输出：
+
+## 🎬 60 秒科普短视频脚本
+
+### 📌 视频标题
+一个 15 字以内的抓人标题
+
+### 🎯 目标受众
+一句话描述
+
+---
+
+### 🪝 开头钩子（0-8秒）
+> 用一个震撼性的问题、反常识观点或悬念开场，3秒内抓住观众注意力
+
+**画面建议**：（简述配合什么画面/动画）
+**口播文案**：「实际的口播台词，用引号标注」
+
+---
+
+### 📖 正文讲解（8-45秒）
+分 2-3 个要点展开，每个要点：
+
+**要点一**：
+**画面建议**：
+**口播文案**：「」
+
+**要点二**：
+**画面建议**：
+**口播文案**：「」
+
+**要点三**（可选）：
+**画面建议**：
+**口播文案**：「」
+
+---
+
+### 📢 结尾引导（45-60秒）
+> 总结核心观点 + 互动引导
+
+**画面建议**：
+**口播文案**：「」
+
+---
+
+### 🏷️ 推荐标签
+5-8 个短视频平台标签
+
+### 📝 制作备注
+- 建议配乐风格
+- 关键转场节点
+- 预计完播率优化建议
+
+写作要求：
+- 口播文案要口语化、有节奏感，像在讲一个精彩的故事
+- 每句不超过 20 个字，便于口播
+- 多用短句、设问句增强节奏
+- 画面建议要具体可执行
+- 以中文 Markdown 格式输出`;
+
+                    const combinedInput = `## 通俗解读\n${this.steps[1].output}\n\n## 博客文章版\n${this.steps[2].output}\n\n## 社交媒体版\n${this.steps[3].output}`;
+                    await this.callStreamingAPI(systemPrompt, combinedInput, 4);
+                },
+
+                // ==================== 全链路运行 ====================
+
+                /** 按顺序执行全部步骤 */
+                async runFullChain() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+                    if (!this.steps[0].output.trim()) {
+                        this.showToast('请先粘贴论文内容', 'alert-circle');
+                        return;
+                    }
+                    if (!this.paperInfo.title.trim()) {
+                        this.showToast('请填写论文标题', 'alert-circle');
+                        return;
+                    }
+                    if (!this.paperInfo.discipline) {
+                        this.showToast('请选择学科领域', 'alert-circle');
+                        return;
+                    }
+
+                    this.steps[0].status = 'completed';
+
+                    for (let i = 1; i <= 4; i++) {
+                        await this.runStep(i);
+                        if (this.steps[i].status !== 'completed') {
+                            this.showToast(`链路在第 ${i + 1} 步中断，请检查后重试`, 'alert-circle');
+                            return;
+                        }
+                    }
+
+                    this.showToast('全链路处理完成！', 'check-circle');
+                },
+
+                // ==================== 重置和导出 ====================
+
+                resetChain() {
+                    this.steps.forEach(step => {
+                        step.status = 'pending';
+                        step.output = '';
+                    });
+                    this.paperInfo = { title: '', discipline: '' };
+                    this.currentStep = 0;
+                    this.socialTab = 'all';
+                    this.refreshIcons();
+                    this.showToast('链路已重置', 'rotate-ccw');
+                },
+
+                /** 导出全部链路输出为 Markdown 文档 */
+                exportAllOutputs() {
+                    const now = new Date();
+                    const dateStr = now.toLocaleString('zh-CN');
+                    const title = this.paperInfo.title || '未命名论文';
+
+                    let md = `# 论文转科普 - 「${title}」\n\n`;
+                    md += `> 生成时间: ${dateStr}\n`;
+                    if (this.paperInfo.discipline) md += `> 学科领域: ${this.paperInfo.discipline}\n`;
+                    md += `\n---\n\n`;
+
+                    if (this.steps[0].output) {
+                        md += `## 📄 原始论文内容\n\n`;
+                        md += this.steps[0].output + '\n\n---\n\n';
+                    }
+
+                    const stepMeta = [
+                        null,
+                        { emoji: '🔬', title: '通俗解读' },
+                        { emoji: '📝', title: '博客文章版' },
+                        { emoji: '📱', title: '社交媒体版' },
+                        { emoji: '🎬', title: '短视频脚本版' },
+                    ];
+
+                    for (let i = 1; i <= 4; i++) {
+                        if (this.steps[i].output) {
+                            md += `## ${stepMeta[i].emoji} ${stepMeta[i].title}\n\n`;
+                            md += this.steps[i].output + '\n\n';
+                            md += `---\n\n`;
+                        }
+                    }
+
+                    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `论文转科普_${title}_${now.toISOString().slice(0, 10)}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    this.showToast('已导出 Markdown 文档', 'download');
+                }
+            }));
+        });
+    </script>
+
+</body>
+
+</html>

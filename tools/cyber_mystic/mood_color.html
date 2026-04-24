@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>情绪调色盘 · 心情即色彩</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /**
+     * 全页背景色由 Alpine 绑定，此处统一过渡时长与曲线，营造冥想般的缓慢晕染
+     */
+    body.mood-canvas {
+      font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      min-height: 100vh;
+      transition: background-color 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /** 轻柔暗角，增强沉浸感，不阻挡点击 */
+    .vignette {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 0%, rgba(0, 0, 0, 0.12) 100%);
+      z-index: 0;
+    }
+
+    /** 中央内容区在暗角之上 */
+    .layer-main {
+      position: relative;
+      z-index: 1;
+    }
+
+    /** 大色块圆形：轻微呼吸感阴影 */
+    .swatch-glow {
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 24px 80px rgba(0, 0, 0, 0.25),
+        inset 0 0 60px rgba(255, 255, 255, 0.08);
+    }
+
+    [x-cloak] {
+      display: none !important;
+    }
+
+    /** 历史色块：调色板式圆角矩形 */
+    .history-dot {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .history-dot:hover {
+      transform: translateY(-3px) scale(1.06);
+    }
+
+    /** 选中态描边颜色由 Alpine 绑定 fgColor 注入 */
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body
+  class="mood-canvas"
+  x-data="moodPalette()"
+  x-init="init()"
+  :style="pageStyle"
+>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div class="layer-main min-h-screen flex flex-col">
+    <!-- 极简顶栏：返回首页 + 设置 -->
+    <header class="shrink-0 px-4 py-4 flex items-center justify-between max-w-lg mx-auto w-full">
+      <a
+        href="../../index.html"
+        class="inline-flex items-center gap-2 text-sm opacity-80 hover:opacity-100 transition-opacity"
+        :style="{ color: fgColor }"
+      >
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        返回
+      </a>
+      <button
+        type="button"
+        class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        :style="{ color: fgColor }"
+        @click="showSettings = true"
+        aria-label="API 设置"
+      >
+        <i data-lucide="settings" class="w-5 h-5"></i>
+      </button>
+    </header>
+
+    <main class="flex-1 flex flex-col items-center justify-center px-5 pb-28 max-w-md mx-auto w-full text-center">
+      <!-- 输入区 -->
+      <div class="w-full space-y-4 mb-8">
+        <label class="block text-left text-sm tracking-wide opacity-75" :style="{ color: fgColor }">
+          此刻的心情
+        </label>
+        <textarea
+          x-model="moodInput"
+          rows="3"
+          placeholder="描述你现在的心情..."
+          class="w-full rounded-2xl bg-white/15 backdrop-blur-md px-4 py-3 text-base resize-none focus:outline-none focus:ring-2 placeholder:opacity-50"
+          :style="{
+            color: fgColor,
+            caretColor: fgColor,
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            borderColor: fgColor === '#0c0c0c' ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.22)',
+            '--tw-ring-color': fgColor === '#0c0c0c' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.35)'
+          }"
+        ></textarea>
+        <button
+          type="button"
+          @click="feelColor()"
+          :disabled="isLoading || !canSubmit"
+          class="w-full py-3.5 rounded-2xl font-medium tracking-wide transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+          :class="submitBtnClass"
+          :style="submitBtnStyle"
+        >
+          <span x-show="!isLoading">感受颜色</span>
+          <span x-show="isLoading" class="inline-flex items-center justify-center gap-2">
+            <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+            正在调色…
+          </span>
+        </button>
+        <p x-show="errorMsg" x-cloak class="text-sm text-left opacity-90" :style="{ color: errColor }" x-text="errorMsg"></p>
+      </div>
+
+      <!-- 结果区：有色块时才强调展示 -->
+      <template x-if="current && current.hex">
+        <div class="w-full space-y-6">
+          <div
+            class="swatch-glow w-40 h-40 rounded-full mx-auto border-4 border-white/25"
+            :style="{ backgroundColor: current.hex }"
+            role="img"
+            :aria-label="'颜色 ' + (current.color_name || '')"
+          ></div>
+          <div>
+            <h2 class="text-2xl font-light tracking-wide" :style="{ color: fgColor }" x-text="current.color_name || '未命名之色'"></h2>
+            <div class="mt-3 flex items-center justify-center gap-2 flex-wrap">
+              <code
+                class="text-sm px-3 py-1 rounded-lg bg-black/10 font-mono"
+                :style="{ color: fgColor }"
+                x-text="current.hex"
+              ></code>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-sm underline-offset-2 hover:underline opacity-80"
+                :style="{ color: fgColor }"
+                @click="copyHex(current.hex)"
+              >
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                复制
+              </button>
+            </div>
+          </div>
+          <p class="text-sm leading-relaxed opacity-85 text-left" :style="{ color: fgColor }" x-text="current.reason"></p>
+          <blockquote
+            class="text-base italic font-light leading-relaxed border-l-2 pl-4 text-left opacity-90"
+            :style="{ borderColor: fgColor, color: fgColor }"
+            x-text="current.poetry"
+          ></blockquote>
+        </div>
+      </template>
+
+      <template x-if="!current || !current.hex">
+        <p class="text-sm opacity-50 max-w-xs" :style="{ color: fgColor }">
+          写下心情，让 AI 为你配一支专属颜色。
+        </p>
+      </template>
+    </main>
+
+    <!-- 底部历史调色条 -->
+    <footer
+      class="shrink-0 fixed bottom-0 left-0 right-0 px-4 py-4 backdrop-blur-md border-t border-black/5"
+      :style="{ backgroundColor: historyBarBg }"
+      x-show="history.length"
+      x-cloak
+    >
+      <p class="text-xs text-center mb-2 opacity-60" :style="{ color: fgColor }">最近的情绪色谱</p>
+      <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
+        <template x-for="(item, idx) in history" :key="item.ts + '-' + idx">
+          <button
+            type="button"
+            class="history-dot w-9 h-9 rounded-lg shrink-0"
+            :style="{
+              backgroundColor: item.hex,
+              border: '1px solid rgba(0,0,0,0.12)',
+              boxShadow: (current && current.ts === item.ts) ? '0 0 0 3px ' + fgColor : 'none'
+            }"
+            @click="recall(item)"
+            :title="item.moodText + ' · ' + (item.color_name || '')"
+          ></button>
+        </template>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div
+    x-show="showSettings"
+    x-cloak
+    class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+    @keydown.escape.window="showSettings = false"
+  >
+    <div
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-slate-800"
+      @click.outside="showSettings = false"
+    >
+      <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+        <i data-lucide="key-round" class="w-5 h-5 text-violet-600"></i>
+        API 配置
+      </h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+          <input
+            type="password"
+            x-model="apiConfig.deepseek"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+            placeholder="sk-..."
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-6 flex justify-end gap-2">
+        <button type="button" class="px-4 py-2 rounded-xl hover:bg-slate-100 text-sm" @click="showSettings = false">取消</button>
+        <button type="button" class="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-medium" @click="saveConfig()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 轻提示 -->
+  <div
+    x-show="toast.show"
+    x-cloak
+    class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-full bg-slate-900/90 text-white text-sm shadow-lg"
+    x-text="toast.message"
+  ></div>
+
+  <script>
+    /**
+     * 本工具专用：情绪色谱历史（与 global_llm_config 分离，避免污染全局 LLM 配置）
+     */
+    const MOOD_HISTORY_KEY = 'mood_color_history';
+    const HISTORY_MAX = 16;
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('moodPalette', () => ({
+        /** 用户输入的心情描述 */
+        moodInput: '',
+        /** 当前展示的一条完整结果（含时间戳用于与历史联动） */
+        current: null,
+        /** 历史记录：从新到旧 */
+        history: [],
+        /** 页面背景色（合法 CSS 颜色字符串） */
+        bgHex: '#2d2a32',
+        /** 根据背景计算的前景色（黑或白） */
+        fgColor: '#f5f3f7',
+        /** 错误信息 */
+        errorMsg: '',
+        /** 请求中 */
+        isLoading: false,
+        /** API：与 global_llm_config 合并读写，禁止整对象覆盖 */
+        apiConfig: {
+          deepseek: '',
+          model: 'deepseek-v4-flash'
+        },
+        showSettings: false,
+        toast: { show: false, message: '' },
+
+        /**
+         * 计算 body 行内样式：背景色 + 默认文字色由 fgColor 控制子元素
+         */
+        get pageStyle() {
+          return `background-color: ${this.bgHex}; color: ${this.fgColor};`;
+        },
+
+        /** 错误提示色：在浅色背景上用红棕，在深色背景上用浅珊瑚 */
+        get errColor() {
+          return this.fgColor === '#0c0c0c' ? '#9b1c1c' : '#ffb4a8';
+        },
+
+        /** 底部历史条半透明衬底，略深/略浅于主背景 */
+        get historyBarBg() {
+          return this.fgColor === '#0c0c0c' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.2)';
+        },
+
+        get canSubmit() {
+          return (this.moodInput || '').trim().length > 0;
+        },
+
+        /** 主按钮：根据亮度切换填充样式 */
+        get submitBtnClass() {
+          return this.fgColor === '#0c0c0c'
+            ? 'bg-slate-900 text-white hover:bg-slate-800'
+            : 'bg-white/20 text-white hover:bg-white/30';
+        },
+
+        get submitBtnStyle() {
+          return {};
+        },
+
+        /**
+         * 初始化：读 LLM 配置、历史、默认对比色、图标
+         */
+        init() {
+          this.loadConfig();
+          this.loadHistory();
+          this.updateContrast(this.bgHex);
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 合并加载 global_llm_config */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /** 保存 API：与已有对象合并后写入 */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 读取本地历史 */
+        loadHistory() {
+          try {
+            const raw = localStorage.getItem(MOOD_HISTORY_KEY);
+            if (raw) {
+              const arr = JSON.parse(raw);
+              this.history = Array.isArray(arr) ? arr : [];
+            }
+          } catch (e) {
+            console.error('读取情绪历史失败:', e);
+            this.history = [];
+          }
+        },
+
+        /**
+         * 写入历史：去重（同 hex + 同心情摘要则更新时间戳并置顶）、限制条数
+         * @param {object} entry
+         */
+        persistHistory(entry) {
+          const list = this.history.filter(
+            (h) => !(h.hex === entry.hex && h.moodText === entry.moodText)
+          );
+          list.unshift(entry);
+          this.history = list.slice(0, HISTORY_MAX);
+          try {
+            localStorage.setItem(MOOD_HISTORY_KEY, JSON.stringify(this.history));
+          } catch (e) {
+            console.error('保存情绪历史失败:', e);
+          }
+        },
+
+        /**
+         * 将 #RGB 规范为 #RRGGBB
+         * @param {string} hex
+         * @returns {string|null}
+         */
+        normalizeHex(hex) {
+          if (!hex || typeof hex !== 'string') return null;
+          let h = hex.trim();
+          if (!h.startsWith('#')) h = '#' + h;
+          if (/^#([0-9a-fA-F]{3})$/.test(h)) {
+            const s = h.slice(1);
+            h = '#' + s.split('').map((c) => c + c).join('');
+          }
+          if (!/^#([0-9a-fA-F]{6})$/.test(h)) return null;
+          return h.toUpperCase();
+        },
+
+        /**
+         * sRGB 相对亮度（WCAG），用于判断用深字还是浅字
+         * @param {{r:number,g:number,b:number}} rgb
+         * @returns {number}
+         */
+        relLuminance(rgb) {
+          const lin = (v) => {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+          };
+          const R = lin(rgb.r);
+          const G = lin(rgb.g);
+          const B = lin(rgb.b);
+          return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+        },
+
+        /**
+         * hex → {r,g,b}
+         * @param {string} hex
+         */
+        hexToRgb(hex) {
+          const h = this.normalizeHex(hex);
+          if (!h) return { r: 45, g: 42, b: 50 };
+          const n = parseInt(h.slice(1), 16);
+          return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+        },
+
+        /**
+         * 根据背景色更新全局前景色（高对比）
+         * @param {string} hex
+         */
+        updateContrast(hex) {
+          const rgb = this.hexToRgb(hex);
+          const L = this.relLuminance(rgb);
+          /** 阈值约 0.5：亮背景用深字，暗背景用浅字 */
+          this.fgColor = L > 0.52 ? '#0c0c0c' : '#f5f3f7';
+        },
+
+        /**
+         * 从模型返回文本中解析 JSON 对象（兼容偶尔包裹 markdown 代码块的情况）
+         * @param {string} text
+         */
+        parseAiJson(text) {
+          const t = (text || '').trim();
+          try {
+            return JSON.parse(t);
+          } catch (e) {
+            const block = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (block) {
+              try {
+                return JSON.parse(block[1].trim());
+              } catch (e2) { /* 继续尝试 */ }
+            }
+            const brace = t.match(/\{[\s\S]*\}/);
+            if (brace) {
+              return JSON.parse(brace[0]);
+            }
+            throw new Error('无法解析 AI 返回的 JSON');
+          }
+        },
+
+        showToast(msg) {
+          this.toast = { show: true, message: msg };
+          setTimeout(() => {
+            this.toast.show = false;
+          }, 2000);
+        },
+
+        /**
+         * 复制 HEX 到剪贴板
+         * @param {string} hex
+         */
+        async copyHex(hex) {
+          const h = this.normalizeHex(hex) || hex;
+          try {
+            await navigator.clipboard.writeText(h);
+            this.showToast('已复制 ' + h);
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = h;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('已复制 ' + h);
+          }
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /**
+         * 点击历史色块：恢复当时的心情文案与 AI 解读，并平滑切换背景
+         * @param {object} item
+         */
+        recall(item) {
+          this.moodInput = item.moodText || '';
+          this.current = { ...item };
+          const nh = this.normalizeHex(item.hex);
+          if (nh) {
+            this.bgHex = nh;
+            this.updateContrast(nh);
+          }
+          this.errorMsg = '';
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /**
+         * 主流程：调用 DeepSeek JSON 模式，更新背景与展示
+         */
+        async feelColor() {
+          this.errorMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先配置 DeepSeek API Key';
+            return;
+          }
+          const mood = (this.moodInput || '').trim();
+          if (!mood) {
+            this.errorMsg = '请先写下一两句心情';
+            return;
+          }
+
+          this.isLoading = true;
+          try {
+            const system = `你是「情绪调色盘」的色彩与文学顾问。用户会用中文描述当下心情，你要输出一个 JSON 对象（不要 markdown，不要多余说明），字段严格如下：
+{
+  "hex": "#RRGGBB 形式的六位十六进制颜色，如 #4A6741",
+  "color_name": "有画面感的中文颜色名，如「暮色蓝」「焦虑红」「雨后青」",
+  "reason": "一句话解释为什么这种颜色贴合用户心情（≤60字）",
+  "poetry": "一句诗意、冥想感的中文短句形容这种情绪（≤40字）"
+}
+要求：hex 必须是有效的 Web 颜色；整体积极或中性，避免仇恨、自残、违法引导；即使用户低落，也可用色彩与诗句给予温柔接纳。`;
+
+            const user = `我的心情描述：\n${mood}`;
+
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + key
+              },
+              body: JSON.stringify({
+                model: this.apiConfig.model || 'deepseek-v4-flash',
+                messages: [
+                  { role: 'system', content: system },
+                  { role: 'user', content: user }
+                ],
+                stream: false,
+                temperature: 0.85,
+                max_tokens: 500,
+                response_format: { type: 'json_object' }
+              })
+            });
+
+            if (!res.ok) {
+              const errText = await res.text().catch(() => '');
+              throw new Error('API 错误 ' + res.status + (errText ? ': ' + errText.slice(0, 160) : ''));
+            }
+
+            const data = await res.json();
+            const content = data.choices?.[0]?.message?.content;
+            const obj = this.parseAiJson(content);
+
+            const rawHex = obj.hex || obj.color_hex || obj.colorHex;
+            const nh = this.normalizeHex(String(rawHex || ''));
+            if (!nh) {
+              throw new Error('AI 返回的颜色代码无效，请重试');
+            }
+
+            const entry = {
+              hex: nh,
+              color_name: String(obj.color_name || obj.name || '无名之色').trim(),
+              reason: String(obj.reason || obj.why || '').trim(),
+              poetry: String(obj.poetry || obj.poetic || obj.verse || '').trim(),
+              moodText: mood,
+              ts: Date.now()
+            };
+
+            this.current = entry;
+            this.bgHex = nh;
+            this.updateContrast(nh);
+            this.persistHistory(entry);
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败，请检查网络或稍后重试';
+          } finally {
+            this.isLoading = false;
+            this.$nextTick(() => {
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            });
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orbital Garden 3D · 轨道花园</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    * {
+      box-sizing: border-box;
+      font-family: "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft Yahei", sans-serif;
+    }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top right, #102a24 0%, #0b1520 45%, #06080f 100%);
+      color: #e2e8f0;
+      overflow: hidden;
+    }
+    #canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    .panel {
+      position: fixed;
+      right: 32px;
+      bottom: 32px;
+      width: min(360px, 90vw);
+      padding: 20px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.4);
+    }
+    .panel h1 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+    .panel p {
+      margin: 0 0 16px;
+      font-size: 13px;
+      color: #c7d2fe;
+      line-height: 1.6;
+    }
+    .panel input {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.65);
+      color: #f8fafc;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .panel button {
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: linear-gradient(120deg, #34d399, #a78bfa);
+      color: #0f172a;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .panel button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      filter: grayscale(0.5);
+    }
+    .summary {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(30, 41, 59, 0.6);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #a5b4fc;
+    }
+    .settings {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+    }
+    .settings button {
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.7);
+      color: #e2e8f0;
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 23, 0.65);
+      backdrop-filter: blur(8px);
+      z-index: 50;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-card {
+      width: min(420px, 90vw);
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 30px 70px rgba(15, 23, 42, 0.65);
+    }
+    .modal-card h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+    .modal-card label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: #cbd5f5;
+    }
+    .modal-card input,
+    .modal-card select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.7);
+      color: #f8fafc;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .modal-actions button {
+      border: none;
+      border-radius: 10px;
+      padding: 8px 14px;
+      cursor: pointer;
+      background: #334155;
+      color: #e2e8f0;
+    }
+    .modal-actions .primary {
+      background: linear-gradient(120deg, #34d399, #a78bfa);
+      color: #0f172a;
+      font-weight: 600;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/"
+      }
+    }
+  </script>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div class="panel">
+    <h1>轨道花园 · Orbital Garden</h1>
+    <p>输入一句话，DeepSeek 会把回应转译成多层轨道与星体节奏。</p>
+    <input id="promptInput" placeholder="例如：我想找到更平衡的生活节奏" />
+    <button id="generateBtn" class="flex items-center justify-center gap-2">
+      <span id="btnSpinner" class="hidden"><svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></span>
+      <span id="btnText">生成轨道花园</span>
+    </button>
+    <div class="status" id="statusText">等待输入。</div>
+    <div class="summary" id="summaryBox">尚未生成。</div>
+  </div>
+
+  <div class="settings">
+    <button id="settingsBtn">DeepSeek 设置</button>
+  </div>
+
+  <div class="modal" id="settingsModal">
+    <form class="modal-card" id="settingsForm">
+      <h2>DeepSeek API 设置</h2>
+      <label>API Key</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="current-password" />
+      <label>模型</label>
+      <select id="modelSelect">
+        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+      </select>
+      <div class="modal-actions">
+        <button type="button" id="closeModal">取消</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const canvas = document.getElementById('canvas');
+    const statusText = document.getElementById('statusText');
+    const summaryBox = document.getElementById('summaryBox');
+    const generateBtn = document.getElementById('generateBtn');
+    const promptInput = document.getElementById('promptInput');
+
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsForm = document.getElementById('settingsForm');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const modelSelect = document.getElementById('modelSelect');
+    const closeModal = document.getElementById('closeModal');
+
+    const config = {
+      apiKey: '',
+      model: 'deepseek-v4-flash'
+    };
+
+    const loadConfig = () => {
+      const raw = localStorage.getItem('global_llm_config');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      config.apiKey = parsed.apiKey || parsed.deepseek || parsed.deepseek_key || '';
+      config.model = parsed.model || 'deepseek-v4-flash';
+    };
+
+    const saveConfig = () => {
+      const payload = {
+        apiKey: config.apiKey,
+        deepseek: config.apiKey,
+        deepseek_key: config.apiKey,
+        model: config.model
+      };
+      localStorage.setItem('global_llm_config', JSON.stringify(payload));
+    };
+
+    loadConfig();
+    apiKeyInput.value = config.apiKey;
+    modelSelect.value = config.model;
+
+    settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
+    closeModal.addEventListener('click', () => settingsModal.classList.remove('active'));
+    
+    settingsForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      config.apiKey = apiKeyInput.value.trim();
+      config.model = modelSelect.value;
+      saveConfig();
+      settingsModal.classList.remove('active');
+      statusText.textContent = config.apiKey ? 'DeepSeek Key 已保存。' : '未配置 DeepSeek Key，将使用默认轨道。';
+    });
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x05060c, 6, 60);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, 3.5, 10);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+
+    const light = new THREE.PointLight(0xa7f3d0, 2.2, 80);
+    light.position.set(6, 8, 5);
+    scene.add(light);
+
+    const starGeometry = new THREE.BufferGeometry();
+    const starCount = 500;
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i += 1) {
+      starPositions[i * 3] = (Math.random() - 0.5) * 120;
+      starPositions[i * 3 + 1] = (Math.random() - 0.5) * 120;
+      starPositions[i * 3 + 2] = (Math.random() - 0.5) * 120;
+    }
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, opacity: 0.7, transparent: true });
+    const starField = new THREE.Points(starGeometry, starMaterial);
+    scene.add(starField);
+
+    let orbitGroup = new THREE.Group();
+    scene.add(orbitGroup);
+    let orbiters = [];
+
+    const createGarden = (data) => {
+      orbitGroup.clear();
+      orbiters = [];
+
+      const palette = data.palette || ['#34d399', '#a78bfa', '#fbbf24'];
+      const orbitCount = data.orbitCount || 5;
+      const radii = data.radii || [1.6, 2.2, 3.1, 4.0, 4.6];
+      const speeds = data.speeds || [0.6, 0.4, 0.3, 0.25, 0.2];
+      const planetSizes = data.planetSizes || [0.18, 0.22, 0.12, 0.2, 0.16];
+      const halo = data.halo ?? 0.7;
+
+      for (let i = 0; i < orbitCount; i += 1) {
+        const radius = radii[i % radii.length];
+        const speed = speeds[i % speeds.length];
+        const planetSize = planetSizes[i % planetSizes.length];
+        const color = new THREE.Color(palette[i % palette.length]);
+
+        const ringGeometry = new THREE.TorusGeometry(radius, 0.015, 16, 120);
+        const ringMaterial = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = Math.PI / 2.4;
+        orbitGroup.add(ring);
+
+        const planetGeometry = new THREE.SphereGeometry(planetSize, 24, 24);
+        const planetMaterial = new THREE.MeshStandardMaterial({
+          color,
+          emissive: color,
+          emissiveIntensity: 0.9
+        });
+        const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+        planet.userData = { radius, speed, angle: Math.random() * Math.PI * 2, axis: ring.rotation.x };
+        orbitGroup.add(planet);
+        orbiters.push(planet);
+      }
+
+      const haloGeometry = new THREE.SphereGeometry(2.4 + orbitCount * 0.3, 32, 32);
+      const haloMaterial = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(palette[1] || palette[0]),
+        transparent: true,
+        opacity: 0.08 + halo * 0.1
+      });
+      const haloMesh = new THREE.Mesh(haloGeometry, haloMaterial);
+      orbitGroup.add(haloMesh);
+    };
+
+    const defaultData = {
+      summary: '像稳稳旋转的花园，提醒你为自己留一点呼吸的轨道。',
+      palette: ['#34d399', '#a78bfa', '#fbbf24'],
+      orbitCount: 5,
+      radii: [1.6, 2.2, 3.1, 4.0, 4.6],
+      speeds: [0.6, 0.4, 0.3, 0.25, 0.2],
+      planetSizes: [0.18, 0.22, 0.12, 0.2, 0.16],
+      halo: 0.7
+    };
+
+    createGarden(defaultData);
+    summaryBox.textContent = defaultData.summary;
+
+    const buildPrompt = (input) => `根据输入“${input}”生成 3D 轨道花园 JSON。只返回 JSON。字段包括 summary, palette(3色), orbitCount(4-7), radii(数组), speeds(数组), planetSizes(数组), halo(0-1)。`;
+
+    const callDeepSeek = async (prompt) => {
+      if (!config.apiKey) return null;
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.apiKey}`
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [
+            { role: 'system', content: '你是空间艺术与情绪可视化助手。' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.75
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`API 请求失败: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || '';
+    };
+
+    const safeParse = (content) => {
+      const jsonStart = content.indexOf('{');
+      const jsonEnd = content.lastIndexOf('}');
+      if (jsonStart === -1 || jsonEnd === -1) return null;
+      return JSON.parse(content.slice(jsonStart, jsonEnd + 1));
+    };
+
+    generateBtn.addEventListener('click', async () => {
+      const text = promptInput.value.trim();
+      const btnSpinner = document.getElementById('btnSpinner');
+      const btnText = document.getElementById('btnText');
+      
+      if (!text) {
+        statusText.textContent = '请输入一句话。';
+        return;
+      }
+      
+      if (!config.apiKey) {
+         statusText.textContent = '未配置 DeepSeek API Key，将展示默认效果。请右上角设置。';
+         const applied = { ...defaultData, summary: '（演示模式）请配置 API Key 以启用 AI 生成。' };
+         createGarden(applied);
+         summaryBox.textContent = applied.summary;
+         return;
+      }
+
+      statusText.textContent = 'DeepSeek 正在生成轨道花园…';
+      generateBtn.disabled = true;
+      btnSpinner.classList.remove('hidden');
+      btnText.textContent = '正在生成...';
+      
+      try {
+        const content = await callDeepSeek(buildPrompt(text));
+        const data = content ? safeParse(content) : null;
+        const applied = data || { ...defaultData, summary: 'AI 数据解析失败，已使用默认轨道。' };
+        createGarden(applied);
+        summaryBox.textContent = applied.summary || '轨道花园已生成。';
+        statusText.textContent = data ? '轨道花园已生成。' : '未解析到有效 JSON，已使用默认效果。';
+      } catch (error) {
+        statusText.textContent = `生成失败：${error.message}`;
+      } finally {
+        generateBtn.disabled = false;
+        btnSpinner.classList.add('hidden');
+        btnText.textContent = '生成轨道花园';
+      }
+    });
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      const time = performance.now() * 0.0006;
+      starField.rotation.y += 0.0004;
+      orbitGroup.rotation.y += 0.0005;
+
+      orbiters.forEach((planet, index) => {
+        planet.userData.angle += planet.userData.speed * 0.002;
+        const angle = planet.userData.angle;
+        planet.position.x = Math.cos(angle) * planet.userData.radius;
+        planet.position.z = Math.sin(angle) * planet.userData.radius;
+        planet.position.y = Math.sin(time + index) * 0.2;
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
+    };
+
+    const onResize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    };
+
+    window.addEventListener('resize', onResize);
+    onResize();
+    animate();
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/3d_orbital_garden.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

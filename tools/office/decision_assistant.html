@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策辅助工具 - 多思维框架智能分析</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        [v-cloak] { display: none; }
+        .primary { color: #ea580c; }
+        .bg-primary { background-color: #ea580c; }
+        .border-primary { border-color: #ea580c; }
+        .hover\:bg-primary:hover { background-color: #ea580c; }
+        .focus\:ring-primary:focus { --tw-ring-color: #ea580c; }
+        /* Markdown 渲染样式 */
+        .prose h1 { font-size: 1.5rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #1e3a8a; }
+        .prose h2 { font-size: 1.25rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #ea580c; }
+        .prose h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; color: #f97316; }
+        .prose ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.75rem 0; }
+        .prose ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.75rem 0; }
+        .prose li { color: #334155; margin: 0.25rem 0; line-height: 1.6; }
+        .prose p { margin: 0.75rem 0; color: #334155; line-height: 1.75; }
+        .prose strong { font-weight: 600; color: #1e293b; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .prose th, .prose td { border: 1px solid #e2e8f0; padding: 0.5rem; text-align: left; }
+        .prose th { background-color: #f8fafc; font-weight: 600; }
+        /* Markdown 渲染样式增强 */
+        .prose .inline-code {
+            background-color: #fff7ed;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            color: #ea580c;
+        }
+        .prose pre {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+        }
+        .prose pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        .prose blockquote {
+            border-left: 4px solid #fb923c;
+            padding-left: 1rem;
+            color: #6b7280;
+            font-style: italic;
+        }
+        .prose a {
+            color: #ea580c;
+            text-decoration: underline;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50">
+    <div id="app" v-cloak>
+        <!-- 导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i class="fa-solid fa-code-branch primary text-xl"></i>
+                    <span class="font-bold text-xl text-slate-900">决策辅助工具</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button
+                        @click="showSettings = true"
+                        class="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                        <i class="fa-solid fa-gear"></i>
+                        <span class="hidden sm:inline">设置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- 左侧输入区 -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- 思维框架选择 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group primary"></i>
+                            思维框架
+                        </h3>
+                        <div class="grid grid-cols-1 gap-2">
+                            <label v-for="framework in frameworks" :key="framework.value"
+                                class="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all"
+                                :class="form.framework === framework.value ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-orange-300'">
+                                <input type="radio" v-model="form.framework" :value="framework.value" class="mt-1 text-orange-600 focus:ring-orange-500">
+                                <div class="flex-1">
+                                    <div class="font-medium text-slate-900">{{ framework.label }}</div>
+                                    <div class="text-xs text-slate-500 mt-1">{{ framework.desc }}</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 决策场景 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-question primary"></i>
+                            决策场景
+                        </h3>
+                        <textarea
+                            v-model="form.scenario"
+                            placeholder="描述你面临的决策场景，例如：&#10;&#10;我正在考虑是否应该换一份工作。现在的工作稳定但缺乏成长空间，新工作薪资更高但需要搬家到另一个城市..."
+                            class="w-full h-32 p-4 border border-slate-300 rounded-lg resize-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                        ></textarea>
+                    </div>
+
+                    <!-- 备选方案 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-list primary"></i>
+                            备选方案（可选）
+                        </h3>
+                        <textarea
+                            v-model="form.options"
+                            placeholder="列出你的备选方案（每行一个），例如：&#10;留在现在的公司&#10;接受新公司的 offer&#10;继续寻找其他机会&#10;&#10;留空则 AI 会根据场景自动生成方案"
+                            class="w-full h-32 p-4 border border-slate-300 rounded-lg resize-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono"
+                        ></textarea>
+                        <p class="text-xs text-slate-500 mt-2">💡 如果没有明确方案，AI 会帮你梳理选项</p>
+                    </div>
+
+                    <!-- 决策标准 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-bullseye primary"></i>
+                            决策标准/目标（可选）
+                        </h3>
+                        <textarea
+                            v-model="form.criteria"
+                            placeholder="你最看重什么？例如：&#10;职业发展前景&#10;工作生活平衡&#10;薪资待遇&#10;地理位置&#10;&#10;留空则 AI 会根据场景推断"
+                            class="w-full h-24 p-4 border border-slate-300 rounded-lg resize-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                        ></textarea>
+                    </div>
+
+                    <!-- 生成按钮 -->
+                    <button
+                        @click="analyzeDecision"
+                        :disabled="isLoading || !form.scenario"
+                        class="w-full bg-orange-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    >
+                        <i v-if="isLoading" class="fa-solid fa-spinner fa-spin"></i>
+                        <i v-else class="fa-solid fa-lightbulb"></i>
+                        <span>{{ isLoading ? '分析中...' : '开始深度分析' }}</span> </button> </div> <!-- 右侧结果区 --> <div class="lg:col-span-3 space-y-6"> <!-- 空状态 --> <div v-if="!result && !isLoading" class="bg-white rounded-2xl shadow-sm p-12 text-center"> <i class="fa-solid fa-code-branch text-6xl mx-auto text-slate-300 mb-4 block"></i> <p class="text-slate-500">描述决策场景后点击"开始深度分析"</p> <p class="text-sm text-slate-400 mt-2">AI 会使用选定的思维框架帮你理性分析</p> </div> <!-- 结果展示 --> <div v-if="result || isLoading" class="space-y-6"> <!-- V4 Pro 思考过程 --> <div v-if="reasoning" class="bg-white rounded-2xl shadow-sm p-6"> <details class="group"> <summary class="cursor-pointer text-sm font-medium text-slate-600 flex items-center gap-2 hover:text-slate-900"> <i class="fa-solid fa-brain"></i> <span>🧠 深度推理过程（点击展开）</span> <i class="fa-solid fa-chevron-down ml-auto group-open:rotate-180 transition-transform"></i> </summary> <div class="mt-4 p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap max-h-96 overflow-y-auto"> {{ reasoning }}
+                                </div>
+                            </details>
+                        </div>
+
+                        <!-- 分析结果 -->
+                        <div class="bg-white rounded-2xl shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-file-lines primary"></i>
+                                    决策分析报告
+                                </h3>
+                                <!-- 显示模式切换 -->
+                                <div v-if="result" class="flex items-center gap-2">
+                                    <button @click="displayMode = 'rendered'" 
+                                        :class="['text-xs px-2 py-1 rounded-md transition-colors', displayMode === 'rendered' ? 'bg-orange-100 text-orange-700' : 'text-slate-400 hover:text-slate-600']">
+                                        <i class="fa-solid fa-eye mr-1"></i>渲染
+                                    </button>
+                                    <button @click="displayMode = 'text'" 
+                                        :class="['text-xs px-2 py-1 rounded-md transition-colors', displayMode === 'text' ? 'bg-orange-100 text-orange-700' : 'text-slate-400 hover:text-slate-600']">
+                                        <i class="fa-solid fa-file-lines mr-1"></i>原文
+                                    </button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button
+                                        @click="copyResult"
+                                        :disabled="!result"
+                                        class="flex items-center gap-2 px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        <i class="fa-solid fa-copy"></i>
+                                        <span>复制</span>
+                                    </button>
+                                    <button
+                                        @click="exportResult"
+                                        :disabled="!result"
+                                        class="flex items-center gap-2 px-3 py-2 text-sm bg-orange-100 text-orange-700 hover:bg-orange-200 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        <i class="fa-solid fa-download"></i>
+                                        <span>导出</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="isLoading" class="flex items-center justify-center py-12">
+                                <i class="fa-solid fa-spinner fa-spin w-8 h-8 text-orange-600 text-3xl"></i>
+                                <span class="ml-3 text-amber-600 text-sm"><i class="fa-solid fa-clock mr-1"></i>分析中...</span>
+                            </div>
+
+                            <!-- 渲染模式 -->
+                            <div v-if="displayMode === 'rendered'" class="prose prose-slate max-w-none" v-html="markedParse(result)"></div>
+                            <!-- 原文模式 -->
+                            <div v-else class="prose prose-slate max-w-none">
+                                <pre class="whitespace-pre-wrap text-sm font-mono text-slate-600 bg-slate-50 p-4 rounded-xl">{{ result }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gear"></i>
+                    API 配置
+                </h3>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            DeepSeek API Key
+                            <a href="https://platform.deepseek.com/api_keys" target="_blank" class="text-orange-600 hover:underline text-xs ml-2">获取 Key</a>
+                        </label>
+                        <input
+                            type="password"
+                            v-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select
+                            v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        >
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">强烈建议 V4 Pro 进行决策分析</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        @click="showSettings = false"
+                        class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                        取消
+                    </button>
+                    <button
+                        @click="saveConfig"
+                        class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                    >
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const showSettings = ref(false);
+                const isLoading = ref(false);
+                const reasoning = ref('');
+                const result = ref('');
+                const displayMode = ref('rendered'); // 显示模式: rendered(渲染) 或 text(原文)
+
+                const apiConfig = reactive({
+                    deepseek: '',
+                    model: 'deepseek-v4-pro'
+                });
+
+                const frameworks = [
+                    { value: 'pros-cons', label: '利弊分析', desc: '经典方法，列出各选项的优缺点' },
+                    { value: 'decision-tree', label: '决策树', desc: '分析各选项可能的结果路径' },
+                    { value: 'swot', label: 'SWOT 分析', desc: '优势、劣势、机会、威胁四维分析' },
+                    { value: 'cost-benefit', label: '成本收益分析', desc: '量化各选项的成本与收益' },
+                    { value: 'six-hats', label: '6顶思考帽', desc: '从6个角度全方位思考（情感/理性/创意等）' },
+                    { value: 'weighted-scoring', label: '加权评分矩阵', desc: '按标准打分并加权计算总分' }
+                ];
+
+                const form = reactive({
+                    framework: 'pros-cons',
+                    scenario: '',
+                    options: '',
+                    criteria: ''
+                });
+
+                // 加载配置
+                onMounted(() => {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                             Object.assign(apiConfig, JSON.parse(saved));
+                        } catch (e) {
+                             console.error('JSON parse error:', e);
+                        }
+                    }
+                });
+
+                // Markdown 解析函数（支持换行）
+                const markedParse = (text) => {
+                    return marked.parse(text, { breaks: true, gfm: true });
+                };
+
+                // 保存配置（合并策略）
+                function saveConfig() {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                    }
+                    const merged = { ...current, ...apiConfig };
+                    localStorage.setItem('global_llm_config', JSON.stringify(merged));
+                    showSettings.value = false;
+                }
+
+                // 调用 DeepSeek API
+                async function callDeepSeek(messages) {
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: messages,
+                                stream: true,
+                                temperature: 0.4
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`API 调用失败: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content) {
+                                        reasoning.value += delta.reasoning_content;
+                                    }
+
+                                    if (delta.content) {
+                                        result.value += delta.content;
+                                    }
+                                } catch (e) {
+                                    console.error('Parse error:', e);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 分析决策
+                async function analyzeDecision() {
+                    if (!apiConfig.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    reasoning.value = '';
+                    result.value = '';
+
+                    try {
+                        const frameworkMap = {
+                            'pros-cons': {
+                                name: '利弊分析（Pros & Cons）',
+                                template: `## 利弊分析\n\n### 方案 A\n**优点（Pros）**：\n- ...\n\n**缺点（Cons）**：\n- ...\n\n### 方案 B\n...\n\n## 综合建议\n...`
+                            },
+                            'decision-tree': {
+                                name: '决策树分析',
+                                template: `## 决策树\n\n### 决策节点\n- 选择 A → 可能结果1 (概率/影响)\n  → 可能结果2\n- 选择 B → ...\n\n## 最优路径\n...`
+                            },
+                            'swot': {
+                                name: 'SWOT 分析',
+                                template: `## SWOT 分析\n\n### Strengths (优势)\n- ...\n\n### Weaknesses (劣势)\n- ...\n\n### Opportunities (机会)\n- ...\n\n### Threats (威胁)\n- ...\n\n## 战略建议\n...`
+                            },
+                            'cost-benefit': {
+                                name: '成本收益分析',
+                                template: `## 成本收益分析\n\n### 方案 A\n**成本**：\n- 直接成本：...\n- 间接成本：...\n- 机会成本：...\n\n**收益**：\n- 短期收益：...\n- 长期收益：...\n\n**净收益**：...\n\n### 方案 B\n...\n\n## 建议\n...`
+                            },
+                            'six-hats': {
+                                name: '6顶思考帽',
+                                template: `## 6顶思考帽分析\n\n### 🤍 白帽（事实与数据）\n- ...\n\n### ❤️ 红帽（情感与直觉）\n- ...\n\n### 🖤 黑帽（风险与缺点）\n- ...\n\n### 💛 黄帽（优点与价值）\n- ...\n\n### 💚 绿帽（创意与可能性）\n- ...\n\n### 💙 蓝帽（整体把控）\n- ...\n\n## 综合结论\n...`
+                            },
+                            'weighted-scoring': {
+                                name: '加权评分矩阵',
+                                template: `## 加权评分矩阵\n\n| 评估标准 | 权重 | 方案A评分 | 方案A加权 | 方案B评分 | 方案B加权 |\n|---------|------|----------|----------|----------|----------|\n| 标准1   | 30%  | 8/10     | 2.4      | 6/10     | 1.8      |\n| ...     | ...  | ...      | ...      | ...      | ...      |\n| **总分** | 100% | -        | **X.X**  | -        | **Y.Y**  |\n\n## 详细说明\n...\n\n## 建议\n...`
+                            }
+                        };
+
+                        const selectedFramework = frameworkMap[form.framework];
+
+                        const systemPrompt = `你是一位专业的决策分析顾问，擅长使用多种思维框架帮助用户做出理性、全面的决策。
+
+你的任务是使用「**${selectedFramework.name}**」框架，深度分析用户提供的决策场景。
+
+**分析要求**：
+1. 如果用户没有提供备选方案，先帮用户梳理出2-4个可行选项
+2. 如果用户没有提供决策标准，根据场景推断关键考虑因素
+3. 严格使用「${selectedFramework.name}」框架进行分析
+4. 提供具体、可操作的建议
+5. 指出关键风险和注意事项
+6. 保持客观中立，避免主观臆断
+
+**输出格式**（使用 Markdown）：
+
+# 决策分析报告
+
+## 📋 决策场景总结
+[简要总结用户的决策场景]
+
+## 🎯 备选方案
+${form.options ? '[用户提供的方案]' : '[AI 梳理的方案]'}
+
+## 📊 ${selectedFramework.name}
+
+${selectedFramework.template}
+
+## ⚠️ 关键风险提示
+- ...
+
+## ✅ 最终建议
+[综合各方面因素给出明确建议]
+
+注意：
+- 分析要深入、具体，避免泛泛而谈
+- 数据和评分要合理有据
+- 建议要考虑用户的实际情况`;
+
+                        let userPrompt = `**决策场景**：\n${form.scenario}\n\n`;
+
+                        if (form.options) {
+                            userPrompt += `**备选方案**：\n${form.options}\n\n`;
+                        }
+
+                        if (form.criteria) {
+                            userPrompt += `**决策标准/目标**：\n${form.criteria}`;
+                        }
+
+                        await callDeepSeek([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]);
+
+                    } catch (error) {
+                        console.error('分析失败:', error);
+                        result.value = `❌ 分析失败：${error.message}\n\n请检查 API Key 是否正确，或稍后重试。`;
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                // 复制结果
+                async function copyResult() {
+                    try {
+                        let fullText = '';
+                        if (reasoning.value) {
+                            fullText += '=== 深度推理过程 ===\n\n' + reasoning.value + '\n\n';
+                        }
+                        fullText += '=== 决策分析报告 ===\n\n' + result.value;
+
+                        await navigator.clipboard.writeText(fullText);
+                        alert('✅ 已复制到剪贴板');
+                    } catch (err) {
+                        alert('❌ 复制失败，请手动复制');
+                    }
+                }
+
+                // 导出结果
+                function exportResult() {
+                    let content = `# 决策分析报告\n\n`;
+                    content += `生成时间：${new Date().toLocaleString('zh-CN')}\n`;
+                    content += `分析框架：${frameworks.find(f => f.value === form.framework).label}\n\n`;
+                    content += `---\n\n`;
+
+                    if (reasoning.value) {
+                        content += `## 深度推理过程\n\n${reasoning.value}\n\n---\n\n`;
+                    }
+
+                    content += result.value;
+
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `决策分析_${new Date().getTime()}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+
+                return {
+                    showSettings,
+                    isLoading,
+                    reasoning,
+                    result,
+                    apiConfig,
+                    frameworks,
+                    form,
+                    markedParse,
+                    displayMode,
+                    saveConfig,
+                    analyzeDecision,
+                    copyResult,
+                    exportResult
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_decision_assistant.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

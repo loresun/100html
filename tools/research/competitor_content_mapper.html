@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>竞品内容抓取与策略对比器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #38bdf8;
+            border-radius: 999px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(186, 230, 253, 0.6);
+        }
+
+        .tag {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .pulse-dot {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-sky-100">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-satellite-dish text-sky-600 text-xl"></i>
+                        <span class="font-bold text-xl">竞品内容抓取与策略对比器</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <select v-model="apiConfig.model"
+                            class="text-sm border border-sky-200 rounded-lg px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-sky-400">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-sky-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 grid lg:grid-cols-[1fr,1.1fr] gap-6">
+            <section class="glass-card rounded-2xl p-6 space-y-5">
+                <div class="space-y-2">
+                    <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list text-sky-600"></i>
+                        竞品内容输入
+                    </h2>
+                    <p class="text-sm text-slate-500">批量粘贴竞品标题、摘要和互动数据，AI 将自动聚类并生成策略矩阵。</p>
+                </div>
+
+                <div class="space-y-4">
+                    <label class="text-sm font-medium text-slate-700">竞品名称</label>
+                    <input v-model="input.competitor" type="text" placeholder="例如：某赛道头部账号"
+                        class="w-full rounded-xl border border-sky-200 px-4 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-700">竞品内容列表</label>
+                    <textarea v-model="input.contents" rows="12"
+                        placeholder="建议格式（每行一条）：\n标题 | 点赞 | 评论 | 内容摘要\n\n示例：\n30天瘦腿计划 | 2.8w | 1.2k | 结合饮食+训练的拆解\n健身博主早餐日常 | 1.1w | 320 | 生活化场景，突出易坚持"
+                        class="w-full rounded-xl border border-sky-200 px-4 py-3 text-sm focus:ring-2 focus:ring-sky-400 outline-none resize-none"></textarea>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-700">分析目标</label>
+                        <input v-model="input.goal" type="text" placeholder="例如：找出可复制的爆款结构"
+                            class="w-full rounded-xl border border-sky-200 px-4 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-700">主要平台</label>
+                        <input v-model="input.platform" type="text" placeholder="例如：小红书 / 抖音"
+                            class="w-full rounded-xl border border-sky-200 px-4 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none">
+                    </div>
+                </div>
+
+                <button @click="runAnalysis" :disabled="isLoading"
+                    class="w-full flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold py-3 rounded-xl hover:bg-sky-700 transition disabled:opacity-60">
+                    <span v-if="isLoading" class="flex items-center gap-2">
+                        <span class="h-2 w-2 bg-white rounded-full pulse-dot"></span>
+                        分析中...
+                    </span>
+                    <span v-else>生成内容策略地图</span>
+                </button>
+
+                <div class="text-xs text-slate-500 bg-sky-50 border border-sky-100 rounded-xl p-3">
+                    提示：建议至少输入 6 条以上内容，信息越完整（标题+摘要+互动数据），聚类效果越好。
+                </div>
+            </section>
+
+            <section class="glass-card rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-map text-sky-600"></i>
+                         策略对比输出
+                    </h2>
+                    <button v-if="result" @click="copyResult"
+                        class="text-xs px-3 py-1.5 rounded-lg border border-sky-200 text-sky-700 hover:bg-sky-50">复制摘要</button>
+                </div>
+
+                <div v-if="isLoading" class="text-sm text-slate-500">AI 正在聚类主题与钩子类型，请稍候...</div>
+                <div v-else-if="!result" class="text-sm text-slate-500">等待分析结果输出。</div>
+
+                <div v-if="result" class="space-y-6">
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-slate-800">主题聚类</h3>
+                        <div class="grid gap-3">
+                            <div v-for="cluster in result.theme_clusters" :key="cluster.name" class="bg-white/80 border border-sky-100 rounded-xl p-4">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-semibold text-slate-900">{{ cluster.name }}</span>
+                                    <span class="text-xs tag px-2 py-1 rounded-full">{{ cluster.popularity }}</span>
+                                </div>
+                                <p class="text-sm text-slate-600 mt-2">{{ cluster.summary }}</p>
+                                <div class="flex flex-wrap gap-2 mt-3">
+                                    <span v-for="hook in cluster.hook_types" :key="hook" class="text-xs bg-sky-50 text-sky-700 px-2 py-1 rounded-full">{{ hook }}</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2">情绪类型：{{ cluster.emotion_types.join(' / ') }}</p> </div> </div> </div> <div class="space-y-3"> <h3 class="font-semibold text-slate-800">内容策略矩阵</h3> <div class="grid gap-3"> <div v-for="item in result.strategy_matrix" :key="item.slot" class="bg-white/80 border border-sky-100 rounded-xl p-4"> <div class="flex items-center justify-between"> <span class="font-semibold text-slate-900">{{ item.slot }}</span> <span class="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-full">{{ item.performance }}</span> </div> <p class="text-sm text-slate-600 mt-2">{{ item.opportunity }}</p> <p class="text-xs text-slate-500 mt-2">建议钩子：{{ item.recommended_hooks.join(' / ') }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-slate-800">机会区间提示</h3>
+                        <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">
+                            <li v-for="tip in result.opportunity_zones" :key="tip">{{ tip }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-slate-900">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <label class="text-sm font-medium text-slate-700">DeepSeek API Key</label>
+                <input v-model="apiConfig.deepseek" type="password" placeholder="请输入你的 API Key"
+                    class="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none">
+                <button @click="saveConfig" class="w-full bg-sky-600 text-white rounded-xl py-2.5 font-semibold">保存配置</button>
+                <p class="text-xs text-slate-500">配置会保存在浏览器本地，不会上传到服务器。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+
+                const showSettings = ref(false);
+                const isLoading = ref(false);
+                const result = ref(null);
+                const input = ref({
+                    competitor: '',
+                    contents: '',
+                    goal: '',
+                    platform: ''
+                });
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                onMounted(() => {
+                    // 初始化配置
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                            if (!apiConfig.value.model) apiConfig.value.model = 'deepseek-v4-flash';
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                });
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                    alert('配置已保存');
+                };
+
+                const runAnalysis = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!input.value.contents.trim()) {
+                        alert('请先输入竞品内容列表');
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    result.value = null;
+
+                    const systemPrompt = `你是一位新媒体策略分析专家。请将用户提供的竞品内容做批量聚类分析，输出主题聚类、钩子类型、情绪类型，并给出策略矩阵与机会区间。\n请输出 JSON，格式如下：\n{\n  "theme_clusters": [\n    {\n      "name": "主题名称",\n      "summary": "主题描述",\n      "hook_types": ["钩子类型1", "钩子类型2"],\n      "emotion_types": ["情绪类型1", "情绪类型2"],\n      "popularity": "表现强度（高/中/低）"\n    }\n  ],\n  "strategy_matrix": [\n    {\n      "slot": "策略区块名称",\n      "performance": "表现强度",\n      "opportunity": "机会或风险说明",\n      "recommended_hooks": ["可复制钩子1", "钩子2"]\n    }\n  ],\n  "opportunity_zones": ["机会提示1", "机会提示2"]\n}`;
+
+                    const userPrompt = `竞品名称：${input.value.competitor || '未提供'}\n主要平台：${input.value.platform || '未提供'}\n分析目标：${input.value.goal || '寻找可复制结构'}\n竞品内容列表：\n${input.value.contents}`;
+
+                    let fullContent = '';
+
+                    try {
+                        let response;
+                        try {
+                            response = await fetch('https://api.deepseek.com/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                                },
+                                body: JSON.stringify({
+                                    model: apiConfig.value.model,
+                                    messages: [
+                                        { role: 'system', content: systemPrompt },
+                                        { role: 'user', content: userPrompt }
+                                    ],
+                                    response_format: { type: 'json_object' },
+                                    stream: true
+                                })
+                            });
+                        } catch (e) {
+                            throw new Error(`网络请求失败: ${e.message}`);
+                        }
+
+                        if (!response.ok) {
+                            const err = await response.json().catch(() => ({}));
+                            throw new Error(err.error?.message || `API Error: ${response.status}`);
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            const chunk = decoder.decode(value, { stream: true });
+                            const lines = chunk.split('\n');
+                            for (const line of lines) {
+                                if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
+                                if (line.startsWith('data: ')) {
+                                    const data = JSON.parse(line.substring(6));
+                                    const delta = data.choices[0].delta;
+                                    if (delta.content) {
+                                        fullContent += delta.content;
+                                    }
+                                }
+                            }
+                        }
+
+                        result.value = JSON.parse(fullContent);
+                    } catch (error) {
+                        console.error(error);
+                        alert(`分析失败: ${error.message}`);
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+
+                const copyResult = async () => {
+                    if (!result.value) return;
+                    const summary = [
+                        '主题聚类：',
+                        ...result.value.theme_clusters.map(cluster => `- ${cluster.name}: ${cluster.summary}`),
+                        '策略矩阵：',
+                        ...result.value.strategy_matrix.map(item => `- ${item.slot}: ${item.opportunity}`),
+                        '机会区间：',
+                        ...result.value.opportunity_zones.map(tip => `- ${tip}`)
+                    ].join('\n');
+                    await navigator.clipboard.writeText(summary);
+                    alert('已复制到剪贴板');
+                };
+
+                return {
+                    showSettings,
+                    isLoading,
+                    result,
+                    input,
+                    apiConfig,
+                    saveConfig,
+                    runAnalysis,
+                    copyResult
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/research_competitor_content_mapper.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

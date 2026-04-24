@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>存钱目标 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-emerald-50 min-h-screen font-sans text-slate-800" x-data="goalApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-emerald-100 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-emerald-50 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600">
+                    🎯 存钱目标
+                </h1>
+            </div>
+            
+            <button @click="showModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i>
+                新目标
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Goals List -->
+        <div class="grid gap-6">
+            <template x-for="goal in goals" :key="goal.id">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-50 relative overflow-hidden group">
+                    <!-- Progress Background -->
+                    <div class="absolute bottom-0 left-0 h-1.5 bg-slate-100 w-full">
+                        <div class="h-full bg-emerald-500 transition-all duration-1000" :style="`width: ${getPercent(goal)}%`"></div>
+                    </div>
+                    
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-2xl">
+                                <span x-text="goal.icon || '💰'"></span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-800" x-text="goal.name"></h3>
+                                <div class="text-xs text-slate-400 font-bold uppercase" x-text="'截止: ' + (goal.deadline || '无')"></div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-black text-emerald-600" x-text="getPercent(goal) + '%'"></div>
+                            <button @click="deleteGoal(goal.id)" class="text-xs text-slate-300 hover:text-rose-500 underline mt-1 opacity-0 group-hover:opacity-100 transition-opacity">删除</button>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-end mb-4">
+                        <div>
+                            <div class="text-xs text-slate-400 font-bold uppercase mb-1">当前存款</div>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-sm font-bold text-slate-500">¥</span>
+                                <span class="text-2xl font-bold text-slate-800" x-text="goal.current"></span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                             <div class="text-xs text-slate-400 font-bold uppercase mb-1">目标金额</div>
+                             <div class="flex items-baseline gap-1 justify-end">
+                                <span class="text-sm font-bold text-slate-300">¥</span>
+                                <span class="text-xl font-bold text-slate-400" x-text="goal.target"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deposit Control -->
+                    <div class="flex gap-2 pt-4 border-t border-slate-50">
+                        <button @click="updateAmount(goal, 100)" class="flex-1 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors">+100</button>
+                        <button @click="updateAmount(goal, 1000)" class="flex-1 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors">+1,000</button>
+                        <button @click="editGoal(goal)" class="px-3 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </div>
+                    
+                    <!-- Prediction -->
+                    <div x-show="goal.deadline && getPercent(goal) < 100" class="mt-3 text-[10px] text-slate-400 text-center bg-slate-50/50 py-1 rounded">
+                        <i class="fa-regular fa-clock inline mr-1"></i>
+                        <span x-text="getPrediction(goal)"></span>
+                    </div>
+                </div>
+            </template>
+            
+            <div x-show="goals.length === 0" class="text-center py-12 text-slate-400">
+                <i class="fa-solid fa-bullseye text-5xl mx-auto mb-3 opacity-20"></i>
+                <p>还没有目标？点击右上角创建一个吧！</p>
+            </div>
+        </div>
+
+        <!-- Float Modal -->
+        <div x-show="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm" x-cloak>
+            <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-scale-in" @click.away="showModal = false">
+                <h3 class="font-bold text-lg mb-4 text-slate-800" x-text="editingId ? '编辑目标' : '新目标'"></h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5 uppercase">目标名称</label>
+                        <input type="text" x-model="form.name" class="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 font-bold text-slate-800 transition-all bg-slate-50 focus:bg-white" placeholder="例如: 澳洲旅行">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                         <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1.5 uppercase">目标金额</label>
+                            <input type="number" x-model.number="form.target" class="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 font-bold text-slate-800 transition-all bg-slate-50 focus:bg-white" placeholder="0">
+                        </div>
+                        <div>
+                             <label class="block text-xs font-bold text-slate-400 mb-1.5 uppercase">当前已存</label>
+                             <input type="number" x-model.number="form.current" class="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 font-bold text-slate-800 transition-all bg-slate-50 focus:bg-white" placeholder="0">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5 uppercase">截止日期 (可选)</label>
+                        <input type="date" x-model="form.deadline" class="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-500 font-bold text-slate-800 transition-all bg-slate-50 focus:bg-white">
+                    </div>
+                     <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5 uppercase">图标 (Emoji)</label>
+                        <div class="flex gap-2 overflow-x-auto pb-2">
+                            <template x-for="icon in ['💰','✈️','🚗','🏠','📱','🎓','💍','👶']">
+                                <button @click="form.icon = icon" class="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-xl border transition-colors"
+                                        :class="form.icon === icon ? 'bg-emerald-100 border-emerald-500' : 'border-slate-100'">
+                                    <span x-text="icon"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button @click="showModal = false" class="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">取消</button>
+                    <button @click="saveGoal()" class="flex-1 py-3 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-lg shadow-emerald-600/20 transition-colors">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <style>
+        /* Removed @apply rules */
+        @keyframes scale-in {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-scale-in { animation: scale-in 0.2s ease-out; }
+    </style>
+
+    <script>
+        function goalApp() {
+            return {
+                showModal: false,
+                editingId: null,
+                goals: [],
+                form: { name: '', target: '', current: 0, deadline: '', icon: '💰' },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_savings_goals');
+                    if (saved) this.goals = JSON.parse(saved);
+                    
+                    // Watch dates for demo
+                    if(this.goals.length === 0) {
+                        this.goals.push({ id: 1, name: 'MacBook Pro', target: 15000, current: 5000, deadline: '2026-12-31', icon: '💻' });
+                    }
+                    
+
+                },
+
+                saveData() {
+                    localStorage.setItem('webtools_savings_goals', JSON.stringify(this.goals));
+                },
+
+                saveGoal() {
+                    if (!this.form.name || !this.form.target) return;
+                    
+                    if (this.editingId) {
+                        const idx = this.goals.findIndex(g => g.id === this.editingId);
+                        if (idx !== -1) {
+                            this.goals[idx] = { ...this.form, id: this.editingId };
+                        }
+                    } else {
+                        this.goals.push({ ...this.form, id: Date.now() });
+                    }
+                    
+                    this.saveData();
+                    this.showModal = false;
+                    this.resetForm();
+                },
+                
+                editGoal(goal) {
+                    this.form = { ...goal };
+                    this.editingId = goal.id;
+                    this.showModal = true;
+                },
+                
+                deleteGoal(id) {
+                    if(confirm('放弃这个目标？')) {
+                        this.goals = this.goals.filter(g => g.id !== id);
+                        this.saveData();
+                    }
+                },
+                
+                resetForm() {
+                    this.form = { name: '', target: '', current: 0, deadline: '', icon: '💰' };
+                    this.editingId = null;
+                },
+                
+                updateAmount(goal, amt) {
+                    goal.current += amt;
+                    this.saveData();
+                },
+
+                getPercent(goal) {
+                    if (goal.target <= 0) return 0;
+                    return Math.min(100, (goal.current / goal.target) * 100).toFixed(0);
+                },
+
+                getPrediction(goal) {
+                    if (!goal.deadline) return '';
+                    const end = new Date(goal.deadline);
+                    const now = new Date();
+                    const months = (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
+                    
+                    const remaining = goal.target - goal.current;
+                    if (remaining <= 0) return '已达成！';
+                    if (months <= 0) return '已过期';
+                    
+                    const perMonth = (remaining / months).toFixed(0);
+                    return `每月需存 ¥${perMonth}`;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_savings_goal.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

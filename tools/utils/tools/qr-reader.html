@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>二维码识别</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="../../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+  <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+        <i class="fa-solid fa-wrench text-indigo-600 text-xl"></i>
+        <span class="font-bold text-xl text-slate-900">二维码识别</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm text-slate-500">
+        <button class="px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-100" onclick="location.href='../../index.html'">返回主页</button>
+        <button class="px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-100" onclick="location.href='../../index.html'">Utils 工具导航</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h1 class="text-2xl font-semibold mb-2">二维码识别</h1>
+      <p class="text-sm text-slate-600 mb-6">上传图片识别二维码内容。</p>
+
+      <div class="space-y-4">
+        <input id="fileInput" type="file" accept="image/*" class="block w-full text-sm" />
+        <button id="runBtn" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm">识别二维码</button>
+        <canvas id="canvas" class="border rounded-lg w-full max-h-[320px]"></canvas>
+        <textarea id="outputText" class="w-full h-32 border rounded-lg p-3 text-sm" readonly></textarea>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    
+    const fileInput = document.getElementById('fileInput');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    document.getElementById('runBtn').addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, canvas.width, canvas.height);
+          document.getElementById('outputText').value = code ? code.data : '未识别到二维码';
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

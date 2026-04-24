@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>ASCII 3D Renderer // HTML_SUPER</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; overflow: hidden; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #ascii { white-space: pre; font-size: 10px; line-height: 10px; }
+        .ui { position: absolute; top: 20px; left: 20px; color: #fff; pointer-events: none; }
+        a { color: #fff; pointer-events: auto; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui"><a href="index.html">← BACK</a></div>
+    <div id="ascii"></div>
+    <script>
+        const pre = document.getElementById('ascii');
+        let A = 0, B = 0;
+        
+        // Donut Math (Spinning Torus)
+        function render() {
+            let b = [];
+            let z = [];
+            
+            const width = 80;
+            const height = 40;
+            
+            // Clear buffer
+            for(let k = 0; k < width * height; k++) {
+                b[k] = " ";
+                z[k] = 0;
+            }
+            
+            // Torus loop
+            for(let j = 0; j < 6.28; j += 0.07) {
+                for(let i = 0; i < 6.28; i += 0.02) {
+                    const c = Math.sin(i);
+                    const d = Math.cos(j);
+                    const e = Math.sin(A);
+                    const f = Math.sin(j);
+                    const g = Math.cos(A);
+                    const h = d + 2;
+                    const D = 1 / (c * h * e + f * g + 5);
+                    const l = Math.cos(i);
+                    const m = Math.cos(B);
+                    const n = Math.sin(B);
+                    const t = c * h * g - f * e;
+                    
+                    // Project 3D -> 2D
+                    const x = 0 | (40 + 30 * D * (l * h * m - t * n));
+                    const y = 0 | (12 + 15 * D * (l * h * n + t * m));
+                    
+                    const o = x + width * y;
+                    const N = 0 | (8 * ((f * e - c * d * g) * m - c * d * e - f * g - l * d * n));
+                    
+                    if(y > 0 && y < height && x > 0 && x < width && D > z[o]) {
+                        z[o] = D;
+                        // Luminance map
+                        b[o] = ".,-~:;=!*#$@"[N > 0 ? N : 0];
+                    }
+                }
+            }
+            
+            // Output to DOM
+            let output = "";
+            for(let k = 0; k < width * height; k++) {
+                output += (k % width) ? b[k] : b[k] + "\n";
+            }
+            pre.innerText = output;
+            
+            A += 0.04;
+            B += 0.02;
+            requestAnimationFrame(render);
+        }
+        render();
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

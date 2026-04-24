@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业黑话翻译机 - AI创意工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            box-shadow: 0 4px 16px rgba(240, 147, 251, 0.3);
+        }
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -380px;
+            width: 360px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: right 0.3s ease;
+            padding: 24px;
+        }
+        .settings-panel.open {
+            right: 0;
+        }
+        .settings-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        .settings-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            z-index: 1001;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .example-text {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .example-text:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-4">
+    <!-- 右上角设置按钮 -->
+    <button id="settingsBtn" class="fixed top-4 right-4 z-50 w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-50 transition">
+        <span class="text-xl">⚙️</span>
+    </button>
+
+    <!-- 设置遮罩 -->
+    <div id="settingsOverlay" class="settings-overlay"></div>
+
+    <!-- 设置面板 -->
+    <div id="settingsPanel" class="settings-panel">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">⚙️ API 设置</h3>
+            <button id="closeSettingsBtn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">API URL</label>
+                <input type="text" id="apiUrl" value="https://api.deepseek.com/chat/completions" 
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                <input type="password" id="apiKey" placeholder="留空使用全局 DeepSeek Key" 
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                <p class="text-xs text-gray-500 mt-1">留空将自动读取全局配置的 Key</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">模型选择</label>
+                <select id="modelSelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                </select>
+            </div>
+            <button id="saveSettingsBtn" class="w-full btn-primary py-3 rounded-lg font-semibold">保存设置</button>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast"></div>
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-4">企业黑话翻译机 🔍</h1>
+            <p class="text-xl text-white/80 mb-6">将复杂的互联网和职场黑话翻译成人话</p>
+        </div>
+
+        <!-- 主要内容 -->
+        <div class="card rounded-xl p-8">
+            <div class="space-y-6">
+                <!-- 输入区域 -->
+                <div>
+                    <label class="block text-lg font-semibold mb-3">请输入企业黑话：</label>
+                    <textarea id="buzzwordInput" placeholder="例如：我们需要打通底层逻辑，完成生态闭环，实现降本增效的核心诉求..."
+                              class="w-full h-32 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                </div>
+
+                <!-- 示例黑话 -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-3">常见黑话示例（点击使用）：</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="example-text" onclick="useExample(this)">
+                            打通底层逻辑，完成生态闭环
+                        </div>
+                        <div class="example-text" onclick="useExample(this)">
+                            赋能业务，沉淀最佳实践
+                        </div>
+                        <div class="example-text" onclick="useExample(this)">
+                            链路梳理，形成抓手，产出交付物
+                        </div>
+                        <div class="example-text" onclick="useExample(this)">
+                            对齐颗粒度，拉通各方资源
+                        </div>
+                        <div class="example-text" onclick="useExample(this)">
+                            深度复盘，沉淀方法论
+                        </div>
+                        <div class="example-text" onclick="useExample(this)">
+                            全链路数字化转型升级
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 生成按钮 -->
+                <button id="translateBtn" onclick="translateBuzzword()" 
+                        class="w-full btn-primary py-4 rounded-lg text-lg font-semibold">
+                    🔄 开始翻译
+                </button>
+
+                <!-- 结果显示 -->
+                <div id="result" class="hidden"></div>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div id="actionButtons" class="hidden mt-6 flex flex-wrap gap-3 justify-center">
+            <button onclick="copyResult()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+                📋 复制结果
+            </button>
+            <button onclick="shareResult()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                🔗 分享
+            </button>
+            <button onclick="downloadResult()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition">
+                💾 下载
+            </button>
+            <button onclick="resetTool()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                🔄 重新开始
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // === 获取全局 DeepSeek Key ===
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        // === DOM 元素 ===
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const toast = document.getElementById('toast');
+
+        let currentResult = '';
+
+        // === Toast 提示 ===
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        // === 设置面板控制 ===
+        function toggleSettings() {
+            settingsPanel.classList.toggle('open');
+            settingsOverlay.classList.toggle('open');
+        }
+
+        settingsBtn.addEventListener('click', toggleSettings);
+        closeSettingsBtn.addEventListener('click', toggleSettings);
+        settingsOverlay.addEventListener('click', toggleSettings);
+
+        // === 加载设置 ===
+        function loadSettings() {
+            document.getElementById('apiUrl').value = localStorage.getItem('jargon_url') || 'https://api.deepseek.com/chat/completions';
+            document.getElementById('apiKey').value = localStorage.getItem('jargon_key') || '';
+            document.getElementById('modelSelect').value = localStorage.getItem('jargon_model') || 'deepseek-v4-flash';
+        }
+
+        // === 保存设置 ===
+        saveSettingsBtn.addEventListener('click', () => {
+            localStorage.setItem('jargon_url', document.getElementById('apiUrl').value);
+            localStorage.setItem('jargon_key', document.getElementById('apiKey').value);
+            localStorage.setItem('jargon_model', document.getElementById('modelSelect').value);
+
+            // Sync with global config if possible
+            try {
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                localStorage.setItem('global_llm_config', JSON.stringify({
+                    ...current,
+                    deepseek: document.getElementById('apiKey').value.trim()
+                }));
+            } catch (e) {
+                console.error('Failed to sync with global_llm_config', e);
+            }
+
+            showToast('设置已保存！');
+            toggleSettings();
+        });
+
+        // === 获取当前配置 ===
+        function getCurrentConfig() {
+            return {
+                apiUrl: document.getElementById('apiUrl').value || 'https://api.deepseek.com/chat/completions',
+                apiKey: document.getElementById('apiKey').value || getGlobalDeepSeekKey(),
+                model: document.getElementById('modelSelect').value || 'deepseek-v4-flash'
+            };
+        }
+
+        // === 页面加载时初始化 ===
+        document.addEventListener('DOMContentLoaded', loadSettings);
+
+        // 使用示例
+        function useExample(element) {
+            document.getElementById('buzzwordInput').value = element.textContent.trim();
+        }
+
+        // 翻译黑话
+        async function translateBuzzword() {
+            const input = document.getElementById('buzzwordInput').value.trim();
+            if (!input) {
+                alert('请输入要翻译的企业黑话！');
+                return;
+            }
+
+            const btn = document.getElementById('translateBtn');
+            const resultDiv = document.getElementById('result');
+            
+            // 设置加载状态
+            btn.disabled = true;
+            btn.innerHTML = '🔄 正在翻译...';
+            resultDiv.innerHTML = '<div class="text-center py-8"><div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div><p class="mt-2 text-gray-600">AI正在解读黑话中...</p></div>';
+            resultDiv.classList.remove('hidden');
+
+            try {
+                const config = getCurrentConfig();
+                
+                if (!config.apiKey) {
+                    throw new Error('请先配置 API Key（点击右上角设置按钮，或在主页配置全局 DeepSeek Key）');
+                }
+                
+                const prompt = `请将以下企业黑话/职场术语翻译成通俗易懂的大白话。要求：
+1. 用简单直白的语言解释
+2. 指出其中的套话和空话
+3. 如果有具体含义，请说明；如果是无意义的废话，请直接指出
+4. 用幽默但不失专业的语气
+
+企业黑话：${input}
+
+请按以下格式输出：
+【原文】
+${input}
+
+【白话翻译】
+[用大白话解释]
+
+【深度解读】
+[分析这句话的真实含义或问题所在]
+
+【吐槽点评】
+[用幽默的方式点评这句黑话]`;
+
+                let response;
+                try {
+                    response = await fetch(config.apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${config.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: config.model,
+                            messages: [
+                                {
+                                    role: 'system',
+                                    content: '你是一个专业的企业黑话翻译专家，擅长将复杂的职场术语转换为通俗易懂的语言，并能够幽默地点评这些黑话。'
+                                },
+                                {
+                                    role: 'user',
+                                    content: prompt
+                                }
+                            ],
+                            temperature: 0.8,
+                            max_tokens: 1000
+                        })
+                    });
+                } catch (e) {
+                    throw new Error(`网络请求失败: ${e.message}`);
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const translation = data.choices[0].message.content;
+                
+                currentResult = translation;
+                displayResult(translation);
+                
+            } catch (error) {
+                console.error('翻译失败:', error);
+                resultDiv.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    <p><strong>翻译失败：</strong>${error.message}</p>
+                    <p class="text-sm mt-2">请检查网络连接和API配置，然后重试。</p>
+                </div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔄 开始翻译';
+            }
+        }
+
+        // 显示结果
+        function displayResult(translation) {
+            const resultDiv = document.getElementById('result');
+            const actionButtons = document.getElementById('actionButtons');
+            
+            resultDiv.innerHTML = `
+                <div class="result-card fade-in">
+                    <h3 class="text-xl font-bold mb-4">🎯 黑话翻译结果</h3>
+                    <div class="whitespace-pre-wrap text-white/95 leading-relaxed">${translation}</div>
+                    <div class="mt-4 pt-4 border-t border-white/20">
+                        <p class="text-sm text-white/80">💡 提示：优秀的表达应该简洁明了，让人一听就懂</p>
+                    </div>
+                </div>
+            `;
+            
+            resultDiv.classList.remove('hidden');
+            actionButtons.classList.remove('hidden');
+        }
+
+        // 复制结果
+        function copyResult() {
+            if (currentResult) {
+                navigator.clipboard.writeText(currentResult).then(() => {
+                    alert('翻译结果已复制到剪贴板！');
+                });
+            }
+        }
+
+        // 分享结果
+        function shareResult() {
+            if (currentResult && navigator.share) {
+                navigator.share({
+                    title: '企业黑话翻译结果',
+                    text: currentResult
+                });
+            } else {
+                copyResult();
+            }
+        }
+
+        // 下载结果
+        function downloadResult() {
+            if (currentResult) {
+                const blob = new Blob([currentResult], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `企业黑话翻译_${new Date().toLocaleDateString()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // 重置工具
+        function resetTool() {
+            document.getElementById('buzzwordInput').value = '';
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('actionButtons').classList.add('hidden');
+            currentResult = '';
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_corporate_jargon_translator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html> 

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简历生成器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-area { 
+                box-shadow: none !important; 
+                margin: 0 !important; 
+                width: 100% !important;
+                max-width: none !important;
+            }
+            body { background: white !important; }
+        }
+        .a4-paper {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans" x-data="resumeBuilder()" x-init="init()">
+
+    <!-- Header (No Print) -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50 no-print">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <h1 class="text-xl font-bold">📄 简历生成器</h1>
+            </div>
+            <div class="flex gap-2">
+                <button @click="resetData()" class="px-4 py-2 text-sm text-slate-300 hover:text-white rounded-lg transition-colors">
+                    重置
+                </button>
+                <button @click="printResume()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors">
+                    <i class="fa-solid fa-print"></i>
+                    导出 / 打印
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
+        
+        <!-- Editor Sidebar (No Print) -->
+        <div class="w-full lg:w-1/3 space-y-6 no-print h-fit lg:sticky lg:top-24">
+            
+            <!-- Basic Info -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-user text-indigo-500"></i>
+                    基本信息
+                </h3>
+                <div class="space-y-3">
+                    <input type="text" x-model="resume.basic.name" placeholder="你的名字" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none">
+                    <input type="text" x-model="resume.basic.title" placeholder="目标职位" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" x-model="resume.basic.phone" placeholder="联系电话" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none">
+                        <input type="text" x-model="resume.basic.email" placeholder="电子邮箱" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none">
+                        <input type="text" x-model="resume.basic.location" placeholder="所在城市" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none">
+                        <input type="text" x-model="resume.basic.website" placeholder="个人网站/作品集" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-file-lines text-indigo-500"></i>
+                    个人简介
+                </h3>
+                <textarea x-model="resume.summary" rows="4" placeholder="简要介绍你的核心优势..." class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none"></textarea>
+            </div>
+
+            <!-- Experience -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-briefcase text-indigo-500"></i>
+                        工作经历
+                    </h3>
+                    <button @click="addExperience()" class="text-xs text-indigo-600 font-medium hover:underline">+ 添加</button>
+                </div>
+                <div class="space-y-4">
+                    <template x-for="(exp, index) in resume.experience" :key="index">
+                        <div class="relative pl-4 border-l-2 border-slate-100 pb-4 last:pb-0">
+                            <button @click="removeExperience(index)" class="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-slate-300 hover:bg-rose-500 cursor-pointer transition-colors"></button>
+                            <input type="text" x-model="exp.company" placeholder="公司名称" class="w-full mb-2 bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-sm font-medium">
+                            <input type="text" x-model="exp.position" placeholder="职位" class="w-full mb-2 bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-xs text-slate-600">
+                            <div class="flex gap-2 mb-2">
+                                <input type="text" x-model="exp.start" placeholder="开始时间" class="w-1/2 bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-xs text-slate-400">
+                                <input type="text" x-model="exp.end" placeholder="结束时间" class="w-1/2 bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-xs text-slate-400">
+                            </div>
+                            <textarea x-model="exp.description" rows="3" placeholder="工作内容描述..." class="w-full bg-slate-50 px-2 py-1 rounded text-xs text-slate-600 outline-none focus:bg-white border border-transparent focus:border-slate-200"></textarea>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Education -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-graduation-cap text-indigo-500"></i>
+                        教育经历
+                    </h3>
+                    <button @click="addEducation()" class="text-xs text-indigo-600 font-medium hover:underline">+ 添加</button>
+                </div>
+                <div class="space-y-4">
+                    <template x-for="(edu, index) in resume.education" :key="index">
+                        <div class="relative pl-4 border-l-2 border-slate-100 pb-2">
+                            <button @click="removeEducation(index)" class="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-slate-300 hover:bg-rose-500 cursor-pointer transition-colors"></button>
+                            <input type="text" x-model="edu.school" placeholder="学校名称" class="w-full mb-1 bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-sm font-medium">
+                            <input type="text" x-model="edu.degree" placeholder="专业 / 学位" class="w-full mb-1 bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-xs text-slate-600">
+                            <input type="text" x-model="edu.year" placeholder="年份" class="w-full bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-xs text-slate-400">
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+             <!-- Skills -->
+             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-code text-indigo-500"></i>
+                        技能
+                    </h3>
+                    <button @click="addSkill()" class="text-xs text-indigo-600 font-medium hover:underline">+ 添加</button>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="(skill, index) in resume.skills" :key="index">
+                        <div class="group relative flex">
+                            <input type="text" x-model="resume.skills[index]" class="bg-slate-100 rounded-lg px-3 py-1 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-200 w-24">
+                            <button @click="removeSkill(index)" class="absolute -top-1 -right-1 hidden group-hover:flex bg-rose-500 text-white w-4 h-4 rounded-full items-center justify-center text-[10px]">×</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Preview Area (A4) -->
+        <div class="w-full lg:w-2/3 overflow-auto bg-slate-200/50 p-4 lg:p-8 rounded-xl print-area">
+            <div class="a4-paper p-8 md:p-12 relative flex flex-col text-slate-800">
+                
+                <!-- Resume Header -->
+                <div class="border-b-2 border-slate-800 pb-8 mb-8">
+                    <h1 class="text-4xl font-bold uppercase tracking-wide text-slate-900 mb-2" x-text="resume.basic.name || '姓名'"></h1>
+                    <p class="text-xl text-indigo-600 font-medium tracking-wide mb-6" x-text="resume.basic.title || '目标职位'"></p>
+                    
+                    <div class="flex flex-wrap gap-4 text-xs text-slate-500">
+                        <template x-if="resume.basic.phone">
+                            <div class="flex items-center gap-1.5"><i class="fa-solid fa-phone"></i><span x-text="resume.basic.phone"></span></div>
+                        </template>
+                        <template x-if="resume.basic.email">
+                            <div class="flex items-center gap-1.5"><i class="fa-solid fa-envelope"></i><span x-text="resume.basic.email"></span></div>
+                        </template>
+                        <template x-if="resume.basic.location">
+                            <div class="flex items-center gap-1.5"><i class="fa-solid fa-map-pin"></i><span x-text="resume.basic.location"></span></div>
+                        </template>
+                        <template x-if="resume.basic.website">
+                            <div class="flex items-center gap-1.5"><i class="fa-solid fa-globe"></i><span x-text="resume.basic.website"></span></div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-8">
+                    
+                    <!-- Summary -->
+                    <section x-show="resume.summary">
+                        <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">个人简介</h2>
+                        <p class="text-sm leading-relaxed text-slate-600 whitespace-pre-wrap" x-text="resume.summary"></p>
+                    </section>
+                    
+                    <!-- Experience -->
+                    <section x-show="resume.experience.length > 0">
+                        <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">工作经历</h2>
+                        <div class="space-y-6">
+                            <template x-for="exp in resume.experience" :key="exp.id">
+                                <div class="relative">
+                                    <div class="flex justify-between items-baseline mb-1">
+                                        <h3 class="font-bold text-slate-900 text-lg" x-text="exp.company"></h3>
+                                        <span class="text-xs text-slate-500 font-medium" x-text="exp.start + ' - ' + exp.end"></span>
+                                    </div>
+                                    <div class="text-indigo-600 font-medium text-sm mb-2" x-text="exp.position"></div>
+                                    <p class="text-sm leading-relaxed text-slate-600 whitespace-pre-wrap" x-text="exp.description"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Education -->
+                        <section x-show="resume.education.length > 0">
+                            <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">教育经历</h2>
+                            <div class="space-y-4">
+                                <template x-for="edu in resume.education" :key="edu.id">
+                                    <div>
+                                        <div class="flex justify-between items-baseline">
+                                            <h3 class="font-bold text-slate-900" x-text="edu.school"></h3>
+                                            <span class="text-xs text-slate-500" x-text="edu.year"></span>
+                                        </div>
+                                        <div class="text-sm text-slate-600" x-text="edu.degree"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </section>
+
+                        <!-- Skills -->
+                        <section x-show="resume.skills.length > 0">
+                            <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">技能专长</h2>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="skill in resume.skills" :key="skill">
+                                    <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-medium" x-text="skill"></span>
+                                </template>
+                            </div>
+                        </section>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function resumeBuilder() {
+            return {
+                resume: {
+                    basic: {
+                        name: '张三',
+                        title: '高级前端工程师',
+                        phone: '138-0000-0000',
+                        email: 'zhangsan@example.com',
+                        location: '北京',
+                        website: 'github.com/zhangsan'
+                    },
+                    summary: '拥有5年Web开发经验，专注于Vue.js生态系统。热衷于构建高性能、响应式的用户界面。具有良好的团队协作能力和技术领导力。',
+                    experience: [
+                        {
+                            id: 1,
+                            company: '某某科技有限公司',
+                            position: '高级前端开发',
+                            start: '2021.06',
+                            end: '至今',
+                            description: '负责公司核心SaaS平台的前端架构设计与开发。\n- 优化前端构建流程，构建效率提升50%\n- 带领5人团队完成Vue3重构'
+                        }
+                    ],
+                    education: [
+                        {
+                            id: 1,
+                            school: '北京某某大学',
+                            degree: '计算机科学与技术 本科',
+                            year: '2016 - 2020'
+                        }
+                    ],
+                    skills: ['Vue.js', 'React', 'TypeScript', 'Node.js', 'Tailwind CSS']
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_resume');
+                    if (saved) {
+                        this.resume = JSON.parse(saved);
+                    }
+                    this.$watch('resume', () => {
+                        localStorage.setItem('webtools_resume', JSON.stringify(this.resume));
+                    });
+
+                },
+
+                resetData() {
+                    if (confirm('确定要重置所有数据吗？')) {
+                        localStorage.removeItem('webtools_resume');
+                        location.reload();
+                    }
+                },
+
+                printResume() {
+                    window.print();
+                },
+
+                addExperience() {
+                    this.resume.experience.push({
+                        id: Date.now(),
+                        company: '',
+                        position: '',
+                        start: '',
+                        end: '',
+                        description: ''
+                    });
+                },
+
+                removeExperience(index) {
+                    this.resume.experience.splice(index, 1);
+                },
+
+                addEducation() {
+                    this.resume.education.push({
+                        id: Date.now(),
+                        school: '',
+                        degree: '',
+                        year: ''
+                    });
+                },
+
+                removeEducation(index) {
+                    this.resume.education.splice(index, 1);
+                },
+
+                addSkill() {
+                    this.resume.skills.push('新技能');
+                },
+
+                removeSkill(index) {
+                    this.resume.skills.splice(index, 1);
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_resume_builder.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

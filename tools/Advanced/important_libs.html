@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 全栈开发核心库指南 | AI Full Stack Core Libs</title>
+    <!-- 引入 Tailwind CSS (核心样式库) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide Icons (图标库) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 引入 GSAP (动画库) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- 引入 Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        },
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* 玻璃拟态效果 */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .code-block {
+            background: #0f172a;
+            border: 1px solid #334155;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen relative selection:bg-brand-500 selection:text-white">
+
+    <!-- 背景光效 -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div
+            class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] animate-pulse-slow">
+        </div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[100px] animate-pulse-slow"
+            style="animation-delay: 2s;"></div>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="sticky top-0 z-50 glass-card border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i data-lucide="cpu" class="w-6 h-6 text-brand-500"></i>
+                <span class="font-bold text-lg tracking-tight">AI Dev<span class="text-brand-500">Stack</span></span>
+            </div>
+            <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
+                <a href="#styling" class="hover:text-white transition-colors">样式与UI</a>
+                <a href="#frameworks" class="hover:text-white transition-colors">逻辑框架</a>
+                <a href="#utilities" class="hover:text-white transition-colors">通用工具</a>
+                <a href="#visualization" class="hover:text-white transition-colors">数据可视化</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 头部区域 -->
+    <header class="relative pt-20 pb-16 px-6">
+        <div class="max-w-4xl mx-auto text-center">
+            <div
+                class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-400 text-xs font-semibold mb-6 border border-brand-500/20">
+                <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+                AI 开发必备知识库
+            </div>
+            <h1 class="text-5xl md:text-6xl font-bold mb-6 tracking-tight">
+                掌握核心 <span class="gradient-text">Web 技术栈</span>
+            </h1>
+            <p class="text-xl text-slate-400 leading-relaxed max-w-2xl mx-auto">
+                在 AI 驱动的开发时代，选择正确的工具库能让你事半功倍。这里整理了构建现代化、高性能 Web 应用不可或缺的“军火库”。
+            </p>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="max-w-7xl mx-auto px-6 pb-24 space-y-24">
+
+        <!-- 1. 样式与 UI (Styling) -->
+        <section id="styling" class="scroll-mt-24">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                    <i data-lucide="palette" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold">UI 设计与样式 (Styling & Design)</h2>
+                    <p class="text-slate-500 text-sm">这一层决定了用户看到什么，是应用的“皮肤”。</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Tailwind CSS -->
+                <div class="glass-card rounded-2xl p-6 hover:border-brand-500/30 transition-all duration-300 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg"
+                                alt="Tailwind" class="w-10 h-10">
+                            <div>
+                                <h3 class="font-bold text-lg group-hover:text-brand-400 transition-colors">Tailwind CSS
+                                </h3>
+                                <div class="text-xs text-slate-500">原子化 CSS 框架</div>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400 font-mono">Styling</span>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-slate-800/50 rounded-lg p-4">
+                            <h4 class="text-sm font-semibold text-slate-300 mb-2">简单来说：</h4>
+                            <p class="text-slate-400 text-sm leading-relaxed">
+                                以前写样式像自己在画画，现在像搭积木。你不需要手写 `margin-left: 10px`，只需要在 HTML 标签里写
+                                `ml-2`。它预设好了一套极其和谐的尺寸和颜色，让你随便搭都不会太丑。
+                            </p>
+                        </div>
+
+                        <div class="code-block rounded-lg p-4 text-xs overflow-x-auto text-slate-300">
+                            <div class="text-slate-500 mb-1">// 传统写法 vs Tailwind</div>
+                            <div class="flex flex-col gap-2">
+                                <span class="line-through opacity-50"><button
+                                        style="background: blue; border-radius: 4px; color: white;">按钮</button></span>
+                                <span class="text-brand-400">&lt;button class="bg-blue-500 rounded
+                                    text-white"&gt;按钮&lt;/button&gt;</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lucide Icons -->
+                <div class="glass-card rounded-2xl p-6 hover:border-brand-500/30 transition-all duration-300 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 bg-pink-500/10 rounded-lg flex items-center justify-center text-pink-500">
+                                <i data-lucide="feather" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg group-hover:text-brand-400 transition-colors">Lucide Icons
+                                </h3>
+                                <div class="text-xs text-slate-500">轻量级 SVG 图标库</div>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400 font-mono">Icons</span>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-slate-800/50 rounded-lg p-4">
+                            <h4 class="text-sm font-semibold text-slate-300 mb-2">简单来说：</h4>
+                            <p class="text-slate-400 text-sm leading-relaxed">
+                                它是目前最流行、风格最统一的图标库。就像是一套做工精良的乐高零件，每一个图标的线条粗细、圆角大小都是一致的，无论怎么组合看起来都很专业。
+                            </p>
+                        </div>
+
+                        <!-- 避坑指南 -->
+                        <div class="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 mt-4">
+                            <h4 class="text-sm font-semibold text-orange-400 mb-2 flex items-center gap-2">
+                                <i data-lucide="alert-triangle" class="w-4 h-4"></i> 避坑指南：HTML vs 框架
+                            </h4>
+                            <ul class="text-slate-400 text-xs space-y-2 leading-relaxed list-disc list-inside">
+                                <li>
+                                    <strong class="text-slate-300">纯 HTML 中较为繁琐：</strong>
+                                    就像本页面一样，你必须手动运行 <code>lucide.createIcons()</code> 才能显示图标（因为它是 JS 动态生成的 SVG）。这点不如老牌的
+                                    <strong>Font Awesome</strong>（字体图标）方便，不需要 JS，但 Font Awesome 体积庞大且风格略显老旧。
+                                </li>
+                                <li>
+                                    <strong class="text-slate-300">Next.js / Vue 中体验极佳：</strong>
+                                    这是 Lucide 的主场！在现代框架中，你像用组件一样（如
+                                    <code>&lt;HomeIcon /&gt;</code>）直接引入。不仅能自动减小打包体积（Tree-shaking），还能完美配合 Tailwind
+                                    修改颜色和大小。
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="grid grid-cols-6 gap-2 pt-2">
+                            <!-- Icon 展示 -->
+                            <div
+                                class="h-10 bg-slate-800 rounded flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                                <i data-lucide="home" class="w-5 h-5"></i>
+                            </div>
+                            <div
+                                class="h-10 bg-slate-800 rounded flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                                <i data-lucide="user" class="w-5 h-5"></i>
+                            </div>
+                            <div
+                                class="h-10 bg-slate-800 rounded flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                                <i data-lucide="settings" class="w-5 h-5"></i>
+                            </div>
+                            <div
+                                class="h-10 bg-slate-800 rounded flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                                <i data-lucide="search" class="w-5 h-5"></i>
+                            </div>
+                            <div
+                                class="h-10 bg-slate-800 rounded flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                                <i data-lucide="bell" class="w-5 h-5"></i>
+                            </div>
+                            <div
+                                class="h-10 bg-slate-800 rounded flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                                <i data-lucide="mail" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 逻辑与框架 (Logic) -->
+        <section id="frameworks" class="scroll-mt-24">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400">
+                    <i data-lucide="cpu" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold">核心逻辑与框架 (Frameworks)</h2>
+                    <p class="text-slate-500 text-sm">这一层是应用的“大脑”，处理数据和用户交互。</p>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-8 relative overflow-hidden">
+                <div
+                    class="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2">
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-10">
+                    <div>
+                        <div class="flex items-center gap-4 mb-6">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue"
+                                class="w-12 h-12">
+                            <div>
+                                <h3 class="text-xl font-bold text-white">Vue.js</h3>
+                                <p class="text-green-400 text-sm">渐进式 JavaScript 框架</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 text-slate-400 leading-relaxed">
+                            <p>
+                                <strong class="text-slate-200">为什么选它？</strong> 在纯原生 JS 里，如果你想改变页面上的一个数字，你得先找到那个 DOM
+                                元素，然后修改它的 innerText。
+                            </p>
+                            <p>
+                                用了 Vue，你只需要修改 JS 里的变量 `count = 1`，页面上的数字就会<span class="text-white font-semibold">自动变成
+                                    1</span>。这就是所谓的“响应式”。它极大地降低了开发复杂交互的难度。
+                            </p>
+                            <div class="bg-slate-900/50 rounded border-l-4 border-green-500 p-3 text-sm mt-4">
+                                <i data-lucide="check-circle" class="w-4 h-4 inline mr-1 text-green-500"></i>
+                                极其适合快速构建中小型工具和 Dashboard。
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="code-block rounded-xl p-5 text-sm overflow-hidden flex flex-col">
+                        <div class="flex items-center gap-2 mb-4 border-b border-slate-700/50 pb-2">
+                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                            <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                            <span class="text-xs text-slate-500 ml-auto">Vue Example</span>
+                        </div>
+                        <pre class="text-slate-300 font-mono text-xs leading-5">
+<span class="text-purple-400">const</span> app = Vue.<span class="text-blue-400">createApp</span>({
+  <span class="text-yellow-400">data</span>() {
+    <span class="text-purple-400">return</span> {
+      message: <span class="text-green-400">'Hello AI!'</span>,
+      loading: <span class="text-orange-400">false</span>
+    }
+  },
+  <span class="text-yellow-400">methods</span>: {
+    <span class="text-blue-400">generate</span>() {
+      <span class="text-red-400">this</span>.loading = <span class="text-orange-400">true</span>;
+      <span class="text-slate-500">// 自动更新 UI</span>
+    }
+  }
+})</pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 通用工具库 (Utilities) -->
+        <section id="utilities" class="scroll-mt-24">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
+                    <i data-lucide="wrench" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold">瑞士军刀库 (Utilities)</h2>
+                    <p class="text-slate-500 text-sm">处理脏活累活的利器，包括网络请求、数据处理等。</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Axios -->
+                <div class="glass-card p-6 rounded-xl relative group">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                        <i data-lucide="arrow-left-right" class="w-5 h-5 text-purple-400"></i> Axios
+                    </h3>
+                    <p class="text-slate-400 text-sm mb-4">
+                        <span class="text-slate-200 block mb-1">功能：网络请求</span>
+                        浏览器原生有 `fetch`，但 Axios 更好用。它帮你自动处理 JSON 转换、请求超时、错误拦截。就像是从“手动挡”换到了“自动挡”。
+                    </p>
+                </div>
+
+                <!-- Lodash -->
+                <div class="glass-card p-6 rounded-xl relative group">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                        <i data-lucide="box" class="w-5 h-5 text-blue-400"></i> Lodash
+                    </h3>
+                    <p class="text-slate-400 text-sm mb-4">
+                        <span class="text-slate-200 block mb-1">功能：数据处理</span>
+                        提供了几百个处理数组、对象、字符串的函数。比如“防抖”（用户快速打字时只在停下后搜索），手写很麻烦，Lodash 一行代码搞定。
+                    </p>
+                </div>
+
+                <!-- Day.js -->
+                <div class="glass-card p-6 rounded-xl relative group">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-5 h-5 text-orange-400"></i> Day.js
+                    </h3>
+                    <p class="text-slate-400 text-sm mb-4">
+                        <span class="text-slate-200 block mb-1">功能：时间日期</span>
+                        JS 原生的时间处理是个灾难。Day.js 只有 2KB 大小，却能让你极其优雅地格式化时间，比如 `dayjs().format('YYYY-MM-DD')`。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 动效与可视化 -->
+        <section id="visualization" class="scroll-mt-24">
+            <div
+                class="glass-card border-l-4 border-l-indigo-500 p-8 rounded-r-xl bg-gradient-to-r from-indigo-500/5 to-transparent">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div class="flex-1">
+                        <h2 class="text-2xl font-bold text-white mb-2">进阶：动效与数据可视化</h2>
+                        <p class="text-slate-400 text-sm mb-6">如果你想让网页“活”过来，或者展示漂亮的数据报表。</p>
+
+                        <ul class="space-y-3">
+                            <li class="flex items-start gap-3">
+                                <span class="bg-indigo-500/20 text-indigo-400 p-1 rounded mt-0.5"><i
+                                        data-lucide="activity" class="w-4 h-4"></i></span>
+                                <div>
+                                    <strong class="text-indigo-300">GSAP (GreenSock)</strong>
+                                    <p class="text-slate-500 text-xs mt-1">动画界的工业标准。各种复杂的飞入飞出、时间轴动画，GSAP 都能极其丝滑地实现。</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="bg-pink-500/20 text-pink-400 p-1 rounded mt-0.5"><i data-lucide="pie-chart"
+                                        class="w-4 h-4"></i></span>
+                                <div>
+                                    <strong class="text-pink-300">ECharts / Chart.js</strong>
+                                    <p class="text-slate-500 text-xs mt-1">把枯燥的 Excel 数据变成酷炫的折线图、饼图、地图。做后台 Dashboard 必备。
+                                    </p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 底部 -->
+        <footer class="text-center pt-12 border-t border-slate-800">
+            <p class="text-slate-600 text-sm">Built with <span class="text-brand-500">Tailwind CSS</span> & <span
+                    class="text-red-500">❤️</span> for AI Developers</p>
+        </footer>
+
+    </main>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // 简单的入场动画 SCROLL TRIGGER
+        gsap.from("header", {
+            duration: 1,
+            y: 30,
+            opacity: 0,
+            ease: "power3.out"
+        });
+
+        gsap.utils.toArray("section").forEach((section, i) => {
+            gsap.from(section, {
+                scrollTrigger: {
+                    trigger: section,
+                    start: "top 80%",
+                },
+                duration: 0.8,
+                y: 50,
+                opacity: 0,
+                delay: i * 0.1,
+                ease: "power3.out"
+            });
+        });
+    </script>
+</body>
+
+</html>

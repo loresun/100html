@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>万物皆可测评 - 数码博主风恶搞评测</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /**
+     * 白色科技风：浅色网格 + 冷色高光，模拟数码媒体评测站
+     */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: #f4f6fb;
+      background-image:
+        linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 56px 56px;
+      min-height: 100vh;
+      color: #0f172a;
+    }
+
+    /** 评测正文：更接近科技媒体的排版 */
+    .review-prose {
+      font-size: 0.9375rem;
+      line-height: 1.75;
+      color: #334155;
+    }
+
+    .review-prose h2 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .review-prose h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin-top: 1rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .review-prose ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+      margin: 0.5rem 0;
+    }
+
+    .review-prose li {
+      margin: 0.25rem 0;
+    }
+
+    .review-prose strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .review-prose p {
+      margin: 0.5rem 0;
+    }
+
+    /** 环形进度：描边端点圆角 */
+    .ring-track {
+      fill: none;
+      stroke: #e2e8f0;
+      stroke-width: 10;
+    }
+
+    .ring-fill {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.45s ease-out;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+  <div x-data="reviewEverything()" x-init="init()" class="min-h-screen flex flex-col">
+
+    <!-- 顶栏：返回首页 + 设置 -->
+    <nav class="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-slate-200/90 shadow-sm">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer min-w-0" onclick="location.href='../../index.html'">
+          <i data-lucide="gauge" class="text-indigo-600 h-6 w-6 shrink-0"></i>
+          <div class="min-w-0">
+            <span class="font-bold text-base sm:text-lg text-slate-900 truncate block">万物皆可测评</span>
+            <span class="text-[10px] sm:text-xs text-slate-500 truncate block">AI 数码博主风 · 恶搞专业报告</span>
+          </div>
+        </div>
+        <button type="button" @click="showSettings = true"
+          class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 shrink-0" title="API 设置">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </nav>
+
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+      <div class="grid lg:grid-cols-12 gap-6 lg:gap-8">
+
+        <!-- 左侧：输入区 -->
+        <aside class="lg:col-span-4 space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
+            <h2 class="text-sm font-semibold text-slate-800 flex items-center gap-2 mb-4">
+              <i data-lucide="package-search" class="w-4 h-4 text-indigo-600"></i>
+              测什么？
+            </h2>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">物品名称（越离谱越好）</label>
+            <input type="text" x-ref="itemInput" x-model="itemName" placeholder="例如：路边的石头、我的拖鞋、一根头发…"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition" />
+
+            <div class="mt-5">
+              <label class="block text-xs font-medium text-slate-600 mb-2">测评风格</label>
+              <div class="space-y-2">
+                <template x-for="opt in styleOptions" :key="opt.id">
+                  <label
+                    class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition"
+                    :class="reviewStyle === opt.id ? 'border-indigo-400 bg-indigo-50/60 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                    <input type="radio" class="mt-1 text-indigo-600" name="revStyle" :value="opt.id" x-model="reviewStyle" />
+                    <div>
+                      <span class="text-sm font-medium text-slate-900" x-text="opt.label"></span>
+                      <p class="text-xs text-slate-500 mt-0.5 leading-relaxed" x-text="opt.desc"></p>
+                    </div>
+                  </label>
+                </template>
+              </div>
+            </div>
+
+            <button type="button" @click="startReview()"
+              :disabled="isLoading || !itemName.trim()"
+              class="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-45 disabled:pointer-events-none shadow-md shadow-indigo-600/20 transition">
+              <i x-show="!isLoading" data-lucide="play" class="w-4 h-4"></i>
+              <i x-show="isLoading" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+              <span x-text="isLoading ? '评测中…' : '开始测评'"></span>
+            </button>
+
+            <p x-show="errorMsg" class="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"
+              x-text="errorMsg"></p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button type="button" @click="copyShare()"
+              :disabled="!streamContent.trim()"
+              class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+              复制分享
+            </button>
+            <button type="button" @click="reviewNext()"
+              class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              测评下一个
+            </button>
+          </div>
+        </aside>
+
+        <!-- 右侧：评测结果（产品评测页风格） -->
+        <section class="lg:col-span-8">
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-md overflow-hidden min-h-[420px] flex flex-col">
+
+            <!-- 空状态 -->
+            <div x-show="!streamContent && !isLoading"
+              class="flex-1 flex flex-col items-center justify-center text-center px-8 py-20 text-slate-400">
+              <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                <i data-lucide="clipboard-list" class="w-8 h-8 text-slate-300"></i>
+              </div>
+              <p class="text-sm font-medium text-slate-600">还没有报告</p>
+              <p class="text-xs mt-2 max-w-xs leading-relaxed">在左侧输入任意物品，选个风格，点「开始测评」即可生成数码博主风长文。</p>
+            </div>
+
+            <!-- 加载占位 -->
+            <div x-show="isLoading && !streamContent" class="p-8 space-y-3 animate-pulse">
+              <div class="h-8 bg-slate-100 rounded-lg w-2/3"></div>
+              <div class="h-4 bg-slate-100 rounded w-full"></div>
+              <div class="h-4 bg-slate-100 rounded w-5/6"></div>
+            </div>
+
+            <!-- 评测内容 -->
+            <!-- 有任意输出后展示评测页；加载中且无正文时由上方骨架屏承接 -->
+            <div x-show="streamContent" class="flex flex-col flex-1">
+              <!-- 评分头图：大数字 + 双环 -->
+              <div class="bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 border-b border-slate-100 px-5 sm:px-8 py-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                  <div>
+                    <p class="text-[10px] uppercase tracking-widest text-indigo-500 font-semibold mb-1">Review Lab</p>
+                    <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight" x-text="itemName.trim() || '未命名样品'"></h1>
+                    <p class="text-xs text-slate-500 mt-1" x-text="'风格：' + (styleLabel(reviewStyle))"></p>
+                  </div>
+                  <div class="flex items-center gap-6 sm:gap-10">
+                    <!-- 外观设计 /10 小环 -->
+                    <div class="flex flex-col items-center">
+                      <div class="relative w-[100px] h-[100px]">
+                        <svg class="w-full h-full -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
+                          <circle class="ring-track" cx="60" cy="60" r="48" />
+                          <circle class="ring-fill stroke-cyan-500" cx="60" cy="60" r="48"
+                            :stroke-dasharray="ringCircumference(48)"
+                            :stroke-dashoffset="ringOffset(designScore, 10, 48)" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span class="text-2xl font-black text-slate-900 tabular-nums" x-text="designScore !== null ? designScore : '—'"></span>
+                          <span class="text-[10px] text-slate-500">外观 /10</span>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- 最终评分 /100 大环 -->
+                    <div class="flex flex-col items-center">
+                      <div class="relative w-[128px] h-[128px] sm:w-[140px] sm:h-[140px]">
+                        <svg class="w-full h-full -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
+                          <defs>
+                            <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stop-color="#6366f1" />
+                              <stop offset="100%" stop-color="#8b5cf6" />
+                            </linearGradient>
+                          </defs>
+                          <circle class="ring-track" cx="60" cy="60" r="48" />
+                          <circle class="ring-fill" cx="60" cy="60" r="48" stroke="url(#scoreGrad)"
+                            :stroke-dasharray="ringCircumference(48)"
+                            :stroke-dashoffset="ringOffset(finalScore, 100, 48)" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span class="text-3xl sm:text-4xl font-black bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent tabular-nums"
+                            x-text="finalScore !== null ? finalScore : '—'"></span>
+                          <span class="text-[10px] text-slate-500 font-medium">综合 /100</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 优缺点快览（从正文中解析，有则显示） -->
+                <div x-show="prosText || consText" class="mt-6 grid sm:grid-cols-2 gap-3">
+                  <div x-show="prosText" class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                    <p class="text-xs font-semibold text-emerald-800 flex items-center gap-1 mb-2">
+                      <i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i> 优点
+                    </p>
+                    <div class="text-xs text-emerald-900/90 whitespace-pre-wrap leading-relaxed review-prose" x-html="prosHtml"></div>
+                  </div>
+                  <div x-show="consText" class="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
+                    <p class="text-xs font-semibold text-amber-900 flex items-center gap-1 mb-2">
+                      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> 缺点
+                    </p>
+                    <div class="text-xs text-amber-950/90 whitespace-pre-wrap leading-relaxed review-prose" x-html="consHtml"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- V4 Pro 推理折叠 -->
+              <details x-show="reasoningContent" class="border-b border-slate-100 px-5 sm:px-8 py-2 bg-slate-50/50">
+                <summary class="text-xs font-medium text-slate-500 cursor-pointer select-none py-2">🧠 模型推理过程（点击展开）</summary>
+                <pre class="text-xs text-slate-600 whitespace-pre-wrap mt-2 mb-3 max-h-48 overflow-y-auto" x-text="reasoningContent"></pre>
+              </details>
+
+              <!-- Markdown 正文 -->
+              <div class="p-5 sm:p-8 flex-1">
+                <div class="review-prose" x-html="renderedHtml"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- 复制成功轻提示 -->
+    <div x-show="toastShow" x-transition.opacity.duration.200ms
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] px-4 py-2 rounded-full bg-slate-900 text-white text-sm shadow-lg"
+      x-text="toastMsg"></div>
+
+    <!-- API 设置弹窗 -->
+    <div x-show="showSettings" x-transition.opacity.duration.200ms
+      class="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+      @keydown.escape.window="showSettings = false">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200" @click.outside="showSettings = false">
+        <h3 class="text-lg font-bold text-slate-900 mb-4">API 配置</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+            <input type="password" x-model="apiConfig.deepseek"
+              class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none"
+              placeholder="sk-..." />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+            <select x-model="apiConfig.model"
+              class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 「万物皆可测评」Alpine 根组件：流式拉取 DeepSeek，解析评分与优缺点块，Markdown 渲染正文。
+     */
+    function reviewEverything() {
+      /** 圆周长，用于 SVG stroke-dasharray */
+      const TAU = (r) => 2 * Math.PI * r;
+
+      return {
+        itemName: '',
+        reviewStyle: 'serious',
+        /** 四种测评人格 */
+        styleOptions: [
+          { id: 'serious', label: '正经科技博主', desc: '参数表格感、对比、术语堆叠，像真在测数码产品。' },
+          { id: 'funny', label: '搞笑吐槽', desc: '毒舌段子、网络梗，一本正经胡说八道。' },
+          { id: 'luxury', label: '奢侈品鉴定', desc: '工艺、稀缺性、身份象征，凡尔赛式点评。' },
+          { id: 'antique', label: '古董专家', desc: '断代、包浆、传承故事，文物口播风。' }
+        ],
+        isLoading: false,
+        streamContent: '',
+        reasoningContent: '',
+        errorMsg: '',
+        showSettings: false,
+        toastShow: false,
+        toastMsg: '',
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        /** 从流式文本中解析出的分数，null 表示尚未匹配到 */
+        designScore: null,
+        finalScore: null,
+        prosText: '',
+        consText: '',
+        prosHtml: '',
+        consHtml: '',
+        renderedHtml: '',
+        /** 节流：避免每个 token 都全量 parseMarkdown */
+        _parseTimer: null,
+
+        init() {
+          this.loadConfig();
+          this.$watch('showSettings', (v) => {
+            if (v) this.$nextTick(() => lucide.createIcons());
+          });
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        /** 合并读取 global_llm_config，禁止覆盖其它工具字段 */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存 API：与本地已有对象合并后再写入
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showSettings = false;
+        },
+
+        styleLabel(id) {
+          const o = this.styleOptions.find((x) => x.id === id);
+          return o ? o.label : id;
+        },
+
+        /** SVG 环周长（字符串，供 stroke-dasharray） */
+        ringCircumference(r) {
+          const c = TAU(r);
+          return String(c);
+        },
+
+        /**
+         * 计算环的 stroke-dashoffset，使圆弧长度与分数比例一致
+         * @param {number|null} score 当前分数
+         * @param {number} max 满分
+         * @param {number} r 半径
+         */
+        ringOffset(score, max, r) {
+          if (score === null || score === undefined || max <= 0) return TAU(r);
+          const pct = Math.max(0, Math.min(1, Number(score) / max));
+          return TAU(r) * (1 - pct);
+        },
+
+        /**
+         * 根据风格 ID 返回系统提示中的人格段落
+         */
+        buildStyleInstruction() {
+          const map = {
+            serious: `你是中文科技媒体「极物实验室」首席评测编辑。语气专业冷静，善用「实测」「样张」「曲线」「峰值」「散热」「调度」等词，可虚构对比机型与跑分，但要标注为娱乐向恶搞。`,
+            funny: `你是 B 站毒舌数码 UP 主。吐槽要密、梗要多，可自嘲、可夸张，但不用脏话；保持「好像很专业其实在胡扯」的反差感。`,
+            luxury: `你是奢侈品鉴定与生活方式栏目主笔。强调手工、限量、仪式感、传承、身份符号；用词华丽但结构清晰。`,
+            antique: `你是博物馆特邀「杂项鉴定」顾问（恶搞）。喜欢谈包浆、款识、流传、修补痕迹；可虚构馆藏编号与拍卖纪录，注明娱乐性质。`
+          };
+          return map[this.reviewStyle] || map.serious;
+        },
+
+        /**
+         * 构造用户消息：固定章节约束，便于正则解析分数与优缺点
+         */
+        buildUserPrompt() {
+          const name = this.itemName.trim();
+          return `请对以下「物品」写一份**完整的中文评测长文**（恶搞向专业测评，读者知道是玩笑）。
+
+【测评对象】${name}
+
+**必须严格使用 Markdown，且包含以下二级标题（##），顺序一致：**
+
+## 产品名称与型号
+（一本正经瞎编一个正式全称 + 型号代码，像真产品）
+
+## 外观设计
+先写一段评价，然后单独一行写：**外观设计评分：X/10**（X 为 0-10 的整数）
+
+## 性能评测
+（可类比 CPU、读写、响应、「算力」等胡扯指标）
+
+## 续航与耐久度
+（充电/换电池/抗摔/风化等，视物体胡扯）
+
+## 性价比分析
+（价格可虚构，对比「竞品」）
+
+## 优缺点
+### 优点
+- 至少 2 条
+
+### 缺点
+- 至少 2 条
+
+## 总结
+（一段内明确写 **推荐** 或 **不推荐**，可带一句吐槽）
+
+## 最终评分
+单独一行：**最终评分：Y/100**（Y 为 0-100 的整数，与上文态度一致）
+
+要求：内容充实、有画面感；不要输出 JSON；除上述结构外不要加一级标题（#）。`;
+        },
+
+        /**
+         * 从 Markdown 字符串中提取外观分、综合分、优缺点片段
+         */
+        parseScoresAndBlocks(text) {
+          if (!text || typeof text !== 'string') {
+            this.designScore = null;
+            this.finalScore = null;
+            this.prosText = '';
+            this.consText = '';
+            return;
+          }
+          let d = null;
+          const dm = text.match(/外观设计评分[：:\s]*(\d{1,2})\s*\/\s*10/);
+          if (dm) d = Math.min(10, Math.max(0, parseInt(dm[1], 10)));
+
+          let f = null;
+          const fm = text.match(/最终评分[：:\s]*(\d{1,3})\s*\/\s*100/);
+          if (fm) f = Math.min(100, Math.max(0, parseInt(fm[1], 10)));
+
+          this.designScore = d;
+          this.finalScore = f;
+
+          const prosM = text.match(/###\s*优点\s*\n([\s\S]*?)(?=###\s*缺点|##\s*性价比|##\s*总结|$)/i);
+          const consM = text.match(/###\s*缺点\s*\n([\s\S]*?)(?=##\s*总结|##\s*最终评分|$)/i);
+          this.prosText = prosM ? prosM[1].trim() : '';
+          this.consText = consM ? consM[1].trim() : '';
+        },
+
+        /**
+         * 使用 marked 渲染 HTML，并刷新 Lucide 图标
+         */
+        scheduleRender() {
+          if (this._parseTimer) clearTimeout(this._parseTimer);
+          this._parseTimer = setTimeout(() => {
+            this.parseScoresAndBlocks(this.streamContent);
+            try {
+              if (typeof marked !== 'undefined' && marked.parse) {
+                this.renderedHtml = marked.parse(this.streamContent, { breaks: true });
+                this.prosHtml = this.prosText ? marked.parse(this.prosText, { breaks: true }) : '';
+                this.consHtml = this.consText ? marked.parse(this.consText, { breaks: true }) : '';
+              } else {
+                this.renderedHtml = '<p>' + escapeHtml(this.streamContent) + '</p>';
+              }
+            } catch (e) {
+              console.error('Markdown 渲染失败', e);
+              this.renderedHtml = '<p>渲染暂不可用</p>';
+            }
+            this.$nextTick(() => lucide.createIcons());
+          }, 120);
+        },
+
+        /**
+         * 发起一次完整流式评测
+         */
+        async startReview() {
+          this.errorMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先配置 DeepSeek API Key。';
+            return;
+          }
+          if (!this.itemName.trim()) return;
+
+          this.isLoading = true;
+          this.streamContent = '';
+          this.reasoningContent = '';
+          this.designScore = null;
+          this.finalScore = null;
+          this.prosText = '';
+          this.consText = '';
+          this.renderedHtml = '';
+          this.prosHtml = '';
+          this.consHtml = '';
+
+          const systemPrompt = `${this.buildStyleInstruction()}
+
+全局规则：
+- 全程中文。
+- 这是娱乐向「万物测评」，读者明白你在恶搞；但仍要写得像一篇真正的评测稿。
+- 严格遵守用户给出的 Markdown 标题结构，方便网页解析分数。
+- 若选用 deepseek-v4-pro，推理过程会单独展示；最终正文仍按上述 Markdown 输出。`;
+
+          const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: this.buildUserPrompt() }
+          ];
+
+          try {
+            await this.streamDeepSeek(
+              messages,
+              (chunk) => {
+                this.streamContent += chunk;
+                this.scheduleRender();
+              },
+              (rChunk) => {
+                this.reasoningContent += rChunk;
+              }
+            );
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败，请检查网络与密钥。';
+          } finally {
+            this.isLoading = false;
+            this.scheduleRender();
+            this.$nextTick(() => lucide.createIcons());
+          }
+        },
+
+        /**
+         * 清空结果，方便连续测评
+         */
+        reviewNext() {
+          this.streamContent = '';
+          this.reasoningContent = '';
+          this.designScore = null;
+          this.finalScore = null;
+          this.prosText = '';
+          this.consText = '';
+          this.prosHtml = '';
+          this.consHtml = '';
+          this.renderedHtml = '';
+          this.errorMsg = '';
+          this.itemName = '';
+          this.$nextTick(() => {
+            lucide.createIcons();
+            this.$refs.itemInput?.focus();
+          });
+        },
+
+        /**
+         * 复制 Markdown 正文到剪贴板（便于发群）
+         */
+        async copyShare() {
+          const body = this.streamContent.trim();
+          if (!body) return;
+          const header = `【万物皆可测评】${this.itemName.trim()}\n风格：${this.styleLabel(this.reviewStyle)}\n\n---\n\n`;
+          const text = header + body;
+          try {
+            await navigator.clipboard.writeText(text);
+            this.toastMsg = '已复制到剪贴板';
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.toastMsg = '已复制到剪贴板';
+          }
+          this.toastShow = true;
+          setTimeout(() => { this.toastShow = false; }, 2000);
+        },
+
+        /**
+         * DeepSeek Chat Completions 流式读取
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {(chunk:string)=>void} onDelta 正文增量
+         * @param {(chunk:string)=>void} onReasoning 推理增量（V4 Pro）
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.82,
+              max_tokens: 4096
+            })
+          });
+
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || 'HTTP ' + response.status);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let full = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) {
+                  onReasoning(delta.reasoning_content);
+                }
+                if (delta.content) {
+                  full += delta.content;
+                  onDelta(delta.content);
+                }
+              } catch (err) {
+                console.warn('SSE 解析跳过', err);
+              }
+            }
+          }
+          return full;
+        }
+      };
+    }
+
+    /** HTML 转义兜底（marked 未加载时） */
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隔空架子鼓 // HTML_SUPER</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #fff;
+        }
+
+        /* 顶部导航和状态栏 */
+        .ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 320px;
+        }
+
+        .ui a {
+            color: #888;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .ui a:hover {
+            color: #fff;
+        }
+
+        .ui h1 {
+            font-size: 1.8rem;
+            margin: 10px 0;
+            background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .ui p {
+            color: #999;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        #startBtn {
+            margin-top: 15px;
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #startBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        #startBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #status {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.8rem;
+            color: #6bcb77;
+        }
+
+        /* 摄像头预览 */
+        #webcam {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 240px;
+            height: 180px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transform: scaleX(-1);
+            opacity: 0.8;
+            z-index: 50;
+        }
+
+        /* 主画布 - 用于渲染鼓和视觉效果 */
+        #mainCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 手部跟踪指示器 - 鼓槌形状 */
+        .hand-indicator {
+            position: fixed;
+            pointer-events: none;
+            z-index: 60;
+            transform: translate(-50%, -50%);
+            transition: all 0.03s ease;
+        }
+
+        /* 鼓槌头部 - 椭圆形 */
+        .drumstick-head {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        /* 鼓槌杆 */
+        .drumstick-shaft {
+            width: 8px;
+            height: 80px;
+            border-radius: 4px;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-30deg);
+            transform-origin: top center;
+        }
+
+        .hand-indicator.left .drumstick-head {
+            background: radial-gradient(ellipse at 30% 30%, #ffb8b8 0%, #ff6b6b 50%, #cc4444 100%);
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.8), inset 0 -2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hand-indicator.left .drumstick-shaft {
+            background: linear-gradient(to right, #8B4513 0%, #D2691E 50%, #8B4513 100%);
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hand-indicator.right .drumstick-head {
+            background: radial-gradient(ellipse at 30% 30%, #a8e6cf 0%, #6bcb77 50%, #4a9c5d 100%);
+            box-shadow: 0 0 20px rgba(107, 203, 119, 0.8), inset 0 -2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hand-indicator.right .drumstick-shaft {
+            background: linear-gradient(to right, #8B4513 0%, #D2691E 50%, #8B4513 100%);
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* 敲击时的动画效果 */
+        .hand-indicator.hitting .drumstick-head {
+            transform: scale(1.2);
+            filter: brightness(1.3);
+        }
+
+        /* 敲击动画 */
+        .hit-effect {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 55;
+            transform: translate(-50%, -50%);
+            animation: hitPulse 0.5s ease-out forwards;
+        }
+
+        @keyframes hitPulse {
+            0% {
+                width: 20px;
+                height: 20px;
+                opacity: 1;
+            }
+            100% {
+                width: 150px;
+                height: 150px;
+                opacity: 0;
+            }
+        }
+
+        /* 鼓垫区域标签 */
+        .drum-label {
+            position: fixed;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            pointer-events: none;
+            z-index: 5;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* 加载动画 */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            text-align: center;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 音量指示器 */
+        .volume-meter {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            width: 30px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 5px;
+            z-index: 100;
+        }
+
+        .volume-bar {
+            width: 100%;
+            height: 0%;
+            background: linear-gradient(to top, #6bcb77, #ffd93d, #ff6b6b);
+            border-radius: 10px;
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            transition: height 0.1s ease;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <!-- 用户界面 -->
+    <div class="ui">
+        <a href="index.html">← 返回</a>
+        <h1>🥁 隔空架子鼓</h1>
+        <p>
+            使用摄像头追踪您的双手位置。<br>
+            向下快速挥动手触发不同的鼓声！<br>
+            <strong>左边</strong> = 底鼓/军鼓 | <strong>右边</strong> = 踩镲/吊镲
+        </p>
+        <button id="startBtn">🎵 开始演奏</button>
+        <div id="status">等待启动...</div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <p>正在加载手势识别模型...</p>
+    </div>
+
+    <!-- 主画布 -->
+    <canvas id="mainCanvas"></canvas>
+
+    <!-- 摄像头预览 -->
+    <video id="webcam" autoplay playsinline muted></video>
+
+    <!-- 虚拟鼓槌指示器 -->
+    <div class="hand-indicator left" id="leftHand" style="display: none;">
+        <div class="drumstick-head"></div>
+        <div class="drumstick-shaft"></div>
+    </div>
+    <div class="hand-indicator right" id="rightHand" style="display: none;">
+        <div class="drumstick-head"></div>
+        <div class="drumstick-shaft"></div>
+    </div>
+
+    <!-- 音量指示器 -->
+    <div class="volume-meter">
+        <div class="volume-bar" id="volumeBar"></div>
+    </div>
+
+    <!-- MediaPipe Hands 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <script>
+        // ============================================
+        // 隔空架子鼓 - Air Drums
+        // 使用摄像头和手势追踪控制虚拟架子鼓
+        // ============================================
+
+        // DOM 元素引用
+        const videoElement = document.getElementById('webcam');
+        const startBtn = document.getElementById('startBtn');
+        const statusDiv = document.getElementById('status');
+        const loadingDiv = document.getElementById('loading');
+        const mainCanvas = document.getElementById('mainCanvas');
+        const ctx = mainCanvas.getContext('2d');
+        const leftHandIndicator = document.getElementById('leftHand');
+        const rightHandIndicator = document.getElementById('rightHand');
+        const volumeBar = document.getElementById('volumeBar');
+
+        // 应用状态
+        let isRunning = false;
+        let audioContext = null;
+
+        // 手部历史位置（用于计算速度）
+        const handHistory = {
+            left: [],
+            right: []
+        };
+        const HISTORY_LENGTH = 5; // 保存最近5帧的位置
+
+        // 敲击检测阈值
+        const HIT_VELOCITY_THRESHOLD = 0.015; // 向下速度阈值
+        const HIT_COOLDOWN = 150; // 敲击冷却时间(ms)
+        let lastHitTime = { left: 0, right: 0 };
+
+        // 鼓区域定义 (归一化坐标 0-1)
+        // 左侧三个区域，右侧三个区域
+        // 鼓区域定义 - 增大尺寸便于敲击
+        const drumZones = [
+            { id: 'kick', x: 0.15, y: 0.7, radius: 0.18, color: '#ff6b6b', name: '底鼓' },
+            { id: 'snare', x: 0.32, y: 0.5, radius: 0.15, color: '#ffd93d', name: '军鼓' },
+            { id: 'tom1', x: 0.15, y: 0.32, radius: 0.12, color: '#ffa502', name: '高音桶鼓' },
+            { id: 'hihat', x: 0.68, y: 0.5, radius: 0.15, color: '#6bcb77', name: '踩镲' },
+            { id: 'crash', x: 0.85, y: 0.32, radius: 0.12, color: '#74b9ff', name: '吊镲' },
+            { id: 'ride', x: 0.85, y: 0.7, radius: 0.15, color: '#a29bfe', name: '叮叮镲' }
+        ];
+
+        // 音频缓冲区
+        const audioBuffers = {};
+
+        // ============================================
+        // 音频系统
+        // ============================================
+
+        /**
+         * 初始化音频上下文和预生成鼓声
+         */
+        async function initAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 使用 Web Audio API 合成各种鼓声
+            // 这样不需要加载外部音频文件
+            generateDrumSounds();
+        }
+
+        /**
+         * 使用 Web Audio API 合成鼓声
+         * 每种鼓声都使用不同的合成参数
+         */
+        function generateDrumSounds() {
+            // 底鼓 - 低频正弦波 + 快速衰减
+            audioBuffers.kick = createKickSound();
+            // 军鼓 - 噪声 + 正弦波混合
+            audioBuffers.snare = createSnareSound();
+            // 踩镲 - 高频噪声
+            audioBuffers.hihat = createHiHatSound();
+            // 桶鼓 - 中频正弦波
+            audioBuffers.tom1 = createTomSound(200);
+            // 吊镲 - 长衰减金属声
+            audioBuffers.crash = createCrashSound();
+            // 叮叮镲 - 明亮的金属共鸣
+            audioBuffers.ride = createRideSound();
+        }
+
+        /**
+         * 创建底鼓音效
+         * 使用两个振荡器：主音 + 点击声
+         */
+        function createKickSound() {
+            return function(time) {
+                const osc = audioContext.createOscillator();
+                const osc2 = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const gain2 = audioContext.createGain();
+                
+                // 主音 - 低频下降
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, time);
+                osc.frequency.exponentialRampToValueAtTime(40, time + 0.15);
+                
+                // 点击声
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(500, time);
+                osc2.frequency.exponentialRampToValueAtTime(100, time + 0.05);
+                
+                gain.gain.setValueAtTime(1, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+                
+                gain2.gain.setValueAtTime(0.5, time);
+                gain2.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+                
+                osc.connect(gain);
+                osc2.connect(gain2);
+                gain.connect(audioContext.destination);
+                gain2.connect(audioContext.destination);
+                
+                osc.start(time);
+                osc.stop(time + 0.5);
+                osc2.start(time);
+                osc2.stop(time + 0.1);
+            };
+        }
+
+        /**
+         * 创建军鼓音效
+         * 噪声 + 音调混合
+         */
+        function createSnareSound() {
+            return function(time) {
+                // 噪声部分
+                const bufferSize = audioContext.sampleRate * 0.2;
+                const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                
+                const noise = audioContext.createBufferSource();
+                noise.buffer = buffer;
+                
+                // 带通滤波器
+                const filter = audioContext.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 3000;
+                filter.Q.value = 0.5;
+                
+                const noiseGain = audioContext.createGain();
+                noiseGain.gain.setValueAtTime(0.8, time);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.2);
+                
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(audioContext.destination);
+                
+                // 音调部分
+                const osc = audioContext.createOscillator();
+                const oscGain = audioContext.createGain();
+                osc.type = 'triangle';
+                osc.frequency.value = 180;
+                oscGain.gain.setValueAtTime(0.4, time);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+                
+                osc.connect(oscGain);
+                oscGain.connect(audioContext.destination);
+                
+                noise.start(time);
+                osc.start(time);
+                osc.stop(time + 0.15);
+            };
+        }
+
+        /**
+         * 创建踩镲音效
+         * 高频噪声 + 高通滤波
+         */
+        function createHiHatSound() {
+            return function(time, open = false) {
+                const duration = open ? 0.5 : 0.08;
+                const bufferSize = audioContext.sampleRate * duration;
+                const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const data = buffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                
+                const noise = audioContext.createBufferSource();
+                noise.buffer = buffer;
+                
+                // 高通滤波器
+                const highpass = audioContext.createBiquadFilter();
+                highpass.type = 'highpass';
+                highpass.frequency.value = 7000;
+                
+                // 带通滤波器增加特征
+                const bandpass = audioContext.createBiquadFilter();
+                bandpass.type = 'bandpass';
+                bandpass.frequency.value = 10000;
+                bandpass.Q.value = 0.8;
+                
+                const gain = audioContext.createGain();
+                gain.gain.setValueAtTime(0.3, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+                
+                noise.connect(highpass);
+                highpass.connect(bandpass);
+                bandpass.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                noise.start(time);
+            };
+        }
+
+        /**
+         * 创建桶鼓音效
+         * @param {number} frequency - 基础频率
+         */
+        function createTomSound(frequency) {
+            return function(time) {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(frequency * 1.5, time);
+                osc.frequency.exponentialRampToValueAtTime(frequency * 0.5, time + 0.2);
+                
+                gain.gain.setValueAtTime(0.8, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+                
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                osc.start(time);
+                osc.stop(time + 0.5);
+            };
+        }
+
+        /**
+         * 创建吊镲音效
+         */
+        function createCrashSound() {
+            return function(time) {
+                const duration = 1.5;
+                const bufferSize = audioContext.sampleRate * duration;
+                const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const data = buffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    // 混合多个频率的噪声
+                    data[i] = (Math.random() * 2 - 1) * 
+                              Math.exp(-i / (audioContext.sampleRate * 0.5));
+                }
+                
+                const noise = audioContext.createBufferSource();
+                noise.buffer = buffer;
+                
+                const highpass = audioContext.createBiquadFilter();
+                highpass.type = 'highpass';
+                highpass.frequency.value = 4000;
+                
+                const gain = audioContext.createGain();
+                gain.gain.setValueAtTime(0.5, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+                
+                noise.connect(highpass);
+                highpass.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                noise.start(time);
+            };
+        }
+
+        /**
+         * 创建叮叮镲音效
+         */
+        function createRideSound() {
+            return function(time) {
+                // 金属共鸣
+                const osc1 = audioContext.createOscillator();
+                const osc2 = audioContext.createOscillator();
+                const osc3 = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                // 多个不协和频率产生金属感
+                osc1.type = 'sine';
+                osc1.frequency.value = 280;
+                osc2.type = 'sine';
+                osc2.frequency.value = 710;
+                osc3.type = 'sine';
+                osc3.frequency.value = 1400;
+                
+                const mix = audioContext.createGain();
+                osc1.connect(mix);
+                osc2.connect(mix);
+                osc3.connect(mix);
+                mix.gain.value = 0.3;
+                
+                gain.gain.setValueAtTime(0.4, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.8);
+                
+                mix.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                osc1.start(time);
+                osc2.start(time);
+                osc3.start(time);
+                osc1.stop(time + 1);
+                osc2.stop(time + 1);
+                osc3.stop(time + 1);
+                
+                // 添加噪声成分
+                const bufferSize = audioContext.sampleRate * 0.3;
+                const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * 0.3;
+                }
+                
+                const noise = audioContext.createBufferSource();
+                noise.buffer = buffer;
+                
+                const noiseFilter = audioContext.createBiquadFilter();
+                noiseFilter.type = 'highpass';
+                noiseFilter.frequency.value = 8000;
+                
+                const noiseGain = audioContext.createGain();
+                noiseGain.gain.setValueAtTime(0.15, time);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+                
+                noise.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(audioContext.destination);
+                
+                noise.start(time);
+            };
+        }
+
+        /**
+         * 播放指定鼓声
+         * @param {string} drumId - 鼓的ID
+         */
+        function playDrumSound(drumId) {
+            if (!audioContext || !audioBuffers[drumId]) return;
+            
+            const now = audioContext.currentTime;
+            audioBuffers[drumId](now);
+            
+            // 更新音量指示器
+            volumeBar.style.height = '80%';
+            setTimeout(() => {
+                volumeBar.style.height = '10%';
+            }, 100);
+        }
+
+        // ============================================
+        // 手势追踪系统
+        // ============================================
+
+        let hands = null;
+
+        /**
+         * 初始化 MediaPipe Hands
+         */
+        function initHandTracking() {
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onHandResults);
+        }
+
+        /**
+         * 处理手势追踪结果
+         * @param {Object} results - MediaPipe 返回的结果
+         */
+        function onHandResults(results) {
+            // 清空画布
+            ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            
+            // 绘制鼓区域
+            drawDrumZones();
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const now = Date.now();
+
+                results.multiHandLandmarks.forEach((landmarks, index) => {
+                    // 获取手的左右判断
+                    const handedness = results.multiHandedness[index].label;
+                    // 注意：由于摄像头是镜像的，左右是反的
+                    const handLabel = handedness === 'Left' ? 'right' : 'left';
+
+                    // 获取手腕位置作为主要追踪点 (关键点 0)
+                    const wrist = landmarks[0];
+                    
+                    // 获取食指指尖位置 (关键点 8) - 用于更精确的敲击检测
+                    const indexTip = landmarks[8];
+                    
+                    // 使用食指位置作为敲击检测点
+                    const x = indexTip.x;
+                    const y = indexTip.y;
+
+                    // 更新手部历史位置
+                    updateHandHistory(handLabel, { x, y, time: now });
+
+                    // 检测敲击动作
+                    const velocity = calculateVelocity(handLabel);
+                    
+                    if (velocity > HIT_VELOCITY_THRESHOLD && now - lastHitTime[handLabel] > HIT_COOLDOWN) {
+                        // 检测敲击位置对应哪个鼓
+                        const hitZone = detectDrumHit(x, y);
+                        if (hitZone) {
+                            playDrumSound(hitZone.id);
+                            createHitEffect(x, y, hitZone.color);
+                            // 添加鼓槌敲击动画
+                            addDrumstickHitAnimation(handLabel);
+                            lastHitTime[handLabel] = now;
+                        }
+                    }
+
+                    // 更新手部指示器位置
+                    updateHandIndicator(handLabel, x, y);
+
+                    // 绘制手部骨骼
+                    drawHandSkeleton(landmarks, handLabel);
+                });
+            } else {
+                // 没有检测到手，隐藏指示器
+                leftHandIndicator.style.display = 'none';
+                rightHandIndicator.style.display = 'none';
+            }
+
+            // 更新状态
+            updateStatus(results);
+        }
+
+        /**
+         * 更新手部历史位置
+         */
+        function updateHandHistory(hand, pos) {
+            handHistory[hand].push(pos);
+            if (handHistory[hand].length > HISTORY_LENGTH) {
+                handHistory[hand].shift();
+            }
+        }
+
+        /**
+         * 计算手的向下速度
+         */
+        function calculateVelocity(hand) {
+            const history = handHistory[hand];
+            if (history.length < 2) return 0;
+
+            // 计算最近两帧之间的 Y 方向速度
+            const current = history[history.length - 1];
+            const prev = history[history.length - 2];
+            
+            // 只关注向下运动 (y 增大)
+            const yVelocity = current.y - prev.y;
+            
+            return yVelocity > 0 ? yVelocity : 0;
+        }
+
+        /**
+         * 检测敲击命中哪个鼓
+         */
+        function detectDrumHit(x, y) {
+            for (const zone of drumZones) {
+                const dx = x - zone.x;
+                const dy = y - zone.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < zone.radius) {
+                    return zone;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * 更新手部指示器
+         */
+        function updateHandIndicator(hand, x, y) {
+            const indicator = hand === 'left' ? leftHandIndicator : rightHandIndicator;
+            indicator.style.display = 'block';
+            indicator.style.left = `${(1 - x) * window.innerWidth}px`; // 镜像翻转
+            indicator.style.top = `${y * window.innerHeight}px`;
+        }
+
+        /**
+         * 更新状态显示
+         */
+        function updateStatus(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                statusDiv.innerHTML = `🎵 检测到 ${results.multiHandLandmarks.length} 只手<br>向下挥动触发鼓声!`;
+                statusDiv.style.color = '#6bcb77';
+            } else {
+                statusDiv.innerHTML = '👋 请将手放入摄像头画面';
+                statusDiv.style.color = '#ffd93d';
+            }
+        }
+
+        // ============================================
+        // 可视化系统
+        // ============================================
+
+        /**
+         * 调整画布大小
+         */
+        function resizeCanvas() {
+            mainCanvas.width = window.innerWidth;
+            mainCanvas.height = window.innerHeight;
+        }
+
+        /**
+         * 绘制鼓区域
+         */
+        function drawDrumZones() {
+            drumZones.forEach(zone => {
+                const x = (1 - zone.x) * mainCanvas.width; // 镜像
+                const y = zone.y * mainCanvas.height;
+                const r = zone.radius * Math.min(mainCanvas.width, mainCanvas.height);
+
+                // 绘制光晕
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
+                gradient.addColorStop(0, zone.color + '40');
+                gradient.addColorStop(0.7, zone.color + '20');
+                gradient.addColorStop(1, 'transparent');
+
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // 绘制边框
+                ctx.beginPath();
+                ctx.arc(x, y, r * 0.8, 0, Math.PI * 2);
+                ctx.strokeStyle = zone.color + '80';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 绘制名称
+                ctx.fillStyle = '#fff';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(zone.name, x, y + 5);
+            });
+        }
+
+        /**
+         * 绘制手部骨骼
+         */
+        function drawHandSkeleton(landmarks, handLabel) {
+            const color = handLabel === 'left' ? '#ff6b6b' : '#6bcb77';
+            
+            // 手指连接定义
+            const connections = [
+                [0, 1], [1, 2], [2, 3], [3, 4],       // 拇指
+                [0, 5], [5, 6], [6, 7], [7, 8],       // 食指
+                [0, 9], [9, 10], [10, 11], [11, 12],  // 中指
+                [0, 13], [13, 14], [14, 15], [15, 16], // 无名指
+                [0, 17], [17, 18], [18, 19], [19, 20], // 小指
+                [5, 9], [9, 13], [13, 17]              // 掌心连接
+            ];
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+
+            connections.forEach(([i, j]) => {
+                const start = landmarks[i];
+                const end = landmarks[j];
+                
+                ctx.beginPath();
+                ctx.moveTo((1 - start.x) * mainCanvas.width, start.y * mainCanvas.height);
+                ctx.lineTo((1 - end.x) * mainCanvas.width, end.y * mainCanvas.height);
+                ctx.stroke();
+            });
+
+            // 绘制关键点
+            landmarks.forEach((point, index) => {
+                const x = (1 - point.x) * mainCanvas.width;
+                const y = point.y * mainCanvas.height;
+                const size = [4, 8].includes(index) ? 8 : 4; // 指尖和手腕大一些
+
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+            });
+        }
+
+        /**
+         * 创建敲击效果
+         */
+        function createHitEffect(x, y, color) {
+            const effect = document.createElement('div');
+            effect.className = 'hit-effect';
+            effect.style.left = `${(1 - x) * window.innerWidth}px`;
+            effect.style.top = `${y * window.innerHeight}px`;
+            effect.style.border = `3px solid ${color}`;
+            effect.style.boxShadow = `0 0 30px ${color}`;
+            
+            document.body.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 500);
+        }
+
+        /**
+         * 添加鼓槌敲击动画
+         * @param {string} hand - 'left' 或 'right'
+         */
+        function addDrumstickHitAnimation(hand) {
+            const indicator = hand === 'left' ? leftHandIndicator : rightHandIndicator;
+            indicator.classList.add('hitting');
+            
+            // 移除动画类，为下次敲击做准备
+            setTimeout(() => {
+                indicator.classList.remove('hitting');
+            }, 100);
+        }
+
+        // ============================================
+        // 主程序
+        // ============================================
+
+        /**
+         * 启动应用
+         */
+        async function startApp() {
+            startBtn.disabled = true;
+            loadingDiv.classList.add('active');
+            statusDiv.innerHTML = '正在初始化...';
+
+            try {
+                // 初始化音频
+                await initAudio();
+                statusDiv.innerHTML = '音频系统就绪...';
+
+                // 初始化手势追踪
+                initHandTracking();
+                statusDiv.innerHTML = '加载手势模型...';
+
+                // 启动摄像头
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: 640,
+                        height: 480,
+                        facingMode: 'user'
+                    }
+                });
+
+                videoElement.srcObject = stream;
+                
+                await new Promise(resolve => {
+                    videoElement.onloadedmetadata = resolve;
+                });
+
+                // 创建摄像头循环
+                const camera = new Camera(videoElement, {
+                    onFrame: async () => {
+                        await hands.send({ image: videoElement });
+                    },
+                    width: 640,
+                    height: 480
+                });
+
+                await camera.start();
+
+                isRunning = true;
+                loadingDiv.classList.remove('active');
+                startBtn.style.display = 'none';
+                statusDiv.innerHTML = '🎵 准备就绪！开始演奏吧！';
+                statusDiv.style.color = '#6bcb77';
+
+            } catch (error) {
+                console.error('启动失败:', error);
+                loadingDiv.classList.remove('active');
+                statusDiv.innerHTML = `❌ 错误: ${error.message}`;
+                statusDiv.style.color = '#ff6b6b';
+                startBtn.disabled = false;
+            }
+        }
+
+        // 事件监听
+        startBtn.addEventListener('click', startApp);
+        window.addEventListener('resize', resizeCanvas);
+
+        // 初始化画布大小
+        resizeCanvas();
+
+        // 初始绘制鼓区域
+        drawDrumZones();
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

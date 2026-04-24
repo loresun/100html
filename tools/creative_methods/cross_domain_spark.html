@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跨界灵感发射器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.10/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <style>
+        body {
+            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top, #f5f3ff 0%, #f8fafc 60%, #ede9fe 100%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            backdrop-filter: blur(12px);
+        }
+
+        .spark {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: radial-gradient(circle at center, rgba(167, 139, 250, 0.8), rgba(129, 140, 248, 0.2));
+            animation: spark 3.8s ease-in-out infinite;
+        }
+
+        @keyframes spark {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.6;
+            }
+            50% {
+                transform: translateY(-16px) scale(1.2);
+                opacity: 1;
+            }
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800" x-data="crossDomainApp()">
+    <div class="min-h-screen relative overflow-hidden">
+        <div class="spark top-16 left-24"></div>
+        <div class="spark bottom-24 right-16" style="animation-delay: -1.2s"></div>
+
+        <header class="py-10 px-4">
+            <div class="max-w-4xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-violet-500 flex items-center justify-center">
+                        <i class="fa-solid fa-wand-magic-sparkles text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-900">跨界灵感发射器</h1>
+                        <p class="text-slate-500">随机领域视角，打破思维惯性。</p>
+                    </div>
+                </div>
+                <button @click="showSettings = true" class="text-sm px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">
+                    <i class="fa-solid fa-gear mr-1"></i>API 设置
+                </button>
+            </div>
+        </header>
+
+        <main class="px-4 pb-16">
+            <div class="max-w-4xl mx-auto glass-card rounded-3xl p-8 shadow-lg">
+                <div class="grid md:grid-cols-[1fr_220px] gap-4">
+                    <input x-model="problem" class="border border-slate-200 rounded-xl px-4 py-3" placeholder="你正在思考的问题">
+                    <select x-model="selectedDomain" class="border border-slate-200 rounded-xl px-4 py-3">
+                        <option value="">随机领域</option>
+                        <option>天文学</option>
+                        <option>料理</option>
+                        <option>旅行</option>
+                        <option>音乐剧</option>
+                        <option>建筑</option>
+                        <option>极限运动</option>
+                    </select>
+                </div>
+                <button @click="generate" :disabled="loading" class="mt-4 px-5 py-2.5 rounded-xl bg-violet-600 text-white font-medium hover:bg-violet-500 transition disabled:opacity-60">
+                    <span x-show="!loading">生成跨界灵感</span>
+                    <span x-show="loading"><i class="fa-solid fa-spinner fa-spin mr-1"></i>生成中...</span>
+                </button>
+                <div x-show="!loading && !result" class="mt-6 rounded-2xl bg-violet-50 p-5 text-slate-500 text-center">
+                    <i class="fa-solid fa-lightbulb text-3xl mb-2 text-violet-300"></i>
+                    <p>输入问题后点击生成跨界灵感</p>
+                </div>
+                <div x-show="result" class="mt-6 rounded-2xl bg-violet-50 p-5 text-slate-700">
+                    <template x-if="result">
+                        <div>
+                            <div class="text-sm text-violet-600 mb-3">
+                                <i class="fa-solid fa-arrow-right-arrow-left mr-1"></i>
+                                <span x-text="result.domain ? `跨界视角: ${result.domain}` : '随机跨界视角'"></span>
+                            </div>
+                            <div class="space-y-3" x-html="renderMarkdown(result.content)"></div>
+                        </div>
+                    </template>
+                </div>
+                <div x-show="rawContent" class="mt-6 rounded-2xl bg-slate-100 p-5 text-slate-600 text-sm">
+                    <div class="font-medium mb-2 text-slate-500">原始输出</div>
+                    <div x-text="rawContent"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- API Settings Modal -->
+    <div x-show="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center p-6">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold">API 设置</h3>
+                <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div class="mt-4 space-y-4">
+                <div>
+                    <label class="text-sm text-slate-600">模型提供方</label>
+                    <select x-model="api.provider" class="mt-2 w-full rounded-lg border border-slate-200 p-2">
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="custom">其他兼容模型</option>
+                    </select>
+                </div>
+                <div x-show="api.provider === 'deepseek'" class="space-y-3">
+                    <div>
+                        <label class="text-sm text-slate-600">DeepSeek API Key</label>
+                        <input type="password" x-model="api.deepseekKey" class="mt-2 w-full rounded-lg border border-slate-200 p-2" placeholder="sk-...">
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-600">DeepSeek 模型</label>
+                        <select x-model="api.deepseekModel" class="mt-2 w-full rounded-lg border border-slate-200 p-2">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div x-show="api.provider === 'custom'" class="space-y-3">
+                    <div>
+                        <label class="text-sm text-slate-600">自定义 API Base URL</label>
+                        <input type="text" x-model="api.customBase" class="mt-2 w-full rounded-lg border border-slate-200 p-2" placeholder="https://api.openai.com/v1">
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-600">API Key</label>
+                        <input type="password" x-model="api.customKey" class="mt-2 w-full rounded-lg border border-slate-200 p-2" placeholder="sk-...">
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-600">模型名称</label>
+                        <input type="text" x-model="api.customModel" class="mt-2 w-full rounded-lg border border-slate-200 p-2" placeholder="gpt-4o-mini">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button @click="resetConfig" class="px-4 py-2 text-sm rounded-lg border border-slate-200">重置</button>
+                <button @click="saveConfig" class="px-4 py-2 text-sm rounded-lg bg-slate-900 text-white">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ALL_DOMAINS = ['天文学', '料理', '旅行', '音乐剧', '建筑', '极限运动'];
+
+        function crossDomainApp() {
+            // 优先从全局配置读取，兼容旧配置
+            const globalConfig = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+            const savedKey = localStorage.getItem('creative_deepseek_key') || '';
+            const savedModel = localStorage.getItem('creative_deepseek_model') || 'deepseek-v4-flash';
+
+            return {
+                problem: '',
+                selectedDomain: '',
+                loading: false,
+                result: null,
+                rawContent: '',
+                showSettings: false,
+                api: {
+                    provider: 'deepseek',
+                    deepseekKey: globalConfig.deepseek || savedKey,
+                    deepseekModel: globalConfig.model || savedModel,
+                    customBase: localStorage.getItem('creative_custom_base') || 'https://api.openai.com/v1',
+                    customKey: localStorage.getItem('creative_custom_key') || '',
+                    customModel: localStorage.getItem('creative_custom_model') || 'gpt-4o-mini'
+                },
+                pick(list) {
+                    return list[Math.floor(Math.random() * list.length)];
+                },
+                renderMarkdown(content) {
+                    return content ? marked.parse(content) : '';
+                },
+                saveConfig() {
+                    try {
+                        localStorage.setItem('creative_deepseek_key', this.api.deepseekKey);
+                        localStorage.setItem('creative_deepseek_model', this.api.deepseekModel);
+                        localStorage.setItem('creative_custom_base', this.api.customBase);
+                        localStorage.setItem('creative_custom_key', this.api.customKey);
+                        localStorage.setItem('creative_custom_model', this.api.customModel);
+                        
+                        // 同步到全局配置
+                        const currentGlobal = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        localStorage.setItem('global_llm_config', JSON.stringify({
+                            ...currentGlobal,
+                            deepseek: this.api.deepseekKey,
+                            model: this.api.deepseekModel
+                        }));
+                    } catch (e) {
+                        console.error('Failed to save config', e);
+                    }
+                    this.showSettings = false;
+                },
+                resetConfig() {
+                    this.api.deepseekKey = '';
+                    this.api.deepseekModel = 'deepseek-v4-flash';
+                    this.api.customBase = 'https://api.openai.com/v1';
+                    this.api.customKey = '';
+                    this.api.customModel = 'gpt-4o-mini';
+                },
+                async callModel(systemPrompt, userPrompt) {
+                    const payload = {
+                        model: this.api.provider === 'deepseek' ? this.api.deepseekModel : this.api.customModel,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        temperature: 0.7
+                    };
+
+                    const endpoint = this.api.provider === 'deepseek'
+                        ? 'https://api.deepseek.com/chat/completions'
+                        : `${this.api.customBase.replace(/\/$/, '')}/chat/completions`;
+                    const apiKey = this.api.provider === 'deepseek' ? this.api.deepseekKey : this.api.customKey;
+
+                    if (!apiKey) {
+                        this.showSettings = true;
+                        throw new Error('请先配置 API Key');
+                    }
+
+                    let response;
+                    try {
+                        response = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                    } catch (e) {
+                        throw new Error(`网络连接失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error('请求失败，请检查 API Key 或网络连接');
+                    }
+
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content || '';
+                },
+                async generate() {
+                    if (!this.problem.trim() && !this.selectedDomain) {
+                        alert('请输入问题或选择领域');
+                        return;
+                    }
+                    
+                    this.loading = true;
+                    this.result = null;
+                    this.rawContent = '';
+                    
+                    try {
+                        const domain = this.selectedDomain || this.pick(ALL_DOMAINS);
+                        const systemPrompt = '你是跨界思维专家，擅长从不同领域寻找灵感和方法论来解决当前问题。请直接输出 Markdown 格式的内容，用标题和列表清晰组织。';
+                        const userPrompt = `问题/主题：${this.problem || '这个问题'}
+跨界领域：${domain}
+
+请从 "${domain}" 领域的视角，提供 3-5 个跨界灵感启发：
+1. 核心方法移植 - 这个领域的核心方法如何应用到你的问题
+2. 思维模式借鉴 - 这个领域的思维模式有什么独特之处
+3. 关键要素拆解 - 这个领域的成功要素是什么
+4. 差异化视角 - 这个领域看待问题的角度有什么不同
+5. 落地建议 - 如何将这些跨界灵感转化为具体行动
+
+请用清晰的 Markdown 格式输出。`;
+
+                        const content = await this.callModel(systemPrompt, userPrompt);
+                        this.result = { domain, content };
+                    } catch (error) {
+                        this.rawContent = `**生成失败：** ${error.message}`;
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            };
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

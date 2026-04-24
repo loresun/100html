@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>感恩日记 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+        }
+        .pattern-bg {
+            background-color: #fefce8;
+            background-image: radial-gradient(#fde047 0.5px, transparent 0.5px);
+            background-size: 20px 20px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="pattern-bg min-h-screen font-sans text-slate-800" x-data="gratitudeApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-yellow-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-yellow-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-orange-500">
+                    ✨ 感恩日记
+                </h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Quote Card -->
+        <div class="bg-white rounded-2xl p-8 shadow-xl shadow-yellow-500/10 border border-yellow-100 mb-8 text-center relative overflow-hidden">
+            <i class="fa-solid fa-quote-left w-12 h-12 text-yellow-100 absolute top-4 left-4"></i>
+            <i class="fa-solid fa-quote-right w-12 h-12 text-yellow-100 absolute bottom-4 right-4"></i>
+            
+            <p class="text-lg text-slate-700 italic font-serif leading-relaxed relative z-10" x-text="todayQuote.text"></p>
+            <div class="mt-4 text-sm text-yellow-600 font-bold uppercase tracking-wider relative z-10" x-text="'— ' + todayQuote.author"></div>
+        </div>
+
+        <!-- Today's Entry -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-12">
+            <div class="bg-gradient-to-r from-yellow-400 to-orange-400 p-6 text-white">
+                <div class="text-yellow-100 text-xs font-bold uppercase tracking-wider mb-1" x-text="todayDate"></div>
+                <h2 class="text-2xl font-bold">今天的三件好事</h2>
+                <p class="text-yellow-50 text-sm mt-1 opacity-90">记录生活中的小确幸，培养积极心态。</p>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <template x-for="(item, index) in todayEntry.items" :key="index">
+                    <div class="flex gap-4">
+                        <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-bold shrink-0" x-text="index + 1"></div>
+                        <input type="text" 
+                               x-model="todayEntry.items[index]"
+                               :placeholder="placeholders[index]"
+                               class="flex-1 border-b-2 border-slate-100 focus:border-yellow-400 outline-none py-1 text-slate-700 placeholder-slate-300 bg-transparent transition-colors">
+                    </div>
+                </template>
+            </div>
+            
+            <div class="p-4 bg-slate-50 border-t border-slate-100 text-right">
+                <button @click="saveEntry()" class="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-700 transition-all shadow-lg shadow-slate-800/20 flex items-center gap-2 ml-auto">
+                    <i class="fa-solid fa-floppy-disk w-4 h-4"></i>
+                    保存记录
+                </button>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div x-show="history.length > 0">
+            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-book-open w-5 h-5 text-yellow-500"></i>
+                往日时光
+            </h3>
+            <div class="space-y-4">
+                <template x-for="entry in sortedHistory" :key="entry.id">
+                    <div class="bg-white rounded-xl border border-slate-100 p-5 hover:shadow-md transition-shadow group">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="text-sm font-bold text-slate-500 flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-days w-4 h-4"></i>
+                                <span x-text="entry.date"></span>
+                            </div>
+                            <button @click="deleteEntry(entry.id)" class="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fa-solid fa-trash w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <ul class="space-y-2">
+                            <template x-for="item in entry.items" :key="item">
+                                <li class="flex gap-3 text-slate-700 text-sm" x-show="item">
+                                    <span class="text-yellow-400">●</span>
+                                    <span x-text="item"></span>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function gratitudeApp() {
+            return {
+                placeholders: [
+                    '吃到好吃的早餐...',
+                    '收到朋友的问候...',
+                    '顺利完成了工作...'
+                ],
+                quotes: [
+                    { text: "心中有光，慢食三餐。", author: "无名" },
+                    { text: "生活明朗，万物可爱。", author: "季羡林" },
+                    { text: "知足者常乐。", author: "老子" },
+                    { text: "每一个不曾起舞的日子，都是对生命的辜负。", author: "尼采" },
+                    { text: "心存感激，所遇皆温柔。", author: "无名" }
+                ],
+                
+                todayEntry: {
+                    items: ['', '', '']
+                },
+                history: [],
+                todayDate: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }),
+
+                get todayQuote() {
+                    const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+                    return this.quotes[dayOfYear % this.quotes.length];
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_gratitude');
+                    if (saved) this.history = JSON.parse(saved);
+                    
+                    const todayStr = new Date().toDateString();
+                    const foundToday = this.history.find(e => e.dateStr === todayStr);
+                    if (foundToday) {
+                        this.todayEntry.items = [...foundToday.items]; // Load existing
+                    }
+
+                    // icons removed
+                },
+
+                saveEntry() {
+                    if (this.todayEntry.items.every(i => !i.trim())) return; // Empty
+                    
+                    const todayStr = new Date().toDateString();
+                    const existingIdx = this.history.findIndex(e => e.dateStr === todayStr);
+                    
+                    const entry = {
+                        id: existingIdx >= 0 ? this.history[existingIdx].id : Date.now(),
+                        dateStr: todayStr,
+                        date: this.todayDate,
+                        items: [...this.todayEntry.items]
+                    };
+
+                    if (existingIdx >= 0) {
+                        this.history[existingIdx] = entry;
+                    } else {
+                        this.history.unshift(entry);
+                    }
+                    
+                    localStorage.setItem('webtools_gratitude', JSON.stringify(this.history));
+                    alert('已保存 ✨');
+                },
+
+                deleteEntry(id) {
+                    if(confirm('确定删除这篇日记吗？')) {
+                        this.history = this.history.filter(h => h.id !== id);
+                        localStorage.setItem('webtools_gratitude', JSON.stringify(this.history));
+                        
+                        // Check if we deleted today's entry
+                        const todayStr = new Date().toDateString();
+                        const foundToday = this.history.find(e => e.dateStr === todayStr);
+                        if (!foundToday) {
+                             this.todayEntry.items = ['', '', ''];
+                        }
+                    }
+                },
+                
+                get sortedHistory() {
+                    return this.history; // Already pushing new to top, but sorting by ID/date is safer
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_gratitude_journal.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

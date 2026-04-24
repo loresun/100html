@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RxJS 响应式编程</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #be185d 0%, #1e1b4b 100%); min-height: 100vh; }
+    .mono { font-family: monospace; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+    .stream-item { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">🌊 RxJS 响应式编程</h1>
+    <p class="text-white/60 mt-1">使用 Observables 处理异步数据流</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-5xl mx-auto space-y-6">
+
+  <!-- 实时流演示 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⏱️ 实时数据流 (interval)</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <div class="flex gap-2 mb-4">
+          <button onclick="startInterval()" id="btn-start" class="px-4 py-2 bg-emerald-600 rounded-lg hover:bg-emerald-700 font-bold">▶ 开始</button>
+          <button onclick="stopInterval()" class="px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 font-bold">⏹ 停止</button>
+          <button onclick="clearStream()" class="px-4 py-2 bg-slate-700 rounded-lg hover:bg-slate-600">清空</button>
+        </div>
+        <div id="interval-stream" class="flex flex-wrap gap-2 min-h-[80px]"></div>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-pink-400 text-xs mb-2 font-bold">📝 代码</div>
+        <pre class="text-xs mono text-slate-300">const stream$ = interval(500).pipe(
+  take(20),
+  map(n => n * 2)
+);
+
+stream$.subscribe(value => {
+  console.log(value);
+});</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 搜索防抖 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🔍 搜索防抖 (debounceTime)</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <input type="text" id="search-input" placeholder="输入搜索内容..." 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white mb-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-slate-900/50 p-3 rounded-lg">
+            <div class="text-xs text-white/50 mb-1">原始输入次数</div>
+            <div id="raw-count" class="text-2xl font-bold text-orange-400">0</div>
+          </div>
+          <div class="bg-slate-900/50 p-3 rounded-lg">
+            <div class="text-xs text-white/50 mb-1">防抖后请求</div>
+            <div id="debounced-count" class="text-2xl font-bold text-emerald-400">0</div>
+          </div>
+        </div>
+        <div id="search-result" class="mt-4 p-3 bg-slate-900/50 rounded-lg text-sm min-h-[40px]"></div>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-pink-400 text-xs mb-2 font-bold">📝 代码</div>
+        <pre class="text-xs mono text-slate-300">fromEvent(input, 'input').pipe(
+  map(e => e.target.value),
+  debounceTime(300),
+  distinctUntilChanged(),
+  filter(text => text.length > 2)
+).subscribe(value => {
+  // 执行搜索
+});</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 鼠标追踪 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🖱️ 鼠标追踪 (fromEvent + throttle)</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div id="mouse-area" class="h-48 bg-gradient-to-br from-pink-900/30 to-purple-900/30 rounded-xl relative overflow-hidden cursor-crosshair">
+        <div id="mouse-pointer" class="absolute w-4 h-4 bg-pink-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none shadow-lg shadow-pink-500/50" style="left:-100px;top:-100px"></div>
+        <div class="absolute inset-0 flex items-center justify-center text-white/30 pointer-events-none">移动鼠标</div>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-pink-400 text-xs mb-2 font-bold">📊 坐标数据</div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="bg-slate-800/50 p-2 rounded text-center">
+            <div class="text-xs text-white/50">X</div>
+            <div id="mouse-x" class="font-bold mono text-pink-400">0</div>
+          </div>
+          <div class="bg-slate-800/50 p-2 rounded text-center">
+            <div class="text-xs text-white/50">Y</div>
+            <div id="mouse-y" class="font-bold mono text-pink-400">0</div>
+          </div>
+        </div>
+        <div class="text-xs text-white/50">事件触发: <span id="event-count" class="text-pink-400 font-bold">0</span> 次</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 合并流 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🔀 合并操作符演示</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <button onclick="demoMerge()" class="p-4 bg-blue-900/40 rounded-xl hover:bg-blue-900/60 text-left">
+        <div class="font-bold text-blue-300">merge()</div>
+        <div class="text-xs text-white/50 mt-1">合并多个流，保持顺序</div>
+      </button>
+      <button onclick="demoCombineLatest()" class="p-4 bg-purple-900/40 rounded-xl hover:bg-purple-900/60 text-left">
+        <div class="font-bold text-purple-300">combineLatest()</div>
+        <div class="text-xs text-white/50 mt-1">组合最新值</div>
+      </button>
+      <button onclick="demoSwitchMap()" class="p-4 bg-emerald-900/40 rounded-xl hover:bg-emerald-900/60 text-left">
+        <div class="font-bold text-emerald-300">switchMap()</div>
+        <div class="text-xs text-white/50 mt-1">切换到新流，取消旧的</div>
+      </button>
+    </div>
+    <div id="operator-output" class="bg-slate-900/60 p-4 rounded-xl min-h-[100px]">
+      <div class="text-white/40 text-center">点击上方按钮查看演示</div>
+    </div>
+  </div>
+
+  <!-- 概念图 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📚 RxJS 核心概念</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <div class="bg-pink-900/30 p-4 rounded-xl">
+        <div class="text-2xl mb-2">📡</div>
+        <div class="font-bold">Observable</div>
+        <div class="text-xs text-white/50 mt-1">数据流发射源</div>
+      </div>
+      <div class="bg-purple-900/30 p-4 rounded-xl">
+        <div class="text-2xl mb-2">👁️</div>
+        <div class="font-bold">Observer</div>
+        <div class="text-xs text-white/50 mt-1">数据消费者</div>
+      </div>
+      <div class="bg-blue-900/30 p-4 rounded-xl">
+        <div class="text-2xl mb-2">🔧</div>
+        <div class="font-bold">Operators</div>
+        <div class="text-xs text-white/50 mt-1">转换/过滤数据</div>
+      </div>
+      <div class="bg-emerald-900/30 p-4 rounded-xl">
+        <div class="text-2xl mb-2">📌</div>
+        <div class="font-bold">Subscription</div>
+        <div class="text-xs text-white/50 mt-1">订阅管理</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/rxjs@7.8.1/dist/bundles/rxjs.umd.min.js"></script>
+<script>
+const { interval, fromEvent, merge, combineLatest, of, timer } = rxjs;
+const { take, map, debounceTime, distinctUntilChanged, filter, throttleTime, switchMap, delay, tap } = rxjs.operators;
+
+// === 实时流演示 ===
+let intervalSub = null;
+
+function startInterval() {
+  if (intervalSub) return;
+  const stream = document.getElementById('interval-stream');
+  
+  intervalSub = interval(300).pipe(
+    take(20),
+    map(n => n * 2)
+  ).subscribe({
+    next: value => {
+      const el = document.createElement('div');
+      el.className = 'stream-item w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-500 rounded-lg flex items-center justify-center font-bold text-sm';
+      el.textContent = value;
+      stream.appendChild(el);
+    },
+    complete: () => {
+      intervalSub = null;
+    }
+  });
+}
+
+function stopInterval() {
+  if (intervalSub) {
+    intervalSub.unsubscribe();
+    intervalSub = null;
+  }
+}
+
+function clearStream() {
+  stopInterval();
+  document.getElementById('interval-stream').innerHTML = '';
+}
+
+// === 搜索防抖 ===
+let rawCount = 0, debouncedCount = 0;
+const searchInput = document.getElementById('search-input');
+
+fromEvent(searchInput, 'input').pipe(
+  tap(() => {
+    rawCount++;
+    document.getElementById('raw-count').textContent = rawCount;
+  }),
+  map(e => e.target.value),
+  debounceTime(300),
+  distinctUntilChanged(),
+  filter(text => text.length > 0)
+).subscribe(value => {
+  debouncedCount++;
+  document.getElementById('debounced-count').textContent = debouncedCount;
+  document.getElementById('search-result').innerHTML = `🔍 搜索: <span class="text-emerald-400">"${value}"</span>`;
+});
+
+// === 鼠标追踪 ===
+let eventCount = 0;
+const mouseArea = document.getElementById('mouse-area');
+const pointer = document.getElementById('mouse-pointer');
+
+fromEvent(mouseArea, 'mousemove').pipe(
+  throttleTime(50),
+  map(e => ({
+    x: e.offsetX,
+    y: e.offsetY
+  }))
+).subscribe(pos => {
+  eventCount++;
+  pointer.style.left = pos.x + 'px';
+  pointer.style.top = pos.y + 'px';
+  document.getElementById('mouse-x').textContent = pos.x;
+  document.getElementById('mouse-y').textContent = pos.y;
+  document.getElementById('event-count').textContent = eventCount;
+});
+
+// === 操作符演示 ===
+function demoMerge() {
+  const output = document.getElementById('operator-output');
+  output.innerHTML = '<div class="text-white/50">执行中...</div>';
+  
+  const stream1$ = interval(500).pipe(take(3), map(n => `A${n}`));
+  const stream2$ = interval(300).pipe(take(3), map(n => `B${n}`));
+  
+  const results = [];
+  merge(stream1$, stream2$).subscribe({
+    next: v => {
+      results.push(v);
+      output.innerHTML = `<div class="text-blue-300 font-bold mb-2">merge() 结果:</div>
+        <div class="flex gap-2">${results.map(r => `<span class="px-2 py-1 ${r.startsWith('A') ? 'bg-blue-600' : 'bg-purple-600'} rounded">${r}</span>`).join('')}</div>
+        <div class="text-xs text-white/50 mt-2">两个流的值交替输出</div>`;
+    }
+  });
+}
+
+function demoCombineLatest() {
+  const output = document.getElementById('operator-output');
+  output.innerHTML = '<div class="text-white/50">执行中...</div>';
+  
+  const a$ = interval(600).pipe(take(3), map(n => `A${n}`));
+  const b$ = interval(400).pipe(take(4), map(n => `B${n}`));
+  
+  combineLatest([a$, b$]).subscribe({
+    next: ([a, b]) => {
+      output.innerHTML = `<div class="text-purple-300 font-bold mb-2">combineLatest() 当前:</div>
+        <div class="text-2xl">[${a}, ${b}]</div>
+        <div class="text-xs text-white/50 mt-2">每次任一流发出值，组合所有流的最新值</div>`;
+    }
+  });
+}
+
+function demoSwitchMap() {
+  const output = document.getElementById('operator-output');
+  output.innerHTML = '<div class="text-white/50">3秒后触发...</div>';
+  
+  of(1, 2, 3).pipe(
+    switchMap(n => timer(n * 500).pipe(map(() => `请求${n}完成`)))
+  ).subscribe({
+    next: v => {
+      output.innerHTML = `<div class="text-emerald-300 font-bold mb-2">switchMap() 结果:</div>
+        <div class="text-xl">${v}</div>
+        <div class="text-xs text-white/50 mt-2">只保留最新的内部流，取消之前未完成的</div>`;
+    }
+  });
+}
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

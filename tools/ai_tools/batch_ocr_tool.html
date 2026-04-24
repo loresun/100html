@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量OCR识别工具 - 通用图片识别专家</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .drag-active {
+            border-color: #667eea !important;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .processing {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen p-4">
+    <div x-data="ocrApp()" x-init="init()" class="max-w-7xl mx-auto">
+        <!-- 导航栏 -->
+        <nav class="glass rounded-2xl shadow-2xl mb-6 p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i class="fa-solid fa-magnifying-glass text-purple-600 h-8 w-8"></i>
+                    <div>
+                        <h1 class="font-bold text-2xl text-slate-900">批量OCR识别工具</h1>
+                        <p class="text-sm text-slate-500">支持名片、票据、证件、表格等批量识别</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- 当前模型显示 -->
+                    <div class="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg">
+                        <i class="fa-solid fa-brain h-4 w-4 text-slate-600"></i>
+                        <span class="text-xs text-slate-600">当前:</span>
+                        <span class="text-sm font-medium text-slate-900" x-text="getModelDisplayName()"></span>
+                    </div>
+                    <button @click="showSettings = true"
+                        class="flex items-center gap-2 px-4 py-2 bg-purple-100 hover:bg-purple-200 rounded-lg transition">
+                        <i class="fa-solid fa-gear h-4 w-4"></i>
+                        <span class="text-sm font-medium">模型配置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧：上传区域 + 配置 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 识别模板选择 -->
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-table-columns h-5 w-5 text-purple-600"></i>
+                        识别模板
+                    </h3>
+                    <div class="space-y-2">
+                        <template x-for="template in templates" :key="template.id">
+                            <button @click="selectedTemplate = template.id"
+                                :class="selectedTemplate === template.id ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                                class="w-full text-left p-3 rounded-lg transition flex items-start gap-3">
+                                <i :class="template.icon" class="h-5 w-5 mt-0.5"></i>
+                                <div class="flex-1">
+                                    <div class="font-medium" x-text="template.name"></div>
+                                    <div class="text-xs opacity-75" x-text="template.desc"></div>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 文件上传区 -->
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up h-5 w-5 text-purple-600"></i>
+                        上传图片
+                    </h3>
+
+                    <!-- 拖拽上传区 -->
+                    <div @drop.prevent="handleDrop($event)" @dragover.prevent="isDragging = true"
+                        @dragleave="isDragging = false" :class="isDragging ? 'drag-active' : ''"
+                        class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center transition cursor-pointer hover:border-purple-400"
+                        @click="$refs.fileInput.click()">
+                        <i class="fa-solid fa-upload h-12 w-12 mx-auto text-slate-400 mb-3"></i>
+                        <p class="text-sm text-slate-600 mb-2">拖拽图片到此处或点击选择</p>
+                        <p class="text-xs text-slate-400">支持 JPG、PNG、WebP 格式</p>
+                        <input type="file" x-ref="fileInput" @change="handleFileSelect($event)" multiple
+                            accept="image/*" class="hidden">
+                    </div>
+
+                    <!-- 已选文件列表 -->
+                    <div x-show="images.length > 0" class="mt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-slate-700">
+                                已选择 <span x-text="images.length"></span> 张图片
+                            </span>
+                            <button @click="clearImages()" class="text-xs text-red-600 hover:text-red-700">
+                                清空
+                            </button>
+                        </div>
+                        <div class="max-h-48 overflow-y-auto space-y-2">
+                            <template x-for="(img, idx) in images" :key="idx">
+                                <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                                    <img :src="img.preview" class="w-10 h-10 object-cover rounded">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs truncate" x-text="img.name"></p>
+                                        <p class="text-xs text-slate-400" x-text="formatFileSize(img.size)"></p>
+                                    </div>
+                                    <button @click="removeImage(idx)" class="text-slate-400 hover:text-red-600">
+                                        <i class="fa-solid fa-xmark h-4 w-4"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 开始识别按钮 -->
+                    <button @click="startBatchOCR()" :disabled="images.length === 0 || isProcessing"
+                        :class="isProcessing ? 'bg-slate-400' : 'bg-purple-600 hover:bg-purple-700'"
+                        class="w-full mt-4 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+                        <i :class="isProcessing ? 'fa-solid fa-spinner animate-spin' : 'fa-solid fa-play'"
+                            class="h-5 w-5"></i>
+                        <span x-text="isProcessing ? '识别中...' : '开始批量识别'"></span>
+                    </button>
+                </div>
+
+                <!-- 处理进度 -->
+                <div x-show="isProcessing" class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line h-5 w-5 text-purple-600 processing"></i>
+                        处理进度
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span>已完成 <span x-text="processedCount"></span> / <span x-text="totalCount"></span></span>
+                            <span x-text="Math.round(progress) + '%'"></span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div :style="`width: ${progress}%`"
+                                class="bg-gradient-to-r from-purple-600 to-pink-600 h-full transition-all duration-500">
+                            </div>
+                        </div>
+                        <div class="text-xs text-slate-500">
+                            <span>成功: </span><span class="text-green-600 font-medium" x-text="successCount"></span>
+                            <span class="ml-3">失败: </span><span class="text-red-600 font-medium"
+                                x-text="failCount"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：识别结果 -->
+            <div class="lg:col-span-2 glass rounded-2xl shadow-xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-xl flex items-center gap-2">
+                        <i class="fa-solid fa-table h-6 w-6 text-purple-600"></i>
+                        识别结果
+                    </h3>
+                    <div x-show="results.length > 0" class="flex gap-2">
+                        <button @click="exportExcel()"
+                            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-excel h-4 w-4"></i>
+                            导出Excel
+                        </button>
+                        <button @click="exportCSV()"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv h-4 w-4"></i>
+                            导出CSV
+                        </button>
+                        <button @click="exportJSON()"
+                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center gap-2">
+                            <i class="fa-solid fa-code h-4 w-4"></i>
+                            导出JSON
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 空状态 -->
+                <div x-show="results.length === 0 && !isProcessing"
+                    class="flex flex-col items-center justify-center py-20 text-slate-400">
+                    <!-- 空状态 -->
+                    <div x-show="results.length === 0 && !isProcessing"
+                        class="flex flex-col items-center justify-center py-20 text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass h-20 w-20 mb-4 opacity-50"></i>
+                        <p class="text-lg">上传图片后开始识别</p>
+                        <p class="text-sm">支持批量处理，自动提取结构化数据</p>
+                    </div>
+
+                    <!-- 结果表格 -->
+                    <div x-show="results.length > 0" class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b-2 border-slate-200">
+                                    <th class="text-left p-3 font-medium text-slate-700">序号</th>
+                                    <th class="text-left p-3 font-medium text-slate-700">图片</th>
+                                    <th class="text-left p-3 font-medium text-slate-700">状态</th>
+                                    <th class="text-left p-3 font-medium text-slate-700">识别结果</th>
+                                    <th class="text-left p-3 font-medium text-slate-700">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(result, idx) in results" :key="idx">
+                                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                        <td class="p-3" x-text="idx + 1"></td>
+                                        <td class="p-3">
+                                            <div class="flex items-center gap-2">
+                                                <img :src="result.preview" class="w-12 h-12 object-cover rounded">
+                                                <span class="text-xs truncate max-w-[100px]"
+                                                    x-text="result.fileName"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-3">
+                                            <span
+                                                :class="result.status === 'success' ? 'bg-green-100 text-green-700' : result.status === 'error' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'"
+                                                class="px-2 py-1 rounded text-xs font-medium"
+                                                x-text="result.status === 'success' ? '成功' : result.status === 'error' ? '失败' : '处理中'"></span>
+                                        </td>
+                                        <td class="p-3">
+                                            <div x-show="result.status === 'success'" class="text-xs space-y-1">
+                                                <template x-for="(value, key) in result.data" :key="key">
+                                                    <div>
+                                                        <span class="font-medium" x-text="key + ':'"></span>
+                                                        <span class="text-slate-600" x-text="value"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                            <div x-show="result.status === 'error'" class="text-xs text-red-600"
+                                                x-text="result.error"></div>
+                                        </td>
+                                        <td class="p-3">
+                                            <div class="flex gap-2">
+                                                <button x-show="result.status === 'error'" @click="retryOCR(idx)"
+                                                    class="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1">
+                                                    <i class="fa-solid fa-rotate h-3 w-3"></i>
+                                                    重试
+                                                </button>
+                                                <button x-show="result.status === 'success'"
+                                                    @click="copyResult(result.data)"
+                                                    class="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                                                    <i class="fa-regular fa-copy h-3 w-3"></i>
+                                                    复制
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 设置弹窗 -->
+            <div x-show="showSettings" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6">
+                    <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <i class="fa-solid fa-gear h-6 w-6 text-purple-600"></i>
+                        视觉模型配置
+                    </h3>
+
+                    <!-- 模型选择 -->
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">视觉识别模型</label>
+                            <select x-model="apiConfig.vision_model"
+                                class="w-full rounded-lg border-slate-300 border p-3">
+                                <option value="glm4v">智谱 GLM-4V（推荐 - 免费额度充足）</option>
+                                <option value="doubao-vision">豆包视觉（火山引擎）</option>
+                                <option value="deepseek-vl">DeepSeek-VL</option>
+                            </select>
+                        </div>
+
+                        <!-- 智谱GLM-4V -->
+                        <div x-show="apiConfig.vision_model === 'glm4v'">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                智谱 API Key
+                                <a href="https://open.bigmodel.cn/" target="_blank"
+                                    class="text-xs text-blue-600 ml-2">(获取Key)</a>
+                            </label>
+                            <input type="password" x-model="apiConfig.glm4v_key" placeholder="请输入智谱API Key"
+                                class="w-full rounded-lg border-slate-300 border p-3">
+                            <p class="text-xs text-slate-500 mt-1">免费用户每月有大量调用额度</p>
+                        </div>
+
+                        <!-- 豆包视觉 -->
+                        <div x-show="apiConfig.vision_model === 'doubao-vision'">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                豆包视觉 API Key
+                                <a href="https://console.volcengine.com/ark" target="_blank"
+                                    class="text-xs text-blue-600 ml-2">(获取Key)</a>
+                            </label>
+                            <input type="password" x-model="apiConfig.doubao_vision_key" placeholder="请输入豆包API Key"
+                                class="w-full rounded-lg border-slate-300 border p-3">
+                        </div>
+
+                        <!-- DeepSeek-VL -->
+                        <div x-show="apiConfig.vision_model === 'deepseek-vl'">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                DeepSeek API Key
+                                <a href="https://platform.deepseek.com/" target="_blank"
+                                    class="text-xs text-blue-600 ml-2">(获取Key)</a>
+                            </label>
+                            <input type="password" x-model="apiConfig.deepseek_vl_key" placeholder="请输入DeepSeek API Key"
+                                class="w-full rounded-lg border-slate-300 border p-3">
+                        </div>
+
+                        <!-- 并发控制 -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                并发数量（同时处理图片数）
+                            </label>
+                            <input type="number" x-model.number="apiConfig.concurrency" min="1" max="10"
+                                class="w-full rounded-lg border-slate-300 border p-3">
+                            <p class="text-xs text-slate-500 mt-1">建议设置为 3-5，过高可能触发API限流</p>
+                        </div>
+                    </div>
+
+                    <!-- 按钮 -->
+                    <div class="flex justify-end gap-3">
+                        <button @click="showSettings = false" class="px-6 py-2 hover:bg-slate-100 rounded-lg">
+                            取消
+                        </button>
+                        <button @click="saveConfig()"
+                            class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                            保存配置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function ocrApp() {
+                return {
+                    // 状态
+                    showSettings: false,
+                    isDragging: false,
+                    isProcessing: false,
+                    selectedTemplate: 'business_card',
+
+                    // 数据
+                    images: [],
+                    results: [],
+
+                    // 进度
+                    totalCount: 0,
+                    processedCount: 0,
+                    successCount: 0,
+                    failCount: 0,
+                    progress: 0,
+
+                    // 配置
+                    apiConfig: {
+                        vision_model: 'glm4v',
+                        glm4v_key: '',
+                        doubao_vision_key: '',
+                        deepseek_vl_key: '',
+                        concurrency: 5
+                    },
+
+                    // 识别模板
+                    templates: [
+                        {
+                            id: 'business_card',
+                            name: '名片识别',
+                            desc: '提取姓名、职位、公司、电话、邮箱',
+                            icon: 'fa-solid fa-user-tie',
+                            fields: ['姓名', '职位', '公司', '电话', '邮箱', '地址']
+                        },
+                        {
+                            id: 'receipt',
+                            name: '票据/发票',
+                            desc: '提取金额、日期、商家、类型',
+                            icon: 'fa-solid fa-receipt',
+                            fields: ['日期', '类型', '商家', '金额', '税号', '备注']
+                        },
+                        {
+                            id: 'id_card',
+                            name: '证件识别',
+                            desc: '身份证、护照、驾驶证等',
+                            icon: 'fa-solid fa-id-card',
+                            fields: ['姓名', '证件类型', '证件号码', '有效期', '发证机关']
+                        },
+                        {
+                            id: 'table',
+                            name: '表格识别',
+                            desc: '提取表格数据为结构化格式',
+                            icon: 'fa-solid fa-table',
+                            fields: [] // 动态识别
+                        },
+                        {
+                            id: 'general',
+                            name: '通用文字提取',
+                            desc: '提取所有可见文字内容',
+                            icon: 'fa-solid fa-align-left',
+                            fields: ['提取文字']
+                        }
+                    ],
+
+                    // 初始化
+                    init() {
+                        this.loadConfig();
+                    },
+
+                    // 加载配置
+                    loadConfig() {
+                        try {
+                            const saved = localStorage.getItem('global_llm_config');
+                            if (saved) {
+                                this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                            }
+                        } catch (e) {
+
+                        }
+                    },
+
+                    // 保存配置
+                    saveConfig() {
+                        let current = {};
+                        try {
+                            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        } catch (e) {
+
+                        }
+                        localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                        this.showSettings = false;
+                    },
+
+                    // 处理文件选择
+                    handleFileSelect(event) {
+                        this.addFiles(event.target.files);
+                    },
+
+                    // 处理拖拽
+                    handleDrop(event) {
+                        this.isDragging = false;
+                        this.addFiles(event.dataTransfer.files);
+                    },
+
+                    // 添加文件
+                    // 保存文件的 MIME 类型，用于正确构建 API 请求
+                    addFiles(files) {
+                        Array.from(files).forEach(file => {
+                            if (file.type.startsWith('image/')) {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    this.images.push({
+                                        name: file.name,
+                                        size: file.size,
+                                        file: file,
+                                        mimeType: file.type, // 保存实际 MIME 类型
+                                        preview: e.target.result,
+                                        base64: e.target.result.split(',')[1]
+                                    });
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        });
+                    },
+
+                    // 移除图片
+                    removeImage(index) {
+                        this.images.splice(index, 1);
+                    },
+
+                    // 清空图片
+                    clearImages() {
+                        this.images = [];
+                        this.results = [];
+                    },
+
+                    // 格式化文件大小
+                    formatFileSize(bytes) {
+                        if (bytes < 1024) return bytes + ' B';
+                        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                    },
+
+                    // 开始批量OCR
+                    async startBatchOCR() {
+                        // 验证API配置
+                        if (!this.validateConfig()) {
+                            this.showSettings = true;
+                            return;
+                        }
+
+                        this.isProcessing = true;
+                        this.results = [];
+                        this.totalCount = this.images.length;
+                        this.processedCount = 0;
+                        this.successCount = 0;
+                        this.failCount = 0;
+                        this.progress = 0;
+
+                        // 初始化结果数组
+                        this.results = this.images.map(img => ({
+                            fileName: img.name,
+                            preview: img.preview,
+                            status: 'pending',
+                            data: null,
+                            error: null
+                        }));
+
+                        // 批量处理（带并发控制）
+                        await this.processBatch();
+
+                        this.isProcessing = false;
+                    },
+
+                    // 批量处理（并发控制）
+                    async processBatch() {
+                        const concurrency = this.apiConfig.concurrency || 5;
+                        const queue = [...this.images];
+                        const processing = [];
+
+                        while (queue.length > 0 || processing.length > 0) {
+                            // 填充处理队列
+                            while (processing.length < concurrency && queue.length > 0) {
+                                const index = this.images.length - queue.length;
+                                const image = queue.shift();
+                                const promise = this.processImage(image, index);
+                                processing.push(promise);
+                            }
+
+                            // 等待任意一个完成
+                            if (processing.length > 0) {
+                                await Promise.race(processing);
+                                // 移除已完成的
+                                for (let i = processing.length - 1; i >= 0; i--) {
+                                    if (await Promise.race([processing[i], Promise.resolve('pending')]) !== 'pending') {
+                                        processing.splice(i, 1);
+                                    }
+                                }
+                            }
+                        }
+                    },
+
+                    // 处理单张图片
+                    // 传递图片的 MIME 类型以确保正确的 API 请求格式
+                    async processImage(image, index) {
+                        try {
+                            this.results[index].status = 'processing';
+
+                            // 传递 mimeType 参数，确保 API 请求中使用正确的图片格式
+                            const data = await this.callVisionAPI(image.base64, image.mimeType || 'image/jpeg');
+
+                            this.results[index] = {
+                                ...this.results[index],
+                                status: 'success',
+                                data: data
+                            };
+
+                            this.successCount++;
+                        } catch (error) {
+                            this.results[index] = {
+                                ...this.results[index],
+                                status: 'error',
+                                error: error.message || '识别失败'
+                            };
+                            this.failCount++;
+                        } finally {
+                            this.processedCount++;
+                            this.progress = (this.processedCount / this.totalCount) * 100;
+                        }
+                    },
+
+                    // 调用视觉API
+                    // mimeType 参数用于正确构建 Base64 数据 URL
+                    async callVisionAPI(imageBase64, mimeType = 'image/jpeg') {
+                        const template = this.templates.find(t => t.id === this.selectedTemplate);
+                        const prompt = this.buildPrompt(template);
+
+                        switch (this.apiConfig.vision_model) {
+                            case 'glm4v':
+                                return await this.callGLM4V(imageBase64, prompt, mimeType);
+                            case 'doubao-vision':
+                                return await this.callDoubaoVision(imageBase64, prompt, mimeType);
+                            case 'deepseek-vl':
+                                return await this.callDeepSeekVL(imageBase64, prompt, mimeType);
+                            default:
+                                throw new Error('未选择视觉模型');
+                        }
+                    },
+
+                    // 构建Prompt
+                    buildPrompt(template) {
+                        let prompt = `请识别图片中的内容，并按照以下格式输出JSON：\n\n`;
+
+                        if (template.id === 'general') {
+                            prompt += `{ "提取文字": "所有文字内容" }`;
+                        } else if (template.id === 'table') {
+                            prompt += `识别表格数据，返回 { "第1列名": "值", "第2列名": "值", ... }`;
+                        } else {
+                            prompt += `{\n`;
+                            template.fields.forEach(field => {
+                                prompt += `  "${field}": "识别到的${field}",\n`;
+                            });
+                            prompt += `}`;
+                        }
+
+                        prompt += `\n\n注意：\n1. 只返回JSON格式，不要其他说明\n2. 如果某个字段识别不到，填写"未识别"\n3. 确保JSON格式正确`;
+
+                        return prompt;
+                    },
+
+                    // 调用智谱GLM-4V
+                    // 参照 whiteboard_to_mindmap.html 中正常工作的 API 调用格式
+                    async callGLM4V(imageBase64, prompt, mimeType = 'image/jpeg') {
+                        // 构建请求体 - 与白板识别工具保持一致的格式
+                        const requestBody = {
+                            model: 'glm-4v-flash',
+                            messages: [{
+                                role: 'user',
+                                content: [
+                                    { type: 'text', text: prompt },
+                                    { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
+                                ]
+                            }]
+                        };
+
+                        // 调试日志：打印请求信息（不打印完整 base64 避免过长）
+
+
+                        let response;
+                        try {
+                            response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${this.apiConfig.glm4v_key}`
+                                },
+                                body: JSON.stringify(requestBody)
+                            });
+                        } catch (e) {
+                            throw new Error(`网络连接失败: ${e.message}`);
+                        }
+
+
+
+                        if (!response.ok) {
+                            // 尝试读取详细的错误信息
+                            let errorDetail = '';
+                            try {
+                                const errorBody = await response.json();
+
+                                errorDetail = errorBody.error?.message || errorBody.msg || JSON.stringify(errorBody);
+                            } catch (e) {
+                                const errorText = await response.text();
+
+                                errorDetail = errorText;
+                            }
+                            throw new Error(`GLM-4V API错误: ${response.status} - ${errorDetail}`);
+                        }
+
+                        const data = await response.json();
+
+                        const content = data.choices[0].message.content;
+
+                        return this.parseJSON(content);
+                    },
+
+                    // 调用豆包视觉（示例实现，需要根据实际API调整）
+                    async callDoubaoVision(imageBase64, prompt) {
+                        // TODO: 实现豆包视觉API调用
+                        throw new Error('豆包视觉API暂未实现，请使用智谱GLM-4V');
+                    },
+
+                    // 调用DeepSeek-VL
+                    async callDeepSeekVL(imageBase64, prompt) {
+                        // TODO: 实现DeepSeek-VL API调用
+                        throw new Error('DeepSeek-VL API暂未实现，请使用智谱GLM-4V');
+                    },
+
+                    // 解析JSON
+                    parseJSON(text) {
+                        try {
+                            // 尝试提取JSON
+                            const jsonMatch = text.match(/\{[\s\S]*\}/);
+                            if (jsonMatch) {
+                                return JSON.parse(jsonMatch[0]);
+                            }
+                            throw new Error('未找到JSON格式');
+                        } catch (e) {
+                            // 解析失败，返回原文
+                            return { '识别结果': text };
+                        }
+                    },
+
+                    // 验证配置
+                    validateConfig() {
+                        if (this.apiConfig.vision_model === 'glm4v' && !this.apiConfig.glm4v_key) {
+                            alert('请先配置智谱API Key');
+                            return false;
+                        }
+                        if (this.apiConfig.vision_model === 'doubao-vision' && !this.apiConfig.doubao_vision_key) {
+                            alert('请先配置豆包API Key');
+                            return false;
+                        }
+                        if (this.apiConfig.vision_model === 'deepseek-vl' && !this.apiConfig.deepseek_vl_key) {
+                            alert('请先配置DeepSeek API Key');
+                            return false;
+                        }
+                        return true;
+                    },
+
+                    // 获取模型显示名称
+                    getModelDisplayName() {
+                        const modelNames = {
+                            'glm4v': 'GLM-4V-Flash',
+                            'doubao-vision': '豆包视觉',
+                            'deepseek-vl': 'DeepSeek-VL'
+                        };
+                        return modelNames[this.apiConfig.vision_model] || '未选择';
+                    },
+
+                    // 重试单个OCR
+                    async retryOCR(index) {
+                        const image = this.images[index];
+                        await this.processImage(image, index);
+                    },
+
+                    // 复制结果
+                    async copyResult(data) {
+                        const text = JSON.stringify(data, null, 2);
+                        await navigator.clipboard.writeText(text);
+                        alert('已复制到剪贴板');
+                    },
+
+                    // 导出Excel
+                    exportExcel() {
+                        const successResults = this.results.filter(r => r.status === 'success');
+                        if (successResults.length === 0) {
+                            alert('没有成功的识别结果');
+                            return;
+                        }
+
+                        // 提取所有字段
+                        const allFields = new Set();
+                        successResults.forEach(r => {
+                            Object.keys(r.data).forEach(key => allFields.add(key));
+                        });
+
+                        // 构建表格数据
+                        const data = successResults.map((r, idx) => {
+                            const row = { '序号': idx + 1, '文件名': r.fileName };
+                            allFields.forEach(field => {
+                                row[field] = r.data[field] || '';
+                            });
+                            return row;
+                        });
+
+                        // 创建工作簿
+                        const ws = XLSX.utils.json_to_sheet(data);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'OCR结果');
+
+                        // 下载
+                        XLSX.writeFile(wb, `OCR识别结果_${new Date().getTime()}.xlsx`);
+                    },
+
+                    // 导出CSV
+                    exportCSV() {
+                        const successResults = this.results.filter(r => r.status === 'success');
+                        if (successResults.length === 0) {
+                            alert('没有成功的识别结果');
+                            return;
+                        }
+
+                        // 提取所有字段
+                        const allFields = new Set(['序号', '文件名']);
+                        successResults.forEach(r => {
+                            Object.keys(r.data).forEach(key => allFields.add(key));
+                        });
+
+                        // 构建CSV
+                        const headers = Array.from(allFields);
+                        let csv = headers.join(',') + '\n';
+
+                        successResults.forEach((r, idx) => {
+                            const row = [idx + 1, r.fileName];
+                            headers.slice(2).forEach(field => {
+                                row.push(r.data[field] || '');
+                            });
+                            csv += row.map(v => `"${v}"`).join(',') + '\n';
+                        });
+
+                        // 下载
+                        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `OCR识别结果_${new Date().getTime()}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    },
+
+                    // 导出JSON
+                    exportJSON() {
+                        const successResults = this.results.filter(r => r.status === 'success');
+                        if (successResults.length === 0) {
+                            alert('没有成功的识别结果');
+                            return;
+                        }
+
+                        const data = successResults.map((r, idx) => ({
+                            序号: idx + 1,
+                            文件名: r.fileName,
+                            识别结果: r.data
+                        }));
+
+                        const json = JSON.stringify(data, null, 2);
+                        const blob = new Blob([json], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `OCR识别结果_${new Date().getTime()}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }
+                }
+            }
+        </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_tools_batch_ocr_tool.md"></script>
+<!-- HELP-WIDGET-END -->
+        </body>
+
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>B 页面 | 内容展示</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: #f2f5fb;
+      color: #1f2a44;
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 40px auto 80px;
+      padding: 0 24px;
+    }
+
+    header {
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    p {
+      margin: 6px 0;
+      color: #5c6b85;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 12px 32px rgba(31, 42, 68, 0.08);
+      margin-bottom: 24px;
+    }
+
+    .section {
+      border-top: 1px solid #e5eaf4;
+      padding-top: 16px;
+      margin-top: 16px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      background: #e9efff;
+      color: #3552b5;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    .blocks {
+      display: grid;
+      gap: 12px;
+    }
+
+    .block {
+      border: 1px solid #e2e8f3;
+      border-radius: 12px;
+      padding: 12px 16px;
+      background: #fafcff;
+    }
+
+    pre {
+      background: #111827;
+      color: #f8fafc;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      overflow-x: auto;
+      margin: 0;
+    }
+
+    .image {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .image img {
+      max-width: 260px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f3;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button, a.button-link {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: #4c6fff;
+      color: #fff;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .secondary {
+      background: #e9efff;
+      color: #3552b5;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #7a869d;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>B 页面：接收展示</h1>
+      <p>从 sessionStorage 中读取 A 页面传来的内容并展示。</p>
+    </header>
+
+    <div class="card" id="contentCard">
+      <div class="empty" id="emptyState">
+        <p>暂未检测到传入内容。</p>
+        <p>请返回 A 页面填写内容后再跳转。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>操作</h2>
+      <div class="actions">
+        <a class="button-link primary" href="transfer_a.html">返回 A 页面</a>
+        <button class="secondary" id="clear">清空已接收数据</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const contentCard = document.getElementById("contentCard");
+    const emptyState = document.getElementById("emptyState");
+
+    const renderSection = (title, content) => {
+      const section = document.createElement("div");
+      section.className = "section";
+
+      const heading = document.createElement("h2");
+      heading.textContent = title;
+      section.appendChild(heading);
+
+      if (typeof content === "string") {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = content || "（空）";
+        section.appendChild(paragraph);
+      } else if (Array.isArray(content)) {
+        const container = document.createElement("div");
+        container.className = "blocks";
+
+        content.forEach((block, index) => {
+          const blockCard = document.createElement("div");
+          blockCard.className = "block";
+          blockCard.innerHTML = `<span class="tag">区域 ${index + 1}</span>${block.content}`;
+          container.appendChild(blockCard);
+        });
+
+        section.appendChild(container);
+      } else if (content && content.type === "json") {
+        const pre = document.createElement("pre");
+        pre.textContent = content.value;
+        section.appendChild(pre);
+      } else if (content && content.type === "image") {
+        const wrapper = document.createElement("div");
+        wrapper.className = "image";
+
+        const image = document.createElement("img");
+        image.src = content.value;
+        image.alt = "来自 A 页面";
+
+        const caption = document.createElement("div");
+        caption.innerHTML = "<span class=\"tag\">图片</span><p>已从 A 页面接收。</p>";
+
+        wrapper.append(image, caption);
+        section.appendChild(wrapper);
+      }
+
+      contentCard.appendChild(section);
+    };
+
+    const payloadRaw = sessionStorage.getItem("transfer_payload");
+    if (payloadRaw) {
+      const payload = JSON.parse(payloadRaw);
+      emptyState.style.display = "none";
+
+      renderSection("文本标题", payload.title);
+      renderSection("文本副标题", payload.subtitle);
+      renderSection("摘要说明", payload.summary);
+
+      if (payload.blocks && payload.blocks.length > 0) {
+        renderSection("多区域内容", payload.blocks);
+      }
+
+      if (payload.json) {
+        renderSection("JSON 数据", {
+          type: "json",
+          value: JSON.stringify(payload.json, null, 2)
+        });
+      }
+
+      if (payload.image) {
+        renderSection("图片展示", { type: "image", value: payload.image });
+      }
+    }
+
+    document.getElementById("clear").addEventListener("click", () => {
+      sessionStorage.removeItem("transfer_payload");
+      window.location.reload();
+    });
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

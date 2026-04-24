@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发票生成器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+            .print-area { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: none !important; }
+        }
+        .invoice-paper {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            padding: 20mm;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans text-slate-800 print:bg-white" x-data="invoiceApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 no-print">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-gray-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+                    🧾 发票生成器
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button @click="reset()" class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 bg-white hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors">
+                    重置
+                </button>
+                <button @click="print()" class="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-600/20 flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-print"></i>
+                    打印 / 下载 PDF
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="py-8 px-4 flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto">
+
+        <!-- Editor (Left) -->
+        <div class="lg:w-1/3 space-y-4 no-print h-fit lg:sticky lg:top-24">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-blue-500"></i>
+                    基本信息
+                </h2>
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" x-model="data.invoiceTitle" class="w-full p-2 border rounded text-sm" placeholder="标题 (如: INVOICE)">
+                        <input type="text" x-model="data.number" class="w-full p-2 border rounded text-sm" placeholder="编号 #001">
+                    </div>
+                    <input type="date" x-model="data.date" class="w-full p-2 border rounded text-sm">
+                    <hr class="border-gray-100">
+                    <div class="grid grid-cols-2 gap-3">
+                         <textarea x-model="data.from" rows="3" class="w-full p-2 border rounded text-sm resize-none" placeholder="发件人信息 (公司/个人)"></textarea>
+                         <textarea x-model="data.to" rows="3" class="w-full p-2 border rounded text-sm resize-none" placeholder="收件人信息 (客户)"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                     <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-list text-blue-500"></i>
+                         项目列表
+                    </h2>
+                    <button @click="addItem()" class="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors">+ 添加</button>
+                </div>
+                
+                <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                    <template x-for="(item, index) in data.items" :key="index">
+                        <div class="p-3 bg-gray-50 rounded-lg text-sm space-y-2 relative group">
+                            <button @click="removeItem(index)" class="absolute top-2 right-2 text-gray-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                            </button>
+                            <input type="text" x-model="item.desc" class="w-full p-1.5 border rounded bg-white" placeholder="项目描述">
+                            <div class="flex gap-2">
+                                <input type="number" x-model.number="item.price" class="w-1/2 p-1.5 border rounded bg-white" placeholder="单价">
+                                <input type="number" x-model.number="item.qty" class="w-1/2 p-1.5 border rounded bg-white" placeholder="数量">
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+                 <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-palette text-blue-500"></i>
+                    样式设置
+                </h2>
+                <div class="grid grid-cols-3 gap-2">
+                    <button @click="color = 'blue'" class="h-8 rounded bg-blue-600"></button>
+                    <button @click="color = 'black'" class="h-8 rounded bg-slate-900"></button>
+                    <button @click="color = 'rose'" class="h-8 rounded bg-rose-600"></button>
+                </div>
+                <div class="mt-4">
+                    <input type="text" x-model="data.currency" class="w-full p-2 border rounded text-sm" placeholder="货币符号 (¥, $)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview (Right) -->
+        <div class="lg:w-2/3 flex justify-center">
+            <div class="invoice-paper shadow-2xl print-area text-slate-800" :class="themeClass">
+                
+                <!-- Invoice Header -->
+                <div class="flex justify-between items-start mb-12">
+                    <div>
+                         <h1 class="text-4xl font-bold tracking-tight uppercase" :class="textColor" x-text="data.invoiceTitle || 'INVOICE'"></h1>
+                         <div class="mt-2 text-slate-500 font-medium"># <span x-text="data.number"></span></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-slate-400 font-bold uppercase">Date</div>
+                        <div class="text-lg font-bold" x-text="data.date"></div>
+                    </div>
+                </div>
+                
+                <!-- Addresses -->
+                <div class="grid grid-cols-2 gap-12 mb-12">
+                    <div>
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">From</div>
+                        <div class="whitespace-pre-wrap leading-relaxed" x-text="data.from || '(发件人信息)'"></div>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">To</div>
+                        <div class="whitespace-pre-wrap leading-relaxed" x-text="data.to || '(收件人信息)'"></div>
+                    </div>
+                </div>
+                
+                <!-- Table -->
+                <table class="w-full mb-12">
+                    <thead>
+                        <tr class="border-b-2" :class="borderColor">
+                            <th class="py-3 text-left font-bold text-sm uppercase text-slate-500">Item Description</th>
+                            <th class="py-3 text-right font-bold text-sm uppercase text-slate-500 w-24">Price</th>
+                            <th class="py-3 text-center font-bold text-sm uppercase text-slate-500 w-16">Qty</th>
+                            <th class="py-3 text-right font-bold text-sm uppercase text-slate-500 w-24">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <template x-for="item in data.items" :key="item">
+                            <tr>
+                                <td class="py-4 font-medium" x-text="item.desc"></td>
+                                <td class="py-4 text-right text-slate-600" x-text="data.currency + item.price"></td>
+                                <td class="py-4 text-center text-slate-600" x-text="item.qty"></td>
+                                <td class="py-4 text-right font-bold" x-text="data.currency + (item.price * item.qty).toFixed(2)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                
+                <!-- Totals -->
+                <div class="flex justify-end mb-12">
+                    <div class="w-64 space-y-3">
+                        <div class="flex justify-between text-slate-500 text-sm">
+                            <span>Subtotal</span>
+                            <span x-text="data.currency + subtotal"></span>
+                        </div>
+                        <div class="flex justify-between text-slate-500 text-sm">
+                            <span>Tax (0%)</span> <!-- Simplified for now -->
+                            <span>-</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-2xl pt-4 border-t-2" :class="[textColor, borderColor]">
+                            <span>Total</span>
+                            <span x-text="data.currency + subtotal"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer Notes -->
+                <div class="mt-auto pt-8 border-t border-gray-100 text-sm text-slate-500 leading-relaxed">
+                    <div class="uppercase font-bold text-xs text-slate-300 mb-2">Notes & Terms</div>
+                    <textarea x-model="data.notes" class="w-full bg-transparent resize-none outline-none h-24 placeholder-slate-200" placeholder="在此输入备注、银行账号或感谢语..."></textarea>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function invoiceApp() {
+            return {
+                color: 'blue',
+                data: {
+                    invoiceTitle: 'INVOICE',
+                    number: 'INV-2026-001',
+                    date: new Date().toISOString().split('T')[0],
+                    from: '我的公司\n上海市浦东新区\ncontact@example.com',
+                    to: '客户名称\n北京市朝阳区\n123456789',
+                    currency: '¥',
+                    notes: '感谢您的惠顾！请在 30 天内付款。\n银行账号: 1234-5678-9012',
+                    items: [
+                        { desc: 'Web 开发服务', price: 5000, qty: 1 },
+                        { desc: '服务器维护 (年)', price: 1200, qty: 1 }
+                    ]
+                },
+
+                init() {
+                    // init
+                },
+                
+                addItem() {
+                    this.data.items.push({ desc: '', price: 0, qty: 1 });
+                    // icons update
+                },
+                
+                removeItem(index) {
+                    this.data.items.splice(index, 1);
+                },
+                
+                reset() {
+                    if(confirm('重置所有内容？')) {
+                         this.data.items = [{ desc: '', price: 0, qty: 1 }];
+                         this.data.notes = '';
+                         this.data.from = '';
+                         this.data.to = '';
+                    }
+                },
+
+                print() {
+                    window.print();
+                },
+
+                get subtotal() {
+                    return this.data.items.reduce((sum, item) => sum + (item.price * item.qty), 0).toFixed(2);
+                },
+                
+                get textColor() {
+                    return { 'blue': 'text-blue-600', 'black': 'text-slate-900', 'rose': 'text-rose-600' }[this.color];
+                },
+                
+                get borderColor() {
+                     return { 'blue': 'border-blue-600', 'black': 'border-slate-900', 'rose': 'border-rose-600' }[this.color];
+                },
+                
+                get themeClass() {
+                    return ''; // Can extend later
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_invoice_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

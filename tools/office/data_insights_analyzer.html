@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表格数据智能分析器 - 数据洞察生成</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+
+        .primary {
+            color: #4f46e5;
+        }
+
+        .bg-primary {
+            background-color: #4f46e5;
+        }
+
+        .border-primary {
+            border-color: #4f46e5;
+        }
+
+        .hover\:bg-primary:hover {
+            background-color: #4f46e5;
+        }
+
+        .focus\:ring-primary:focus {
+            --tw-ring-color: #4f46e5;
+        }
+        /* Markdown 渲染样式 */
+        .prose .inline-code {
+            background-color: #eef2ff;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            color: #4f46e5;
+        }
+        .prose pre {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+        }
+        .prose pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        .prose blockquote {
+            border-left: 4px solid #818cf8;
+            padding-left: 1rem;
+            color: #6b7280;
+            font-style: italic;
+        }
+        .prose h1, .prose h2, .prose h3, .prose h4 {
+            color: #1e293b;
+            font-weight: 700;
+        }
+        .prose a {
+            color: #4f46e5;
+            text-decoration: underline;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="bg-slate-50">
+    <div id="app" v-cloak>
+        <!-- 导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i class="fa-solid fa-chart-column primary text-xl"></i>
+                    <span class="font-bold text-xl text-slate-900">表格数据智能分析器</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button @click="showSettings = true"
+                        class="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                        <i class="fa-solid fa-gear"></i>
+                        <span class="hidden sm:inline">设置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- 左侧输入区 -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- 数据输入 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-table primary"></i>
+                            数据输入
+                        </h3>
+                        <textarea v-model="form.tableData"
+                            placeholder="从 Excel 直接粘贴表格数据，或输入逗号/制表符分隔的数据...&#10;&#10;示例：&#10;日期,销售额,订单数&#10;2024-01-01,15000,120&#10;2024-01-02,18000,145&#10;2024-01-03,12000,98&#10;..."
+                            class="w-full h-64 p-4 border border-slate-300 rounded-lg resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono"></textarea>
+
+                        <div class="mt-4 flex items-center gap-2">
+                            <label
+                                class="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors">
+                                <i class="fa-solid fa-upload"></i>
+                                <span class="text-sm font-medium">上传 CSV 文件</span>
+                                <input type="file" accept=".csv,.txt" @change="handleFileUpload" class="hidden">
+                            </label>
+                            <span v-if="form.tableData" class="text-xs text-slate-500">
+                                {{ form.tableData.split('\n').length }} 行数据
+                            </span>
+                        </div>
+
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+                            <div class="flex items-start gap-2">
+                                <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0"></i>
+                                <div>
+                                    <strong>提示</strong>: 支持从 Excel 直接复制粘贴，自动识别表格结构。第一行作为表头，后续行为数据。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 数据类型 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-tags primary"></i>
+                            数据类型
+                        </h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label v-for="type in dataTypes" :key="type.value"
+                                class="flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all"
+                                :class="form.dataType === type.value ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300'">
+                                <input type="radio" v-model="form.dataType" :value="type.value"
+                                    class="text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm font-medium text-slate-700">{{ type.label }}</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 分析维度 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h3 class="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-sliders primary"></i>
+                            分析维度
+                        </h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.analyzeTrend"
+                                    class="rounded text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700">趋势分析（增长/下降/周期性）</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.detectAnomaly"
+                                    class="rounded text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700">异常检测（离群值/突变点）</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.compareMetrics"
+                                    class="rounded text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700">指标对比（同比/环比）</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.predictFuture"
+                                    class="rounded text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700">趋势预测（未来走向）</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" v-model="form.generateInsights"
+                                    class="rounded text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700">商业洞察（可执行建议）</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 生成按钮 -->
+                    <button @click="analyzeData" :disabled="isLoading || !form.tableData"
+                        class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                        <i v-if="isLoading" class="fa-solid fa-spinner fa-spin"></i>
+                        <i v-else class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>{{ isLoading ? '分析中...' : '开始智能分析' }}</span>
+                    </button>
+                </div>
+
+                <!-- 右侧结果区 -->
+                <div class="lg:col-span-3 space-y-6">
+                    <!-- 空状态 -->
+                    <div v-if="!result && !isLoading" class="bg-white rounded-2xl shadow-sm p-12 text-center">
+                        <i class="fa-solid fa-arrow-trend-up text-6xl mx-auto text-slate-300 mb-4 block"></i>
+                        <p class="text-slate-500">粘贴或上传数据后点击"开始智能分析"</p>
+                        <p class="text-sm text-slate-400 mt-2">AI 会自动生成数据洞察报告</p>
+                    </div>
+
+                    <!-- 结果展示 -->
+                    <div v-if="result || isLoading" class="space-y-6">
+                        <!-- V4 Pro 分析过程 -->
+                        <div v-if="reasoning" class="bg-white rounded-2xl shadow-sm p-6">
+                            <details class="group">
+                                <summary
+                                    class="cursor-pointer text-sm font-medium text-slate-600 flex items-center gap-2 hover:text-slate-900">
+                                    <i class="fa-solid fa-brain"></i>
+                                    <span>🧠 深度分析过程（点击展开）</span>
+                                    <i class="fa-solid fa-chevron-down ml-auto group-open:rotate-180 transition-transform"></i>
+                                </summary>
+                                <div
+                                    class="mt-4 p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap max-h-96 overflow-y-auto">
+                                    {{ reasoning }}
+                                </div>
+                            </details>
+                        </div>
+
+                        <!-- 分析报告 -->
+                        <div class="bg-white rounded-2xl shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-file-invoice primary"></i>
+                                    数据洞察报告
+                                </h3>
+                                <!-- 显示模式切换 -->
+                                <div v-if="result" class="flex items-center gap-2">
+                                    <button @click="displayMode = 'rendered'" 
+                                        :class="['text-xs px-2 py-1 rounded-md transition-colors', displayMode === 'rendered' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600']">
+                                        <i class="fa-solid fa-eye mr-1"></i>渲染
+                                    </button>
+                                    <button @click="displayMode = 'text'" 
+                                        :class="['text-xs px-2 py-1 rounded-md transition-colors', displayMode === 'text' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600']">
+                                        <i class="fa-solid fa-file-lines mr-1"></i>原文
+                                    </button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button @click="copyResult" :disabled="!result"
+                                        class="flex items-center gap-2 px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50">
+                                        <i class="fa-solid fa-copy"></i>
+                                        <span>复制</span>
+                                    </button>
+                                    <button @click="exportResult" :disabled="!result"
+                                        class="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg transition-colors disabled:opacity-50">
+                                        <i class="fa-solid fa-download"></i>
+                                        <span>导出</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="isLoading" class="flex items-center justify-center py-12">
+                                <i class="fa-solid fa-spinner fa-spin w-8 h-8 text-indigo-600 text-3xl"></i>
+                                <span class="ml-3 text-amber-600 text-sm"><i class="fa-solid fa-clock mr-1"></i>分析中...</span>
+                            </div>
+
+                            <!-- 渲染模式 -->
+                            <div v-if="displayMode === 'rendered'" class="prose prose-slate max-w-none" v-html="markedParse(result)"></div>
+                            <!-- 原文模式 -->
+                            <div v-else class="prose prose-slate max-w-none">
+                                <pre class="whitespace-pre-wrap text-sm font-mono text-slate-600 bg-slate-50 p-4 rounded-xl">{{ result }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gear"></i>
+                    API 配置
+                </h3>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            DeepSeek API Key
+                            <a href="https://platform.deepseek.com/api_keys" target="_blank"
+                                class="text-indigo-600 hover:underline text-xs ml-2">获取 Key</a>
+                        </label>
+                        <input type="password" v-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">推荐使用 V4 Pro 获得更深入的数据洞察</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                        取消
+                    </button>
+                    <button @click="saveConfig"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const showSettings = ref(false);
+                const isLoading = ref(false);
+                const reasoning = ref('');
+                const result = ref('');
+                const displayMode = ref('rendered'); // 显示模式: rendered(渲染) 或 text(原文)
+
+                const apiConfig = reactive({
+                    deepseek: '',
+                    model: 'deepseek-v4-pro'
+                });
+
+                const dataTypes = [
+                    { value: 'auto', label: '自动识别' },
+                    { value: 'sales', label: '销售数据' },
+                    { value: 'user', label: '用户数据' },
+                    { value: 'operations', label: '运营数据' },
+                    { value: 'finance', label: '财务数据' },
+                    { value: 'other', label: '其他' }
+                ];
+
+                const form = reactive({
+                    tableData: '',
+                    dataType: 'auto',
+                    analyzeTrend: true,
+                    detectAnomaly: true,
+                    compareMetrics: true,
+                    predictFuture: false,
+                    generateInsights: true
+                });
+
+                // 加载配置
+                onMounted(() => {
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            Object.assign(apiConfig, JSON.parse(saved));
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                });
+
+                // Markdown 解析函数（支持换行）
+                const markedParse = (text) => {
+                    return marked.parse(text, { breaks: true, gfm: true });
+                };
+
+                // 保存配置（合并策略）
+                function saveConfig() {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    const merged = { ...current, ...apiConfig };
+                    localStorage.setItem('global_llm_config', JSON.stringify(merged));
+                    showSettings.value = false;
+                }
+
+                // 文件上传
+                function handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        form.tableData = e.target.result;
+                    };
+                    reader.readAsText(file);
+                }
+
+                // 调用 DeepSeek API
+                async function callDeepSeek(messages) {
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: messages,
+                                stream: true,
+                                temperature: 0.3
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`API 调用失败: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content) {
+                                        reasoning.value += delta.reasoning_content;
+                                    }
+
+                                    if (delta.content) {
+                                        result.value += delta.content;
+                                    }
+                                } catch (e) {
+                                    console.error('Parse error:', e);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 分析数据
+                async function analyzeData() {
+                    if (!apiConfig.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    reasoning.value = '';
+                    result.value = '';
+
+                    try {
+                        let analysisRequirements = [];
+                        if (form.analyzeTrend) analysisRequirements.push('趋势分析（识别增长、下降、周期性、季节性模式）');
+                        if (form.detectAnomaly) analysisRequirements.push('异常检测（标注离群值、突变点、数据质量问题）');
+                        if (form.compareMetrics) analysisRequirements.push('指标对比（计算同比、环比、增长率）');
+                        if (form.predictFuture) analysisRequirements.push('趋势预测（基于历史数据预测未来走向）');
+                        if (form.generateInsights) analysisRequirements.push('商业洞察（提供3-5条可执行的优化建议）');
+
+                        const typeMap = {
+                            auto: '自动识别数据类型',
+                            sales: '销售数据',
+                            user: '用户数据',
+                            operations: '运营数据',
+                            finance: '财务数据',
+                            other: '其他类型数据'
+                        };
+
+                        const systemPrompt = `你是一位专业的数据分析师，擅长从表格数据中提取洞察、识别趋势和异常，并提供商业建议。
+
+你的任务是分析用户提供的表格数据，并生成结构化的数据洞察报告。
+
+**数据类型**: ${typeMap[form.dataType]}
+
+**分析要求**:
+${analysisRequirements.map((req, i) => `${i + 1}. ${req}`).join('\n')}
+
+**输出格式**（使用 Markdown）：
+
+# 📊 数据洞察报告
+
+## 📋 数据概览
+- 数据行数：X 行
+- 数据列数：X 列
+- 时间范围：XXXX-XX-XX 至 XXXX-XX-XX（如有日期列）
+- 关键字段：列出主要字段名称
+
+## 🔢 关键指标汇总
+| 指标 | 数值 | 说明 |
+|------|------|------|
+| 总计 | XXX | ... |
+| 平均值 | XXX | ... |
+| 增长率 | XX% | ... |
+
+## 📈 核心趋势分析
+- **整体趋势**：增长/下降/稳定，描述具体模式
+- **周期性**：是否存在周期性波动
+- **关键时间点**：重要的转折点或里程碑
+
+## ⚠️ 异常检测（如有）
+- **离群值**：标注异常数值及可能原因
+- **突变点**：数据突然变化的时间点
+- **数据质量问题**：缺失值、异常值
+
+## 📊 可视化建议
+建议使用以下图表类型：
+- 折线图：展示XX趋势
+- 柱状图：对比XX指标
+- 饼图：展示XX分布（如适用）
+
+## 💡 商业洞察与建议
+1. **发现1**：具体发现 → 建议采取的行动
+2. **发现2**：...
+3. **发现3**：...
+
+## 🎯 下一步行动
+- [ ] 优先级1：具体行动项
+- [ ] 优先级2：...
+
+---
+
+**注意事项**：
+- 基于数据本身做分析，不要臆测
+- 数值计算要准确
+- 建议要具体、可执行
+- 如果数据不足以支持某个分析维度，明确说明`;
+
+                        const userPrompt = `请分析以下数据：
+
+\`\`\`
+${form.tableData}
+\`\`\`
+
+请生成完整的数据洞察报告。`;
+
+                        await callDeepSeek([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]);
+
+                    } catch (error) {
+                        console.error('分析失败:', error);
+                        result.value = `❌ 分析失败：${error.message}\n\n请检查 API Key 是否正确，或稍后重试。`;
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                // 复制结果
+                async function copyResult() {
+                    try {
+                        let fullText = '';
+                        if (reasoning.value) {
+                            fullText += '=== 深度分析过程 ===\n\n' + reasoning.value + '\n\n';
+                        }
+                        fullText += '=== 数据洞察报告 ===\n\n' + result.value;
+
+                        await navigator.clipboard.writeText(fullText);
+                        alert('✅ 已复制到剪贴板');
+                    } catch (err) {
+                        alert('❌ 复制失败，请手动复制');
+                    }
+                }
+
+                // 导出结果
+                function exportResult() {
+                    let content = `# 数据洞察报告\n\n`;
+                    content += `生成时间：${new Date().toLocaleString('zh-CN')}\n\n`;
+                    content += `---\n\n`;
+
+                    if (reasoning.value) {
+                        content += `## 深度分析过程\n\n${reasoning.value}\n\n---\n\n`;
+                    }
+
+                    content += result.value;
+
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `数据洞察报告_${new Date().getTime()}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+
+                return {
+                    showSettings,
+                    isLoading,
+                    reasoning,
+                    result,
+                    apiConfig,
+                    dataTypes,
+                    form,
+                    markedParse,
+                    displayMode,
+                    saveConfig,
+                    handleFileUpload,
+                    analyzeData,
+                    copyResult,
+                    exportResult
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_data_insights_analyzer.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

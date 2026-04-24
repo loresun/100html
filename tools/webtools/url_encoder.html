@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL 编码/解码 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-blue-50 min-h-screen font-sans text-slate-800" x-data="urlApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-blue-100 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-blue-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500">
+                🌐 URL 编码/解码
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-24">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-[calc(100vh-160px)] min-h-[500px]">
+            
+            <!-- Encode Section -->
+            <div class="flex flex-col h-full bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+                <div class="bg-blue-50/50 px-4 py-3 border-b border-blue-100 flex justify-between items-center">
+                    <span class="font-bold text-blue-900 flex items-center gap-2">
+                        <i class="fa-solid fa-lock w-4 h-4"></i>
+                        解码 (Decode)
+                    </span>
+                    <button @click="decoded = ''" class="text-xs text-slate-400 hover:text-blue-600">清空</button>
+                </div>
+                <textarea 
+                    x-model="decoded" 
+                    @input="encode()"
+                    class="flex-1 w-full p-4 resize-none outline-none text-slate-700 font-mono text-sm leading-relaxed"
+                    placeholder="输入原始 URL 或文本..."
+                ></textarea>
+                <div class="px-4 py-2 border-t border-slate-100 bg-slate-50 flex justify-end">
+                     <button @click="copy(decoded)" class="text-xs font-bold text-slate-500 hover:text-blue-600 flex items-center gap-1">
+                        <i class="fa-solid fa-copy w-3 h-3"></i> 复制
+                    </button>
+                </div>
+            </div>
+
+            <!-- Decode Section -->
+            <div class="flex flex-col h-full bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+                <div class="bg-blue-50/50 px-4 py-3 border-b border-blue-100 flex justify-between items-center">
+                    <span class="font-bold text-blue-900 flex items-center gap-2">
+                        <i class="fa-solid fa-globe w-4 h-4"></i>
+                        编码 (Encode)
+                    </span>
+                    <button @click="encoded = ''" class="text-xs text-slate-400 hover:text-blue-600">清空</button>
+                </div>
+                <textarea 
+                    x-model="encoded" 
+                    @input="decode()"
+                    class="flex-1 w-full p-4 resize-none outline-none text-slate-700 font-mono text-sm leading-relaxed"
+                    placeholder="输入已编码内容 (如 %E4%BD%A0%E5%A5%BD)..."
+                ></textarea>
+                 <div class="px-4 py-2 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+                     <div class="flex items-center gap-2">
+                         <label class="flex items-center gap-1 text-xs text-slate-500 cursor-pointer">
+                             <input type="checkbox" x-model="encodeAll" @change="encode()" class="rounded text-blue-600 accent-blue-600">
+                             严格模式 (Encode All)
+                         </label>
+                     </div>
+                     <button @click="copy(encoded)" class="text-xs font-bold text-slate-500 hover:text-blue-600 flex items-center gap-1">
+                        <i class="fa-solid fa-copy w-3 h-3"></i> 复制
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="text-center mt-6 text-sm text-slate-400">
+            支持 UTF-8 编码。修改任意一边，另一边会自动更新。
+        </div>
+
+    </main>
+
+    <script>
+        function urlApp() {
+            return {
+                decoded: '',
+                encoded: '',
+                encodeAll: false,
+
+                init() {
+                    
+                },
+                
+                encode() {
+                    try {
+                        if (this.encodeAll) {
+                            // Basic encodeURIComponent misses some chars like !'()*
+                            this.encoded = encodeURIComponent(this.decoded).replace(/[!'()*]/g, function(c) {
+                                return '%' + c.charCodeAt(0).toString(16);
+                            });
+                        } else {
+                            this.encoded = encodeURI(this.decoded);
+                        }
+                    } catch(e) {
+                        this.encoded = "Error: " + e.message;
+                    }
+                },
+                
+                decode() {
+                    try {
+                        this.decoded = decodeURIComponent(this.encoded);
+                    } catch(e) {
+                         // Malformed URI sequence often happens while typing
+                    }
+                },
+                
+                copy(text) {
+                    if(!text) return;
+                    navigator.clipboard.writeText(text).then(() => {
+                        // Simple toast could be added here
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_url_encoder.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

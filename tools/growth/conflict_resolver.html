@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>吵架复盘助手 - AI 和事佬</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+    <div id="app" class="flex-grow flex flex-col">
+        <!-- 导航 -->
+        <nav
+            class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                    <i class="fa-solid fa-shield-halved w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-800">吵架复盘助手</h1>
+                    <p class="text-xs text-slate-500">拆解矛盾 · 寻找共识 · 体面和解</p>
+                </div>
+            </div>
+            <a href="../../index.html"
+                class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm">
+                <i class="fa-solid fa-arrow-left w-4 h-4"></i> 返回首页
+            </a>
+        </nav>
+
+        <main class="flex-grow p-6 md:p-8 max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 输入 -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-comment w-4 h-4 text-indigo-500"></i> 描述矛盾现场
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">吵架背景 (发生了什么？)</label>
+                            <textarea v-model="context"
+                                class="w-full h-24 p-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-100"
+                                placeholder="例如：因为家务分配不均，对方觉得我不负责任..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">主要争论内容 (对方说了什么？我说了什么？)</label>
+                            <textarea v-model="dialogue"
+                                class="w-full h-32 p-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-100"
+                                placeholder="尽量客观还原对话细节..."></textarea>
+                        </div>
+                        <button @click="analyzeConflict" :disabled="isGenerating || !dialogue"
+                            class="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center justify-center gap-2">
+                            <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin w-5 h-5"></i>
+                            <span v-else>🔍 深度解析矛盾</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结果 -->
+            <div class="flex flex-col h-full min-h-[600px]">
+                <!-- 错误日志 -->
+                <div v-if="errorLog"
+                    class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-xs text-red-800 overflow-auto max-h-40">
+                    <div class="font-bold mb-1">⚠️ 分析出错:</div>
+                    <pre>{{ errorLog }}</pre>
+                </div>
+
+                <div v-if="analysis"
+                    class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                    <div class="p-4 bg-slate-50 border-b border-slate-100 font-bold text-slate-700">分析与和解报告</div>
+                    <div class="p-6 overflow-y-auto space-y-6">
+                        <section>
+                            <h3 class="text-sm font-bold text-red-500 mb-2">核心诉求分析</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-slate-50 p-3 rounded-xl">
+                                    <div class="text-[10px] text-slate-400 font-bold">你的潜在需求</div>
+                                    <p class="text-sm text-slate-600">{{ analysis.myNeed }}</p>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-xl">
+                                    <div class="text-[10px] text-slate-400 font-bold">对方的潜在需求</div>
+                                    <p class="text-sm text-slate-600">{{ analysis.theirNeed }}</p>
+                                </div>
+                            </div>
+                        </section>
+                        <section>
+                            <h3 class="text-sm font-bold text-indigo-500 mb-2">和解话术建议</h3>
+                            <div v-for="(script, i) in analysis.scripts" :key="i"
+                                class="mb-3 p-4 border border-indigo-50 rounded-xl bg-indigo-50/30">
+                                <div class="text-[10px] font-bold text-indigo-400 uppercase mb-1">方案 {{i+1}}:
+                                    {{script.style}}</div>
+                                <p class="text-slate-700 text-sm italic">"{{ script.content }}"</p>
+                            </div>
+                        </section>
+                        <section>
+                            <h3 class="text-sm font-bold text-slate-700 mb-2">和事佬点评</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">{{ analysis.tips }}</p>
+                        </section>
+                    </div>
+                </div>
+                <div v-else-if="!isGenerating"
+                    class="flex-grow border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-300 p-8 text-center">
+                    <i class="fa-solid fa-scale-balanced w-16 h-16 mb-4 opacity-20"></i>
+                    <p class="text-sm">提供吵架的内容<br>AI 将帮你看到冰山下的真相</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        createApp({
+            setup() {
+
+
+                const context = ref('');
+                const dialogue = ref('');
+                const isGenerating = ref(false);
+                const analysis = ref(null);
+                const errorLog = ref('');
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    // 初始化 Lucide 图标 (已移除)
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        const config = JSON.parse(saved);
+                        apiConfig.value = { ...apiConfig.value, ...config };
+                    }
+                    if (!apiConfig.value.model) apiConfig.value.model = 'deepseek-v4-flash';
+                });
+
+                const analyzeConflict = async () => {
+                    if (!apiConfig.value.deepseek) { alert('请先配置 API Key'); return; }
+                    isGenerating.value = true;
+                    analysis.value = null;
+                    errorLog.value = '';
+
+                    const prompt = `你是一个情感调解专家。请分析以下吵架内容。
+                    背景：${context.value}。对话：${dialogue.value}。
+                    必须返回一个 JSON 对象，格式如下：
+                    {
+                      "myNeed": "用户的底层心理需求（如：需要被认可）",
+                      "theirNeed": "对方的底层心理需求（如：需要安全感）",
+                      "scripts": [
+                        { "style": "真诚道歉型/以退为进型/深度沟通型", "content": "具体的和解话术内容" }
+                      ],
+                      "tips": "给用户的一句中肯建议"
+                    }
+                    只返回 JSON。`;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiConfig.value.deepseek}` },
+                            body: JSON.stringify({
+                                model: apiConfig.value.model || 'deepseek-v4-flash',
+                                messages: [{ role: "system", content: prompt }],
+                                stream: false
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errText = await response.text();
+                            throw new Error(`API Error ${response.status}: ${errText}`);
+                        }
+
+                        const data = await response.json();
+                        const content = data.choices[0].message.content;
+                        // 清洗 Markdown
+                        let cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const match = cleanJson.match(/\{[\s\S]*\}/);
+                        if (match) cleanJson = match[0];
+
+                        analysis.value = JSON.parse(cleanJson);
+
+                    } catch (e) {
+                        console.error(e);
+                        errorLog.value = e.message;
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+                return {
+                    context, dialogue, isGenerating, analysis, errorLog, analyzeConflict
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/growth_conflict_resolver.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

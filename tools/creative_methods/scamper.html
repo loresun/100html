@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCAMPER 创意改造</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.0/index.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.10/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-white via-emerald-50 to-teal-50 text-slate-800" style="font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;">
+  <div x-data="scamperApp()" class="max-w-6xl mx-auto px-6 py-8">
+    <header class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="text-xs text-slate-500">Creative Toolkit</p>
+        <h1 class="text-3xl font-bold mt-1">SCAMPER 创意改造</h1>
+        <p class="text-slate-600 mt-2">用七步改造法挖掘新可能，适合产品升级、服务创新或内容更新。</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="../creative_tools/index.html" class="text-sm text-slate-500 hover:text-slate-700">← 返回工具合集</a>
+        <button @click="showSettings = true" class="text-sm px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">API 设置</button>
+      </div>
+    </header>
+
+    <section class="mt-8 grid lg:grid-cols-[360px_1fr] gap-6">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <h2 class="font-semibold text-lg">输入需求</h2>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label class="text-sm text-slate-600">选择模式</label>
+            <select x-model="mode" class="mt-2 w-full rounded-lg border border-slate-200 p-2">
+              <option value="product">产品创新</option>
+              <option value="service">服务升级</option>
+              <option value="content">内容重构</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-slate-600">对象/方案</label>
+            <textarea x-model="topic" rows="4" class="mt-2 w-full rounded-lg border border-slate-200 p-3" placeholder="例如：线下咖啡店的会员体系"></textarea>
+          </div>
+          <div>
+            <label class="text-sm text-slate-600">背景补充（选填）</label>
+            <textarea x-model="context" rows="4" class="mt-2 w-full rounded-lg border border-slate-200 p-3" placeholder="目标用户、限制条件、已有版本"></textarea>
+          </div>
+          <button @click="generate" :disabled="loading" class="w-full py-3 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-60">
+            <span x-show="!loading">生成 SCAMPER</span>
+            <span x-show="loading">生成中...</span>
+          </button>
+          <p class="text-xs text-slate-500">每一步输出 2-3 条改造建议。</p>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold">渲染结果</h2>
+          <button @click="exportImage" :disabled="!resultReady" class="text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40">导出为图片</button>
+        </div>
+        <div x-ref="renderArea" class="bg-white rounded-2xl border border-slate-200 p-6 min-h-[300px]">
+          <template x-if="!resultReady">
+            <div class="text-slate-400 text-sm">等待生成结果。</div>
+          </template>
+          <template x-if="resultReady">
+            <div>
+              <div class="grid md:grid-cols-2 gap-4">
+                <template x-for="step in result.steps" :key="step.key">
+                  <div class="border border-slate-200 rounded-xl p-4 bg-emerald-50/40">
+                    <div class="flex items-center justify-between">
+                      <h3 class="font-semibold text-slate-800" x-text="step.key"></h3>
+                      <span class="text-xs text-slate-500" x-text="step.label"></span>
+                    </div>
+                    <ul class="mt-3 text-sm text-slate-600 list-disc list-inside">
+                      <template x-for="idea in step.ideas" :key="idea">
+                        <li x-text="idea"></li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+              </div>
+              <div class="mt-6 rounded-xl bg-slate-50 border border-dashed border-slate-200 p-4" x-show="result.summary">
+                <h4 class="font-semibold">实施优先级</h4>
+                <div class="text-sm text-slate-600 mt-2" x-html="renderMarkdown(result.summary)"></div>
+              </div>
+              <template x-if="result.raw">
+                <div class="mt-6 text-sm text-slate-500" x-html="renderMarkdown(result.raw)"></div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+    </section>
+
+    <div x-show="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center p-6">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">API 设置</h3>
+          <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label class="text-sm text-slate-600">模型提供方</label>
+            <select x-model="api.provider" class="mt-2 w-full rounded-lg border border-slate-200 p-2">
+              <option value="deepseek">DeepSeek</option>
+              <option value="custom">其他兼容模型</option>
+            </select>
+          </div>
+          <div x-show="api.provider === 'deepseek'" class="space-y-3">
+            <div>
+              <label class="text-sm text-slate-600">DeepSeek API Key</label>
+              <input type="password" x-model="api.deepseekKey" class="mt-2 w-full rounded-lg border border-slate-200 p-2" placeholder="sk-...">
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">DeepSeek 模型</label>
+              <select x-model="api.deepseekModel" class="mt-2 w-full rounded-lg border border-slate-200 p-2">
+                <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+              </select>
+            </div>
+          </div>
+          <div x-show="api.provider === 'custom'" class="space-y-3">
+            <div>
+              <label class="text-sm text-slate-600">自定义 API Base URL</label>
+              <input type="text" x-model="api.customBase" class="mt-2 w-full rounded-lg border border-slate-200 p-2" placeholder="https://api.openai.com/v1">
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">API Key</label>
+              <input type="password" x-model="api.customKey" class="mt-2 w-full rounded-lg border border-slate-200 p-2" placeholder="sk-...">
+            </div>
+            <div>
+              <label class="text-sm text-slate-600">模型名称</label>
+              <input type="text" x-model="api.customModel" class="mt-2 w-full rounded-lg border border-slate-200 p-2" placeholder="gpt-4o-mini">
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+          <button @click="resetConfig" class="px-4 py-2 text-sm rounded-lg border border-slate-200">重置</button>
+          <button @click="saveConfig" class="px-4 py-2 text-sm rounded-lg bg-slate-900 text-white">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SCAMPER_HINTS = {
+      product: '从产品功能、体验、商业化角度创新。',
+      service: '从服务流程、触点、陪伴感角度优化。',
+      content: '从内容结构、叙事、媒介形式创新。'
+    };
+
+    function scamperApp() {
+      // 优先从全局配置读取，兼容旧配置
+      const globalConfig = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+      const savedKey = localStorage.getItem('creative_deepseek_key') || '';
+      const savedModel = localStorage.getItem('creative_deepseek_model') || 'deepseek-v4-flash';
+
+      return {
+        mode: 'product',
+        topic: '',
+        context: '',
+        loading: false,
+        result: { steps: [], summary: '', raw: '' },
+        showSettings: false,
+        api: {
+          provider: 'deepseek',
+          // 优先使用全局配置的 key，如果没有则回退到本地存储
+          deepseekKey: globalConfig.deepseek || savedKey,
+          deepseekModel: globalConfig.model || savedModel,
+          customBase: localStorage.getItem('creative_custom_base') || 'https://api.openai.com/v1',
+          customKey: localStorage.getItem('creative_custom_key') || '',
+          customModel: localStorage.getItem('creative_custom_model') || 'gpt-4o-mini'
+        },
+        get resultReady() {
+          return this.result.steps.length > 0 || this.result.raw;
+        },
+        renderMarkdown(content) {
+          return content ? marked.parse(content) : '';
+        },
+        saveConfig() {
+          try {
+            localStorage.setItem('creative_deepseek_key', this.api.deepseekKey);
+            localStorage.setItem('creative_deepseek_model', this.api.deepseekModel);
+            localStorage.setItem('creative_custom_base', this.api.customBase);
+            localStorage.setItem('creative_custom_key', this.api.customKey);
+            localStorage.setItem('creative_custom_model', this.api.customModel);
+
+            // 同步到全局配置
+            const currentGlobal = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+            localStorage.setItem('global_llm_config', JSON.stringify({
+              ...currentGlobal,
+              deepseek: this.api.deepseekKey,
+              model: this.api.deepseekModel
+            }));
+          } catch (e) {
+            console.error('Failed to save config', e);
+          }
+          this.showSettings = false;
+        },
+        resetConfig() {
+          this.api.deepseekKey = '';
+          this.api.deepseekModel = 'deepseek-v4-flash';
+          this.api.customBase = 'https://api.openai.com/v1';
+          this.api.customKey = '';
+          this.api.customModel = 'gpt-4o-mini';
+        },
+        async callModel(systemPrompt, userPrompt) {
+          const payload = {
+            model: this.api.provider === 'deepseek' ? this.api.deepseekModel : this.api.customModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.7
+          };
+
+          const endpoint = this.api.provider === 'deepseek'
+            ? 'https://api.deepseek.com/chat/completions'
+            : `${this.api.customBase.replace(/\/$/, '')}/chat/completions`;
+          const apiKey = this.api.provider === 'deepseek' ? this.api.deepseekKey : this.api.customKey;
+
+          if (!apiKey) {
+            this.showSettings = true;
+            throw new Error('请先配置 API Key');
+          }
+
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            throw new Error('请求失败，请检查 API Key 或网络连接');
+          }
+
+          const data = await response.json();
+          return data.choices?.[0]?.message?.content || '';
+        },
+        parseJSON(content) {
+          try {
+            return JSON.parse(content);
+          } catch (e) {
+            let clean = content.replace(/```json\n?|```/g, '').trim();
+            try {
+              return JSON.parse(clean);
+            } catch (e2) {
+              const start = content.indexOf('{');
+              const end = content.lastIndexOf('}');
+              if (start !== -1 && end !== -1 && end > start) {
+                try {
+                  return JSON.parse(content.substring(start, end + 1));
+                } catch (e3) {
+                  throw e;
+                }
+              }
+              throw e;
+            }
+          }
+        },
+        async generate() {
+          if (!this.topic.trim()) return;
+          this.loading = true;
+          this.result = { steps: [], summary: '', raw: '' };
+          let content = '';
+          try {
+            const systemPrompt = '你是 SCAMPER 创意改造教练，请给出具体可执行的改造建议。请直接输出 JSON，不要用代码块包裹。';
+            const userPrompt = `对象：${this.topic}\n补充信息：${this.context || '无'}\n模式：${SCAMPER_HINTS[this.mode]}\n\n请输出严格 JSON：\n{\n  "steps": [\n    {"key": "S", "label": "替代", "ideas": ["建议1", "建议2"]}\n  ],\n  "summary": "优先级与落地建议（Markdown）"\n}\n请按 S/C/A/M/P/E/R 输出 7 个步骤。直接输出 JSON，不要用代码块包裹。`;
+            content = await this.callModel(systemPrompt, userPrompt);
+            const parsed = this.parseJSON(content);
+            this.result.steps = parsed.steps || [];
+            this.result.summary = parsed.summary || '';
+            if (this.result.steps.length === 0) {
+              this.result.raw = content;
+            }
+          } catch (error) {
+            this.result.raw = content ? `${content}\n\n**解析失败：** ${error.message}` : `**生成失败：** ${error.message}`;
+          } finally {
+            this.loading = false;
+          }
+        },
+        async exportImage() {
+          if (!this.resultReady) return;
+          const canvas = await html2canvas(this.$refs.renderArea, { scale: 2, backgroundColor: '#ffffff' });
+          const link = document.createElement('a');
+          link.download = `scamper-${Date.now()}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }
+      };
+    }
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_methods_scamper.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

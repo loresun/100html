@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Validator.js 表单验证</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/validatorjs@3.22.1/dist/validator.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f0f9ff; color: #0c4a6e; }
+    .glass { background: white; border: 1px solid #bae6fd; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.05); }
+    .input-group label { display: block; font-size: 0.875rem; font-weight: 700; margin-bottom: 0.25rem; color: #0369a1; }
+    .input-group input { width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid #e0f2fe; outline: none; transition: all 0.2s; }
+    .input-group input:focus { ring: 2px solid #38bdf8; border-color: #38bdf8; }
+    .error-msg { font-size: 0.75rem; color: #ef4444; margin-top: 0.25rem; min-height: 1rem; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-sky-900">🛡️ Validator.js</h1>
+    <p class="text-sky-800/60 mt-2 text-lg">受 Laravel 启发的轻量级 JS 验证库</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-sky-200 text-sky-800 rounded-lg hover:bg-sky-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-xl mx-auto">
+
+  <div class="glass p-8 rounded-2xl shadow-lg">
+    <h3 class="font-bold text-xl text-sky-900 mb-6 border-b border-sky-100 pb-4">注册账户</h3>
+
+    <div class="space-y-4">
+      
+      <!-- Username -->
+      <div class="input-group">
+        <label>用户名 (alpha_num, min:3)</label>
+        <input type="text" id="username" placeholder="johndoe123">
+        <div id="err-username" class="error-msg"></div>
+      </div>
+
+      <!-- Email -->
+      <div class="input-group">
+        <label>邮箱 (email)</label>
+        <input type="email" id="email" placeholder="john@example.com">
+        <div id="err-email" class="error-msg"></div>
+      </div>
+
+      <!-- Age -->
+      <div class="input-group">
+        <label>年龄 (integer, min:18)</label>
+        <input type="number" id="age" placeholder="25">
+        <div id="err-age" class="error-msg"></div>
+      </div>
+
+      <!-- Password -->
+      <div class="input-group">
+        <label>密码 (min:6, confirmed)</label>
+        <input type="password" id="password" placeholder="******">
+        <div id="err-password" class="error-msg"></div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="input-group">
+        <label>确认密码</label>
+        <input type="password" id="password_confirmation" placeholder="******">
+      </div>
+
+      <button onclick="validateForm()" class="w-full mt-4 py-3 bg-sky-500 text-white font-bold rounded-lg hover:bg-sky-600 shadow-lg shadow-sky-500/30 transition active:scale-95">
+        提交验证
+      </button>
+
+    </div>
+
+    <!-- 结果展示 -->
+    <div id="result-box" class="mt-6 p-4 rounded-xl hidden">
+      <!-- 动态内容 -->
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // 中文错误消息本地化 (可选)
+  Validator.useLang('zh');
+
+  function validateForm() {
+    // 1. 收集数据
+    const data = {
+      username: document.getElementById('username').value,
+      email: document.getElementById('email').value,
+      age: document.getElementById('age').value,
+      password: document.getElementById('password').value,
+      password_confirmation: document.getElementById('password_confirmation').value
+    };
+
+    // 2. 定义规则
+    const rules = {
+      username: 'required|alpha_num|min:3',
+      email: 'required|email',
+      age: 'required|integer|min:18',
+      password: 'required|min:6|confirmed'
+    };
+
+    // 3. 执行验证
+    const validation = new Validator(data, rules);
+
+    // 清除旧错误
+    document.querySelectorAll('.error-msg').forEach(el => el.innerText = '');
+    const resultBox = document.getElementById('result-box');
+    resultBox.classList.add('hidden');
+
+    if (validation.passes()) {
+      // 成功
+      resultBox.className = 'mt-6 p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 text-center font-bold block';
+      resultBox.innerText = '✅ 验证通过！表单数据有效。';
+    } else {
+      // 失败
+      const errors = validation.errors.all();
+      
+      // 显示具体字段错误
+      for (const field in errors) {
+        const errorEl = document.getElementById(`err-${field}`);
+        if(errorEl) {
+          errorEl.innerText = errors[field][0]; // 取第一条错误
+        }
+      }
+
+      resultBox.className = 'mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-center block';
+      resultBox.innerText = '❌ 验证失败，请检查输入。';
+    }
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

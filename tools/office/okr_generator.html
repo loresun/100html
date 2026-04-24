@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OKR 目标制定助手 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #0ea5e9;
+            border-radius: 999px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            backdrop-filter: blur(12px);
+        }
+
+        .okr-card {
+            transition: all 0.3s ease;
+        }
+
+        .okr-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(14, 165, 233, 0.15);
+        }
+
+        .kr-item {
+            border-left: 3px solid #0ea5e9;
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.05) 0%, transparent 100%);
+        }
+
+        .thinking-section {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #f59e0b;
+        }
+
+        @keyframes pulse-light {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .pulse-animation {
+            animation: pulse-light 2s ease-in-out infinite;
+        }
+
+        /* Markdown 渲染样式优化 */
+        .prose h2 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #0c4a6e;
+            border-bottom: 1px solid #e0f2fe;
+            padding-bottom: 0.5rem;
+        }
+
+        .prose h3 {
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0369a1;
+        }
+
+        .prose p {
+            margin-bottom: 0.75rem;
+            line-height: 1.7;
+        }
+
+        .prose ul, .prose ol {
+            margin-top: 0.5rem;
+            margin-bottom: 0.75rem;
+            padding-left: 1.25rem;
+        }
+
+        .prose li {
+            margin-bottom: 0.375rem;
+            line-height: 1.6;
+        }
+
+        .prose hr {
+            margin: 1rem 0;
+            border-color: #e0f2fe;
+        }
+
+        .prose strong {
+            color: #0369a1;
+            font-weight: 600;
+        }
+
+        .prose .kr-item {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: #f8fafc;
+            border-radius: 0.5rem;
+            border-left: 3px solid #0ea5e9;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- 导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-sky-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-bullseye text-sky-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl">OKR 目标制定助手</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 px-3 py-1.5 bg-sky-50 rounded-lg border border-sky-200">
+                            <i class="fa-solid fa-brain h-4 w-4 text-sky-600"></i>
+                            <span class="text-sm font-medium text-sky-700">{{ apiConfig.model === 'deepseek-v4-pro' ? 'V4 Pro 深度推理' : 'V4 Flash 快速生成' }}</span>
+                        </div>
+                        <button @click="showSettings = true" class="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition">
+                            <i class="fa-solid fa-gear h-4 w-4 text-slate-600"></i>
+                            <span class="text-sm font-medium text-slate-700">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid lg:grid-cols-[1fr,1.2fr] gap-6">
+                <!-- 左侧：输入区 -->
+                <section class="card rounded-2xl p-6 space-y-6 h-fit">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900 mb-2">制定 OKR 目标</h2>
+                        <p class="text-sm text-slate-500">支持上下级联动：从领导OKR生成个人目标，或将个人OKR拆分到团队</p>
+                    </div>
+
+                    <!-- 模式选择 -->
+                    <div>
+                        <label class="text-sm font-medium text-slate-700 mb-2 block">制定模式</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button @click="mode = 'individual'" :class="mode === 'individual' ? 'bg-sky-600 text-white' : 'bg-white text-slate-600 border border-slate-200'" class="py-2.5 px-3 rounded-lg text-sm font-medium transition">
+                                <i class="fa-solid fa-user h-4 w-4 mx-auto mb-1"></i>
+                                <div>个人制定</div>
+                            </button>
+                            <button @click="mode = 'align-down'" :class="mode === 'align-down' ? 'bg-sky-600 text-white' : 'bg-white text-slate-600 border border-slate-200'" class="py-2.5 px-3 rounded-lg text-sm font-medium transition">
+                                <i class="fa-solid fa-arrow-down h-4 w-4 mx-auto mb-1"></i>
+                                <div>承接领导</div>
+                            </button>
+                            <button @click="mode = 'split-down'" :class="mode === 'split-down' ? 'bg-sky-600 text-white' : 'bg-white text-slate-600 border border-slate-200'" class="py-2.5 px-3 rounded-lg text-sm font-medium transition">
+                                <i class="fa-solid fa-code-branch h-4 w-4 mx-auto mb-1"></i>
+                                <div>拆分团队</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 基础信息 -->
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">时间周期</label>
+                            <select v-model="form.period" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none">
+                                <option value="Q1">Q1 季度（1-3月）</option>
+                                <option value="Q2">Q2 季度（4-6月）</option>
+                                <option value="Q3">Q3 季度（7-9月）</option>
+                                <option value="Q4">Q4 季度（10-12月）</option>
+                                <option value="H1">H1 半年（1-6月）</option>
+                                <option value="H2">H2 半年（7-12月）</option>
+                                <option value="Y">全年</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">角色/部门</label>
+                            <input v-model="form.role" type="text" placeholder="例如：产品经理 / 研发部" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- 个人制定模式 -->
+                    <div v-if="mode === 'individual'" class="space-y-4">
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">核心业务目标</label>
+                            <textarea v-model="form.businessGoal" rows="3" placeholder="描述你的核心业务目标，例如：提升产品用户留存率、扩大市场份额、优化团队效率等" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">现有资源与限制</label>
+                            <textarea v-model="form.resources" rows="2" placeholder="列出可用资源（人力、预算、技术等）和限制条件" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 承接领导OKR模式 -->
+                    <div v-if="mode === 'align-down'" class="space-y-4">
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">领导的 OKR</label>
+                            <textarea v-model="form.leaderOKR" rows="5" placeholder="粘贴领导的 OKR 内容，例如：
+O1: 提升公司整体营收增长
+KR1: Q3 营收达到 5000万，同比增长 40%
+KR2: 新客户数量突破 1000家
+KR3: 客户留存率提升至 85%" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none resize-none font-mono text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">你的工作职责</label>
+                            <textarea v-model="form.myResponsibility" rows="2" placeholder="描述你在团队中的职责和可以贡献的领域" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 拆分到团队模式 -->
+                    <div v-if="mode === 'split-down'" class="space-y-4">
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">你的 OKR</label>
+                            <textarea v-model="form.myOKR" rows="5" placeholder="粘贴你的 OKR 内容" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none resize-none font-mono text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">团队成员信息</label>
+                            <textarea v-model="form.teamMembers" rows="3" placeholder="列出团队成员的姓名、角色和专长，例如：
+- 张三（前端开发）：擅长 React 和组件设计
+- 李四（后端开发）：擅长数据库优化和 API 设计
+- 王五（测试工程师）：擅长自动化测试" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-sky-400 outline-none resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 高级选项 -->
+                    <details class="border border-slate-200 rounded-lg">
+                        <summary class="px-4 py-3 cursor-pointer font-medium text-sm text-slate-700 hover:bg-slate-50">
+                            高级选项
+                        </summary>
+                        <div class="px-4 py-3 space-y-3 border-t border-slate-200">
+                            <div>
+                                <label class="text-sm font-medium text-slate-700 mb-2 block">目标数量</label>
+                                <select v-model.number="form.objectiveCount" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-sky-400 outline-none">
+                                    <option :value="3">3 个目标（推荐）</option>
+                                    <option :value="4">4 个目标</option>
+                                    <option :value="5">5 个目标</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-slate-700 mb-2 block">每个目标的关键结果数</label>
+                                <select v-model.number="form.krCount" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-sky-400 outline-none">
+                                    <option :value="3">3 个 KR（推荐）</option>
+                                    <option :value="4">4 个 KR</option>
+                                    <option :value="5">5 个 KR</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.includeRiskAssessment" class="rounded">
+                                    <span class="text-sm text-slate-700">包含风险评估</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.includeResourcePlan" class="rounded">
+                                    <span class="text-sm text-slate-700">包含资源分配建议</span>
+                                </label>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- 生成按钮 -->
+                    <button @click="generateOKR" :disabled="isLoading || !canGenerate" class="w-full bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 text-white py-3 rounded-xl font-medium transition flex items-center justify-center gap-2">
+                        <i v-if="isLoading" class="fa-solid fa-spinner fa-spin h-5 w-5"></i>
+                        <i v-else class="fa-solid fa-wand-magic-sparkles h-5 w-5"></i>
+                        <span>{{ isLoading ? '正在生成...' : '生成 OKR' }}</span>
+                    </button>
+                </section>
+
+                <!-- 右侧：结果区 -->
+                <section class="card rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-slate-900">生成结果</h2>
+                        <div v-if="result" class="flex items-center gap-2">
+                            <button @click="copyResult" class="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-copy h-4 w-4"></i>
+                                <span>复制</span>
+                            </button>
+                            <button @click="exportResult" class="px-3 py-1.5 text-sm bg-sky-600 text-white hover:bg-sky-700 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-download h-4 w-4"></i>
+                                <span>导出</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- V4 Pro 思考过程 -->
+                    <details v-if="reasoningContent" class="thinking-section rounded-lg p-4">
+                        <summary class="cursor-pointer font-medium text-amber-900 flex items-center gap-2">
+                            <i class="fa-solid fa-brain h-4 w-4"></i>
+                            <span>V4 Pro 深度推理过程（点击展开）</span>
+                        </summary>
+                        <div class="mt-3 text-sm text-amber-900 whitespace-pre-wrap font-mono bg-white/50 p-3 rounded">{{ reasoningContent }}</div>
+                    </details>
+
+                    <!-- 加载状态 -->
+                    <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 space-y-4">
+                        <i class="fa-solid fa-bullseye h-16 w-16 text-sky-400 pulse-animation"></i>
+                        <p class="text-slate-500 text-sm">AI 正在深度分析和制定 OKR...</p>
+                    <p class="text-amber-600 text-xs mt-2 bg-amber-50 px-3 py-1.5 rounded-lg">
+                        <i class="fa-solid fa-clock mr-1"></i>
+                        由于 OKR 内容较长（3-5个目标 × 3-5个关键结果），生成需要较长时间，请耐心等待
+                    </p>
+                    </div>
+
+                    <!-- 空状态 -->
+                    <div v-else-if="!result" class="flex flex-col items-center justify-center py-12 text-slate-400">
+                        <i class="fa-solid fa-clipboard-list h-16 w-16 mb-4 opacity-50"></i>
+                        <p class="text-sm">填写信息后点击生成</p>
+                    </div>
+
+                    <!-- OKR 结果展示 -->
+                    <div v-else class="space-y-4">
+                        <!-- 显示模式切换 -->
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <span class="text-xs text-slate-500">
+                                <i class="fa-solid fa-info-circle mr-1"></i>
+                                OKR 内容较长，渲染/显示需要一定时间
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <button
+                                    @click="displayMode = 'rendered'"
+                                    :class="displayMode === 'rendered' ? 'bg-sky-100 text-sky-700 border-sky-300' : 'bg-slate-50 text-slate-600 border-slate-200'"
+                                    class="px-3 py-1 text-xs border rounded-lg transition flex items-center gap-1">
+                                    <i class="fa-solid fa-eye h-3 w-3"></i>
+                                    <span>渲染视图</span>
+                                </button>
+                                <button
+                                    @click="displayMode = 'text'"
+                                    :class="displayMode === 'text' ? 'bg-sky-100 text-sky-700 border-sky-300' : 'bg-slate-50 text-slate-600 border-slate-200'"
+                                    class="px-3 py-1 text-xs border rounded-lg transition flex items-center gap-1">
+                                    <i class="fa-solid fa-file-text h-3 w-3"></i>
+                                    <span>原文文本</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    <!-- 渲染模式 -->
+                    <div v-if="displayMode === 'rendered'" v-html="markedParse(result)" class="prose prose-slate max-w-none"></div>
+
+                        <!-- 原文文本模式 -->
+                        <div v-else class="prose prose-slate max-w-none">
+                            <pre class="whitespace-pre-wrap text-sm text-slate-700 font-mono bg-slate-50 p-4 rounded-lg">{{ result }}</pre>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- API 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gear h-5 w-5 text-sky-600"></i>
+                    <span>API 配置</span>
+                </h3>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            DeepSeek API Key
+                            <a href="https://platform.deepseek.com/api_keys" target="_blank" class="text-xs text-sky-600 ml-2">(获取 Key)</a>
+                        </label>
+                        <input
+                            type="password"
+                            v-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-3"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">模型选择</label>
+                        <select v-model="apiConfig.model" class="w-full rounded-lg border-slate-300 border p-3 bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">💡 推荐使用 V4 Pro 模型进行深度 OKR 分析</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">
+                        取消
+                    </button>
+                    <button @click="saveConfig" class="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 transition">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // API 配置
+                const apiConfig = ref({
+                    deepseek: '',
+                    model: 'deepseek-v4-pro' // 默认使用 V4 Pro
+                });
+
+                // UI 状态
+                const showSettings = ref(false);
+                const isLoading = ref(false);
+                const mode = ref('individual'); // individual, align-down, split-down
+                const displayMode = ref('rendered'); // rendered, text
+
+                // 表单数据
+                const form = ref({
+                    period: 'Q1',
+                    role: '',
+                    businessGoal: '',
+                    resources: '',
+                    leaderOKR: '',
+                    myResponsibility: '',
+                    myOKR: '',
+                    teamMembers: '',
+                    objectiveCount: 3,
+                    krCount: 3,
+                    includeRiskAssessment: true,
+                    includeResourcePlan: true
+                });
+
+                // 结果
+                const result = ref('');
+                const reasoningContent = ref('');
+
+                // 计算属性
+                const canGenerate = computed(() => {
+                    if (!apiConfig.value.deepseek) return false;
+                    if (!form.value.role) return false;
+
+                    if (mode.value === 'individual') {
+                        return !!form.value.businessGoal;
+                    } else if (mode.value === 'align-down') {
+                        return !!form.value.leaderOKR && !!form.value.myResponsibility;
+                    } else if (mode.value === 'split-down') {
+                        return !!form.value.myOKR && !!form.value.teamMembers;
+                    }
+                    return false;
+                });
+
+                // 加载配置
+                onMounted(() => {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            apiConfig.value = {
+                                ...parsed,
+                                deepseek: parsed.deepseek || parsed.apiKey || parsed.deepseek_key || '',
+                                model: parsed.model || 'deepseek-v4-pro'
+                            };
+                        } catch (e) {
+                            console.error('Failed to parse settings:', e);
+                        }
+                    }
+                });
+
+                // 保存配置
+                function saveConfig() {
+                    const configToSave = {
+                        ...apiConfig.value,
+                        apiKey: apiConfig.value.deepseek, // Standardize
+                        deepseek: apiConfig.value.deepseek,
+                        model: apiConfig.value.model
+                    };
+                    localStorage.setItem('global_llm_config', JSON.stringify(configToSave));
+                    showSettings.value = false;
+                    alert('配置已保存');
+                }
+
+                // 生成 OKR
+                async function generateOKR() {
+                    if (!canGenerate.value) {
+                        if (!apiConfig.value.deepseek) {
+                            showSettings.value = true;
+                            return;
+                        }
+                        alert('请填写必要信息');
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    result.value = '';
+                    reasoningContent.value = '';
+
+                    try {
+                        const systemPrompt = buildSystemPrompt();
+                        const userPrompt = buildUserPrompt();
+
+                        await callDeepSeek([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]);
+
+                    } catch (error) {
+                        console.error('生成失败:', error);
+                        alert('生成失败：' + error.message);
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                // 构建系统提示词
+                function buildSystemPrompt() {
+                    let prompt = `你是一个专业的 OKR（Objectives and Key Results）目标管理专家。
+
+你的任务是帮助用户制定符合 SMART 原则的高质量 OKR。
+
+# OKR 制定原则
+
+1. **Objective (目标)**：
+   - 必须鼓舞人心、有挑战性
+   - 清晰明确，易于理解
+   - 与公司/部门战略对齐
+   - 时间范围明确
+
+2. **Key Results (关键结果)**：
+   - 必须可量化、可衡量
+   - 具有明确的基线和目标值
+   - 具有挑战性但可实现（建议设定为 60-70% 的完成度为成功）
+   - 聚焦结果而非行动
+
+3. **SMART 检查**：
+   - Specific（具体的）
+   - Measurable（可衡量的）
+   - Achievable（可实现的）
+   - Relevant（相关的）
+   - Time-bound（有时限的）
+
+# 输出格式
+
+使用 Markdown 格式输出，结构如下：
+
+## 📊 ${form.value.period} OKR - ${form.value.role}
+
+### O1: [目标标题]
+**目标说明**：[1-2句话解释这个目标的重要性和预期影响]
+
+**关键结果**：
+- **KR1**：[基线] → [目标值]（[增长幅度]）
+  - 衡量方式：[如何衡量]
+  - 时间节点：[关键时间点]
+- **KR2**：...
+- **KR3**：...
+
+${form.value.includeRiskAssessment ? `
+**风险评估**：
+- 🔴 高风险：[风险描述] - 应对策略：[策略]
+- 🟡 中风险：[风险描述] - 应对策略：[策略]
+` : ''}
+
+${form.value.includeResourcePlan ? `
+**资源需求**：
+- 人力：[需要的人力支持]
+- 预算：[预算估算]
+- 技术/工具：[需要的技术或工具支持]
+` : ''}
+
+---
+
+### O2: [目标标题]
+...
+
+---
+
+## 💡 执行建议
+
+1. **优先级排序**：[建议的优先级和理由]
+2. **里程碑规划**：[关键时间节点和里程碑]
+3. **协作依赖**：[需要协作的部门或人员]
+4. **定期复盘**：[建议的复盘频率和关注点]
+`;
+
+                    if (mode.value === 'align-down') {
+                        prompt += `\n\n# 特别说明（承接领导 OKR）
+- 仔细分析领导的 OKR，识别可以承接的部分
+- 确保个人 OKR 与领导 OKR 对齐，有明确的支撑关系
+- 在目标说明中标注"支撑上级 OX"
+- 避免重复领导的 KR，要拆解为具体的执行层面`;
+                    } else if (mode.value === 'split-down') {
+                        prompt += `\n\n# 特别说明（拆分到团队）
+- 为每个团队成员生成独立的 OKR
+- 确保所有成员的 OKR 加起来能支撑上级 OKR
+- 根据成员的专长和角色分配合适的目标
+- 避免目标重叠，确保分工明确
+- 输出格式：为每个成员单独输出一份 OKR`;
+                    }
+
+                    return prompt;
+                }
+
+                // 构建用户提示词
+                function buildUserPrompt() {
+                    let prompt = '';
+
+                    if (mode.value === 'individual') {
+                        prompt = `请为我制定 ${form.value.period} 的 OKR。
+
+**角色/部门**：${form.value.role}
+**核心业务目标**：${form.value.businessGoal}
+${form.value.resources ? `**现有资源与限制**：${form.value.resources}` : ''}
+
+**要求**：
+- 生成 ${form.value.objectiveCount} 个 Objective
+- 每个 Objective 包含 ${form.value.krCount} 个 Key Result
+- 所有 KR 必须可量化、有明确的基线和目标值
+- 进行 SMART 检查，确保目标合理可行`;
+
+                    } else if (mode.value === 'align-down') {
+                        prompt = `请根据领导的 OKR，为我生成承接的个人 OKR。
+
+**我的角色**：${form.value.role}
+**我的工作职责**：${form.value.myResponsibility}
+
+**领导的 OKR**：
+${form.value.leaderOKR}
+
+**要求**：
+- 分析领导 OKR 中我可以承接的部分
+- 生成 ${form.value.objectiveCount} 个与领导目标对齐的 Objective
+- 每个 Objective 包含 ${form.value.krCount} 个 Key Result
+- 在目标说明中标注与领导哪个 O 对齐
+- 确保我的 KR 能够支撑领导的 KR 达成`;
+
+                    } else if (mode.value === 'split-down') {
+                        prompt = `请将我的 OKR 拆分到团队成员。
+
+**我的角色**：${form.value.role}
+
+**我的 OKR**：
+${form.value.myOKR}
+
+**团队成员信息**：
+${form.value.teamMembers}
+
+**要求**：
+- 为每个团队成员生成独立的 OKR
+- 根据成员的专长分配合适的目标
+- 确保所有成员的 OKR 加起来能支撑我的 OKR
+- 避免目标重叠，分工明确
+- 每个成员生成 2-3 个 Objective，每个 Objective 包含 3 个 Key Result`;
+                    }
+
+                    return prompt;
+                }
+
+                // 调用 DeepSeek API
+                async function callDeepSeek(messages) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: apiConfig.value.model,
+                            messages: messages,
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API 错误: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content) {
+                                        reasoningContent.value += delta.reasoning_content;
+                                    }
+
+                                    if (delta.content) {
+                                        result.value += delta.content;
+                                    }
+                                } catch (e) {
+                                    console.error('解析错误:', e);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 复制结果
+                async function copyResult() {
+                    let content = '';
+                    if (reasoningContent.value) {
+                        content += '=== V4 Pro 深度推理过程 ===\n\n';
+                        content += reasoningContent.value + '\n\n';
+                    }
+                    content += result.value;
+
+                    try {
+                        await navigator.clipboard.writeText(content);
+                        alert('已复制到剪贴板');
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                    }
+                }
+
+                // 导出结果
+                function exportResult() {
+                    let content = `# ${form.value.period} OKR - ${form.value.role}\n\n`;
+                    content += `生成时间: ${new Date().toLocaleString('zh-CN')}\n`;
+                    content += `生成模式: ${getModeLabel()}\n\n`;
+
+                    if (reasoningContent.value) {
+                        content += '## V4 Pro 深度推理过程\n\n';
+                        content += reasoningContent.value + '\n\n';
+                    }
+
+                    content += '## OKR 内容\n\n';
+                    content += result.value;
+
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `OKR_${form.value.role}_${form.value.period}_${Date.now()}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+
+                function getModeLabel() {
+                    const labels = {
+                        'individual': '个人制定',
+                        'align-down': '承接领导 OKR',
+                        'split-down': '拆分到团队'
+                    };
+                    return labels[mode.value] || mode.value;
+                }
+
+                // Markdown 渲染函数（启用换行支持）
+                const markedParse = (text) => {
+                    if (!window.marked) return text;
+                    return window.marked.parse(text, {
+                        breaks: true,
+                        gfm: true
+                    });
+                };
+
+                return {
+                    apiConfig,
+                    showSettings,
+                    isLoading,
+                    mode,
+                    form,
+                    result,
+                    reasoningContent,
+                    canGenerate,
+                    displayMode,
+                    saveConfig,
+                    generateOKR,
+                    copyResult,
+                    exportResult,
+                    markedParse
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_okr_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

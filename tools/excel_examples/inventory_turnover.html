@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存周转与补货预警</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <header class="bg-white border-b border-slate-200">
+        <div class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+            <div>
+                <p class="text-sm text-amber-600 font-medium">供应链 · 库存周转</p>
+                <h1 class="text-2xl font-bold">库存周转与补货预警</h1>
+                <p class="text-sm text-slate-500 mt-1">上传库存明细，自动计算周转率、平均库存与补货建议。</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a class="text-sm text-slate-500 hover:text-slate-900" href="index.html">返回示例库</a>
+                <a class="text-sm text-amber-600 hover:text-amber-700" href="demo/inventory_turnover_demo.csv">下载 CSV Demo</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">上传库存文件</h2>
+                    <p class="text-sm text-slate-500">字段需包含：月份、SKU、期初库存、入库、出库、期末库存、单位成本。</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg cursor-pointer hover:bg-amber-700">
+                        <i class="fa-solid fa-upload w-4 h-4"></i>
+                        上传文件
+                        <input id="fileInput" type="file" accept=".csv,.xlsx" class="hidden">
+                    </label>
+                    <button id="loadDemo" class="px-4 py-2 text-sm font-medium border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-50">载入内嵌 Demo 数据</button>
+                    <button id="exportExcel" class="px-4 py-2 text-sm font-medium border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-50">导出当前 Excel</button>
+                    <a class="text-sm text-slate-500 hover:text-slate-700" href="demo/inventory_turnover_demo.csv">下载 CSV Demo</a>
+                </div>
+            </div>
+            <div id="fileStatus" class="mt-3 text-xs text-slate-500">未选择文件。</div>
+        </section>
+
+        <section class="grid gap-4 md:grid-cols-4" id="statsCards"></section>
+
+        <section class="grid gap-6 lg:grid-cols-5">
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm lg:col-span-3">
+                <h3 class="text-base font-semibold">SKU 周转率对比</h3>
+                <canvas id="turnoverChart" class="mt-4 h-64"></canvas>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm lg:col-span-2">
+                <h3 class="text-base font-semibold">补货建议</h3>
+                <div class="mt-4 space-y-3" id="restockList"></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+
+
+        const demoData = [
+            { '月份': '2025-01', 'SKU': 'SKU-Headset', '期初库存': 320, '入库': 180, '出库': 260, '期末库存': 240, '单位成本': 120 },
+            { '月份': '2025-01', 'SKU': 'SKU-Keyboard', '期初库存': 200, '入库': 140, '出库': 120, '期末库存': 220, '单位成本': 210 },
+            { '月份': '2025-02', 'SKU': 'SKU-Headset', '期初库存': 240, '入库': 150, '出库': 280, '期末库存': 110, '单位成本': 120 },
+            { '月份': '2025-02', 'SKU': 'SKU-Keyboard', '期初库存': 220, '入库': 90, '出库': 140, '期末库存': 170, '单位成本': 210 },
+            { '月份': '2025-03', 'SKU': 'SKU-Headset', '期初库存': 110, '入库': 200, '出库': 190, '期末库存': 120, '单位成本': 120 },
+            { '月份': '2025-03', 'SKU': 'SKU-Keyboard', '期初库存': 170, '入库': 160, '出库': 150, '期末库存': 180, '单位成本': 210 }
+        ];
+
+        const fileInput = document.getElementById('fileInput');
+        const fileStatus = document.getElementById('fileStatus');
+        const statsCards = document.getElementById('statsCards');
+        const restockList = document.getElementById('restockList');
+        const loadDemo = document.getElementById('loadDemo');
+        const exportExcel = document.getElementById('exportExcel');
+        let chartInstance = null;
+        let currentRows = demoData;
+
+        const parseNumber = (value) => {
+            if (value === null || value === undefined || value === '') return 0;
+            if (typeof value === 'number') return value;
+            return parseFloat(String(value).replace(/,/g, '')) || 0;
+        };
+
+        const normalizeRow = (row) => {
+            return {
+                month: row['月份'] || row['月份(YYYY-MM)'],
+                sku: row['SKU'] || row['商品编码'],
+                start: parseNumber(row['期初库存'] || row['期初']),
+                inbound: parseNumber(row['入库'] || row['入库量']),
+                outbound: parseNumber(row['出库'] || row['出库量']),
+                end: parseNumber(row['期末库存'] || row['期末']),
+                cost: parseNumber(row['单位成本'] || row['成本'])
+            };
+        };
+
+        const render = (rows) => {
+            currentRows = rows;
+            const normalized = rows.map(normalizeRow).filter((row) => row.month && row.sku);
+            if (!normalized.length) return;
+
+            const totalOutbound = normalized.reduce((sum, row) => sum + row.outbound, 0);
+            const avgInventory = normalized.reduce((sum, row) => sum + (row.start + row.end) / 2, 0) / normalized.length;
+            const turnover = avgInventory ? totalOutbound / avgInventory : 0;
+            const totalValue = normalized.reduce((sum, row) => sum + row.end * row.cost, 0);
+
+            statsCards.innerHTML = [
+                { label: '总出库量', value: totalOutbound, suffix: '' },
+                { label: '平均库存', value: avgInventory, suffix: '' },
+                { label: '库存周转率', value: turnover, suffix: 'x' },
+                { label: '期末库存金额', value: totalValue, suffix: '¥' }
+            ].map((item) => `
+                <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                    <p class="text-xs text-slate-500">${item.label}</p>
+                    <p class="text-2xl font-semibold mt-2">${item.suffix === 'x' ? item.value.toFixed(2) + item.suffix : item.suffix ? item.suffix + item.value.toFixed(2) : item.value.toFixed(0)}</p>
+                </div>
+            `).join('');
+
+            const skuMap = {};
+            normalized.forEach((row) => {
+                if (!skuMap[row.sku]) {
+                    skuMap[row.sku] = { outbound: 0, avg: 0, count: 0, end: 0 };
+                }
+                skuMap[row.sku].outbound += row.outbound;
+                skuMap[row.sku].avg += (row.start + row.end) / 2;
+                skuMap[row.sku].count += 1;
+                skuMap[row.sku].end = row.end;
+            });
+
+            const labels = Object.keys(skuMap);
+            const values = labels.map((key) => {
+                const item = skuMap[key];
+                const avg = item.count ? item.avg / item.count : 0;
+                return avg ? item.outbound / avg : 0;
+            });
+
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(document.getElementById('turnoverChart'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: '周转率',
+                        data: values,
+                        backgroundColor: '#f59e0b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            restockList.innerHTML = labels.map((sku, index) => {
+                const item = skuMap[sku];
+                const turnoverRate = values[index];
+                const restockLevel = item.end < 150 ? '建议补货' : '库存充足';
+                const badgeColor = restockLevel === '建议补货' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600';
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700">${sku}</p>
+                            <p class="text-xs text-slate-500">期末库存 ${item.end} · 周转率 ${turnoverRate.toFixed(2)}x</p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full ${badgeColor}">${restockLevel}</span>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        const handleFile = (file) => {
+            if (!file) return;
+            fileStatus.textContent = `已选择文件：${file.name}`;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                render(json);
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        fileInput.addEventListener('change', (event) => handleFile(event.target.files[0]));
+        loadDemo.addEventListener('click', () => {
+            fileStatus.textContent = '已载入内嵌 Demo 数据。';
+            render(demoData);
+        });
+        exportExcel.addEventListener('click', () => {
+            const worksheet = XLSX.utils.json_to_sheet(currentRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '库存数据');
+            XLSX.writeFile(workbook, 'inventory_turnover_export.xlsx');
+        });
+
+        render(demoData);
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

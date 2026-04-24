@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>习惯养成打卡 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .heat-cell {
+            transition: all 0.2s ease;
+        }
+        .heat-cell:hover {
+            transform: scale(1.2);
+            z-index: 10;
+        }
+        .heat-0 { background: #ebedf0; }
+        .heat-1 { background: #9be9a8; }
+        .heat-2 { background: #40c463; }
+        .heat-3 { background: #30a14e; }
+        .heat-4 { background: #216e39; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen font-sans" x-data="habitApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                    习惯养成打卡
+                </h1>
+            </div>
+            <button @click="showAddModal = true" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors shadow-md shadow-emerald-600/20">
+                <i class="fa-solid fa-plus w-4 h-4"></i>
+                <span class="hidden sm:inline">新增习惯</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- Habits List -->
+        <div class="space-y-6">
+            <template x-for="habit in habits" :key="habit.id">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                    
+                    <!-- Habit Header -->
+                    <div class="flex items-start justify-between mb-6">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="text-2xl" x-text="habit.icon">🎯</span>
+                                <h3 class="text-xl font-bold text-slate-800" x-text="habit.name">习惯名称</h3>
+                                <span class="px-3 py-1 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-full" x-text="habit.streak + ' 天'">0 天</span>
+                            </div>
+                            <p class="text-slate-500 text-sm" x-text="habit.description">习惯描述</p>
+                        </div>
+                        <button @click="deleteHabit(habit.id)" class="text-slate-400 hover:text-rose-500 p-2 transition-colors">
+                            <i class="fa-solid fa-trash w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-slate-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-slate-800" x-text="habit.streak">0</div>
+                            <div class="text-xs text-slate-500 mt-1">当前连续</div>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-emerald-600" x-text="habit.total">0</div>
+                            <div class="text-xs text-slate-500 mt-1">累计打卡</div>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-slate-800" x-text="getCompletionRate(habit) + '%'">0%</div>
+                            <div class="text-xs text-slate-500 mt-1">完成率</div>
+                        </div>
+                    </div>
+
+                    <!-- Heatmap -->
+                    <div class="overflow-x-auto pb-2">
+                        <div class="inline-flex flex-col gap-1 min-w-full">
+                            <div class="flex gap-1 text-xs text-slate-400 mb-2">
+                                <span class="w-6"></span>
+                                <template x-for="month in getMonthLabels()" :key="month.index">
+                                    <span class="flex-1 text-center" x-text="month.label" x-show="month.show"></span>
+                                </template>
+                            </div>
+                            <template x-for="(row, rowIndex) in 7" :key="rowIndex">
+                                <div class="flex gap-1 items-center">
+                                    <span class="w-6 text-xs text-slate-400" x-text="['一', '二', '三', '四', '五', '六', '日'][rowIndex]"></span>
+                                    <template x-for="(cell, colIndex) in getHeatmapData(habit, rowIndex)" :key="colIndex">
+                                        <div 
+                                            @click="toggleCheck(habit, cell.date)"
+                                            :class="'heat-' + cell.level"
+                                            class="heat-cell w-3 h-3 rounded-sm cursor-pointer relative group"
+                                            :title="cell.date + (cell.checked ? ' ✓' : '')"
+                                        >
+                                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-20">
+                                                <span x-text="cell.date"></span>
+                                                <span x-show="cell.checked"> ✓</span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Quick Check Button -->
+                    <div class="mt-6 flex justify-end">
+                        <button 
+                            @click="toggleCheck(habit, getTodayDate())"
+                            :class="isCheckedToday(habit) ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                            class="px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                        >
+                            <i :class="isCheckedToday(habit) ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'" class="w-4 h-4"></i>
+                            <span x-text="isCheckedToday(habit) ? '今日已打卡' : '今日打卡'"></span>
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Empty State -->
+            <div x-show="habits.length === 0" class="text-center py-20">
+                <div class="w-20 h-20 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-bullseye w-10 h-10 text-slate-300"></i>
+                </div>
+                <h3 class="text-lg font-medium text-slate-600 mb-2">还没有习惯记录</h3>
+                <p class="text-slate-400 mb-6">点击右上角「新增习惯」开始你的坚持之旅</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Habit Modal -->
+    <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showAddModal = false">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">新增习惯</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">选择图标</label>
+                    <div class="grid grid-cols-8 gap-2">
+                        <template x-for="icon in iconOptions" :key="icon">
+                            <button 
+                                @click="newHabit.icon = icon"
+                                :class="newHabit.icon === icon ? 'ring-2 ring-emerald-500 bg-emerald-50' : 'hover:bg-slate-50'"
+                                class="text-2xl p-2 rounded-lg transition-all"
+                                x-text="icon"
+                            ></button>
+                        </template>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">习惯名称</label>
+                    <input 
+                        type="text" 
+                        x-model="newHabit.name"
+                        placeholder="例如：每天阅读 30 分钟"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">描述（可选）</label>
+                    <textarea 
+                        x-model="newHabit.description"
+                        placeholder="为什么要养成这个习惯？"
+                        rows="3"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none resize-none"
+                    ></textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button @click="showAddModal = false" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors">
+                    取消
+                </button>
+                <button @click="addHabit()" class="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors">
+                    创建
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function habitApp() {
+            return {
+                habits: [],
+                showAddModal: false,
+                iconOptions: ['🎯', '📚', '🏃', '💪', '🧘', '💧', '🥗', '😴', '✍️', '🎨', '🎵', '🌱', '🔥', '⭐', '🌈', '🎓'],
+                newHabit: {
+                    icon: '🎯',
+                    name: '',
+                    description: ''
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_habits');
+                    if (saved) {
+                        this.habits = JSON.parse(saved);
+                    }
+                    this.$watch('habits', () => {
+                        localStorage.setItem('webtools_habits', JSON.stringify(this.habits));
+                    });
+                },
+
+                addHabit() {
+                    if (!this.newHabit.name.trim()) return;
+                    
+                    this.habits.push({
+                        id: Date.now(),
+                        icon: this.newHabit.icon,
+                        name: this.newHabit.name.trim(),
+                        description: this.newHabit.description.trim(),
+                        checks: {}, // { 'YYYY-MM-DD': true }
+                        createdAt: new Date().toISOString(),
+                        streak: 0,
+                        total: 0
+                    });
+
+                    this.newHabit = { icon: '🎯', name: '', description: '' };
+                    this.showAddModal = false;
+                },
+
+                deleteHabit(id) {
+                    if (confirm('确定要删除这个习惯吗？')) {
+                        this.habits = this.habits.filter(h => h.id !== id);
+                    }
+                },
+
+                toggleCheck(habit, date) {
+                    if (!habit.checks) habit.checks = {};
+                    
+                    if (habit.checks[date]) {
+                        delete habit.checks[date];
+                    } else {
+                        habit.checks[date] = true;
+                    }
+                    
+                    this.updateStats(habit);
+                },
+
+                updateStats(habit) {
+                    // Total
+                    habit.total = Object.keys(habit.checks).length;
+                    
+                    // Streak
+                    let streak = 0;
+                    let currentDate = new Date();
+                    
+                    while (true) {
+                        const dateStr = this.formatDate(currentDate);
+                        if (habit.checks[dateStr]) {
+                            streak++;
+                            currentDate.setDate(currentDate.getDate() - 1);
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    habit.streak = streak;
+                },
+
+                isCheckedToday(habit) {
+                    return habit.checks && habit.checks[this.getTodayDate()];
+                },
+
+                getTodayDate() {
+                    return this.formatDate(new Date());
+                },
+
+                formatDate(date) {
+                    const d = new Date(date);
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                },
+
+                getHeatmapData(habit, dayOfWeek) {
+                    const cells = [];
+                    const today = new Date();
+                    const weeks = 26; // Show last 26 weeks
+                    
+                    for (let week = weeks - 1; week >= 0; week--) {
+                        const date = new Date(today);
+                        date.setDate(date.getDate() - (week * 7 + (today.getDay() - dayOfWeek + 7) % 7));
+                        
+                        const dateStr = this.formatDate(date);
+                        const checked = habit.checks && habit.checks[dateStr];
+                        
+                        cells.push({
+                            date: dateStr,
+                            checked: checked,
+                            level: checked ? Math.min(4, Math.floor(Math.random() * 3) + 1) : 0 // Simplified level
+                        });
+                    }
+                    
+                    return cells;
+                },
+
+                getMonthLabels() {
+                    const labels = [];
+                    const today = new Date();
+                    const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                    
+                    for (let i = 0; i < 6; i++) {
+                        const date = new Date(today);
+                        date.setMonth(date.getMonth() - i);
+                        labels.unshift({
+                            index: i,
+                            label: months[date.getMonth()],
+                            show: i % 2 === 0
+                        });
+                    }
+                    
+                    return labels;
+                },
+
+                getCompletionRate(habit) {
+                    const daysSinceCreation = Math.floor((Date.now() - new Date(habit.createdAt).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                    return Math.round((habit.total / daysSinceCreation) * 100);
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_habit_tracker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

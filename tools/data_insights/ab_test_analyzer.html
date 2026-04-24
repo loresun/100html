@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AB测试分析师 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #f0fdf4 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #059669; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #d1fae5 25%, #a7f3d0 50%, #d1fae5 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .step-dot { transition: all 0.3s ease; }
+        .step-dot.active {
+            background: linear-gradient(135deg, #059669, #10b981);
+            box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.2);
+            color: white;
+        }
+        .step-dot.completed { background: #059669; color: white; }
+        .step-line { transition: background 0.5s ease; }
+        .step-line.active { background: linear-gradient(90deg, #059669, #10b981); }
+        .step-line.completed { background: #059669; }
+
+        .doc-view h1 { font-size: 1.75rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; }
+        .doc-view h2 { font-size: 1.35rem; font-weight: 700; color: #334155; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid #d1fae5; }
+        .doc-view h3 { font-size: 1.1rem; font-weight: 600; color: #475569; margin: 1rem 0 0.5rem; }
+        .doc-view p { margin: 0.5rem 0; line-height: 1.8; color: #475569; }
+        .doc-view ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+        .doc-view li { margin: 0.25rem 0; line-height: 1.7; color: #475569; }
+        .doc-view table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .doc-view th { background: #ecfdf5; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #d1fae5; }
+        .doc-view td { padding: 0.75rem; border: 1px solid #e2e8f0; }
+        .doc-view strong { color: #1e293b; }
+        .doc-view blockquote { border-left: 3px solid #059669; padding-left: 1rem; margin: 1rem 0; color: #64748b; font-style: italic; }
+
+        /* AB对比条形图动画 */
+        @keyframes barGrow {
+            from { width: 0; }
+        }
+        .bar-animate { animation: barGrow 0.8s ease-out forwards; }
+
+        /* 脉冲指示器动画 */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+        .pulse-indicator::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            animation: pulse-ring 1.5s ease-out infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="abTestApp()" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-emerald-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="git-branch" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">AB测试分析师</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">A/B Test Analyzer</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-emerald-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-emerald-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-emerald-100 py-4">
+            <div class="max-w-4xl mx-auto px-4">
+                <div class="flex items-center justify-between">
+                    <template x-for="(step, index) in steps" :key="index">
+                        <div class="flex items-center" :class="index < steps.length - 1 ? 'flex-1' : ''">
+                            <div class="flex flex-col items-center relative">
+                                <div @click="canGoToStep(index + 1) && goToStep(index + 1)"
+                                    :class="[
+                                        'step-dot w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer',
+                                        currentStep === index + 1 ? 'active' : '',
+                                        currentStep > index + 1 ? 'completed' : 'bg-slate-200 text-slate-500'
+                                    ]">
+                                    <template x-if="currentStep > index + 1">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="currentStep <= index + 1">
+                                        <span x-text="index + 1"></span>
+                                    </template>
+                                </div>
+                                <span class="absolute -bottom-5 whitespace-nowrap text-xs font-medium"
+                                    :class="currentStep >= index + 1 ? 'text-emerald-700' : 'text-slate-400'"
+                                    x-text="step.label"></span>
+                            </div>
+                            <div x-show="index < steps.length - 1"
+                                :class="[
+                                    'step-line flex-1 h-1 mx-3 rounded-full',
+                                    currentStep > index + 1 ? 'completed' : '',
+                                    currentStep === index + 1 ? 'active' : 'bg-slate-200'
+                                ]"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="flex-grow overflow-y-auto pb-8">
+            <div class="max-w-6xl mx-auto px-4 pt-10">
+
+                <!-- ==================== 步骤 1: 数据输入 ==================== -->
+                <div x-show="currentStep === 1" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">🧪 输入 AB 测试数据</h2>
+                        <p class="text-slate-500">填写两组实验数据，AI 将为你进行统计显著性分析</p>
+                    </div>
+
+                    <div class="max-w-3xl mx-auto space-y-5">
+                        <!-- 测试基本信息 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-600"></i>
+                                测试基本信息
+                            </label>
+                            <div class="space-y-3">
+                                <input type="text" x-model="input.testName"
+                                    placeholder="测试名称，如：首页Banner点击率测试"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                                <textarea x-model="input.testDesc" rows="2"
+                                    placeholder="测试描述（可选），如：对比新旧Banner设计对用户点击行为的影响"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition resize-none"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- AB两组数据 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <!-- A组 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border-2 border-blue-200 relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">A组</div>
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-4">
+                                    <i data-lucide="flask-conical" class="w-4 h-4 text-blue-600"></i>
+                                    对照组（A组）
+                                </label>
+                                <div class="space-y-3">
+                                    <input type="text" x-model="input.groupA.name"
+                                        placeholder="组名，如：原始方案"
+                                        class="w-full bg-blue-50/50 border border-blue-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-xs text-slate-500 mb-1 block">样本量</label>
+                                            <input type="number" x-model.number="input.groupA.sampleSize"
+                                                placeholder="如：5000"
+                                                class="w-full bg-blue-50/50 border border-blue-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-slate-500 mb-1 block">转化数/指标值</label>
+                                            <input type="number" x-model.number="input.groupA.conversions"
+                                                placeholder="如：150"
+                                                step="any"
+                                                class="w-full bg-blue-50/50 border border-blue-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- B组 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border-2 border-amber-200 relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">B组</div>
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-4">
+                                    <i data-lucide="flask-conical" class="w-4 h-4 text-amber-600"></i>
+                                    实验组（B组）
+                                </label>
+                                <div class="space-y-3">
+                                    <input type="text" x-model="input.groupB.name"
+                                        placeholder="组名，如：新方案"
+                                        class="w-full bg-amber-50/50 border border-amber-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-xs text-slate-500 mb-1 block">样本量</label>
+                                            <input type="number" x-model.number="input.groupB.sampleSize"
+                                                placeholder="如：5000"
+                                                class="w-full bg-amber-50/50 border border-amber-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-slate-500 mb-1 block">转化数/指标值</label>
+                                            <input type="number" x-model.number="input.groupB.conversions"
+                                                placeholder="如：195"
+                                                step="any"
+                                                class="w-full bg-amber-50/50 border border-amber-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 分析参数 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="target" class="w-4 h-4 text-emerald-600"></i>
+                                    指标类型 <span class="text-red-500">*</span>
+                                </label>
+                                <select x-model="input.metricType"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                                    <option value="转化率">转化率</option>
+                                    <option value="点击率">点击率</option>
+                                    <option value="注册率">注册率</option>
+                                    <option value="购买率">购买率</option>
+                                    <option value="留存率">留存率</option>
+                                    <option value="自定义指标">自定义指标</option>
+                                </select>
+                            </div>
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+                                    置信水平 <span class="text-red-500">*</span>
+                                </label>
+                                <select x-model="input.confidenceLevel"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                                    <option value="90">90%</option>
+                                    <option value="95">95%（推荐）</option>
+                                    <option value="99">99%</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 快速填充示例 -->
+                        <div class="flex justify-end">
+                            <button @click="loadSampleData()"
+                                class="text-xs text-emerald-600 hover:text-emerald-700 font-medium hover:underline flex items-center gap-1">
+                                <i data-lucide="wand-2" class="w-3 h-3"></i>
+                                加载示例数据
+                            </button>
+                        </div>
+
+                        <!-- 开始分析 -->
+                        <button @click="startStep2()"
+                            :disabled="!canProceedStep1 || isGenerating"
+                            class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                            <template x-if="!isGenerating">
+                                <span class="flex items-center gap-2">
+                                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                                    开始统计分析
+                                </span>
+                            </template>
+                            <template x-if="isGenerating">
+                                <span class="flex items-center gap-2">
+                                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    分析中...
+                                </span>
+                            </template>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 2: 统计分析 ==================== -->
+                <div x-show="currentStep === 2" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📊 统计分析结果</h2>
+                        <p class="text-slate-500">基于统计学方法的显著性检验与效果评估</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-emerald-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-emerald-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-emerald-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在进行统计检验...</p>
+                            <p class="text-sm text-slate-500">AI 正在计算 p 值、置信区间和效果量</p>
+                            <div class="mt-4 grid grid-cols-3 gap-3">
+                                <template x-for="i in 6" :key="i">
+                                    <div class="shimmer h-12 rounded-xl"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 统计分析结果 -->
+                    <div x-show="!isGenerating && statsResult" class="max-w-4xl mx-auto space-y-5">
+
+                        <!-- 显著性判定大卡片 -->
+                        <div class="rounded-2xl p-6 shadow-sm border-2 text-center"
+                            :class="statsResult?.is_significant ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-300'">
+                            <div class="inline-flex items-center gap-3 mb-3">
+                                <div class="relative w-12 h-12 rounded-full flex items-center justify-center"
+                                    :class="statsResult?.is_significant ? 'bg-emerald-500 text-white pulse-indicator text-emerald-500' : 'bg-slate-400 text-white'">
+                                    <i :data-lucide="statsResult?.is_significant ? 'check' : 'minus'" class="w-6 h-6"></i>
+                                </div>
+                                <div class="text-left">
+                                    <p class="text-2xl font-black" :class="statsResult?.is_significant ? 'text-emerald-700' : 'text-slate-700'"
+                                        x-text="statsResult?.is_significant ? '统计显著' : '统计不显著'"></p>
+                                    <p class="text-sm" :class="statsResult?.is_significant ? 'text-emerald-600' : 'text-slate-500'"
+                                        x-text="'p = ' + (statsResult?.p_value ?? '-') + '，置信水平 ' + input.confidenceLevel + '%'"></p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-slate-500 mt-2" x-text="statsResult?.significance_note || ''"></p>
+                        </div>
+
+                        <!-- 对比条形图 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                            <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-5">
+                                <i data-lucide="bar-chart-2" class="w-4 h-4 text-emerald-600"></i>
+                                转化率对比
+                            </h3>
+                            <div class="space-y-4">
+                                <!-- A组 -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-sm font-medium text-blue-700 flex items-center gap-1.5">
+                                            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                                            <span x-text="(input.groupA.name || 'A组') + '（对照组）'"></span>
+                                        </span>
+                                        <span class="text-sm font-bold text-blue-700" x-text="statsResult?.rate_a || '-'"></span>
+                                    </div>
+                                    <div class="w-full bg-blue-100 rounded-full h-8 overflow-hidden">
+                                        <div class="bg-gradient-to-r from-blue-400 to-blue-600 h-8 rounded-full bar-animate flex items-center justify-end pr-3"
+                                            :style="'width:' + barWidthA + '%'">
+                                            <span class="text-white text-xs font-bold" x-show="barWidthA > 15" x-text="statsResult?.rate_a || ''"></span>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-1" x-text="'样本 ' + (input.groupA.sampleSize || 0) + ' · 转化 ' + (input.groupA.conversions || 0)"></p>
+                                </div>
+                                <!-- B组 -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-sm font-medium text-amber-700 flex items-center gap-1.5">
+                                            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+                                            <span x-text="(input.groupB.name || 'B组') + '（实验组）'"></span>
+                                        </span>
+                                        <span class="text-sm font-bold text-amber-700" x-text="statsResult?.rate_b || '-'"></span>
+                                    </div>
+                                    <div class="w-full bg-amber-100 rounded-full h-8 overflow-hidden">
+                                        <div class="bg-gradient-to-r from-amber-400 to-amber-600 h-8 rounded-full bar-animate flex items-center justify-end pr-3"
+                                            :style="'width:' + barWidthB + '%'">
+                                            <span class="text-white text-xs font-bold" x-show="barWidthB > 15" x-text="statsResult?.rate_b || ''"></span>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-1" x-text="'样本 ' + (input.groupB.sampleSize || 0) + ' · 转化 ' + (input.groupB.conversions || 0)"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 关键指标网格 -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 text-center">
+                                <div class="w-10 h-10 mx-auto mb-2 bg-emerald-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="trending-up" class="w-5 h-5 text-emerald-600"></i>
+                                </div>
+                                <p class="text-xl font-bold text-slate-900" x-text="statsResult?.relative_uplift || '-'"></p>
+                                <p class="text-xs text-slate-500 mt-1">相对提升</p>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 text-center">
+                                <div class="w-10 h-10 mx-auto mb-2 bg-blue-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="diff" class="w-5 h-5 text-blue-600"></i>
+                                </div>
+                                <p class="text-xl font-bold text-slate-900" x-text="statsResult?.absolute_diff || '-'"></p>
+                                <p class="text-xs text-slate-500 mt-1">绝对差异</p>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 text-center">
+                                <div class="w-10 h-10 mx-auto mb-2 bg-violet-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="sigma" class="w-5 h-5 text-violet-600"></i>
+                                </div>
+                                <p class="text-xl font-bold text-slate-900" x-text="statsResult?.test_statistic || '-'"></p>
+                                <p class="text-xs text-slate-500 mt-1" x-text="statsResult?.test_method || 'Z检验'"></p>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 text-center">
+                                <div class="w-10 h-10 mx-auto mb-2 bg-rose-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="gauge" class="w-5 h-5 text-rose-600"></i>
+                                </div>
+                                <p class="text-xl font-bold text-slate-900" x-text="statsResult?.confidence_interval || '-'"></p>
+                                <p class="text-xs text-slate-500 mt-1">置信区间</p>
+                            </div>
+                        </div>
+
+                        <!-- 胜出方判定 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                            <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="trophy" class="w-4 h-4 text-emerald-600"></i>
+                                胜出方判定
+                            </h3>
+                            <p class="text-sm text-slate-600 leading-relaxed" x-text="statsResult?.winner_summary || '等待分析...'"></p>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="flex justify-between">
+                            <button @click="goToStep(1)"
+                                class="px-6 py-3 rounded-xl text-slate-600 hover:bg-white hover:shadow-sm transition flex items-center gap-2 text-sm font-medium">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回修改
+                            </button>
+                            <button @click="startStep3()"
+                                :disabled="isGenerating"
+                                class="px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all disabled:opacity-50">
+                                AI 效果解读 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 3: 效果解读 ==================== -->
+                <div x-show="currentStep === 3" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">💡 AI 效果解读</h2>
+                        <p class="text-slate-500">用业务语言解读统计结果，分析实际意义</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating && !interpretText" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-emerald-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-emerald-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-emerald-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在解读分析结果...</p>
+                            <p class="text-sm text-slate-500">AI 正在将统计数据转化为业务洞察</p>
+                        </div>
+                    </div>
+
+                    <!-- V4 Pro 推理过程 -->
+                    <div x-show="reasoningContent" class="max-w-4xl mx-auto">
+                        <details class="bg-white/60 rounded-2xl border border-emerald-100 overflow-hidden">
+                            <summary class="cursor-pointer text-sm font-medium text-slate-600 p-4 hover:bg-emerald-50/50 transition flex items-center gap-2">
+                                <i data-lucide="brain" class="w-4 h-4 text-emerald-600"></i>
+                                深度思考过程（点击展开）
+                            </summary>
+                            <div class="p-4 pt-0 text-sm text-slate-500 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto" x-text="reasoningContent"></div>
+                        </details>
+                    </div>
+
+                    <!-- 流式输出 -->
+                    <div x-show="interpretText" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                            <div class="doc-view prose max-w-none" x-html="renderMarkdown(interpretText)"></div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div x-show="interpretText && !isGenerating" class="max-w-4xl mx-auto flex justify-between">
+                        <button @click="goToStep(2)"
+                            class="px-6 py-3 rounded-xl text-slate-600 hover:bg-white hover:shadow-sm transition flex items-center gap-2 text-sm font-medium">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回数据
+                        </button>
+                        <button @click="startStep4()"
+                            class="px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all">
+                            AI 决策建议 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 4: 决策建议 ==================== -->
+                <div x-show="currentStep === 4" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">🎯 AI 决策建议</h2>
+                        <p class="text-slate-500">基于分析结果，给出可执行的决策建议和后续计划</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating && !decisionText" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-emerald-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-emerald-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-emerald-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在生成决策建议...</p>
+                            <p class="text-sm text-slate-500">AI 正在综合分析并给出行动方案</p>
+                        </div>
+                    </div>
+
+                    <!-- V4 Pro 推理过程 -->
+                    <div x-show="reasoningContent" class="max-w-4xl mx-auto">
+                        <details class="bg-white/60 rounded-2xl border border-emerald-100 overflow-hidden">
+                            <summary class="cursor-pointer text-sm font-medium text-slate-600 p-4 hover:bg-emerald-50/50 transition flex items-center gap-2">
+                                <i data-lucide="brain" class="w-4 h-4 text-emerald-600"></i>
+                                深度思考过程（点击展开）
+                            </summary>
+                            <div class="p-4 pt-0 text-sm text-slate-500 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto" x-text="reasoningContent"></div>
+                        </details>
+                    </div>
+
+                    <!-- 流式输出 -->
+                    <div x-show="decisionText" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
+                            <div class="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4">
+                                <h3 class="text-white font-bold flex items-center gap-2">
+                                    <i data-lucide="lightbulb" class="w-5 h-5"></i>
+                                    决策建议报告
+                                </h3>
+                            </div>
+                            <div class="p-6 doc-view prose max-w-none" x-html="renderMarkdown(decisionText)"></div>
+                        </div>
+                    </div>
+
+                    <!-- 导出操作 -->
+                    <div x-show="decisionText && !isGenerating" class="max-w-4xl mx-auto space-y-4">
+                        <div class="bg-white rounded-2xl p-4 shadow-sm border border-emerald-100 flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2 text-sm text-slate-600">
+                                <i data-lucide="file-text" class="w-4 h-4 text-emerald-600"></i>
+                                <span>AB测试完整分析报告</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="copyFullReport()"
+                                    class="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition flex items-center gap-1.5">
+                                    <i data-lucide="copy" class="w-4 h-4"></i> 复制全部
+                                </button>
+                                <button @click="exportMarkdown()"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 rounded-lg transition flex items-center gap-1.5">
+                                    <i data-lucide="download" class="w-4 h-4"></i> 下载 Markdown
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <button @click="goToStep(3)"
+                                class="px-6 py-3 rounded-xl text-slate-600 hover:bg-white hover:shadow-sm transition flex items-center gap-2 text-sm font-medium">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回解读
+                            </button>
+                            <button @click="resetAll()"
+                                class="px-6 py-3 rounded-xl text-emerald-600 hover:bg-emerald-50 transition flex items-center gap-2 text-sm font-medium border border-emerald-200">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> 分析新测试
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ==================== 设置弹窗 ==================== -->
+        <div x-show="showSettings" x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-emerald-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium transition">
+                        取消
+                    </button>
+                    <button @click="saveConfig()"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white px-6 py-3 rounded-xl shadow-2xl text-sm font-medium">
+            <span x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+    function abTestApp() {
+        return {
+            /* ============ 基础状态 ============ */
+            currentStep: 1,
+            isGenerating: false,
+            showSettings: false,
+            toast: { show: false, message: '' },
+            reasoningContent: '',
+
+            /* ============ 步骤定义 ============ */
+            steps: [
+                { label: '数据输入' },
+                { label: '统计分析' },
+                { label: '效果解读' },
+                { label: '决策建议' }
+            ],
+
+            /* ============ API 配置 ============ */
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            /* ============ 用户输入 ============ */
+            input: {
+                testName: '',
+                testDesc: '',
+                groupA: { name: '', sampleSize: null, conversions: null },
+                groupB: { name: '', sampleSize: null, conversions: null },
+                metricType: '转化率',
+                confidenceLevel: '95'
+            },
+
+            /* ============ 步骤结果 ============ */
+            statsResult: null,    // 步骤2 JSON结果
+            interpretText: '',    // 步骤3 流式文本
+            decisionText: '',     // 步骤4 流式文本
+
+            /* ============ 条形图宽度（动态计算） ============ */
+            barWidthA: 0,
+            barWidthB: 0,
+
+            /* ============ 计算属性 ============ */
+            get canProceedStep1() {
+                return this.input.testName.trim() &&
+                       this.input.groupA.sampleSize > 0 &&
+                       this.input.groupA.conversions >= 0 &&
+                       this.input.groupB.sampleSize > 0 &&
+                       this.input.groupB.conversions >= 0;
+            },
+
+            /* ============ 初始化 ============ */
+            init() {
+                this.loadConfig();
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /* ============ 配置管理（合并策略） ============ */
+            loadConfig() {
+                const saved = localStorage.getItem('global_llm_config');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    } catch (e) { /* ignore */ }
+                }
+            },
+
+            saveConfig() {
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                localStorage.setItem('global_llm_config', JSON.stringify({
+                    ...current,
+                    deepseek: this.apiConfig.deepseek,
+                    model: this.apiConfig.model
+                }));
+                this.showSettings = false;
+                this.showToast('配置已保存');
+            },
+
+            /* ============ 示例数据 ============ */
+            loadSampleData() {
+                this.input.testName = '首页CTA按钮颜色AB测试';
+                this.input.testDesc = '测试绿色CTA按钮（B组）vs 蓝色CTA按钮（A组）对注册转化率的影响，测试周期为2周';
+                this.input.groupA = { name: '蓝色按钮（原版）', sampleSize: 12580, conversions: 377 };
+                this.input.groupB = { name: '绿色按钮（新版）', sampleSize: 12620, conversions: 441 };
+                this.input.metricType = '转化率';
+                this.input.confidenceLevel = '95';
+                this.showToast('已加载示例数据');
+            },
+
+            /* ============ 步骤导航 ============ */
+            canGoToStep(step) {
+                if (step === 1) return true;
+                if (step === 2) return !!this.statsResult;
+                if (step === 3) return !!this.interpretText;
+                if (step === 4) return !!this.decisionText;
+                return false;
+            },
+
+            goToStep(step) {
+                this.currentStep = step;
+                this.reasoningContent = '';
+                this.$nextTick(() => {
+                    lucide.createIcons();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            },
+
+            /* ============ 步骤2: 统计分析（JSON模式） ============ */
+            async startStep2() {
+                if (!this.apiConfig.deepseek) { this.showSettings = true; return; }
+                this.isGenerating = true;
+                this.statsResult = null;
+                this.interpretText = '';
+                this.decisionText = '';
+                this.reasoningContent = '';
+                this.currentStep = 2;
+                this.$nextTick(() => lucide.createIcons());
+
+                const systemPrompt = `你是一位专业的AB测试统计分析专家。请根据用户提供的AB测试数据，进行严格的统计显著性检验，返回JSON格式结果。
+
+要求：
+1. 计算两组的转化率（保留4位小数，展示为百分比字符串如 "3.00%"）
+2. 计算绝对差异和相对提升（百分比字符串）
+3. 执行Z检验或卡方检验，计算检验统计量和p值
+4. 根据用户指定的置信水平判断是否显著
+5. 计算差异的置信区间
+6. 给出胜出方总结
+
+请严格输出JSON格式。`;
+
+                const userPrompt = `请分析以下AB测试数据：
+
+**测试名称**：${this.input.testName}
+**测试描述**：${this.input.testDesc || '无'}
+**指标类型**：${this.input.metricType}
+**置信水平**：${this.input.confidenceLevel}%
+
+**A组（${this.input.groupA.name || '对照组'}）**：
+- 样本量：${this.input.groupA.sampleSize}
+- 转化数：${this.input.groupA.conversions}
+
+**B组（${this.input.groupB.name || '实验组'}）**：
+- 样本量：${this.input.groupB.sampleSize}
+- 转化数：${this.input.groupB.conversions}
+
+请返回如下JSON结构：
+{
+  "rate_a": "A组转化率百分比",
+  "rate_b": "B组转化率百分比",
+  "absolute_diff": "绝对差异百分比",
+  "relative_uplift": "相对提升百分比（如+16.7%）",
+  "test_method": "使用的检验方法（如Z检验/卡方检验）",
+  "test_statistic": "检验统计量（保留4位小数）",
+  "p_value": "p值（保留6位小数）",
+  "is_significant": true或false,
+  "confidence_interval": "差异的置信区间（如 [0.28%, 1.72%]）",
+  "significance_note": "关于显著性的简短说明",
+  "winner_summary": "胜出方判定的详细说明（2-3句话）"
+}`;
+
+                try {
+                    let fullText = '';
+                    await this.callAPI(
+                        [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        (token) => { fullText += token; },
+                        true
+                    );
+
+                    const jsonStr = fullText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                    this.statsResult = JSON.parse(jsonStr);
+                    this.calculateBarWidths();
+                } catch (e) {
+                    console.error('统计分析失败:', e);
+                    this.showToast('分析失败: ' + (e.message || '请检查API配置'));
+                    this.currentStep = 1;
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            /* 计算条形图宽度 */
+            calculateBarWidths() {
+                if (!this.statsResult) return;
+                const rateA = parseFloat(this.statsResult.rate_a) || 0;
+                const rateB = parseFloat(this.statsResult.rate_b) || 0;
+                const max = Math.max(rateA, rateB, 0.01);
+                this.barWidthA = Math.round((rateA / max) * 100);
+                this.barWidthB = Math.round((rateB / max) * 100);
+            },
+
+            /* ============ 步骤3: 效果解读（流式） ============ */
+            async startStep3() {
+                if (!this.apiConfig.deepseek) { this.showSettings = true; return; }
+                this.isGenerating = true;
+                this.interpretText = '';
+                this.reasoningContent = '';
+                this.currentStep = 3;
+                this.$nextTick(() => lucide.createIcons());
+
+                const systemPrompt = `你是一位资深的数据分析顾问，擅长将统计分析结果转化为通俗易懂的业务语言。请用中文对AB测试结果进行深度解读。
+
+要求：
+1. 用通俗易懂的语言解释统计结果意味着什么
+2. 讨论效果量（effect size）的大小和实际业务意义
+3. 分析这个差异在实际场景中的价值（如每天/每月预计带来的增量）
+4. 指出可能影响结果可靠性的因素
+5. 用Markdown格式输出，结构清晰`;
+
+                const userPrompt = `请解读以下AB测试统计分析结果：
+
+**测试信息**：
+- 测试名称：${this.input.testName}
+- 测试描述：${this.input.testDesc || '无'}
+- 指标类型：${this.input.metricType}
+
+**A组（${this.input.groupA.name || '对照组'}）**：样本 ${this.input.groupA.sampleSize}，转化 ${this.input.groupA.conversions}，转化率 ${this.statsResult?.rate_a}
+**B组（${this.input.groupB.name || '实验组'}）**：样本 ${this.input.groupB.sampleSize}，转化 ${this.input.groupB.conversions}，转化率 ${this.statsResult?.rate_b}
+
+**统计结果**：
+- 相对提升：${this.statsResult?.relative_uplift}
+- 绝对差异：${this.statsResult?.absolute_diff}
+- p值：${this.statsResult?.p_value}
+- 是否显著：${this.statsResult?.is_significant ? '是' : '否'}（置信水平 ${this.input.confidenceLevel}%）
+- 置信区间：${this.statsResult?.confidence_interval}
+- 检验方法：${this.statsResult?.test_method}
+
+请从业务角度深度解读这些数字的含义。`;
+
+                try {
+                    await this.callAPI(
+                        [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        (token) => { this.interpretText += token; },
+                        false
+                    );
+                } catch (e) {
+                    console.error('效果解读失败:', e);
+                    this.showToast('生成失败: ' + (e.message || '请重试'));
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            /* ============ 步骤4: 决策建议（流式） ============ */
+            async startStep4() {
+                if (!this.apiConfig.deepseek) { this.showSettings = true; return; }
+                this.isGenerating = true;
+                this.decisionText = '';
+                this.reasoningContent = '';
+                this.currentStep = 4;
+                this.$nextTick(() => lucide.createIcons());
+
+                const systemPrompt = `你是一位经验丰富的产品决策顾问。请基于AB测试的统计分析和效果解读，给出明确的决策建议。用中文回答，Markdown格式。
+
+要求包含：
+1. **明确的行动建议**：推荐实施哪个方案，或是否需要继续测试
+2. **决策依据**：为什么推荐这个决策
+3. **注意事项与局限性**：测试的局限性、可能的偏差
+4. **后续测试建议**：下一步可以做哪些测试来进一步优化
+5. **风险评估**：实施建议方案的潜在风险`;
+
+                const userPrompt = `请基于以下AB测试完整分析，给出决策建议：
+
+**测试信息**：
+- 测试名称：${this.input.testName}
+- 测试描述：${this.input.testDesc || '无'}
+- 指标类型：${this.input.metricType}
+
+**数据对比**：
+- A组（${this.input.groupA.name || '对照组'}）：样本 ${this.input.groupA.sampleSize}，转化 ${this.input.groupA.conversions}，转化率 ${this.statsResult?.rate_a}
+- B组（${this.input.groupB.name || '实验组'}）：样本 ${this.input.groupB.sampleSize}，转化 ${this.input.groupB.conversions}，转化率 ${this.statsResult?.rate_b}
+
+**统计结论**：
+- 相对提升：${this.statsResult?.relative_uplift}
+- p值：${this.statsResult?.p_value}，${this.statsResult?.is_significant ? '统计显著' : '统计不显著'}
+- 置信区间：${this.statsResult?.confidence_interval}
+
+**效果解读摘要**：
+${this.interpretText.substring(0, 800)}
+
+请给出清晰、可执行的决策建议。`;
+
+                try {
+                    await this.callAPI(
+                        [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        (token) => { this.decisionText += token; },
+                        false
+                    );
+                } catch (e) {
+                    console.error('决策建议失败:', e);
+                    this.showToast('生成失败: ' + (e.message || '请重试'));
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            /* ============ 通用API调用（支持流式） ============ */
+            async callAPI(messages, onToken, isJsonMode) {
+                const body = {
+                    model: this.apiConfig.model,
+                    messages: messages,
+                    stream: true,
+                    temperature: isJsonMode ? 0.1 : 0.7
+                };
+
+                if (isJsonMode) {
+                    body.response_format = { type: 'json_object' };
+                }
+
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`API 错误 (${response.status}): ${errText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices[0].delta;
+                                if (delta.reasoning_content) {
+                                    this.reasoningContent += delta.reasoning_content;
+                                }
+                                if (delta.content) {
+                                    onToken(delta.content);
+                                }
+                            } catch (e) { /* 忽略解析错误 */ }
+                        }
+                    }
+                }
+            },
+
+            /* ============ 导出功能 ============ */
+            buildFullReport() {
+                const lines = [];
+                lines.push(`# AB测试分析报告：${this.input.testName}`);
+                lines.push('');
+                if (this.input.testDesc) {
+                    lines.push(`> ${this.input.testDesc}`);
+                    lines.push('');
+                }
+
+                lines.push('## 一、测试数据');
+                lines.push('');
+                lines.push(`| 项目 | ${this.input.groupA.name || 'A组（对照组）'} | ${this.input.groupB.name || 'B组（实验组）'} |`);
+                lines.push('| --- | --- | --- |');
+                lines.push(`| 样本量 | ${this.input.groupA.sampleSize} | ${this.input.groupB.sampleSize} |`);
+                lines.push(`| 转化数 | ${this.input.groupA.conversions} | ${this.input.groupB.conversions} |`);
+                lines.push(`| 转化率 | ${this.statsResult?.rate_a || '-'} | ${this.statsResult?.rate_b || '-'} |`);
+                lines.push('');
+                lines.push(`- **指标类型**：${this.input.metricType}`);
+                lines.push(`- **置信水平**：${this.input.confidenceLevel}%`);
+                lines.push('');
+
+                lines.push('## 二、统计分析结果');
+                lines.push('');
+                if (this.statsResult) {
+                    lines.push(`- **是否显著**：${this.statsResult.is_significant ? '✅ 统计显著' : '❌ 统计不显著'}`);
+                    lines.push(`- **相对提升**：${this.statsResult.relative_uplift}`);
+                    lines.push(`- **绝对差异**：${this.statsResult.absolute_diff}`);
+                    lines.push(`- **p值**：${this.statsResult.p_value}`);
+                    lines.push(`- **检验方法**：${this.statsResult.test_method}`);
+                    lines.push(`- **检验统计量**：${this.statsResult.test_statistic}`);
+                    lines.push(`- **置信区间**：${this.statsResult.confidence_interval}`);
+                    lines.push('');
+                    lines.push(`> ${this.statsResult.winner_summary}`);
+                }
+                lines.push('');
+
+                if (this.interpretText) {
+                    lines.push('## 三、效果解读');
+                    lines.push('');
+                    lines.push(this.interpretText);
+                    lines.push('');
+                }
+
+                if (this.decisionText) {
+                    lines.push('## 四、决策建议');
+                    lines.push('');
+                    lines.push(this.decisionText);
+                    lines.push('');
+                }
+
+                lines.push('---');
+                lines.push(`*报告由 AB测试分析师 AI 工具生成 · ${new Date().toLocaleString('zh-CN')}*`);
+
+                return lines.join('\n');
+            },
+
+            async copyFullReport() {
+                const report = this.buildFullReport();
+                try {
+                    await navigator.clipboard.writeText(report);
+                    this.showToast('已复制完整报告到剪贴板');
+                } catch (e) {
+                    const ta = document.createElement('textarea');
+                    ta.value = report;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    this.showToast('已复制完整报告到剪贴板');
+                }
+            },
+
+            exportMarkdown() {
+                const report = this.buildFullReport();
+                const blob = new Blob([report], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `AB测试报告_${this.input.testName || 'report'}_${new Date().toISOString().slice(0, 10)}.md`;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showToast('Markdown 文件已下载');
+            },
+
+            /* ============ 工具函数 ============ */
+            renderMarkdown(text) {
+                if (!text) return '';
+                try { return marked.parse(text); } catch (e) { return text; }
+            },
+
+            showToast(message) {
+                this.toast = { show: true, message };
+                setTimeout(() => { this.toast.show = false; }, 2500);
+            },
+
+            resetAll() {
+                this.currentStep = 1;
+                this.input = {
+                    testName: '', testDesc: '',
+                    groupA: { name: '', sampleSize: null, conversions: null },
+                    groupB: { name: '', sampleSize: null, conversions: null },
+                    metricType: '转化率', confidenceLevel: '95'
+                };
+                this.statsResult = null;
+                this.interpretText = '';
+                this.decisionText = '';
+                this.reasoningContent = '';
+                this.barWidthA = 0;
+                this.barWidthB = 0;
+                this.$nextTick(() => lucide.createIcons());
+            }
+        };
+    }
+    </script>
+</body>
+</html>

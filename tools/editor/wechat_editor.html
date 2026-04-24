@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号排版助手</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // 配置 marked.js 支持 GFM 和换行
+        marked.use({
+            breaks: true,
+            gfm: true
+        });
+    </script>
+    <!-- Lucide Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* ==================== 基础样式 ==================== */
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c4c4c4;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+
+        /* ==================== 微信公众号预览样式 - 基础 ==================== */
+        .wx-preview {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+            line-height: 1.75;
+            color: #333;
+            font-size: 16px;
+            word-wrap: break-word;
+            padding: 20px;
+        }
+
+        .wx-preview h1 {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 24px 0 16px 0;
+            color: #1a1a1a;
+        }
+
+        .wx-preview h2 {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px 0 12px 0;
+            color: #1a1a1a;
+        }
+
+        .wx-preview h3 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 16px 0 10px 0;
+            color: #1a1a1a;
+        }
+
+        .wx-preview p {
+            margin: 0 0 16px 0;
+            text-align: justify;
+        }
+
+        .wx-preview blockquote {
+            margin: 16px 0;
+            padding: 12px 16px;
+            background: #f7f7f7;
+            border-left: 3px solid #ddd;
+            color: #666;
+        }
+
+        .wx-preview ul,
+        .wx-preview ol {
+            margin: 0 0 16px 0;
+            padding-left: 24px;
+            list-style-position: inside;
+        }
+
+        .wx-preview ul {
+            list-style-type: disc;
+        }
+
+        .wx-preview ol {
+            list-style-type: decimal;
+        }
+
+        .wx-preview li {
+            margin-bottom: 8px;
+        }
+
+        .wx-preview strong {
+            font-weight: bold;
+        }
+
+        .wx-preview em {
+            font-style: italic;
+        }
+
+        .wx-preview hr {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 24px 0;
+        }
+
+        .wx-preview img {
+            max-width: 100%;
+            height: auto;
+            margin: 16px 0;
+            border-radius: 4px;
+        }
+
+        .wx-preview a {
+            color: #576b95;
+            text-decoration: none;
+        }
+
+        .wx-preview code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 14px;
+            color: #c7254e;
+        }
+
+        .wx-preview pre {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        .wx-preview pre code {
+            background: transparent;
+            padding: 0;
+            color: #333;
+        }
+
+        /* ==================== 风格：极简 (Minimal) ==================== */
+        .style-minimal h1,
+        .style-minimal h2,
+        .style-minimal h3 {
+            color: #333;
+            border: none;
+            padding: 0;
+            background: transparent;
+        }
+
+        .style-minimal h2 {
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .style-minimal blockquote {
+            background: transparent;
+            border-left: 2px solid #999;
+            color: #888;
+            font-style: italic;
+        }
+
+        .style-minimal strong {
+            color: #333;
+        }
+
+        /* ==================== 风格：清新 (Fresh) ==================== */
+        .style-fresh h1,
+        .style-fresh h2 {
+            color: #07c160;
+        }
+
+        .style-fresh h2 {
+            display: inline-block;
+            background: linear-gradient(to bottom, transparent 60%, rgba(7, 193, 96, 0.2) 60%);
+            padding: 0 4px;
+        }
+
+        .style-fresh blockquote {
+            background: #f0fff4;
+            border-left: 4px solid #07c160;
+            color: #2d6a4f;
+        }
+
+        .style-fresh strong {
+            color: #07c160;
+        }
+
+        .style-fresh hr {
+            border-top: 1px dashed #07c160;
+        }
+
+        /* ==================== 风格：商务 (Business) ==================== */
+        .style-business h1,
+        .style-business h2 {
+            color: #1e3a5f;
+        }
+
+        .style-business h2 {
+            border-left: 4px solid #1e3a5f;
+            padding-left: 12px;
+            background: linear-gradient(to right, #f0f4f8, transparent);
+        }
+
+        .style-business blockquote {
+            background: #f8fafc;
+            border-left: 4px solid #1e3a5f;
+            color: #475569;
+        }
+
+        .style-business strong {
+            color: #1e3a5f;
+        }
+
+        .style-business hr {
+            border-top: 2px solid #e2e8f0;
+        }
+
+        /* ==================== 风格：文艺 (Literary) ==================== */
+        .style-literary {
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", serif;
+        }
+
+        .style-literary h1,
+        .style-literary h2 {
+            color: #6b4423;
+            font-weight: normal;
+        }
+
+        .style-literary h2 {
+            text-align: center;
+            position: relative;
+        }
+
+        .style-literary h2::before,
+        .style-literary h2::after {
+            content: "◆";
+            color: #d4a574;
+            margin: 0 12px;
+            font-size: 10px;
+            vertical-align: middle;
+        }
+
+        .style-literary blockquote {
+            background: #fdf8f3;
+            border-left: none;
+            border-radius: 8px;
+            text-align: center;
+            font-style: italic;
+            color: #8b7355;
+        }
+
+        .style-literary strong {
+            color: #6b4423;
+        }
+
+        .style-literary hr {
+            text-align: center;
+            border: none;
+            height: 20px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='20'%3E%3Ctext x='50' y='15' text-anchor='middle' fill='%23d4a574' font-size='12'%3E✦ ✦ ✦%3C/text%3E%3C/svg%3E") center no-repeat;
+        }
+
+        /* ==================== 风格：科技 (Tech) ==================== */
+        .style-tech {
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+
+        .style-tech h1,
+        .style-tech h2 {
+            color: #58a6ff;
+        }
+
+        .style-tech h2 {
+            border-left: 3px solid #58a6ff;
+            padding-left: 12px;
+        }
+
+        .style-tech blockquote {
+            background: #161b22;
+            border-left: 3px solid #30363d;
+            color: #8b949e;
+        }
+
+        .style-tech strong {
+            color: #79c0ff;
+        }
+
+        .style-tech code {
+            background: #21262d;
+            color: #79c0ff;
+        }
+
+        .style-tech pre {
+            background: #161b22;
+            border: 1px solid #30363d;
+        }
+
+        .style-tech hr {
+            border-top: 1px solid #30363d;
+        }
+
+        .style-tech a {
+            color: #58a6ff;
+        }
+
+        /* ==================== 风格：温暖 (Warm) ==================== */
+        .style-warm h1,
+        .style-warm h2 {
+            color: #d97706;
+        }
+
+        .style-warm h2 {
+            background: linear-gradient(to right, #fef3c7, transparent);
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+
+        .style-warm blockquote {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+
+        .style-warm strong {
+            color: #d97706;
+            background: #fef3c7;
+            padding: 0 4px;
+        }
+
+        .style-warm hr {
+            border-top: 2px dotted #fbbf24;
+        }
+
+        /* ==================== 自定义组件样式 ==================== */
+        /* 引用框 */
+        .wx-quote-box {
+            margin: 20px 0;
+            padding: 16px 20px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .wx-quote-box::before {
+            content: "\201C";
+            position: absolute;
+            top: -10px;
+            left: 16px;
+            font-size: 48px;
+            line-height: 1;
+            opacity: 0.2;
+        }
+
+        /* 高亮框 */
+        .wx-highlight-box {
+            margin: 20px 0;
+            padding: 16px 20px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        /* 分割线样式 */
+        .wx-divider {
+            margin: 24px 0;
+            text-align: center;
+        }
+
+        .wx-divider-dots::before {
+            content: "• • •";
+            color: #ccc;
+            letter-spacing: 8px;
+        }
+
+        .wx-divider-wave::before {
+            content: "〰〰〰";
+            color: #ddd;
+        }
+
+        .wx-divider-stars::before {
+            content: "✦  ✦  ✦";
+            color: #ddd;
+        }
+
+        /* 数字标签 */
+        .wx-number-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        /* 动画效果 */
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.3s ease;
+        }
+
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+
+        /* 标签按钮样式 */
+        .tag-btn {
+            transition: all 0.2s ease;
+        }
+
+        .tag-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .tag-btn.active {
+            transform: scale(1.02);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- ==================== 顶部导航 ==================== -->
+        <nav class="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-200">
+                            <i class="fa-solid fa-table-columns text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">公众号排版助手</span>
+                            <span class="text-xs text-slate-400 block -mt-1">WeChat Formatter</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- 模型选择 -->
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-green-600': model === 'deepseek-v4-flash', 'text-slate-500 hover:text-slate-700': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1.5 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-green-600': model === 'deepseek-v4-pro', 'text-slate-500 hover:text-slate-700': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1.5 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <!-- 设置按钮 -->
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-green-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-slate-100">
+                            <i class="fa-solid fa-gear h-4 w-4"></i> 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ==================== 主内容区 ==================== -->
+        <main class="flex-grow flex flex-col lg:flex-row">
+
+            <!-- ========== 左侧：输入与控制面板 ========== -->
+            <div class="w-full lg:w-[420px] bg-white border-r border-slate-200 flex flex-col shadow-xl z-10">
+
+                <!-- 控制面板头部 -->
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square w-4 h-4 text-green-600"></i>
+                        内容输入
+                    </h2>
+                </div>
+
+                <!-- 滚动区域 -->
+                <div class="flex-grow overflow-y-auto p-5 space-y-6">
+
+                    <!-- 1. 原始内容输入 -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-slate-700">原始文案</label>
+                        <textarea v-model="input.content" rows="8"
+                            placeholder="粘贴你的文章内容...&#10;支持 Markdown 格式，也可以输入纯文本让 AI 自动排版。"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 focus:ring-2 focus:ring-green-500 focus:border-transparent focus:outline-none transition text-sm leading-relaxed resize-none"></textarea>
+                    </div>
+
+                    <!-- 2. 排版风格选择 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">排版风格</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button v-for="style in styles" :key="style.id" @click="selectedStyle = style.id" :class="[
+                                    'tag-btn px-3 py-2.5 rounded-xl text-xs font-medium border-2 transition-all',
+                                    selectedStyle === style.id 
+                                        ? 'border-green-500 bg-green-50 text-green-700 active' 
+                                        : 'border-slate-200 hover:border-slate-300 text-slate-600 hover:bg-slate-50'
+                                ]">
+                                <span class="block text-lg mb-1">{{ style.icon }}</span>
+                                {{ style.name }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. 排版增强选项 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">排版增强</label>
+                        <div class="space-y-2">
+                            <label
+                                class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition">
+                                <input type="checkbox" v-model="options.autoQuote"
+                                    class="w-4 h-4 text-green-600 rounded focus:ring-green-500">
+                                <div>
+                                    <span class="text-sm font-medium text-slate-700">智能引用框</span>
+                                    <span class="text-xs text-slate-400 block">自动为重要观点添加引用框</span>
+                                </div>
+                            </label>
+                            <label
+                                class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition">
+                                <input type="checkbox" v-model="options.autoHighlight"
+                                    class="w-4 h-4 text-green-600 rounded focus:ring-green-500">
+                                <div>
+                                    <span class="text-sm font-medium text-slate-700">关键词高亮</span>
+                                    <span class="text-xs text-slate-400 block">自动识别并高亮关键词</span>
+                                </div>
+                            </label>
+                            <label
+                                class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition">
+                                <input type="checkbox" v-model="options.autoDivider"
+                                    class="w-4 h-4 text-green-600 rounded focus:ring-green-500">
+                                <div>
+                                    <span class="text-sm font-medium text-slate-700">段落分割线</span>
+                                    <span class="text-xs text-slate-400 block">在段落间添加装饰性分割线</span>
+                                </div>
+                            </label>
+                            <label
+                                class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition">
+                                <input type="checkbox" v-model="options.addEmoji"
+                                    class="w-4 h-4 text-green-600 rounded focus:ring-green-500">
+                                <div>
+                                    <span class="text-sm font-medium text-slate-700">智能添加 Emoji</span>
+                                    <span class="text-xs text-slate-400 block">在标题和重点处添加 Emoji</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 4. 自定义指令 -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-slate-700">自定义指令 (可选)</label>
+                        <textarea v-model="input.customPrompt" rows="2" placeholder="例如：标题要更有吸引力、增加互动引导..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-green-500 focus:border-transparent focus:outline-none transition text-sm resize-none"></textarea>
+                    </div>
+
+                </div>
+
+                <!-- 操作按钮区 -->
+                <div class="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
+                    <!-- AI 排版按钮 -->
+                    <button @click="formatWithAI" :disabled="isGenerating || !input.content.trim()"
+                        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-xl hover:from-green-600 hover:to-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-200">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner animate-spin w-5 h-5"></i>
+                        <i v-else class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i>
+                        <span>{{ isGenerating ? 'AI 排版中...' : 'AI 智能排版' }}</span>
+                    </button>
+
+                    <!-- 快速操作 -->
+                    <div class="flex gap-2">
+                        <button @click="quickFormat" :disabled="!input.content.trim()"
+                            class="flex-1 bg-white border border-slate-200 text-slate-600 font-medium py-2.5 rounded-xl hover:bg-slate-50 transition disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm">
+                            <i class="fa-solid fa-bolt w-4 h-4"></i>
+                            快速排版
+                        </button>
+                        <button @click="clearAll"
+                            class="px-4 bg-white border border-slate-200 text-slate-400 font-medium py-2.5 rounded-xl hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition text-sm">
+                            <i class="fa-solid fa-trash w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== 右侧：预览区域 ========== -->
+            <div class="flex-grow bg-slate-100 flex flex-col">
+
+                <!-- 预览区头部 -->
+                <div class="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-eye w-4 h-4 text-green-600"></i>
+                            实时预览
+                        </h2>
+                        <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full">
+                            {{ previewCharCount }} 字
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <!-- 复制按钮 -->
+                        <button v-if="formattedHtml" @click="copyToWechat"
+                            class="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg transition shadow-sm font-medium">
+                            <i class="fa-solid fa-copy h-4 w-4"></i>
+                            复制到公众号
+                        </button>
+                        <!-- 导出 HTML -->
+                        <button v-if="formattedHtml" @click="exportHtml"
+                            class="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm px-4 py-2 rounded-lg transition font-medium">
+                            <i class="fa-solid fa-download h-4 w-4"></i>
+                            导出
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 预览内容 -->
+                <div class="flex-grow overflow-y-auto p-6 flex justify-center">
+                    <!-- 模拟手机/公众号容器 -->
+                    <div
+                        class="w-full max-w-[640px] min-h-[600px] bg-white shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
+
+                        <!-- 模拟公众号顶部 -->
+                        <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                    <i class="fa-solid fa-user w-4 h-4 text-white"></i>
+                                </div>
+                                <span class="text-sm font-medium text-slate-700">公众号名称</span>
+                            </div>
+                            <span class="text-xs text-slate-400">预览模式</span>
+                        </div>
+
+                        <!-- 文章内容区 -->
+                        <div v-if="!formattedHtml && !input.content.trim()"
+                            class="h-[500px] flex flex-col items-center justify-center text-slate-300 p-8">
+                            <i class="fa-solid fa-file-lines w-16 h-16 mb-4 opacity-50"></i>
+                            <p class="text-center">在左侧输入内容<br>点击「AI 智能排版」生成预览</p>
+                        </div>
+
+                        <!-- 渲染预览 -->
+                        <div v-else id="preview-content" class="wx-preview" :class="'style-' + selectedStyle"
+                            v-html="formattedHtml || quickPreview">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部提示 -->
+                <div class="p-3 bg-white border-t border-slate-200 text-center text-xs text-slate-400">
+                    提示：复制后直接在微信公众号后台按 Ctrl+V 粘贴，样式会自动保留
+                </div>
+            </div>
+        </main>
+
+        <!-- ==================== 设置弹窗 ==================== -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-slate-900">API 配置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600 transition">
+                        <i class="fa-solid fa-xmark h-5 w-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border-slate-200 border p-3 focus:ring-2 focus:ring-green-500 focus:border-transparent focus:outline-none transition">
+                        <p class="text-xs text-slate-400 mt-2">配置后将保存在浏览器本地，所有工具共享使用</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-xl transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-green-600 text-white px-6 py-2 rounded-xl hover:bg-green-700 transition font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 复制成功提示 ==================== -->
+        <transition name="fade">
+            <div v-if="showCopyToast"
+                class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 z-[200]">
+                <i class="fa-solid fa-check-circle w-5 h-5 text-green-400"></i>
+                <span class="font-medium">已复制！可直接粘贴到公众号后台</span>
+            </div>
+        </transition>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+
+
+                // ==================== 状态定义 ====================
+                const showSettings = ref(false);
+                const showCopyToast = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+
+                // 排版风格列表
+                const styles = [
+                    { id: 'minimal', name: '极简', icon: '◻️' },
+                    { id: 'fresh', name: '清新', icon: '🌿' },
+                    { id: 'business', name: '商务', icon: '💼' },
+                    { id: 'literary', name: '文艺', icon: '📖' },
+                    { id: 'tech', name: '科技', icon: '💻' },
+                    { id: 'warm', name: '温暖', icon: '🌸' }
+                ];
+
+                const selectedStyle = ref('fresh');
+
+                // 输入内容
+                const input = reactive({
+                    content: '',
+                    customPrompt: ''
+                });
+
+                // 排版增强选项
+                const options = reactive({
+                    autoQuote: true,
+                    autoHighlight: true,
+                    autoDivider: false,
+                    addEmoji: false
+                });
+
+                // 输出
+                const formattedHtml = ref('');
+
+                // ==================== 计算属性 ====================
+                // 字数统计
+                const previewCharCount = computed(() => {
+                    const text = formattedHtml.value || input.content;
+                    return text.replace(/<[^>]*>/g, '').length;
+                });
+
+                // 快速预览 (未调用 AI 时的基础 Markdown 渲染)
+                const quickPreview = computed(() => {
+                    if (!input.content.trim()) return '';
+                    // 使用 marked 进行基础渲染
+                    return marked.parse(input.content);
+                });
+
+                // ==================== 生命周期 ====================
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+
+                    // 加载全局配置
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                        } catch (e) {
+                            console.error('解析 global_llm_config 失败:', e);
+                        }
+                    }
+                });
+
+                // ==================== 方法定义 ====================
+
+                /**
+                 * 保存 API 配置
+                 */
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('解析 global_llm_config 失败:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                /**
+                 * 获取当前选中风格的配置描述
+                 */
+                const getStyleDescription = () => {
+                    const styleDescMap = {
+                        minimal: '极简风格：干净留白，黑白灰主色调，无装饰，标题下划线',
+                        fresh: '清新风格：绿色主题，标题高亮底色，清新引用框，虚线分割',
+                        business: '商务风格：深蓝主色，标题左边框，专业引用框，厚实分割线',
+                        literary: '文艺风格：棕色系，标题居中带装饰符号，温馨引用框，星星分割线',
+                        tech: '科技风格：深色背景，蓝色高亮，代码风格引用，简约边框',
+                        warm: '温暖风格：橙色主题，标题渐变底色，温馨引用框，点状分割线'
+                    };
+                    return styleDescMap[selectedStyle.value] || '';
+                };
+
+                /**
+                 * AI 智能排版
+                 */
+                const formatWithAI = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    if (!input.content.trim()) {
+                        alert('请先输入内容');
+                        return;
+                    }
+
+                    isGenerating.value = true;
+
+                    // 构建 Prompt
+                    const prompt = buildPrompt();
+
+                    try {
+                        const result = await callDeepSeek(prompt);
+                        // 清理可能的 Markdown 代码块标记
+                        let html = result.replace(/```html|```/g, '').trim();
+                        formattedHtml.value = html;
+
+                    } catch (e) {
+                        console.error('Format Error:', e);
+                        alert('排版失败: ' + e.message);
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                /**
+                 * 构建 AI Prompt
+                 */
+                const buildPrompt = () => {
+                    const styleDesc = getStyleDescription();
+                    const optionsList = [];
+                    if (options.autoQuote) optionsList.push('为重要观点添加引用框（使用 <blockquote> 或带样式的 div）');
+                    if (options.autoHighlight) optionsList.push('识别关键词并用 <strong> 标签高亮');
+                    if (options.autoDivider) optionsList.push('在主要段落间添加分割线（使用 <hr> 或装饰性分割）');
+                    if (options.addEmoji) optionsList.push('在标题和重点处适当添加 Emoji 表情');
+
+                    return `
+你是一位专业的微信公众号排版设计师。请将以下内容转化为适合微信公众号阅读的 HTML 格式。
+
+【原始内容】
+${input.content}
+
+【排版风格】
+${styleDesc}
+
+【排版要求】
+1. 输出纯 HTML 代码，不要包含 \`\`\`html 标记
+2. 不要包含 <html>、<head>、<body> 等外层标签
+3. 使用内联 CSS 样式（微信公众号支持有限的内联样式）
+4. 段落间距适中，行高 1.75
+5. 标题层级分明（h1/h2/h3）
+6. 图片使用 max-width: 100%
+${optionsList.length > 0 ? '7. 额外处理：\n   - ' + optionsList.join('\n   - ') : ''}
+${input.customPrompt ? '\n【自定义要求】\n' + input.customPrompt : ''}
+
+【注意事项】
+- 微信公众号不支持外部 CSS，所有样式必须内联
+- 颜色使用 hex 格式（如 #07c160）
+- 字体使用系统默认字体即可
+- 避免使用 JavaScript
+- 保持内容原意，只优化排版和视觉呈现
+
+请直接输出 HTML 代码：`;
+                };
+
+                /**
+                 * 快速排版（不调用 AI，直接 Markdown 转 HTML）
+                 */
+                const quickFormat = () => {
+                    if (!input.content.trim()) return;
+
+                    // 使用 marked 解析 Markdown
+                    let html = marked.parse(input.content);
+
+                    // 应用一些基础增强
+                    if (options.autoHighlight) {
+                        // 简单的关键词高亮：将 **text** 转换后的 <strong> 添加颜色
+                        html = html.replace(/<strong>/g, '<strong style="color: #07c160;">');
+                    }
+
+                    formattedHtml.value = html;
+                };
+
+                /**
+                 * 清空所有内容
+                 */
+                const clearAll = () => {
+                    if (confirm('确定要清空所有内容吗？')) {
+                        input.content = '';
+                        input.customPrompt = '';
+                        formattedHtml.value = '';
+                    }
+                };
+
+                /**
+                 * 复制到微信公众号
+                 * 使用 ClipboardItem 同时写入 HTML 和纯文本格式
+                 */
+                const copyToWechat = async () => {
+                    const element = document.getElementById('preview-content');
+                    if (!element) return;
+
+                    try {
+                        // 获取带样式的 HTML
+                        const html = element.innerHTML;
+                        const text = element.innerText;
+
+                        // 创建 Clipboard 数据
+                        const blobHtml = new Blob([html], { type: 'text/html' });
+                        const blobText = new Blob([text], { type: 'text/plain' });
+
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'text/html': blobHtml,
+                                'text/plain': blobText
+                            })
+                        ]);
+
+                        // 显示成功提示
+                        showCopyToast.value = true;
+                        setTimeout(() => {
+                            showCopyToast.value = false;
+                        }, 2500);
+                    } catch (e) {
+                        console.error('Copy Error:', e);
+                        // 降级处理：复制纯文本
+                        try {
+                            await navigator.clipboard.writeText(element.innerText);
+                            alert('已复制纯文本内容（富文本复制失败）');
+                        } catch (e2) {
+                            alert('复制失败，请手动选择内容复制');
+                        }
+                    }
+                };
+
+                /**
+                 * 导出 HTML 文件
+                 * 注意：为避免 Live Server 误解析，使用字符串拼接而非模板字符串中的闭合标签
+                 */
+                const exportHtml = () => {
+                    const element = document.getElementById('preview-content');
+                    if (!element) return;
+
+                    // 构建完整 HTML（使用拼接避免 </html> 被误解析）
+                    const htmlParts = [
+                        '<!DOCTYPE html>',
+                        '<html lang="zh-CN">',
+                        '<head>',
+                        '    <meta charset="UTF-8">',
+                        '    <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+                        '    <title>公众号文章<\/title>',
+                        '    <style>',
+                        '        body {',
+                        '            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;',
+                        '            line-height: 1.75;',
+                        '            color: #333;',
+                        '            max-width: 640px;',
+                        '            margin: 0 auto;',
+                        '            padding: 20px;',
+                        '        }',
+                        '    <\/style>',
+                        '<\/head>',
+                        '<body>',
+                        element.innerHTML,
+                        '<\/body>',
+                        '<\/html>'
+                    ];
+                    const fullHtml = htmlParts.join('\n');
+
+                    // 下载文件
+                    const blob = new Blob([fullHtml], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'wechat_article.html';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+
+                /**
+                 * 调用 DeepSeek API
+                 */
+                const callDeepSeek = async (prompt) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error('API Key 未配置');
+
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: model.value,
+                            messages: [
+                                { role: 'system', content: '你是专业的微信公众号排版设计师，擅长将内容转化为美观易读的格式。' },
+                                { role: 'user', content: prompt }
+                            ],
+                            stream: false
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || 'API 请求失败');
+                    }
+
+                    const data = await response.json();
+                    return data.choices[0].message.content;
+                };
+
+                // ==================== 返回 ====================
+                return {
+
+                    showSettings,
+                    showCopyToast,
+                    apiConfig,
+                    model,
+                    isGenerating,
+                    styles,
+                    selectedStyle,
+                    input,
+                    options,
+                    formattedHtml,
+                    previewCharCount,
+                    quickPreview,
+                    saveConfig,
+                    formatWithAI,
+                    quickFormat,
+                    clearAll,
+                    copyToWechat,
+                    exportHtml
+                };
+            }
+        }).mount('#app');
+    </script>
+
+    <!-- HELP-WIDGET-START -->
+    <script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/editor_wechat_editor.md"></script>
+    <!-- HELP-WIDGET-END -->
+</body>
+
+</html>

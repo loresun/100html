@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>定价策略分析师 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #f0fdf4 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #059669; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #d1fae5 25%, #a7f3d0 50%, #d1fae5 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        /* 步骤进度条 */
+        .step-dot {
+            transition: all 0.3s ease;
+        }
+        .step-dot.active {
+            background: linear-gradient(135deg, #059669, #10b981);
+            box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.2);
+            color: white;
+        }
+        .step-dot.completed {
+            background: #059669;
+            color: white;
+        }
+        .step-line {
+            transition: background 0.5s ease;
+        }
+        .step-line.active {
+            background: linear-gradient(90deg, #059669, #10b981);
+        }
+        .step-line.completed {
+            background: #059669;
+        }
+
+        /* 定价模型卡片 */
+        .pricing-card {
+            transition: all 0.3s ease;
+            border: 1px solid #d1fae5;
+        }
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px -8px rgba(5, 150, 105, 0.2);
+            border-color: #6ee7b7;
+        }
+
+        /* Markdown 渲染 */
+        .doc-view h1 { font-size: 1.75rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; }
+        .doc-view h2 { font-size: 1.35rem; font-weight: 700; color: #334155; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid #d1fae5; }
+        .doc-view h3 { font-size: 1.1rem; font-weight: 600; color: #475569; margin: 1rem 0 0.5rem; }
+        .doc-view p { margin: 0.5rem 0; line-height: 1.8; color: #475569; }
+        .doc-view ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+        .doc-view li { margin: 0.25rem 0; line-height: 1.7; color: #475569; }
+        .doc-view table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .doc-view th { background: #ecfdf5; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #d1fae5; color: #065f46; }
+        .doc-view td { padding: 0.75rem; border: 1px solid #d1fae5; }
+        .doc-view strong { color: #1e293b; }
+        .doc-view blockquote { border-left: 3px solid #059669; padding-left: 1rem; margin: 1rem 0; color: #64748b; font-style: italic; }
+
+        /* 标签选择器 */
+        .goal-tag {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .goal-tag.selected {
+            background: #059669;
+            color: white;
+            border-color: #059669;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="pricingApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-emerald-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="tags" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">定价策略分析师</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 多步定价工作流</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-emerald-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-emerald-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-emerald-100 py-4">
+            <div class="max-w-4xl mx-auto px-4">
+                <div class="flex items-center justify-between">
+                    <template x-for="(step, index) in steps" :key="index">
+                        <div class="flex items-center" :class="index < steps.length - 1 ? 'flex-1' : ''">
+                            <div class="flex flex-col items-center relative">
+                                <div @click="canGoToStep(index + 1) && goToStep(index + 1)"
+                                    :class="[
+                                        'step-dot w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer',
+                                        currentStep === index + 1 ? 'active' : '',
+                                        currentStep > index + 1 ? 'completed' : 'bg-slate-200 text-slate-500'
+                                    ]">
+                                    <template x-if="currentStep > index + 1">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="currentStep <= index + 1">
+                                        <span x-text="index + 1"></span>
+                                    </template>
+                                </div>
+                                <span class="absolute -bottom-5 whitespace-nowrap text-xs font-medium"
+                                    :class="currentStep >= index + 1 ? 'text-emerald-600' : 'text-slate-400'"
+                                    x-text="step.label"></span>
+                            </div>
+                            <div x-show="index < steps.length - 1"
+                                :class="[
+                                    'step-line flex-1 h-1 mx-3 rounded-full',
+                                    currentStep > index + 1 ? 'completed' : '',
+                                    currentStep === index + 1 ? 'active' : 'bg-slate-200'
+                                ]"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="flex-grow overflow-y-auto pb-8">
+            <div class="max-w-6xl mx-auto px-4 pt-10">
+
+                <!-- ==================== 步骤 1: 基本信息输入 ==================== -->
+                <div x-show="currentStep === 1" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">💰 输入产品与定价信息</h2>
+                        <p class="text-slate-500">填写产品/服务的核心信息，AI 将帮你分析最优定价策略</p>
+                    </div>
+
+                    <div class="max-w-3xl mx-auto space-y-5">
+                        <!-- 产品/服务名称 & 描述 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="package" class="w-4 h-4 text-emerald-600"></i>
+                                    产品/服务名称 <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" x-model="input.productName"
+                                    placeholder="例如：AI 智能客服系统 Pro版"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                            </div>
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i>
+                                    目标客户群体 <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" x-model="input.targetCustomer"
+                                    placeholder="例如：中小型电商企业、日均咨询量 100-1000"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                            </div>
+                        </div>
+
+                        <!-- 产品描述 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="file-text" class="w-4 h-4 text-emerald-600"></i>
+                                产品/服务描述 <span class="text-red-500">*</span>
+                            </label>
+                            <textarea x-model="input.productDescription" rows="4"
+                                placeholder="详细描述产品/服务的核心功能、卖点、差异化优势...&#10;&#10;例如：基于大语言模型的智能客服系统，支持多轮对话、意图识别准确率95%+，自动学习企业知识库，支持微信/网页/APP多渠道接入，7×24小时不间断服务..."
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition resize-none leading-relaxed"></textarea>
+                        </div>
+
+                        <!-- 成本结构 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="calculator" class="w-4 h-4 text-emerald-600"></i>
+                                成本结构 <span class="text-red-500">*</span>
+                            </label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs text-slate-500 mb-1 block">固定成本（每月）</label>
+                                    <textarea x-model="input.fixedCost" rows="3"
+                                        placeholder="如：服务器 5000元/月&#10;人员工资 30000元/月&#10;办公租金 8000元/月"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition resize-none"></textarea>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-500 mb-1 block">可变成本（每单位/每客户）</label>
+                                    <textarea x-model="input.variableCost" rows="3"
+                                        placeholder="如：API调用 0.5元/次&#10;客服培训 200元/客户&#10;技术支持 300元/月/客户"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition resize-none"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 竞争对手价格 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-600"></i>
+                                竞争对手价格
+                            </label>
+                            <textarea x-model="input.competitorPrices" rows="4"
+                                placeholder="粘贴竞品价格信息，格式不限，例如：&#10;- 竞品A：基础版 299元/月，专业版 899元/月，企业版 2999元/月&#10;- 竞品B：按坐席收费 199元/坐席/月&#10;- 竞品C：按对话量计费 0.3元/次，月最低消费 500元"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition resize-none leading-relaxed"></textarea>
+                        </div>
+
+                        <!-- 当前价格 & 业务目标 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="banknote" class="w-4 h-4 text-emerald-600"></i>
+                                    当前价格（如有）
+                                </label>
+                                <input type="text" x-model="input.currentPrice"
+                                    placeholder="例如：599元/月（基础版）"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                            </div>
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="target" class="w-4 h-4 text-emerald-600"></i>
+                                    业务目标 <span class="text-red-500">*</span>
+                                </label>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="goal in businessGoals" :key="goal">
+                                        <span @click="input.businessGoal = goal"
+                                            :class="['goal-tag px-3 py-1.5 rounded-full text-sm border', input.businessGoal === goal ? 'selected' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-emerald-300']"
+                                            x-text="goal"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 开始分析按钮 -->
+                        <button @click="startStep2()"
+                            :disabled="!canProceedStep1"
+                            class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                            开始定价模型分析
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 2: 定价模型分析 ==================== -->
+                <div x-show="currentStep === 2" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📊 三大定价模型对比分析</h2>
+                        <p class="text-slate-500">成本加成法 · 竞争定价法 · 价值定价法</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating" class="max-w-5xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-emerald-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-emerald-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-emerald-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在分析三大定价模型...</p>
+                            <p class="text-sm text-slate-500 mb-4">AI 正在结合成本结构与市场数据建模</p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="shimmer h-48 rounded-xl"></div>
+                                <div class="shimmer h-48 rounded-xl"></div>
+                                <div class="shimmer h-48 rounded-xl"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 三大模型卡片 -->
+                    <div x-show="!isGenerating && pricingModels" class="max-w-5xl mx-auto">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <template x-for="(model, idx) in pricingModels" :key="idx">
+                                <div class="pricing-card bg-white rounded-2xl p-6 shadow-sm">
+                                    <!-- 卡片头部 -->
+                                    <div class="flex items-center gap-3 mb-4">
+                                        <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+                                            :class="idx === 0 ? 'bg-blue-50' : idx === 1 ? 'bg-amber-50' : 'bg-purple-50'">
+                                            <i :data-lucide="idx === 0 ? 'calculator' : idx === 1 ? 'swords' : 'gem'"
+                                                :class="idx === 0 ? 'w-5 h-5 text-blue-600' : idx === 1 ? 'w-5 h-5 text-amber-600' : 'w-5 h-5 text-purple-600'"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-bold text-base text-slate-900" x-text="model.name"></h3>
+                                            <p class="text-xs text-slate-500" x-text="model.subtitle"></p>
+                                        </div>
+                                    </div>
+
+                                    <!-- 推荐价格区间 -->
+                                    <div class="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-4 mb-4 text-center">
+                                        <p class="text-xs text-emerald-600 font-medium mb-1">推荐价格区间</p>
+                                        <p class="text-xl font-extrabold text-emerald-700" x-text="model.priceRange"></p>
+                                    </div>
+
+                                    <!-- 分析逻辑 -->
+                                    <div class="mb-4">
+                                        <p class="text-xs font-bold text-slate-600 mb-2">📐 定价逻辑</p>
+                                        <p class="text-sm text-slate-500 leading-relaxed" x-text="model.logic"></p>
+                                    </div>
+
+                                    <!-- 优势 -->
+                                    <div class="mb-3">
+                                        <p class="text-xs font-bold text-green-600 mb-1.5">✅ 优势</p>
+                                        <ul class="space-y-1">
+                                            <template x-for="pro in model.pros" :key="pro">
+                                                <li class="text-xs text-slate-600 flex items-start gap-1.5">
+                                                    <span class="text-green-500 mt-0.5">•</span>
+                                                    <span x-text="pro"></span>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+
+                                    <!-- 劣势 -->
+                                    <div>
+                                        <p class="text-xs font-bold text-red-500 mb-1.5">⚠️ 劣势</p>
+                                        <ul class="space-y-1">
+                                            <template x-for="con in model.cons" :key="con">
+                                                <li class="text-xs text-slate-600 flex items-start gap-1.5">
+                                                    <span class="text-red-400 mt-0.5">•</span>
+                                                    <span x-text="con"></span>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="flex justify-between mt-6">
+                            <button @click="goToStep(1)"
+                                class="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition flex items-center gap-2">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回修改
+                            </button>
+                            <div class="flex gap-3">
+                                <button @click="startStep2()"
+                                    class="px-5 py-3 bg-white border border-emerald-200 text-emerald-600 rounded-xl hover:bg-emerald-50 transition flex items-center gap-2">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新分析
+                                </button>
+                                <button @click="startStep3()"
+                                    class="px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2">
+                                    生成定价建议 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 3: AI 定价建议 ==================== -->
+                <div x-show="currentStep === 3" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">🎯 最优定价建议</h2>
+                        <p class="text-slate-500">综合分析后的最佳定价方案、敏感度分析与折扣策略</p>
+                    </div>
+
+                    <div class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
+                            <!-- 加载状态 -->
+                            <div x-show="isGenerating" class="p-8 text-center">
+                                <div class="w-16 h-16 mx-auto mb-4 bg-emerald-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="loader-2" class="w-8 h-8 text-emerald-600 animate-spin"></i>
+                                </div>
+                                <p class="text-lg font-bold text-slate-800 mb-2">正在生成定价建议...</p>
+                                <p class="text-sm text-slate-500 mb-4">AI 正在综合三大模型分析结果，推算最优价格点</p>
+                            </div>
+
+                            <!-- 流式内容 -->
+                            <div x-show="pricingAdvice || isGenerating" class="p-6">
+                                <details x-show="reasoningContent" class="mb-4">
+                                    <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-emerald-600">
+                                        🧠 深度思考过程 (点击展开)
+                                    </summary>
+                                    <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm whitespace-pre-wrap text-slate-600 max-h-60 overflow-y-auto"
+                                        x-text="reasoningContent"></div>
+                                </details>
+                                <div class="doc-view prose max-w-none" x-html="renderMarkdown(pricingAdvice)"></div>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div x-show="!isGenerating && pricingAdvice" class="flex justify-between mt-6">
+                            <button @click="goToStep(2)"
+                                class="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition flex items-center gap-2">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回模型分析
+                            </button>
+                            <div class="flex gap-3">
+                                <button @click="startStep3()"
+                                    class="px-5 py-3 bg-white border border-emerald-200 text-emerald-600 rounded-xl hover:bg-emerald-50 transition flex items-center gap-2">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新生成
+                                </button>
+                                <button @click="startStep4()"
+                                    class="px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2">
+                                    生成定价话术 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 4: 定价话术 ==================== -->
+                <div x-show="currentStep === 4" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">🗣️ 定价话术生成</h2>
+                        <p class="text-slate-500">价格说服话术、异议处理、追加销售场景模拟</p>
+                    </div>
+
+                    <div class="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6">
+                        <!-- 侧栏导出 -->
+                        <div x-show="!isGenerating && salesScripts" class="w-full lg:w-56 flex-shrink-0">
+                            <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-4 lg:sticky lg:top-28">
+                                <h4 class="font-bold text-sm text-emerald-700 mb-3 flex items-center gap-2">
+                                    <i data-lucide="download" class="w-4 h-4"></i> 导出全部结果
+                                </h4>
+                                <div class="space-y-2">
+                                    <button @click="exportAllMarkdown()"
+                                        class="w-full text-xs px-3 py-2.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition flex items-center justify-center gap-1.5 font-medium">
+                                        <i data-lucide="file-down" class="w-3.5 h-3.5"></i> 导出 Markdown
+                                    </button>
+                                    <button @click="copyAll()"
+                                        class="w-full text-xs px-3 py-2.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition flex items-center justify-center gap-1.5">
+                                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> 复制全部内容
+                                    </button>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-emerald-100">
+                                    <p class="text-xs text-slate-400 mb-2">快速跳转</p>
+                                    <button @click="goToStep(1)" class="block w-full text-left text-xs px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition">① 产品信息</button>
+                                    <button @click="goToStep(2)" class="block w-full text-left text-xs px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition">② 模型分析</button>
+                                    <button @click="goToStep(3)" class="block w-full text-left text-xs px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition">③ 定价建议</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 文档主体 -->
+                        <div class="flex-grow">
+                            <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
+                                <div x-show="isGenerating" class="p-8 text-center">
+                                    <div class="w-16 h-16 mx-auto mb-4 bg-emerald-50 rounded-full flex items-center justify-center">
+                                        <i data-lucide="loader-2" class="w-8 h-8 text-emerald-600 animate-spin"></i>
+                                    </div>
+                                    <p class="text-lg font-bold text-slate-800 mb-2">正在生成销售话术...</p>
+                                    <p class="text-sm text-slate-500">AI 正在编写定价说服、异议处理和追加销售话术</p>
+                                </div>
+
+                                <div x-show="salesScripts || isGenerating" class="p-8">
+                                    <details x-show="reasoningContent" class="mb-4">
+                                        <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-emerald-600">
+                                            🧠 深度思考过程 (点击展开)
+                                        </summary>
+                                        <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm whitespace-pre-wrap text-slate-600 max-h-60 overflow-y-auto"
+                                            x-text="reasoningContent"></div>
+                                    </details>
+                                    <div class="doc-view" x-html="renderMarkdown(salesScripts)"></div>
+                                </div>
+                            </div>
+
+                            <div x-show="!isGenerating && salesScripts" class="flex justify-between mt-6">
+                                <button @click="goToStep(3)"
+                                    class="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition flex items-center gap-2">
+                                    <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回定价建议
+                                </button>
+                                <button @click="startStep4()"
+                                    class="px-5 py-3 bg-white border border-emerald-200 text-emerald-600 rounded-xl hover:bg-emerald-50 transition flex items-center gap-2">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新生成话术
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ==================== 设置弹窗 ==================== -->
+        <div x-show="showSettings" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-emerald-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border-slate-300 border p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">V4 Pro 模型会显示思考过程，适合深度定价分析</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false" class="px-4 py-2 hover:bg-slate-100 rounded-xl text-sm transition">取消</button>
+                    <button @click="saveConfig()" class="bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 transition">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Toast 提示 ==================== -->
+        <div x-show="toast.show" x-transition:enter="transition ease-out duration-200 transform"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150 transform"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-4"
+            class="fixed bottom-6 right-6 z-[200] bg-slate-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm">
+            <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+            <span x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('pricingApp', () => ({
+                // ==================== 状态管理 ====================
+                currentStep: 1,
+                isGenerating: false,
+                showSettings: false,
+                reasoningContent: '',
+
+                steps: [
+                    { label: '产品信息', icon: 'package' },
+                    { label: '模型分析', icon: 'bar-chart-3' },
+                    { label: '定价建议', icon: 'target' },
+                    { label: '定价话术', icon: 'message-circle' }
+                ],
+
+                toast: { show: false, message: '', icon: 'check' },
+
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                businessGoals: ['市场份额', '利润最大化', '品牌定位', '快速渗透'],
+
+                // ==================== 用户输入 ====================
+                input: {
+                    productName: '',
+                    productDescription: '',
+                    fixedCost: '',
+                    variableCost: '',
+                    competitorPrices: '',
+                    targetCustomer: '',
+                    currentPrice: '',
+                    businessGoal: ''
+                },
+
+                // ==================== 生成结果 ====================
+                pricingModels: null,   // 步骤2: JSON 三大模型
+                pricingAdvice: '',     // 步骤3: 流式定价建议
+                salesScripts: '',      // 步骤4: 流式话术
+
+                // ==================== 计算属性 ====================
+                get canProceedStep1() {
+                    return this.input.productName.trim().length > 1
+                        && this.input.productDescription.trim().length > 10
+                        && (this.input.fixedCost.trim() || this.input.variableCost.trim())
+                        && this.input.targetCustomer.trim().length > 2
+                        && this.input.businessGoal;
+                },
+
+                // ==================== 生命周期 ====================
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                    }
+                    this.refreshIcons();
+                },
+
+                // ==================== 通用方法 ====================
+
+                /** 刷新 Lucide 图标 */
+                refreshIcons() {
+                    setTimeout(() => {
+                        try { lucide.createIcons(); } catch (e) {}
+                    }, 50);
+                },
+
+                /** 显示 Toast 提示 */
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+
+                /** 保存 API 配置（合并策略，不覆盖其他字段） */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'check');
+                },
+
+                /** 渲染 Markdown */
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    try { return marked.parse(text); } catch (e) { return text; }
+                },
+
+                /** 检查是否可以跳转到指定步骤 */
+                canGoToStep(step) {
+                    if (step === 1) return true;
+                    if (step === 2) return this.canProceedStep1;
+                    if (step === 3) return !!this.pricingModels;
+                    if (step === 4) return !!this.pricingAdvice;
+                    return false;
+                },
+
+                /** 跳转步骤 */
+                goToStep(step) {
+                    if (this.isGenerating) return;
+                    this.currentStep = step;
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+                },
+
+                // ==================== 构建上下文 Prompt ====================
+
+                /**
+                 * 将用户输入汇总为供各步骤复用的上下文文本
+                 * @returns {string} 格式化的上下文信息
+                 */
+                getUserContextPrompt() {
+                    let ctx = `## 产品/服务名称
+${this.input.productName}
+
+## 产品/服务描述
+${this.input.productDescription}
+
+## 目标客户群体
+${this.input.targetCustomer}
+
+## 成本结构
+### 固定成本（每月）
+${this.input.fixedCost || '未提供'}
+
+### 可变成本（每单位/每客户）
+${this.input.variableCost || '未提供'}
+
+## 业务目标
+${this.input.businessGoal}`;
+
+                    if (this.input.competitorPrices) {
+                        ctx += `\n\n## 竞争对手价格\n${this.input.competitorPrices}`;
+                    }
+                    if (this.input.currentPrice) {
+                        ctx += `\n\n## 当前价格\n${this.input.currentPrice}`;
+                    }
+                    return ctx;
+                },
+
+                // ==================== API 调用：非流式（JSON） ====================
+
+                /**
+                 * 调用 DeepSeek API（非流式 JSON 模式）
+                 * @param {Array} messages - 消息列表
+                 * @returns {string} AI 返回的文本
+                 */
+                async callAPIJson(messages) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages,
+                            response_format: { type: 'json_object' },
+                            stream: false,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${err}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content || '';
+                },
+
+                // ==================== API 调用：流式 ====================
+
+                /**
+                 * 调用 DeepSeek API（流式），实时推送生成内容
+                 * @param {Array} messages - 消息列表
+                 * @param {Function} onContent - 正文内容回调
+                 * @param {Function} onReasoning - 推理内容回调（V4 Pro 模型专用）
+                 */
+                async callAPIStream(messages, onContent, onReasoning) {
+                    this.reasoningContent = '';
+
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages,
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${err}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content && onReasoning) {
+                                        onReasoning(delta.reasoning_content);
+                                    }
+                                    if (delta.content && onContent) {
+                                        onContent(delta.content);
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                },
+
+                // ==================== 步骤 2: 三大定价模型分析（JSON） ====================
+
+                /**
+                 * 调用 AI 分析成本加成法、竞争定价法、价值定价法
+                 * 以 JSON 结构化输出三个模型的推荐价格区间和优劣势
+                 */
+                async startStep2() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    this.currentStep = 2;
+                    this.isGenerating = true;
+                    this.pricingModels = null;
+                    this.refreshIcons();
+
+                    try {
+                        const systemPrompt = `你是一位资深定价策略顾问，精通各种定价方法论。请根据用户提供的产品信息和成本数据，分别用三种经典定价模型进行分析。
+
+要求：
+1. 每种模型给出具体的推荐价格区间（用人民币）
+2. 分析要基于用户给出的真实成本数据和竞品信息
+3. 优劣势要针对该产品的具体情况，而非泛泛而谈
+4. 输出严格的 JSON 格式
+
+JSON 结构：
+{
+  "models": [
+    {
+      "name": "成本加成定价法",
+      "subtitle": "Cost-Plus Pricing",
+      "priceRange": "¥XXX - ¥XXX/月",
+      "logic": "定价逻辑说明，如何从成本推导出价格...",
+      "pros": ["优势1", "优势2", "优势3"],
+      "cons": ["劣势1", "劣势2", "劣势3"]
+    },
+    {
+      "name": "竞争定价法",
+      "subtitle": "Competitive Pricing",
+      "priceRange": "¥XXX - ¥XXX/月",
+      "logic": "定价逻辑说明，如何参考竞品制定价格...",
+      "pros": ["优势1", "优势2", "优势3"],
+      "cons": ["劣势1", "劣势2", "劣势3"]
+    },
+    {
+      "name": "价值定价法",
+      "subtitle": "Value-Based Pricing",
+      "priceRange": "¥XXX - ¥XXX/月",
+      "logic": "定价逻辑说明，如何从客户获得的价值倒推价格...",
+      "pros": ["优势1", "优势2", "优势3"],
+      "cons": ["劣势1", "劣势2", "劣势3"]
+    }
+  ]
+}`;
+
+                        const userPrompt = `请为以下产品/服务进行三种定价模型分析：
+
+${this.getUserContextPrompt()}
+
+请基于上述信息，分别用成本加成法、竞争定价法和价值定价法进行分析，输出 JSON 格式。`;
+
+                        const result = await this.callAPIJson([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]);
+
+                        const parsed = JSON.parse(result);
+                        this.pricingModels = parsed.models || [parsed];
+                        this.showToast('定价模型分析完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[PricingStrategy] 模型分析失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                        this.currentStep = 1;
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 步骤 3: AI 定价建议（流式） ====================
+
+                /**
+                 * 综合三大模型分析结果，给出最终定价建议
+                 * 包含：最优价格点、价格敏感度分析、折扣策略、组合定价方案
+                 */
+                async startStep3() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.currentStep = 3;
+                    this.isGenerating = true;
+                    this.pricingAdvice = '';
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+
+                    try {
+                        const modelsSummary = this.pricingModels ? this.pricingModels.map(m =>
+                            `- ${m.name}：推荐 ${m.priceRange}，逻辑：${m.logic}`
+                        ).join('\n') : '';
+
+                        const systemPrompt = `你是一位资深定价策略专家。请基于三大定价模型的分析结果，给出综合定价建议。
+
+输出要求（Markdown 格式）：
+
+## 1. 最优定价建议
+- 推荐的具体价格点或价格体系（可分层级/版本）
+- 详细的定价理由（结合成本、竞品、客户价值三方面论证）
+
+## 2. 价格敏感度分析
+- 价格弹性估计（涨价/降价 X% 对销量的预估影响）
+- 不同价格点下的预估营收和利润对比（用表格呈现）
+- 心理价格阈值分析
+
+## 3. 折扣策略
+- 推荐的折扣方案（新客优惠、年付折扣、批量优惠等）
+- 折扣力度建议和底线
+- 季节性/节假日促销策略
+
+## 4. 组合定价方案
+- 产品线定价（基础版/专业版/企业版等分层方案）
+- 捆绑销售建议
+- 增值服务定价
+
+## 5. 定价节奏建议
+- 上市首发定价策略
+- 提价节奏和时机
+- 不同市场阶段的价格调整路径
+
+请用中文输出，数据尽量具体，可用表格辅助说明。`;
+
+                        const userPrompt = `请综合分析后给出最终定价建议：
+
+${this.getUserContextPrompt()}
+
+## 三大定价模型分析结果
+${modelsSummary}
+
+请给出最终的定价推荐方案。`;
+
+                        await this.callAPIStream(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            (content) => { this.pricingAdvice += content; },
+                            (reasoning) => { this.reasoningContent += reasoning; }
+                        );
+
+                        this.showToast('定价建议生成完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[PricingStrategy] 定价建议生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 步骤 4: 定价话术（流式） ====================
+
+                /**
+                 * 生成销售场景话术：价格说服、异议处理、追加销售
+                 */
+                async startStep4() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.currentStep = 4;
+                    this.isGenerating = true;
+                    this.salesScripts = '';
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+
+                    try {
+                        const modelsSummary = this.pricingModels ? this.pricingModels.map(m =>
+                            `- ${m.name}：推荐 ${m.priceRange}`
+                        ).join('\n') : '';
+
+                        const systemPrompt = `你是一位资深销售培训专家，擅长设计定价话术和销售脚本。请根据产品信息和定价方案，生成完整的销售话术库。
+
+输出要求（Markdown 格式）：
+
+## 一、价格说服话术
+### 场景1：客户首次询价
+- 开场白话术
+- 价值锚定话术（先说价值，再说价格）
+- 与竞品价格对比话术
+
+### 场景2：客户质疑"太贵了"
+- 拆解成本话术（平摊到每天/每次使用的成本）
+- ROI 对比话术（花 X 省 Y）
+- 情感说服话术
+
+### 场景3：客户要求打折
+- 守住底线的优雅回应
+- 用增值服务代替折扣的话术
+- 限时优惠引导成交话术
+
+## 二、异议处理话术
+针对常见价格异议，提供：
+- 异议内容 → 应对话术 → 引导下一步
+
+至少覆盖 5 种常见异议场景。
+
+## 三、追加销售话术
+### 升级销售（Upsell）
+- 从基础版引导到高级版的话术
+- 功能亮点对比话术
+
+### 交叉销售（Cross-sell）
+- 推荐关联产品/服务的话术
+- 组合优惠引导话术
+
+### 续费/复购话术
+- 到期前续费引导
+- 老客户专属优惠话术
+
+## 四、话术模板（可直接复用）
+提供 3-5 个完整的对话场景模板，包含销售人员和客户的完整对话。
+
+请用中文输出，话术要自然真实、有说服力，避免生硬推销感。`;
+
+                        const userPrompt = `请为以下产品生成完整的销售定价话术：
+
+${this.getUserContextPrompt()}
+
+## 定价方案参考
+${modelsSummary}
+
+## 已生成的定价建议（摘要）
+${this.pricingAdvice ? this.pricingAdvice.substring(0, 800) + '...' : '暂无'}
+
+请生成实用的销售话术和对话模板。`;
+
+                        await this.callAPIStream(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            (content) => { this.salesScripts += content; },
+                            (reasoning) => { this.reasoningContent += reasoning; }
+                        );
+
+                        this.showToast('定价话术生成完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[PricingStrategy] 话术生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 导出功能 ====================
+
+                /**
+                 * 将全部分析结果整合为 Markdown 并下载
+                 */
+                exportAllMarkdown() {
+                    let md = `# 定价策略分析报告：${this.input.productName}\n\n`;
+                    md += `> 生成时间：${new Date().toLocaleString('zh-CN')}\n\n`;
+                    md += `---\n\n`;
+
+                    md += `## 产品信息\n\n`;
+                    md += `- **名称**：${this.input.productName}\n`;
+                    md += `- **描述**：${this.input.productDescription}\n`;
+                    md += `- **目标客户**：${this.input.targetCustomer}\n`;
+                    md += `- **业务目标**：${this.input.businessGoal}\n`;
+                    if (this.input.currentPrice) md += `- **当前价格**：${this.input.currentPrice}\n`;
+                    md += `\n### 成本结构\n`;
+                    md += `**固定成本**：${this.input.fixedCost || '未提供'}\n\n`;
+                    md += `**可变成本**：${this.input.variableCost || '未提供'}\n\n`;
+                    if (this.input.competitorPrices) {
+                        md += `### 竞争对手价格\n${this.input.competitorPrices}\n\n`;
+                    }
+
+                    md += `---\n\n`;
+
+                    if (this.pricingModels) {
+                        md += `## 三大定价模型分析\n\n`;
+                        this.pricingModels.forEach((m, i) => {
+                            md += `### ${i + 1}. ${m.name}（${m.subtitle}）\n\n`;
+                            md += `**推荐价格区间**：${m.priceRange}\n\n`;
+                            md += `**定价逻辑**：${m.logic}\n\n`;
+                            md += `**优势**：\n`;
+                            m.pros.forEach(p => { md += `- ✅ ${p}\n`; });
+                            md += `\n**劣势**：\n`;
+                            m.cons.forEach(c => { md += `- ⚠️ ${c}\n`; });
+                            md += `\n`;
+                        });
+                        md += `---\n\n`;
+                    }
+
+                    if (this.pricingAdvice) {
+                        md += `## 综合定价建议\n\n`;
+                        md += this.pricingAdvice + `\n\n---\n\n`;
+                    }
+
+                    if (this.salesScripts) {
+                        md += `## 定价话术\n\n`;
+                        md += this.salesScripts + `\n`;
+                    }
+
+                    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `定价策略分析_${this.input.productName}_${new Date().toISOString().slice(0, 10)}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showToast('Markdown 导出成功', 'download');
+                },
+
+                /**
+                 * 复制全部分析结果到剪贴板
+                 */
+                async copyAll() {
+                    let text = `定价策略分析报告：${this.input.productName}\n\n`;
+
+                    if (this.pricingModels) {
+                        text += `【三大定价模型】\n`;
+                        this.pricingModels.forEach(m => {
+                            text += `${m.name}：${m.priceRange}\n`;
+                        });
+                        text += `\n`;
+                    }
+
+                    if (this.pricingAdvice) {
+                        text += `【综合定价建议】\n${this.pricingAdvice}\n\n`;
+                    }
+
+                    if (this.salesScripts) {
+                        text += `【定价话术】\n${this.salesScripts}\n`;
+                    }
+
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        this.showToast('已复制到剪贴板', 'copy');
+                    } catch (err) {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        this.showToast('已复制到剪贴板', 'copy');
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+</html>

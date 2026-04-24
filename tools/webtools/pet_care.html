@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宠物护理 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-amber-50 min-h-screen font-sans text-slate-800" x-data="petApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-amber-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-amber-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-orange-600">
+                    🐾 宠物护理
+                </h1>
+            </div>
+            
+            <button @click="showAddPet = true" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 text-sm font-medium">
+                <i class="fa-solid fa-plus"></i>
+                <span>添加宠物</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Pet Selector (Tabs) -->
+        <div class="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar" x-show="pets.length > 0">
+            <template x-for="pet in pets" :key="pet.id">
+                <button @click="activePetId = pet.id" 
+                        class="flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap"
+                        :class="activePetId === pet.id ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'">
+                    <span class="text-lg" x-text="pet.emoji || '🐶'"></span>
+                    <span class="font-bold text-sm" x-text="pet.name"></span>
+                </button>
+            </template>
+        </div>
+
+        <!-- Active Pet View -->
+        <div x-show="activePet" class="space-y-6">
+            
+            <!-- Quick Info Card -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-amber-100 flex items-start justify-between relative overflow-hidden">
+                <div class="relative z-10">
+                    <div class="text-amber-500 font-bold uppercase tracking-wider text-xs mb-1" x-text="activePet.breed || '未知品种'"></div>
+                    <h2 class="text-3xl font-bold mb-2 flex items-center gap-2">
+                        <span x-text="activePet.name"></span>
+                        <span class="text-2xl" x-text="activePet.gender === 'male' ? '♂' : '♀'"></span>
+                    </h2>
+                    <div class="flex items-center gap-4 text-sm text-slate-500">
+                        <span class="bg-slate-100 px-2 py-1 rounded-md" x-text="getAge(activePet.birth)"></span>
+                        <span class="bg-slate-100 px-2 py-1 rounded-md" x-text="activePet.weight ? activePet.weight + ' kg' : '未知体重'"></span>
+                    </div>
+                </div>
+                <div class="text-6xl cursor-pointer hover:scale-110 transition-transform" @click="editPet(activePet.id)" title="编辑资料">
+                    <span x-text="activePet.emoji || '🐾'"></span>
+                </div>
+                <!-- Delete Btn -->
+                <button @click="deletePet(activePet.id)" class="absolute top-4 right-4 text-slate-300 hover:text-rose-500 transition-colors">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Records: Vaccines & Meds -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-[400px]">
+                    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-blue-50/50">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-syringe text-blue-500"></i>
+                            疫苗与驱虫
+                        </h3>
+                        <button @click="showAddRecord = true" class="text-blue-500 hover:bg-blue-100 p-1 rounded transition-colors">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                         <template x-for="record in activePet.records" :key="record.id">
+                            <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 relative group">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" 
+                                     :class="record.type === 'vaccine' ? 'bg-blue-100 text-blue-500' : 'bg-emerald-100 text-emerald-500'">
+                                    <i :class="record.type === 'vaccine' ? 'fa-solid fa-shield-halved' : 'fa-solid fa-pills'"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-bold text-sm text-slate-700 truncate" x-text="record.name"></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">
+                                        <span x-text="record.date"></span>
+                                        <span x-show="record.nextDate" class="text-orange-500 ml-1" x-text="'(下次: ' + record.nextDate + ')'"></span>
+                                    </div>
+                                </div>
+                                <button @click="deleteRecord(activePet.id, record.id)" class="bg-white p-1.5 rounded-md shadow-sm opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all absolute right-2 top-2">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </button>
+                            </div>
+                         </template>
+                         <div x-show="!activePet.records.length" class="text-center text-slate-400 py-8 text-sm">暂无记录</div>
+                    </div>
+                </div>
+
+                <!-- Event Log (Feeding, Walk, weight, etc) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-[400px]">
+                    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-orange-50/50">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-list text-orange-500"></i>
+                            日常记录
+                        </h3>
+                        <div class="flex gap-2">
+                             <button @click="quickLog('feeding')" class="text-xs bg-white border border-slate-200 px-2 py-1 rounded hover:border-orange-300 text-slate-600">喂食</button>
+                             <button @click="quickLog('weight')" class="text-xs bg-white border border-slate-200 px-2 py-1 rounded hover:border-orange-300 text-slate-600">称重</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                        <template x-for="log in sortedLogs" :key="log.id">
+                            <div class="flex gap-3 relative before:content-[''] before:absolute before:left-[19px] before:top-8 before:bottom-[-20px] before:w-0.5 before:bg-slate-100 last:before:hidden">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 z-10 bg-white border-2 border-slate-100 text-slate-400 text-xs font-bold leading-none flex-col">
+                                    <span x-text="log.date.substring(5,7)"></span>
+                                    <span x-text="log.date.substring(8,10)"></span>
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-3 flex-1 mb-2">
+                                    <div class="flex justify-between items-start">
+                                        <div class="font-bold text-sm text-slate-700" x-text="getLogTitle(log.type)"></div>
+                                        <div class="text-[10px] text-slate-400" x-text="log.time"></div>
+                                    </div>
+                                    <div class="text-xs text-slate-500 mt-1" x-text="log.note"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="!activePet.logs.length" class="text-center text-slate-400 py-8 text-sm">记录下它的点点滴滴吧</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="!activePet && pets.length === 0" class="text-center py-20">
+            <div class="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 text-amber-500">
+                <i class="fa-solid fa-paw text-5xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">还没有添加宠物</h3>
+            <p class="text-slate-500 mt-2 mb-8">开始记录毛孩子的成长吧！</p>
+            <button @click="showAddPet = true" class="px-6 py-3 bg-amber-500 text-white rounded-xl font-medium shadow-lg shadow-amber-500/30">
+                添加第一只宠物
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Add/Edit Pet Modal -->
+    <div x-show="showAddPet" x-cloak class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.away="showAddPet = false; resetForm()">
+            <h3 class="text-lg font-bold text-slate-900 mb-4" x-text="editingPetId ? '编辑宠物' : '添加宠物'"></h3>
+            <div class="space-y-3">
+                <div class="flex gap-4">
+                    <div class="w-16">
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Emoji</label>
+                        <input type="text" x-model="form.emoji" class="w-full text-center rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs font-medium text-slate-500 mb-1">名字</label>
+                        <input type="text" x-model="form.name" class="w-full rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">品种</label>
+                    <input type="text" x-model="form.breed" class="w-full rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">生日 (可选)</label>
+                        <input type="date" x-model="form.birth" class="w-full rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">性别</label>
+                        <select x-model="form.gender" class="w-full rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500 bg-white text-sm">
+                             <option value="male">弟弟 ♂</option>
+                             <option value="female">妹妹 ♀</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                     <label class="block text-xs font-medium text-slate-500 mb-1">当前体重 (kg)</label>
+                     <input type="number" step="0.1" x-model="form.weight" class="w-full rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500">
+                </div>
+            </div>
+            <div class="mt-6 flex gap-3">
+                <button @click="showAddPet = false; resetForm()" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium hover:bg-slate-200">取消</button>
+                <button @click="savePet()" 
+                        :disabled="!form.name"
+                        class="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-medium hover:bg-amber-600 shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:shadow-none">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Record Modal -->
+    <div x-show="showAddRecord" x-cloak class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.away="showAddRecord = false">
+            <h3 class="text-lg font-bold text-slate-900 mb-4">添加健康记录</h3>
+            <div class="space-y-3">
+                <div>
+                     <label class="block text-xs font-medium text-slate-500 mb-1">类型</label>
+                     <div class="flex gap-2">
+                         <button @click="recForm.type = 'vaccine'" class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors" :class="recForm.type === 'vaccine' ? 'bg-blue-50 border-blue-500 text-blue-600' : 'border-slate-200 text-slate-500'">疫苗</button>
+                         <button @click="recForm.type = 'deworm'" class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors" :class="recForm.type === 'deworm' ? 'bg-emerald-50 border-emerald-500 text-emerald-600' : 'border-slate-200 text-slate-500'">驱虫</button>
+                     </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">名称 (如: 狂犬、内外驱)</label>
+                    <input type="text" x-model="recForm.name" class="w-full rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                         <label class="block text-xs font-medium text-slate-500 mb-1">接种日期</label>
+                         <input type="date" x-model="recForm.date" class="w-full rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">下次日期 (可选)</label>
+                        <input type="date" x-model="recForm.nextDate" class="w-full rounded-xl border border-slate-200 p-2 outline-none focus:border-amber-500 text-sm">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex gap-3">
+                <button @click="showAddRecord = false" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium hover:bg-slate-200">取消</button>
+                <button @click="addRecord()" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-medium hover:bg-amber-600 shadow-lg shadow-amber-500/20">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function petApp() {
+            return {
+                showAddPet: false,
+                showAddRecord: false,
+                editingPetId: null,
+                pets: [],
+                activePetId: null,
+                
+                form: { name: '', emoji: '🐶', breed: '', birth: '', gender: 'male', weight: '' },
+                recForm: { type: 'vaccine', name: '', date: new Date().toISOString().split('T')[0], nextDate: '' },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_pet_care');
+                    if (saved) {
+                        this.pets = JSON.parse(saved);
+                        if (this.pets.length > 0) this.activePetId = this.pets[0].id;
+                    } 
+                    
+                    this.$watch('pets', () => {
+                        localStorage.setItem('webtools_pet_care', JSON.stringify(this.pets));
+                    }, { deep: true });
+
+                    // init
+                },
+
+                get activePet() {
+                    return this.pets.find(p => p.id === this.activePetId);
+                },
+
+                resetForm() {
+                    this.form = { name: '', emoji: '🐶', breed: '', birth: '', gender: 'male', weight: '' };
+                    this.editingPetId = null;
+                },
+
+                savePet() {
+                    if (this.editingPetId) {
+                        const idx = this.pets.findIndex(p => p.id === this.editingPetId);
+                        if (idx !== -1) {
+                            this.pets[idx] = { ...this.pets[idx], ...this.form };
+                        }
+                    } else {
+                        const newPet = {
+                            id: Date.now(),
+                            ...this.form,
+                            records: [],
+                            logs: []
+                        };
+                        this.pets.push(newPet);
+                        this.activePetId = newPet.id;
+                    }
+                    this.showAddPet = false;
+                    this.resetForm();
+                    this.resetForm();
+                },
+                
+                editPet(id) {
+                    const pet = this.pets.find(p => p.id === id);
+                    if (pet) {
+                        this.form = {
+                            name: pet.name,
+                            emoji: pet.emoji,
+                            breed: pet.breed,
+                            birth: pet.birth,
+                            gender: pet.gender,
+                            weight: pet.weight
+                        };
+                        this.editingPetId = id;
+                        this.showAddPet = true;
+                    }
+                },
+
+                deletePet(id) {
+                    if (confirm('确定删除这只宠物的所有资料吗？')) {
+                        this.pets = this.pets.filter(p => p.id !== id);
+                        if (this.activePetId === id && this.pets.length > 0) {
+                            this.activePetId = this.pets[0].id;
+                        } else if (this.pets.length === 0) {
+                            this.activePetId = null;
+                        }
+                    }
+                },
+                
+                getAge(birth) {
+                    if (!birth) return '年龄未知';
+                    const b = new Date(birth);
+                    const now = new Date();
+                    const diff = now - b;
+                    const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+                    const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30.44));
+                    
+                    if (years > 0) return years + ' 岁';
+                    if (months > 0) return months + ' 个月';
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    return days + ' 天';
+                },
+
+                addRecord() {
+                    if (!this.activePet) return;
+                    this.activePet.records.push({
+                        id: Date.now(),
+                        ...this.recForm
+                    });
+                    this.recForm = { type: 'vaccine', name: '', date: new Date().toISOString().split('T')[0], nextDate: '' };
+                    this.showAddRecord = false;
+                    this.showAddRecord = false;
+                },
+
+                deleteRecord(petId, recId) {
+                    const pet = this.pets.find(p => p.id === petId);
+                    if (pet) {
+                        pet.records = pet.records.filter(r => r.id !== recId);
+                    }
+                },
+
+                quickLog(type) {
+                    if (!this.activePet) return;
+                    const logName = type === 'feeding' ? '喂食' : '称重';
+                    const val = prompt(`记录${logName}详情 (可选):`, type === 'weight' ? this.activePet.weight + 'kg' : '正常量');
+                    
+                    if (val !== null) {
+                        const now = new Date();
+                        this.activePet.logs.unshift({
+                            id: Date.now(),
+                            type: type, // 'feeding', 'weight', etc
+                            note: val,
+                            date: now.toISOString().split('T')[0],
+                            time: now.toTimeString().substring(0,5)
+                        });
+                        
+                        // If weight, update profile weight
+                        if (type === 'weight') {
+                            const w = parseFloat(val);
+                            if (!isNaN(w)) this.activePet.weight = w;
+                        }
+                        
+                        // icons auto update
+                    }
+                },
+
+                get sortedLogs() {
+                    if (!this.activePet) return [];
+                    return this.activePet.logs; // Already prepending
+                },
+
+                getLogTitle(type) {
+                    const map = { feeding: '吃饭', weight: '称重', walk: '遛弯' };
+                    return map[type] || '记录';
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_pet_care.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

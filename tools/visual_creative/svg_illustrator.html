@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG 插画生成器 | 视觉创意</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+
+        /* 靛蓝渐变页面背景 */
+        body {
+            background: linear-gradient(160deg, #e0e7ff 0%, #c7d2fe 28%, #a5b4fc 55%, #818cf8 85%, #6366f1 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 预览区设计软件风格网格 */
+        .preview-grid-bg {
+            background-color: #f8fafc;
+            background-image:
+                linear-gradient(rgba(99, 102, 241, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+
+        /* 代码区行号列 */
+        .line-num-col {
+            user-select: none;
+            text-align: right;
+            color: #64748b;
+            border-right: 1px solid #334155;
+            padding-right: 0.75rem;
+            min-width: 2.75rem;
+            line-height: 1.5;
+            font-size: 0.75rem;
+        }
+
+        .code-line {
+            line-height: 1.5;
+            font-size: 0.75rem;
+            min-height: 1.125rem;
+        }
+
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.55; }
+        }
+        .generating-hint {
+            animation: pulse-soft 1.2s ease-in-out infinite;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.2); }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div x-data="svgIllustratorApp()" x-init="init()" x-cloak class="min-h-screen pb-10">
+
+        <!-- 顶部导航：左侧返回 ../../index.html -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-200/80 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i data-lucide="pen-tool" class="text-indigo-600 h-6 w-6"></i>
+                    <span class="font-bold text-xl text-slate-900">SVG 插画生成器</span>
+                </div>
+                <button type="button" @click="showSettings = true"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">API 设置</span>
+                </button>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+            <!-- 输入区 -->
+            <section class="bg-white/90 backdrop-blur rounded-2xl border border-indigo-200/60 shadow-lg shadow-indigo-500/10 p-5 sm:p-6">
+                <h2 class="text-sm font-bold text-indigo-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="wand-2" class="w-4 h-4 text-indigo-600"></i>
+                    描述你的插画
+                </h2>
+                <label class="block text-xs font-medium text-slate-500 mb-1.5">插画描述</label>
+                <textarea
+                    x-model="description"
+                    rows="3"
+                    placeholder="例如：一只戴围巾的猫、日出时的富士山、一杯冒烟的咖啡……"
+                    class="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y min-h-[88px]"
+                ></textarea>
+
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1.5">风格</label>
+                        <select x-model="styleKey"
+                            class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="flat">扁平</option>
+                            <option value="line">线稿</option>
+                            <option value="pixel">像素</option>
+                            <option value="cartoon">卡通</option>
+                            <option value="geometric">几何</option>
+                            <option value="minimal">极简</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1.5">颜色主题</label>
+                        <select x-model="colorTheme"
+                            class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="warm">暖色</option>
+                            <option value="cool">冷色</option>
+                            <option value="colorful">彩色</option>
+                            <option value="bw">黑白</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-5 flex flex-wrap items-center gap-3">
+                    <button type="button"
+                        @click="generate()"
+                        :disabled="isLoading || !description.trim()"
+                        class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-600/30 transition">
+                        <i data-lucide="sparkles" class="w-5 h-5" :class="{ 'animate-spin': isLoading }"></i>
+                        <span x-text="isLoading ? '生成中…' : '生成插画'"></span>
+                    </button>
+                    <p x-show="errorMsg" class="text-sm text-rose-600" x-text="errorMsg"></p>
+                </div>
+
+                <!-- V4 Pro 推理过程（若有） -->
+                <details x-show="reasoningBuffer" class="mt-4 text-sm">
+                    <summary class="cursor-pointer text-slate-600 font-medium">深度思考过程（可展开）</summary>
+                    <pre class="mt-2 p-3 bg-slate-50 rounded-lg text-slate-600 whitespace-pre-wrap max-h-40 overflow-y-auto" x-text="reasoningBuffer"></pre>
+                </details>
+            </section>
+
+            <!-- 左右分栏：代码 + 预览 -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 min-h-[420px] lg:min-h-[520px]">
+
+                <!-- 左侧：SVG 源码 + 行号 -->
+                <div class="flex flex-col rounded-2xl border border-slate-700 overflow-hidden shadow-xl bg-slate-900 min-h-[320px] lg:min-h-0">
+                    <div class="px-4 py-2.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between gap-2">
+                        <span class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                            <i data-lucide="code-2" class="w-4 h-4 text-indigo-400"></i>
+                            SVG 源码
+                        </span>
+                        <span class="text-[10px] text-slate-500 font-mono generating-hint" x-show="isLoading">流式输出中…</span>
+                    </div>
+                    <div class="flex flex-1 min-h-0 overflow-hidden">
+                        <!-- 行号 -->
+                        <div class="line-num-col py-3 pl-2 shrink-0 overflow-hidden">
+                            <template x-for="(n, idx) in lineNumbers" :key="idx">
+                                <div class="code-line font-mono" x-text="n"></div>
+                            </template>
+                        </div>
+                        <!-- 代码文本（只读展示流式结果） -->
+                        <pre class="flex-1 py-3 pr-3 overflow-auto font-mono text-emerald-300/95 whitespace-pre-wrap break-all m-0"
+                            x-text="displayCode"></pre>
+                    </div>
+                    <!-- 操作按钮 -->
+                    <div class="p-3 bg-slate-800 border-t border-slate-700 flex flex-wrap gap-2">
+                        <button type="button" @click="copySvg()"
+                            :disabled="!canExport"
+                            class="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-700 text-slate-100 hover:bg-slate-600 disabled:opacity-40 flex items-center gap-1.5">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> 复制代码
+                        </button>
+                        <button type="button" @click="downloadSvg()"
+                            :disabled="!canExport"
+                            class="px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 flex items-center gap-1.5">
+                            <i data-lucide="file-code" class="w-3.5 h-3.5"></i> 下载 SVG
+                        </button>
+                        <button type="button" @click="downloadPng()"
+                            :disabled="!canExport"
+                            class="px-3 py-2 rounded-lg text-xs font-semibold bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40 flex items-center gap-1.5">
+                            <i data-lucide="image" class="w-3.5 h-3.5"></i> 下载 PNG
+                        </button>
+                        <button type="button" @click="regenerate()"
+                            :disabled="isLoading || !description.trim()"
+                            class="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-500 text-slate-200 hover:bg-slate-700 disabled:opacity-40 flex items-center gap-1.5">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 再来一个
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 右侧：预览（网格背景） -->
+                <div class="flex flex-col rounded-2xl border border-indigo-200/80 overflow-hidden shadow-lg bg-white min-h-[320px] lg:min-h-0">
+                    <div class="px-4 py-2.5 bg-indigo-50/90 border-b border-indigo-100 flex items-center justify-between">
+                        <span class="text-xs font-semibold text-indigo-900 flex items-center gap-2">
+                            <i data-lucide="eye" class="w-4 h-4 text-indigo-600"></i>
+                            实时预览
+                        </span>
+                        <span class="text-[10px] text-indigo-400" x-show="!previewHtml && !isLoading">等待生成</span>
+                    </div>
+                    <div class="preview-grid-bg flex-1 flex items-center justify-center p-6 min-h-[280px] relative">
+                        <div x-show="isLoading && !previewHtml" class="text-indigo-400 text-sm generating-hint">正在绘制矢量图形…</div>
+                        <!-- 使用 x-html 渲染解析后的 SVG（仅来自本工具 AI 输出，请勿粘贴不可信内容） -->
+                        <div class="max-w-full max-h-[min(420px,55vh)] w-full flex items-center justify-center [&>svg]:max-w-full [&>svg]:max-h-[min(400px,50vh)] [&>svg]:drop-shadow-lg"
+                            x-show="previewHtml"
+                            x-html="previewHtml"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 历史记录：最近 5 条缩略图 -->
+            <section class="bg-white/90 backdrop-blur rounded-2xl border border-indigo-200/60 shadow p-5">
+                <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="history" class="w-4 h-4 text-indigo-600"></i>
+                    最近生成（最多 5 条）
+                </h3>
+                <div x-show="!history.length" class="text-sm text-slate-500">暂无记录，生成后会显示缩略图，点击可恢复。</div>
+                <div class="flex flex-wrap gap-3">
+                    <template x-for="(item, idx) in history" :key="item.id">
+                        <button type="button"
+                            @click="restoreHistory(item)"
+                            class="group relative w-20 h-20 rounded-xl border-2 border-slate-200 hover:border-indigo-400 overflow-hidden bg-slate-50 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <img :src="item.thumb" alt="历史缩略" class="w-full h-full object-contain p-1" />
+                            <span class="absolute bottom-0 inset-x-0 bg-black/50 text-[9px] text-white py-0.5 opacity-0 group-hover:opacity-100 transition"
+                                x-text="'#' + (idx + 1)"></span>
+                        </button>
+                    </template>
+                </div>
+            </section>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast"
+            x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-4 py-2 rounded-xl bg-slate-900 text-white text-sm shadow-xl"
+            x-text="toast"></div>
+
+        <!-- API 设置弹窗：合并写入 global_llm_config -->
+        <div x-show="showSettings" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" x-cloak>
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-900 mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                            placeholder="sk-..." />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100">取消</button>
+                    <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * SVG 插画生成器 — Alpine 根组件
+         * 负责：DeepSeek 流式拉取、SVG 提取与不完整预览修复、历史与导出
+         */
+        function svgIllustratorApp() {
+            const HISTORY_KEY = 'svg_illustrator_history_v1';
+            const MAX_HISTORY = 5;
+
+            return {
+                description: '',
+                styleKey: 'flat',
+                colorTheme: 'warm',
+                /** 模型原始流式累积（可能含 markdown） */
+                streamRaw: '',
+                /** 左侧展示用：去掉围栏后的 SVG 片段 */
+                displayCode: '',
+                /** 右侧预览：最后一次校验通过的完整 SVG 字符串 */
+                previewHtml: '',
+                /** 流式过程中上一次可用的预览 DOM 字符串 */
+                lastValidSvg: '',
+                reasoningBuffer: '',
+                isLoading: false,
+                errorMsg: '',
+                toast: '',
+                showSettings: false,
+                /** 与项目统一的 LLM 配置；禁止整对象覆盖 localStorage */
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+                history: [],
+
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        } catch (e) { console.warn('读取 global_llm_config 失败', e); }
+                    }
+                    this.loadHistory();
+                    this.$nextTick(() => {
+                        if (window.lucide) lucide.createIcons();
+                    });
+                },
+
+                /** 行号数组：与 displayCode 同步 */
+                get lineNumbers() {
+                    const lines = this.displayCode.length ? this.displayCode.split('\n') : [''];
+                    return lines.map((_, i) => i + 1);
+                },
+
+                /** 是否可导出（已有合法闭合 SVG） */
+                get canExport() {
+                    const s = this.getFinalSvgString();
+                    return !!s && /<\/svg>\s*$/i.test(s.trim());
+                },
+
+                /** 刷新 Lucide 图标（DOM 更新后） */
+                refreshIcons() {
+                    this.$nextTick(() => {
+                        if (window.lucide) lucide.createIcons();
+                    });
+                },
+
+                showToast(msg) {
+                    this.toast = msg;
+                    clearTimeout(this._toastT);
+                    this._toastT = setTimeout(() => { this.toast = ''; }, 2200);
+                },
+
+                /**
+                 * 保存 API 配置：合并写入 global_llm_config
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存');
+                    this.refreshIcons();
+                },
+
+                loadHistory() {
+                    try {
+                        const raw = localStorage.getItem(HISTORY_KEY);
+                        this.history = raw ? JSON.parse(raw) : [];
+                    } catch (e) {
+                        this.history = [];
+                    }
+                },
+
+                /**
+                 * 将当前 SVG 写入历史（含异步缩略图）
+                 * @param {string} svgString 完整 SVG
+                 */
+                async saveHistoryItem(svgString) {
+                    if (!svgString || !/<svg/i.test(svgString)) return;
+                    const thumb = await this.svgToThumbnailDataUrl(svgString, 160);
+                    const item = {
+                        id: Date.now(),
+                        thumb: thumb || '',
+                        svg: svgString
+                    };
+                    const next = [item, ...this.history.filter(h => h.svg !== svgString)].slice(0, MAX_HISTORY);
+                    this.history = next;
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+                },
+
+                restoreHistory(item) {
+                    if (!item || !item.svg) return;
+                    this.displayCode = item.svg;
+                    this.streamRaw = item.svg;
+                    this.lastValidSvg = item.svg;
+                    this.previewHtml = item.svg;
+                    this.showToast('已恢复历史插画');
+                    this.refreshIcons();
+                },
+
+                /**
+                 * 将 SVG 转为缩略图 data URL（用于历史记录）
+                 * @param {string} svgStr 完整 SVG
+                 * @param {number} size 画布边长
+                 */
+                svgToThumbnailDataUrl(svgStr, size) {
+                    try {
+                        const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        const img = new Image();
+                        return new Promise((resolve) => {
+                            img.onload = () => {
+                                const c = document.createElement('canvas');
+                                c.width = size;
+                                c.height = size;
+                                const ctx = c.getContext('2d');
+                                ctx.fillStyle = '#f1f5f9';
+                                ctx.fillRect(0, 0, size, size);
+                                ctx.drawImage(img, 0, 0, size, size);
+                                const data = c.toDataURL('image/png');
+                                URL.revokeObjectURL(url);
+                                resolve(data);
+                            };
+                            img.onerror = () => {
+                                URL.revokeObjectURL(url);
+                                resolve('');
+                            };
+                            img.src = url;
+                        });
+                    } catch (e) {
+                        return Promise.resolve('');
+                    }
+                },
+
+                /**
+                 * 从模型输出中提取 <svg ... 起始的片段，并去掉 markdown 围栏
+                 */
+                extractSvgFragment(raw) {
+                    if (!raw) return '';
+                    let t = raw
+                        .replace(/^\s*```(?:svg|xml)?\s*/i, '')
+                        .replace(/\s*```\s*$/g, '')
+                        .replace(/```(?:svg|xml)?/gi, '');
+                    const idx = t.search(/<svg[\s>]/i);
+                    if (idx >= 0) t = t.slice(idx);
+                    return t.trim();
+                },
+
+                /**
+                 * 尝试把未闭合的流式 SVG 补全为可解析文档（仅用于预览）
+                 * @param {string} fragment 从 <svg 开始的片段
+                 */
+                tryCloseForPreview(fragment) {
+                    if (!fragment || !/<svg/i.test(fragment)) return '';
+                    let s = fragment.trim();
+                    if (!/<\/svg>\s*$/i.test(s)) s += '</svg>';
+                    return s;
+                },
+
+                /**
+                 * 使用 DOMParser 校验 SVG；成功则返回字符串，失败返回 null
+                 */
+                parseSvgOrNull(svgString) {
+                    try {
+                        const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+                        const root = doc.documentElement;
+                        const err = doc.querySelector('parsererror');
+                        if (err || !root || root.nodeName.toLowerCase() !== 'svg') return null;
+                        return root.outerHTML;
+                    } catch (e) {
+                        return null;
+                    }
+                },
+
+                /**
+                 * 流式更新：刷新 displayCode 与预览
+                 */
+                updatePreviewFromStream() {
+                    const frag = this.extractSvgFragment(this.streamRaw);
+                    this.displayCode = frag || this.streamRaw.trim();
+
+                    const closed = this.tryCloseForPreview(frag);
+                    const valid = closed ? this.parseSvgOrNull(closed) : null;
+                    if (valid) {
+                        this.lastValidSvg = valid;
+                        this.previewHtml = valid;
+                    } else if (this.lastValidSvg) {
+                        /* 解析失败时沿用上一帧，避免预览闪烁清空 */
+                        this.previewHtml = this.lastValidSvg;
+                    }
+                },
+
+                /** 取当前可导出的最终 SVG（优先最后合法版本） */
+                getFinalSvgString() {
+                    const frag = this.extractSvgFragment(this.streamRaw);
+                    const closed = this.tryCloseForPreview(frag);
+                    const valid = closed ? this.parseSvgOrNull(closed) : null;
+                    return valid || this.lastValidSvg || '';
+                },
+
+                getStyleHint() {
+                    const map = {
+                        flat: '扁平矢量：简洁色块、少描边，层次用叠色区分',
+                        line: '线稿插画：以描边为主，填充可留白或淡色，线条流畅',
+                        pixel: '像素风：用小矩形网格模拟像素块，整体仍放在 400×400 矢量画布内',
+                        cartoon: '卡通：圆润造型、适度夸张、友好配色',
+                        geometric: '几何抽象：基础图形组合（圆、矩、多边形）、构成感强',
+                        minimal: '极简：极少元素、大量留白、一到两种主色'
+                    };
+                    return map[this.styleKey] || map.flat;
+                },
+
+                getColorHint() {
+                    const map = {
+                        warm: '暖色主题：橙、红、黄、米色等温暖色调为主',
+                        cool: '冷色主题：蓝、青、紫、灰绿等冷色调为主',
+                        colorful: '彩色：饱和适中、多色搭配但保持和谐',
+                        bw: '黑白：仅用黑、白、灰阶，可用渐变表现层次'
+                    };
+                    return map[this.colorTheme] || map.warm;
+                },
+
+                buildSystemPrompt() {
+                    return `你是一名专业的 SVG 插画师。用户会描述想要的画面，你必须只输出一段完整、可解析的 SVG 代码，不要输出任何解释、不要 Markdown、不要代码围栏。
+
+硬性要求：
+1. 根元素必须是 <svg>，且包含 xmlns="http://www.w3.org/2000/svg"。
+2. 必须设置 viewBox="0 0 400 400"，建议 width="400" height="400"。
+3. 使用矢量路径、形状、渐变（<linearGradient> / <radialGradient>）、阴影（<filter> 或半透明叠层）、圆角矩形 <rect rx="..."> 等让画面精致。
+4. 避免使用外链图片；不要写 <script>；不要使用未知命名空间。
+5. 内容需自洽闭合，保证在浏览器中可直接显示。
+
+当前风格要求：${this.getStyleHint()}
+当前颜色要求：${this.getColorHint()}`;
+                },
+
+                /**
+                 * DeepSeek 流式请求
+                 * @param {function(string,string):void} onDelta (content, reasoning)
+                 */
+                async streamApi(messages, onDelta) {
+                    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages,
+                            stream: true,
+                            temperature: 0.75
+                        })
+                    });
+
+                    if (!resp.ok) {
+                        const errData = await resp.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || ('请求失败 ' + resp.status));
+                    }
+
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const raw = line.slice(6).trim();
+                            if (raw === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(raw);
+                                const delta = parsed.choices[0]?.delta || {};
+                                const r = delta.reasoning_content || '';
+                                const c = delta.content || '';
+                                if (r || c) onDelta(c, r);
+                            } catch (e) { /* 忽略单行解析错误 */ }
+                        }
+                    }
+                },
+
+                async generate() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.errorMsg = '请先配置 DeepSeek API Key';
+                        return;
+                    }
+                    this.errorMsg = '';
+                    this.isLoading = true;
+                    this.streamRaw = '';
+                    this.displayCode = '';
+                    this.previewHtml = '';
+                    this.lastValidSvg = '';
+                    this.reasoningBuffer = '';
+
+                    const userMsg = `请根据以下描述生成插画 SVG：\n${this.description.trim()}`;
+
+                    try {
+                        await this.streamApi(
+                            [
+                                { role: 'system', content: this.buildSystemPrompt() },
+                                { role: 'user', content: userMsg }
+                            ],
+                            (content, reasoning) => {
+                                if (reasoning) this.reasoningBuffer += reasoning;
+                                if (content) {
+                                    this.streamRaw += content;
+                                    this.updatePreviewFromStream();
+                                }
+                            }
+                        );
+
+                        this.updatePreviewFromStream();
+                        const finalSvg = this.getFinalSvgString();
+                        if (!finalSvg) {
+                            this.errorMsg = '未能解析出有效 SVG，请重试或简化描述';
+                        } else {
+                            this.displayCode = finalSvg;
+                            this.previewHtml = finalSvg;
+                            this.lastValidSvg = finalSvg;
+                            await this.saveHistoryItem(finalSvg);
+                            this.showToast('生成完成');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = e.message || '生成失败';
+                    } finally {
+                        this.isLoading = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                regenerate() {
+                    this.generate();
+                },
+
+                async copySvg() {
+                    const s = this.getFinalSvgString();
+                    if (!s) return;
+                    try {
+                        await navigator.clipboard.writeText(s);
+                        this.showToast('已复制到剪贴板');
+                    } catch (e) {
+                        const ta = document.createElement('textarea');
+                        ta.value = s;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        this.showToast('已复制到剪贴板');
+                    }
+                },
+
+                downloadSvg() {
+                    const s = this.getFinalSvgString();
+                    if (!s) return;
+                    const blob = new Blob([s], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'illustration.svg';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showToast('已开始下载 SVG');
+                },
+
+                /**
+                 * 将 SVG 光栅化为 PNG 下载（默认 800×800）
+                 */
+                downloadPng() {
+                    const s = this.getFinalSvgString();
+                    if (!s) return;
+                    const outSize = 800;
+                    const blob = new Blob([s], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = outSize;
+                        canvas.height = outSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, outSize, outSize);
+                        ctx.drawImage(img, 0, 0, outSize, outSize);
+                        canvas.toBlob((b) => {
+                            if (!b) {
+                                this.showToast('PNG 导出失败');
+                                URL.revokeObjectURL(url);
+                                return;
+                            }
+                            const u = URL.createObjectURL(b);
+                            const a = document.createElement('a');
+                            a.href = u;
+                            a.download = 'illustration.png';
+                            a.click();
+                            URL.revokeObjectURL(u);
+                            URL.revokeObjectURL(url);
+                            this.showToast('已开始下载 PNG');
+                        }, 'image/png');
+                    };
+                    img.onerror = () => {
+                        URL.revokeObjectURL(url);
+                        this.showToast('PNG 导出失败');
+                    };
+                    img.src = url;
+                }
+            };
+        }
+    </script>
+</body>
+</html>

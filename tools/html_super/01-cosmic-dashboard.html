@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Dashboard // HTML_SUPER</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; color: #fff; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; }
+        
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .hud-text {
+            color: #0ff;
+            text-shadow: 0 0 5px #0ff;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        .panel {
+            background: rgba(0, 20, 20, 0.7);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            padding: 15px;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            width: 250px;
+        }
+
+        .panel h3 { margin-top: 0; color: #0ff; border-bottom: 1px solid rgba(0, 255, 255, 0.2); padding-bottom: 5px; }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+        .bar-container { width: 100%; height: 4px; background: #333; margin-top: 5px; }
+        .bar-fill { height: 100%; background: #0ff; width: 0%; transition: width 0.5s; box-shadow: 0 0 5px #0ff; }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid #0ff;
+            color: #0ff;
+            padding: 10px 20px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-family: inherit;
+            transition: 0.3s;
+        }
+        
+        .btn:hover { background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); }
+        .btn.active { background: #0ff; color: #000; }
+
+        /* Scanning Line */
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 255, 255, 0.5);
+            animation: scan 3s linear infinite;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes scan { 0% { top: 0; opacity: 0; } 5% { opacity: 1; } 95% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    
+    <!-- Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <div class="scan-line"></div>
+    <div id="ui-layer">
+        <div class="hud-top">
+            <span class="hud-text">SYSTEM: ONLINE</span>
+            <span class="hud-text">TARGET: UNIVERSE_01</span>
+            <span class="hud-text"><a href="index.html" style="color:#0ff; text-decoration:none;">[ EXIT ]</a></span>
+        </div>
+        
+        <div style="display:flex; justify-content: space-between; align-items: flex-end; height: 100%;">
+            <div class="panel">
+                <h3>TELEMETRY</h3>
+                <div class="data-row"><span>CPU Load</span><span id="cpu-val">45%</span></div>
+                <div class="bar-container"><div class="bar-fill" id="cpu-bar" style="width: 45%"></div></div>
+                <br>
+                <div class="data-row"><span>Memory</span><span id="mem-val">12TB</span></div>
+                <div class="bar-container"><div class="bar-fill" id="mem-bar" style="width: 60%"></div></div>
+                <br>
+                <div class="data-row"><span>Entropy</span><span id="ent-val">Stable</span></div>
+            </div>
+
+            <div class="panel">
+                <h3>MODULES</h3>
+                <div class="data-row"><span>Render Core</span><span>active</span></div>
+                <div class="data-row"><span>Physics Engine</span><span>standby</span></div>
+                <div class="data-row"><span>AI Override</span><span>offline</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button class="btn active" onclick="setMode('galaxy')">Galaxy</button>
+        <button class="btn" onclick="setMode('cube')">Hypercube</button>
+        <button class="btn" onclick="setMode('grid')">Matrix</button>
+    </div>
+
+    <script>
+        // Setup Scene
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.0008);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.z = 1000;
+        camera.position.y = 200;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // Particles
+        const geometry = new THREE.BufferGeometry();
+        const count = 15000;
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+
+        const color1 = new THREE.Color(0x00ffff);
+        const color2 = new THREE.Color(0xff00ff);
+
+        // Initial Galaxy Shape
+        for (let i = 0; i < count; i++) {
+            const i3 = i * 3;
+            // Galaxy spiral
+            const radius = Math.random() * Math.random() * 800; // Concentrate in center
+            const spinAngle = radius * 0.01;
+            const branchAngle = (i % 3) * ((Math.PI * 2) / 3);
+
+            const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
+            const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
+            const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
+
+            positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+            positions[i3 + 1] = randomY; // Flat galaxy
+            positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+            // Color mix
+            const mixedColor = color1.clone().lerp(color2, radius / 800);
+            colors[i3] = mixedColor.r;
+            colors[i3 + 1] = mixedColor.g;
+            colors[i3 + 2] = mixedColor.b;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 4,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        // Grid helper
+        const gridHelper = new THREE.GridHelper(2000, 50, 0x004444, 0x001111);
+        scene.add(gridHelper);
+
+        // Modes
+        let targetPositions = [];
+        let currentMode = 'galaxy';
+
+        function setMode(mode) {
+            currentMode = mode;
+            // Highlight button
+            document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Calculate new target positions
+            targetPositions = new Float32Array(count * 3);
+            
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                
+                if (mode === 'galaxy') {
+                   // Recreate galaxy structure
+                   const radius = Math.random() * Math.random() * 800;
+                   const spinAngle = radius * 0.01;
+                   const branchAngle = (i % 3) * ((Math.PI * 2) / 3);
+                   const rX = (Math.random() - 0.5) * 100;
+                   const rY = (Math.random() - 0.5) * 50; // flatter
+                   const rZ = (Math.random() - 0.5) * 100;
+                   
+                   targetPositions[i3] = Math.cos(branchAngle + spinAngle) * radius + rX;
+                   targetPositions[i3 + 1] = rY;
+                   targetPositions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + rZ;
+                } 
+                else if (mode === 'cube') {
+                    // Cube structure
+                    const size = 600;
+                    targetPositions[i3] = (Math.random() - 0.5) * size;
+                    targetPositions[i3 + 1] = (Math.random() - 0.5) * size;
+                    targetPositions[i3 + 2] = (Math.random() - 0.5) * size;
+                }
+                else if (mode === 'grid') {
+                    // Flat Grid
+                    const size = 1000;
+                    const cols = Math.sqrt(count);
+                    const row = Math.floor(i / cols);
+                    const col = i % cols;
+                    
+                    targetPositions[i3] = (col / cols - 0.5) * size * 2;
+                    targetPositions[i3 + 1] = 0;
+                    targetPositions[i3 + 2] = (row / cols - 0.5) * size * 2;
+                }
+            }
+        }
+
+        // Animation Loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+            const delta = clock.getDelta();
+
+            controls.update();
+
+            // Smoothly morph points
+            if (targetPositions.length > 0) {
+                const positionsAttr = particles.geometry.attributes.position;
+                const array = positionsAttr.array;
+                
+                let done = true;
+                for (let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    // Simple lerp (in real production, use shaders for performance)
+                    array[i3] += (targetPositions[i3] - array[i3]) * 0.02;
+                    array[i3+1] += (targetPositions[i3+1] - array[i3+1]) * 0.02;
+                    array[i3+2] += (targetPositions[i3+2] - array[i3+2]) * 0.02;
+                    
+                    if (Math.abs(array[i3] - targetPositions[i3]) > 1) done = false;
+                }
+                positionsAttr.needsUpdate = true;
+                if(done) targetPositions = []; // Stop updating if close enough to save CPU
+            }
+
+            // Rotate particles slowly
+            if (currentMode === 'galaxy') {
+                particles.rotation.y = time * 0.05;
+            } else if (currentMode === 'cube') {
+                particles.rotation.x = time * 0.1;
+                particles.rotation.y = time * 0.1;
+            }
+
+            // Update HUD simulation
+            if (Math.random() > 0.95) {
+                document.getElementById('cpu-val').innerText = Math.floor(Math.random() * 100) + "%";
+                document.getElementById('cpu-bar').style.width = Math.random() * 100 + "%";
+            }
+            if (Math.random() > 0.98) {
+                document.getElementById('mem-bar').style.width = Math.random() * 80 + "%";
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

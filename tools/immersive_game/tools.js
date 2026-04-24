@@ -1,0 +1,67 @@
+window.toolCollections = window.toolCollections || {};
+window.toolCollections.immersive_game = [
+    {
+        id: 'escape_room',
+        name: 'AI 密室逃脱',
+        desc: '沉浸式文字密室逃脱。探索房间、收集线索、破解谜题，AI 实时生成剧情。完整的背包系统和计时器',
+        href: 'tools/immersive_game/escape_room.html',
+        icon: 'fa-solid fa-door-open',
+        category: 'immersive_game',
+        tags: [],
+        isNew: true,
+        complexity: 3,
+        iconBg: 'bg-emerald-50',
+        iconColor: 'text-emerald-600',
+        borderColor: 'emerald-200',
+        hoverTextColor: 'text-emerald-600',
+        linkColor: 'text-emerald-600'
+    },
+    {
+        id: 'detective',
+        name: 'AI 侦探事务所',
+        desc: '化身侦探破解悬案。证据板、嫌疑人档案、审讯室，一步步揭开真相。电影级黑色悬疑体验',
+        href: 'tools/immersive_game/detective.html',
+        icon: 'fa-solid fa-user-secret',
+        category: 'immersive_game',
+        tags: [],
+        isNew: true,
+        complexity: 3,
+        iconBg: 'bg-slate-50',
+        iconColor: 'text-slate-600',
+        borderColor: 'slate-200',
+        hoverTextColor: 'text-slate-600',
+        linkColor: 'text-slate-600'
+    },
+    {
+        id: 'script_kill',
+        name: 'AI 剧本杀',
+        desc: '一个人的沉浸式剧本杀。AI 扮演所有角色，你通过对话和推理找出真凶。多结局分支剧情',
+        href: 'tools/immersive_game/script_kill.html',
+        icon: 'fa-solid fa-masks-theater',
+        category: 'immersive_game',
+        tags: ['小红书'],
+        isNew: true,
+        complexity: 3,
+        iconBg: 'bg-red-50',
+        iconColor: 'text-red-600',
+        borderColor: 'red-200',
+        hoverTextColor: 'text-red-600',
+        linkColor: 'text-red-600'
+    },
+    {
+        id: 'dungeon_rpg',
+        name: '文字地下城冒险',
+        desc: 'D&D风格地下城探险。AI当地下城主，你输入任意指令探索。有HP/MP/背包/战斗系统',
+        href: 'tools/immersive_game/dungeon_rpg.html',
+        icon: 'fa-solid fa-dungeon',
+        category: 'immersive_game',
+        tags: [],
+        isNew: true,
+        complexity: 3,
+        iconBg: 'bg-amber-50',
+        iconColor: 'text-amber-600',
+        borderColor: 'amber-200',
+        hoverTextColor: 'text-amber-600',
+        linkColor: 'text-amber-600'
+    }
+];

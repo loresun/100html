@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聚会策划 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-orange-50 min-h-screen font-sans" x-data="partyApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-orange-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-orange-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-amber-500">
+                    🎉 聚会策划
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <div class="hidden sm:flex items-center gap-1 text-sm bg-orange-100/50 px-3 py-1.5 rounded-lg text-orange-700">
+                    <i class="fa-solid fa-users"></i>
+                    <span x-text="confirmedGuests + ' 人确认'"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Info Card -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100 mb-6 group relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-bl-full -mr-16 -mt-16 opacity-50 transition-transform group-hover:scale-110"></div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">活动主题</label>
+                    <input type="text" x-model="info.title" class="text-3xl font-bold text-slate-800 bg-transparent outline-none w-full placeholder-slate-300" placeholder="例如: 周末烧烤派对">
+                </div>
+                <div class="space-y-4">
+                    <div>
+                         <label class="block text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">时间</label>
+                         <input type="datetime-local" x-model="info.date" class="w-full bg-slate-50 border-none rounded-lg px-3 py-2 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-orange-200">
+                    </div>
+                    <div>
+                         <label class="block text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">地点</label>
+                         <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                             <i class="fa-solid fa-location-dot text-orange-400"></i>
+                             <input type="text" x-model="info.location" class="flex-1 bg-transparent border-none text-sm text-slate-600 outline-none" placeholder="地点...">
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Guest List -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[500px]">
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-orange-50/30">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-orange-500"></i>
+                        宾客名单
+                    </h2>
+                    <span class="text-xs font-medium bg-white px-2 py-1 rounded border border-slate-200 text-slate-500" x-text="guests.length + ' 人'"></span>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-2 space-y-1">
+                    <template x-for="guest in guests" :key="guest.id">
+                        <div class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl group transition-colors">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-xs" x-text="guest.name.charAt(0)"></div>
+                            <div class="flex-1">
+                                <div class="font-medium text-slate-800 text-sm" x-text="guest.name"></div>
+                            </div>
+                            <!-- Status Toggle -->
+                            <div class="flex bg-slate-100 rounded-lg p-0.5">
+                                <button @click="guest.status = 'check'" class="p-1.5 rounded-md transition-all" :class="guest.status === 'check' ? 'bg-white shadow text-emerald-500' : 'text-slate-400 hover:text-slate-600'">
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                                <button @click="guest.status = 'help-circle'" class="p-1.5 rounded-md transition-all" :class="guest.status === 'help-circle' ? 'bg-white shadow text-amber-500' : 'text-slate-400 hover:text-slate-600'">
+                                    <i class="fa-solid fa-circle-question"></i>
+                                </button>
+                                <button @click="guest.status = 'x'" class="p-1.5 rounded-md transition-all" :class="guest.status === 'x' ? 'bg-white shadow text-rose-500' : 'text-slate-400 hover:text-slate-600'">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <button @click="deleteGuest(guest.id)" class="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="p-4 border-t border-slate-100">
+                    <div class="flex gap-2">
+                        <input type="text" x-model="newGuest" @keydown.enter="addGuest()" placeholder="添加宾客姓名..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-orange-500 focus:bg-white transition-all">
+                        <button @click="addGuest()" class="bg-slate-800 text-white px-4 rounded-xl hover:bg-slate-700 transition-colors">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks & Shopping -->
+            <div class="flex flex-col gap-6 h-[500px]">
+                
+                <!-- Tasks -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-blue-50/30">
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-square-check text-blue-500"></i>
+                            筹备待办
+                        </h2>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-2">
+                        <template x-for="task in tasks" :key="task.id">
+                            <label class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer group">
+                                <input type="checkbox" x-model="task.done" class="rounded text-blue-500 focus:ring-blue-200 border-slate-300">
+                                <span class="flex-1 text-sm text-slate-700" :class="task.done ? 'line-through text-slate-400' : ''" x-text="task.name"></span>
+                                <button @click.prevent="deleteTask(task.id)" class="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </label>
+                        </template>
+                        <input type="text" @keydown.enter="addTask($event)" placeholder="+ 添加待办事项" class="w-full bg-transparent p-2 text-sm outline-none placeholder-slate-400">
+                    </div>
+                </div>
+
+                <!-- Shopping -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex-1 flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-emerald-50/30">
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-cart-shopping text-emerald-500"></i>
+                            采购清单
+                        </h2>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-2">
+                        <template x-for="item in shopping" :key="item.id">
+                            <label class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer group">
+                                <input type="checkbox" x-model="item.done" class="rounded text-emerald-500 focus:ring-emerald-200 border-slate-300">
+                                <span class="flex-1 text-sm text-slate-700" :class="item.done ? 'line-through text-slate-400' : ''" x-text="item.name"></span>
+                                <button @click.prevent="deleteShop(item.id)" class="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </label>
+                        </template>
+                        <input type="text" @keydown.enter="addShop($event)" placeholder="+ 添加采购物品" class="w-full bg-transparent p-2 text-sm outline-none placeholder-slate-400">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function partyApp() {
+            return {
+                info: {
+                    title: '',
+                    date: '',
+                    location: ''
+                },
+                guests: [],
+                tasks: [],
+                shopping: [],
+                newGuest: '',
+
+                init() {
+                    const saved = localStorage.getItem('webtools_party');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        this.info = data.info || this.info;
+                        this.guests = data.guests || [];
+                        this.tasks = data.tasks || [];
+                        this.shopping = data.shopping || [];
+                    } else {
+                        // Demo data
+                        this.tasks = [
+                            { id: 1, name: '预定场地', done: false },
+                            { id: 2, name: '发邀请函', done: false }
+                        ];
+                        this.shopping = [
+                            { id: 1, name: '饮料/酒水', done: false },
+                            { id: 2, name: '零食', done: false }
+                        ];
+                    }
+
+                    this.$watch('info', () => this.save(), { deep: true });
+                    this.$watch('guests', () => this.save(), { deep: true });
+                    this.$watch('tasks', () => this.save(), { deep: true });
+                    this.$watch('shopping', () => this.save(), { deep: true });
+                    
+                    // init
+                },
+
+                save() {
+                    localStorage.setItem('webtools_party', JSON.stringify({
+                        info: this.info,
+                        guests: this.guests,
+                        tasks: this.tasks,
+                        shopping: this.shopping
+                    }));
+                },
+
+                addGuest() {
+                    if (!this.newGuest.trim()) return;
+                    this.guests.push({
+                        id: Date.now(),
+                        name: this.newGuest,
+                        status: 'help-circle' // 'check', 'help-circle', 'x'
+                    });
+                    this.newGuest = '';
+                    this.newGuest = '';
+                },
+                
+                deleteGuest(id) {
+                    this.guests = this.guests.filter(g => g.id !== id);
+                },
+
+                addTask(e) {
+                    const val = e.target.value.trim();
+                    if(val) {
+                        this.tasks.push({ id: Date.now(), name: val, done: false });
+                        e.target.value = '';
+                        e.target.value = '';
+                    }
+                },
+                deleteTask(id) {
+                    this.tasks = this.tasks.filter(t => t.id !== id);
+                },
+
+                addShop(e) {
+                    const val = e.target.value.trim();
+                    if(val) {
+                        this.shopping.push({ id: Date.now(), name: val, done: false });
+                        e.target.value = '';
+                        e.target.value = '';
+                    }
+                },
+                deleteShop(id) {
+                    this.shopping = this.shopping.filter(t => t.id !== id);
+                },
+
+                get confirmedGuests() {
+                    return this.guests.filter(g => g.status === 'check').length;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_party_planner.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

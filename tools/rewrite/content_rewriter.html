@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多平台内容改写助手</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            /* Blue for generic/business, or maybe purple? Let's stick to a neutral blue/indigo */
+            --bg-color: #f8fafc;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* Hide scrollbar but allow scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.3s ease;
+        }
+
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+
+        .slide-up-enter-active,
+        .slide-up-leave-active {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .slide-up-enter-from,
+        .slide-up-leave-to {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Top Navigation -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-pen-nib text-blue-600 text-xl"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">Content Rewriter</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-blue-600': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-blue-600': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showPromptSettings = true"
+                            class="text-slate-500 hover:text-blue-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-pen-to-square"></i> 提示词设置
+                        </button>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-blue-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear"></i> API 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Layout -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- Left: Input & Controls -->
+            <div
+                class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-lg">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+
+                    <!-- Input Content -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">原始内容</label>
+                        <textarea v-model="input.content" rows="8" placeholder="在此粘贴需要改写的文章、段落或草稿..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none text-sm leading-relaxed"></textarea>
+                    </div>
+
+                    <!-- Platform Selection -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">选择目标平台</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div v-for="platform in platforms" :key="platform.id" @click="togglePlatform(platform.id)"
+                                :class="{'bg-blue-50 border-blue-500 text-blue-700': selectedPlatforms.includes(platform.id), 'bg-slate-50 border-slate-200 text-slate-600': !selectedPlatforms.includes(platform.id)}"
+                                class="cursor-pointer border rounded-lg p-3 flex items-center gap-2 transition hover:shadow-sm">
+                                <i :class="[platform.iconClass, 'text-base']"></i>
+                                <span class="text-sm font-medium">{{ platform.name }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button @click="startRewrite"
+                        :disabled="isGenerating || !input.content || selectedPlatforms.length === 0"
+                        class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin"></i>
+                        <span v-else>🚀 开始改写</span>
+                    </button>
+
+                    <!-- Status -->
+                    <div class="text-xs text-center text-slate-400">
+                        {{ statusText }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Output Grid -->
+            <div class="flex-grow bg-[#f8fafc] p-4 md:p-8 overflow-y-auto h-full relative">
+
+                <!-- Empty State -->
+                <div v-if="results.length === 0 && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                    <i class="fa-solid fa-layer-group text-6xl mb-4 text-slate-300"></i>
+                    <p class="text-lg">选择平台并开始改写，一键分发多渠道</p>
+                </div>
+
+                <!-- Results Grid -->
+                <div v-else class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-end mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800">改写结果</h2>
+                        <div v-if="results.length > 0" class="flex gap-3">
+                            <button @click="exportAll"
+                                class="text-blue-600 text-sm font-medium hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-download"></i> 导出全部
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div v-for="res in results" :key="res.platformId"
+                            class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[500px]">
+
+                            <!-- Card Header -->
+                            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <div class="flex items-center gap-2">
+                                    <i :class="[getPlatform(res.platformId).iconClass, 'text-lg text-slate-600']"></i>
+                                    <span class="font-bold text-slate-700">{{ getPlatform(res.platformId).name }}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span v-if="res.status === 'loading'"
+                                        class="text-xs text-blue-500 animate-pulse mr-2">生成中...</span>
+                                    <button v-if="res.content" @click="copyContent(res.content)"
+                                        class="p-1.5 hover:bg-white rounded-md text-slate-500 hover:text-blue-600 transition"
+                                        title="复制">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                    <button @click="retryPlatform(res.platformId)"
+                                        class="p-1.5 hover:bg-white rounded-md text-slate-500 hover:text-blue-600 transition"
+                                        title="重试">
+                                        <i class="fa-solid fa-rotate"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Card Content -->
+                            <div class="flex-grow p-4 overflow-y-auto bg-white">
+                                <!-- Reasoning Box -->
+                                <div v-if="res.reasoning"
+                                    class="mb-4 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                                    <details class="group">
+                                        <summary
+                                            class="flex items-center justify-between p-2 cursor-pointer bg-slate-100 hover:bg-slate-200 transition text-xs font-bold text-slate-600 select-none">
+                                            <div class="flex items-center gap-1">
+                                                <i class="fa-solid fa-brain"></i>
+                                                <span>深度思考过程</span>
+                                            </div>
+                                            <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+                                        </summary>
+                                        <div
+                                            class="p-3 bg-slate-50 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-200 max-h-48 overflow-y-auto">
+                                            {{ res.reasoning }}
+                                        </div>
+                                    </details>
+                                </div>
+
+                                <div v-if="res.content"
+                                    class="prose prose-sm max-w-none whitespace-pre-wrap text-slate-600"
+                                    v-html="renderMarkdown(res.content)"></div>
+                                <div v-else-if="res.status === 'loading'"
+                                    class="h-full flex flex-col items-center justify-center text-slate-300 space-y-3">
+                                    <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+                                    <span class="text-xs">正在思考与撰写...</span>
+                                </div>
+                                <div v-else-if="res.status === 'error'"
+                                    class="h-full flex flex-col items-center justify-center text-red-400 space-y-2">
+                                    <i class="fa-solid fa-circle-exclamation text-2xl"></i>
+                                    <span class="text-xs">生成失败</span>
+                                    <p class="text-xs text-center px-4">{{ res.error }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- API Settings Modal -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Key 会存储在本地，与其他应用共享。</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prompt Settings Modal -->
+        <div v-if="showPromptSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 h-[80vh] flex flex-col">
+                <h3 class="text-lg font-bold mb-4">提示词设置</h3>
+
+                <div class="flex gap-4 flex-grow overflow-hidden">
+                    <!-- Left: Platform List -->
+                    <div class="w-1/3 border-r border-slate-100 pr-4 overflow-y-auto">
+                        <div v-for="platform in platforms" :key="platform.id"
+                            @click="currentEditingPlatformId = platform.id"
+                            :class="{'bg-blue-50 text-blue-700 font-medium': currentEditingPlatformId === platform.id, 'text-slate-600 hover:bg-slate-50': currentEditingPlatformId !== platform.id}"
+                            class="p-3 rounded-lg cursor-pointer mb-2 flex items-center gap-2 transition">
+                            <i :class="[platform.iconClass, 'text-sm']"></i>
+                            {{ platform.name }}
+                        </div>
+                    </div>
+
+                    <!-- Right: Prompt Editor -->
+                    <div class="w-2/3 flex flex-col">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                            {{ getPlatform(currentEditingPlatformId)?.name }} - 系统提示词
+                        </label>
+                        <textarea v-model="customPrompts[currentEditingPlatformId]"
+                            class="flex-grow w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none text-sm font-mono leading-relaxed"
+                            placeholder="输入该平台的专属提示词..."></textarea>
+                        <div class="mt-2 text-xs text-slate-400">
+                            使用 {{content}} 代表原始内容占位符（可选，系统会自动拼接）。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2 pt-4 border-t border-slate-100">
+                    <button @click="resetPrompts"
+                        class="text-red-500 px-4 py-2 hover:bg-red-50 rounded-lg text-sm">恢复默认</button>
+                    <div class="flex-grow"></div>
+                    <button @click="showPromptSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="savePrompts"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">保存设置</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick, computed, watch } = Vue;
+
+        // Default Prompts Configuration
+        const DEFAULT_PROMPTS = {
+            xhs: `你是一个小红书爆款文案专家。请将用户输入的内容改写为一篇小红书笔记。
+要求：
+1. 标题要极度吸引人，使用二极管标题法或悬念法，带emoji。
+2. 正文分段短小，多用emoji，语气亲切活泼。
+3. 包含3-5个相关话题标签。
+4. 重点突出干货或情绪价值。`,
+
+            wechat: `你是一个微信公众号资深编辑。请将用户输入的内容改写为一篇公众号推文。
+要求：
+1. 标题要有深度或吸引点击，控制在20字以内。
+2. 结构清晰，使用小标题。
+3. 语气专业、有深度，适合阅读。
+4. 结尾有金句总结。`,
+
+            twitter: `你是一个社交媒体运营专家。请将内容改写为一条 Twitter/X 帖子。
+要求：
+1. 简洁有力，观点鲜明。
+2. 控制在280字符以内（中文140字左右）。
+3. 使用1-2个热门Hashtag。
+4. 适合快速传播和引发讨论。`,
+
+            linkedin: `你是一个LinkedIn职场影响力专家。请将内容改写为一篇LinkedIn动态。
+要求：
+1. 专业、商务，体现行业洞察。
+2. 结构：观点 + 案例/数据 + 总结 + 互动提问。
+3. 适合职场人士阅读。`,
+
+            tiktok: `你是一个短视频脚本编剧。请将内容改写为抖音/TikTok口播脚本。
+要求：
+1. 标注【画面】和【口播】。
+2. 开头前3秒必须有黄金钩子（Hook）。
+3. 语言口语化，节奏快。
+4. 结尾引导关注。`,
+
+            weibo: `你是一个微博大V。请将内容改写为一条微博。
+要求：
+1. 结合当下热点语气。
+2. 适合吃瓜或吐槽，或者分享生活。
+3. 带相关超话。`
+        };
+
+        createApp({
+            setup() {
+
+                // State
+                const showSettings = ref(false);
+                const showPromptSettings = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+                const statusText = ref('准备就绪');
+
+                const input = reactive({
+                    content: ''
+                });
+
+                const platforms = [
+                    { id: 'xhs', name: '小红书', iconClass: 'fa-solid fa-heart text-red-500' },
+                    { id: 'wechat', name: '公众号', iconClass: 'fa-brands fa-weixin text-green-600' },
+                    { id: 'twitter', name: 'Twitter/X', iconClass: 'fa-brands fa-x-twitter' },
+                    { id: 'linkedin', name: 'LinkedIn', iconClass: 'fa-brands fa-linkedin text-blue-700' },
+                    { id: 'tiktok', name: '短视频脚本', iconClass: 'fa-brands fa-tiktok' },
+                    { id: 'weibo', name: '微博', iconClass: 'fa-brands fa-weibo text-red-600' }
+                ];
+
+                const selectedPlatforms = ref(['xhs', 'wechat']);
+                const results = ref([]); // { platformId, content, status, error }
+
+                const customPrompts = reactive({ ...DEFAULT_PROMPTS });
+                const currentEditingPlatformId = ref('xhs');
+
+                // Initialization
+                onMounted(() => {
+                    try {
+                        const savedConfig = localStorage.getItem('global_llm_config');
+                        if (savedConfig) apiConfig.value = { ...apiConfig.value, ...JSON.parse(savedConfig) };
+                    } catch (e) {
+                        console.error('解析 global_llm_config 失败:', e);
+                    }
+
+                    try {
+                        const savedPrompts = localStorage.getItem('rewriter_prompts');
+                        if (savedPrompts) {
+                            Object.assign(customPrompts, JSON.parse(savedPrompts));
+                        }
+                    } catch (e) {
+                        console.error('解析 rewriter_prompts 失败:', e);
+                    }
+                });
+
+                // Helpers
+                const getPlatform = (id) => platforms.find(p => p.id === id);
+
+                const togglePlatform = (id) => {
+                    if (selectedPlatforms.value.includes(id)) {
+                        selectedPlatforms.value = selectedPlatforms.value.filter(p => p !== id);
+                    } else {
+                        selectedPlatforms.value.push(id);
+                    }
+                };
+
+                const renderMarkdown = (text) => {
+                    if (!text) return '';
+                    return marked.parse(text);
+                };
+
+                // Settings Logic
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('解析 global_llm_config 失败:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                const savePrompts = () => {
+                    localStorage.setItem('rewriter_prompts', JSON.stringify(customPrompts));
+                    showPromptSettings.value = false;
+                };
+
+                const resetPrompts = () => {
+                    if (confirm('确定要恢复默认提示词吗？所有自定义修改将丢失。')) {
+                        Object.assign(customPrompts, DEFAULT_PROMPTS);
+                    }
+                };
+
+                // Core Logic
+                const startRewrite = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!input.content) return;
+
+                    isGenerating.value = true;
+                    statusText.value = '正在分发任务...';
+
+                    // Initialize results placeholders
+                    results.value = selectedPlatforms.value.map(pid => ({
+                        platformId: pid,
+                        content: '',
+                        reasoning: '',
+                        status: 'loading',
+                        error: null
+                    }));
+
+                    // Create async tasks
+                    const tasks = results.value.map(res => processPlatform(res));
+
+                    try {
+                        await Promise.all(tasks);
+                        statusText.value = '所有任务完成';
+                    } catch (e) {
+                        console.error(e);
+                        statusText.value = '部分任务可能失败';
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const retryPlatform = async (platformId) => {
+                    const res = results.value.find(r => r.platformId === platformId);
+                    if (!res) return;
+
+                    res.status = 'loading';
+                    res.content = '';
+                    res.reasoning = '';
+                    res.error = null;
+
+                    await processPlatform(res);
+                };
+
+                const processPlatform = async (res) => {
+                    const platformId = res.platformId;
+                    const systemPrompt = customPrompts[platformId] || DEFAULT_PROMPTS[platformId];
+                    const userContent = input.content;
+
+                    const fullPrompt = `${systemPrompt}\n\n【原始内容】：\n${userContent}`;
+
+                    try {
+                        await callDeepSeek(fullPrompt, true,
+                            (chunk) => {
+                                res.content += chunk;
+                            },
+                            (reasoningChunk) => {
+                                if (!res.reasoning) res.reasoning = '';
+                                res.reasoning += reasoningChunk;
+                            }
+                        );
+                        res.status = 'done';
+                    } catch (e) {
+                        res.status = 'error';
+                        res.error = e.message;
+                    }
+                };
+
+                // API Call
+                const callDeepSeek = async (prompt, stream = false, onChunk = null, onReasoning = null) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 未配置");
+
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: model.value,
+                                messages: [
+                                    { "role": "system", "content": "You are a helpful content rewriting assistant." },
+                                    { "role": "user", "content": prompt }
+                                ],
+                                stream: stream
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    if (!stream) {
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+
+                                    // Handle Reasoning Content (DeepSeek V4 Pro)
+                                    const reasoning = json.choices[0].delta.reasoning_content;
+                                    if (reasoning && onReasoning) {
+                                        onReasoning(reasoning);
+                                    }
+
+                                    // Handle Normal Content
+                                    const content = json.choices[0].delta.content || "";
+                                    if (onChunk) onChunk(content);
+                                } catch (e) {
+                                    console.error("Stream parse error", e);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                const copyContent = (text) => {
+                    navigator.clipboard.writeText(text).then(() => {
+                        // Could add a toast here
+                    });
+                };
+
+                const exportAll = () => {
+                    let text = "";
+                    results.value.forEach(res => {
+                        if (res.content) {
+                            text += `=== ${getPlatform(res.platformId).name} ===\n\n`;
+                            if (res.reasoning) {
+                                text += `[思考过程]:\n${res.reasoning}\n\n`;
+                            }
+                            text += `${res.content}\n\n-------------------\n\n`;
+                        }
+                    });
+
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `改写内容_${new Date().toLocaleDateString()}.txt`;
+                    a.click();
+                };
+
+                return {
+                    showSettings, showPromptSettings, apiConfig, saveConfig, model,
+                    input, platforms, selectedPlatforms, togglePlatform,
+                    results, isGenerating, statusText, startRewrite, retryPlatform,
+                    getPlatform, renderMarkdown, copyContent, exportAll,
+                    customPrompts, currentEditingPlatformId, savePrompts, resetPrompts
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/rewrite_content_rewriter.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码美化工作室 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans" x-data="qrApp()" x-init="init()">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-slate-600"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-800">📱 二维码美化工作室</h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        <div class="grid md:grid-cols-2 gap-8">
+            
+            <!-- Left: Settings -->
+            <div class="space-y-6">
+                
+                <!-- Content Input -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">二维码内容</h3>
+                    <textarea 
+                        x-model="content"
+                        @input="generateQR()"
+                        placeholder="输入网址、文本或任何内容..."
+                        rows="4"
+                        class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
+                    ></textarea>
+                </div>
+
+                <!-- Style Settings -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">样式设置</h3>
+                    
+                    <div class="space-y-4">
+                        <!-- Size -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                尺寸: <span x-text="size + 'px'"></span>
+                            </label>
+                            <input 
+                                type="range" 
+                                x-model.number="size"
+                                @input="generateQR()"
+                                min="200" 
+                                max="600" 
+                                step="50"
+                                class="w-full"
+                            />
+                        </div>
+
+                        <!-- Foreground Color -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">前景色</label>
+                            <div class="flex gap-3">
+                                <input 
+                                    type="color" 
+                                    x-model="colorDark"
+                                    @input="generateQR()"
+                                    class="w-16 h-10 rounded-lg border border-slate-200 cursor-pointer"
+                                />
+                                <input 
+                                    type="text" 
+                                    x-model="colorDark"
+                                    @input="generateQR()"
+                                    class="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Background Color -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">背景色</label>
+                            <div class="flex gap-3">
+                                <input 
+                                    type="color" 
+                                    x-model="colorLight"
+                                    @input="generateQR()"
+                                    class="w-16 h-10 rounded-lg border border-slate-200 cursor-pointer"
+                                />
+                                <input 
+                                    type="text" 
+                                    x-model="colorLight"
+                                    @input="generateQR()"
+                                    class="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Error Correction -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">容错率</label>
+                            <select 
+                                x-model="errorCorrectionLevel"
+                                @change="generateQR()"
+                                class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                            >
+                                <option value="L">低 (7%)</option>
+                                <option value="M">中 (15%)</option>
+                                <option value="Q">较高 (25%)</option>
+                                <option value="H">高 (30%)</option>
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">容错率越高，可添加 Logo 的空间越大</p>
+                        </div>
+
+                        <!-- Margin -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                边距: <span x-text="margin"></span>
+                            </label>
+                            <input 
+                                type="range" 
+                                x-model.number="margin"
+                                @input="generateQR()"
+                                min="0" 
+                                max="10" 
+                                step="1"
+                                class="w-full"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preset Colors -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">预设配色</h3>
+                    <div class="grid grid-cols-4 gap-3">
+                        <template x-for="preset in colorPresets" :key="preset.name">
+                            <button 
+                                @click="applyPreset(preset)"
+                                class="aspect-square rounded-xl border-2 border-slate-200 hover:border-indigo-500 transition-all hover:scale-105 active:scale-95 overflow-hidden"
+                                :style="'background: linear-gradient(135deg, ' + preset.dark + ' 0%, ' + preset.light + ' 100%)'"
+                                :title="preset.name"
+                            ></button>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Preview & Download -->
+            <div class="space-y-6">
+                
+                <!-- Preview -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                    <h3 class="text-lg font-bold text-slate-800 mb-6 text-center">预览</h3>
+                    <div class="flex items-center justify-center">
+                        <canvas id="qrCanvas" class="max-w-full rounded-xl shadow-lg"></canvas>
+                    </div>
+                </div>
+
+                <!-- Download -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">下载</h3>
+                    <div class="space-y-3">
+                        <button 
+                            @click="downloadQR('png')"
+                            class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                            <i class="fa-solid fa-download"></i>
+                            下载 PNG
+                        </button>
+                        <button 
+                            @click="downloadQR('svg')"
+                            class="w-full py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                            <i class="fa-solid fa-download"></i>
+                            下载 SVG (矢量)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tips -->
+                <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100">
+                    <h4 class="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        使用技巧
+                    </h4>
+                    <ul class="text-sm text-indigo-800 space-y-1">
+                        <li>• 选择高容错率可以在中心添加 Logo</li>
+                        <li>• 深色背景建议使用浅色二维码</li>
+                        <li>• SVG 格式适合印刷，可无限放大</li>
+                        <li>• 扫描前请测试二维码是否可用</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function qrApp() {
+            return {
+                content: 'https://example.com',
+                size: 300,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                errorCorrectionLevel: 'M',
+                margin: 4,
+                colorPresets: [
+                    { name: '经典黑白', dark: '#000000', light: '#ffffff' },
+                    { name: '科技蓝', dark: '#1e40af', light: '#dbeafe' },
+                    { name: '活力橙', dark: '#ea580c', light: '#ffedd5' },
+                    { name: '自然绿', dark: '#15803d', light: '#dcfce7' },
+                    { name: '优雅紫', dark: '#7c3aed', light: '#f3e8ff' },
+                    { name: '玫瑰粉', dark: '#e11d48', light: '#ffe4e6' },
+                    { name: '深海蓝', dark: '#0c4a6e', light: '#e0f2fe' },
+                    { name: '暗夜模式', dark: '#fbbf24', light: '#1f2937' }
+                ],
+
+                init() {
+                    this.$nextTick(() => {
+                        this.generateQR();
+                    });
+                },
+
+                generateQR() {
+                    if (!this.content.trim()) return;
+
+                    const canvas = document.getElementById('qrCanvas');
+                    QRCode.toCanvas(canvas, this.content, {
+                        width: this.size,
+                        margin: this.margin,
+                        color: {
+                            dark: this.colorDark,
+                            light: this.colorLight
+                        },
+                        errorCorrectionLevel: this.errorCorrectionLevel
+                    }, (error) => {
+                        if (error) console.error(error);
+                    });
+                },
+
+                applyPreset(preset) {
+                    this.colorDark = preset.dark;
+                    this.colorLight = preset.light;
+                    this.generateQR();
+                },
+
+                downloadQR(format) {
+                    if (!this.content.trim()) {
+                        alert('请先输入二维码内容');
+                        return;
+                    }
+
+                    if (format === 'png') {
+                        const canvas = document.getElementById('qrCanvas');
+                        const url = canvas.toDataURL('image/png');
+                        const link = document.createElement('a');
+                        link.download = 'qrcode.png';
+                        link.href = url;
+                        link.click();
+                    } else if (format === 'svg') {
+                        QRCode.toString(this.content, {
+                            type: 'svg',
+                            margin: this.margin,
+                            color: {
+                                dark: this.colorDark,
+                                light: this.colorLight
+                            },
+                            errorCorrectionLevel: this.errorCorrectionLevel
+                        }, (error, svg) => {
+                            if (error) {
+                                console.error(error);
+                                return;
+                            }
+                            const blob = new Blob([svg], { type: 'image/svg+xml' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.download = 'qrcode.svg';
+                            link.href = url;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                        });
+                    }
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_qr_code_studio.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

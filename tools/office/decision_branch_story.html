@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策分岔剧情图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top, #f0f9ff 0%, #f8fafc 60%, #e0f2fe 100%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen">
+        <header class="py-10 px-4">
+            <div class="max-w-5xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-cyan-500 flex items-center justify-center">
+                        <i class="fa-solid fa-code-branch text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-900">决策分岔剧情图</h1>
+                        <p class="text-slate-500">让 AI 为你的选择画出分岔结局。</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button @click="showSettings = true" class="p-2 rounded-full bg-white border border-slate-200 text-slate-500 hover:text-cyan-600">
+                        <i class="fa-solid fa-gear text-lg"></i>
+                    </button>
+                    <a href="../../index.html" class="text-sm text-slate-500 hover:text-cyan-600">返回首页</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="px-4 pb-16">
+            <div class="max-w-5xl mx-auto space-y-8">
+                <!-- 输入区域 -->
+                <section class="glass-card rounded-3xl p-8 shadow-lg">
+                    <input v-model="decision" class="w-full border border-slate-200 rounded-xl px-4 py-3" placeholder="你面临的选择，例如：是否换工作">
+                    <div class="grid md:grid-cols-2 gap-3 mt-4">
+                        <input v-model="optionA" class="border border-slate-200 rounded-xl px-4 py-3" placeholder="选项 A">
+                        <input v-model="optionB" class="border border-slate-200 rounded-xl px-4 py-3" placeholder="选项 B">
+                    </div>
+                    <button @click="debouncedGenerate" class="mt-4 px-5 py-2.5 rounded-xl bg-cyan-600 text-white font-medium hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" :disabled="isLoading">
+                        <i v-if="isLoading" class="fa-solid fa-spinner fa-spin"></i>
+                        <span>{{ isLoading ? '生成中...' : '生成剧情图' }}</span>
+                    </button>
+                    <p v-if="error" class="text-sm text-red-500 mt-3">{{ error }}</p>
+                    <div class="mt-6 text-sm text-slate-500">提示：生成后可在下方看到 Mermaid 分岔图。</div>
+                </section>
+
+                <!-- 结果预览区域 -->
+                <section class="glass-card rounded-3xl p-8 shadow-lg">
+                    <h2 class="text-lg font-bold text-slate-900">分岔图预览</h2>
+                    <div class="mt-4 bg-slate-50 rounded-2xl p-4 min-h-[200px] flex items-center justify-center overflow-x-auto">
+                        <div v-show="isLoading" class="flex flex-col items-center gap-3 text-slate-400">
+                            <i class="fa-solid fa-spinner fa-spin text-3xl text-cyan-500"></i>
+                            <span>AI 正在思考分岔结局...</span>
+                        </div>
+                        <div v-show="!isLoading" id="mermaidPreview" class="text-sm text-slate-500 w-full">等待生成。</div>
+                    </div>
+                    <div v-if="summary" class="mt-4 p-4 bg-cyan-50 rounded-xl text-sm text-slate-700 whitespace-pre-line border border-cyan-100">
+                        <div class="font-medium text-cyan-700 mb-2"><i class="fa-solid fa-lightbulb mr-2"></i>AI 分析结果</div>
+                        {{ summary }}
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-slate-900">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                    <input v-model="apiConfig.deepseek" type="password" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                    <select v-model="apiConfig.model" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+                <button @click="saveConfig" class="mt-6 w-full px-4 py-2 rounded-lg bg-cyan-600 text-white font-medium hover:bg-cyan-500">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: false });
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const decision = ref('是否换工作');
+                const optionA = ref('继续留在当前团队');
+                const optionB = ref('尝试新的行业');
+                const summary = ref('');
+                const error = ref('');
+                const isLoading = ref(false);
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                const callLLM = async (prompt) => {
+                    if (!apiConfig.value.deepseek) {
+                        error.value = '请先配置 DeepSeek API Key。';
+                        return '';
+                    }
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${apiConfig.value.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: apiConfig.value.model,
+                            messages: [
+                                { role: 'system', content: '你是决策顾问，请给出简洁分岔结局。' },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7
+                        })
+                    });
+                    if (!response.ok) throw new Error(`API 请求失败: ${response.status}`);
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content || '';
+                };
+
+                const renderMermaid = async (code) => {
+                    const element = document.getElementById('mermaidPreview');
+                    element.innerHTML = '';
+                    const { svg } = await mermaid.render('decisionGraph', code);
+                    element.innerHTML = svg;
+                };
+
+                const generate = async () => {
+                    error.value = '';
+                    summary.value = '';
+                    if (!decision.value.trim()) {
+                        error.value = '请输入决策主题。';
+                        return;
+                    }
+                    isLoading.value = true;
+                    try {
+                        const prompt = `决策主题：${decision.value}\n选项A：${optionA.value}\n选项B：${optionB.value}\n\n请为 A/B 各输出一条短期结果与长期结果，每条 16 字以内。并给出一句总结建议。`;
+                        const text = await callLLM(prompt);
+                        summary.value = text;
+                        const mermaidCode = `graph TD\nA[${decision.value}]-->B[${optionA.value}]\nA-->C[${optionB.value}]\nB-->D[短期：${text.split('\n')[0] || '稳定推进'}]\nB-->E[长期：${text.split('\n')[1] || '积累优势'}]\nC-->F[短期：${text.split('\n')[2] || '适应变化'}]\nC-->G[长期：${text.split('\n')[3] || '拓展可能'}]`;
+                        await renderMermaid(mermaidCode);
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+
+                let debounceTimer = null;
+                const debouncedGenerate = () => {
+                    if (debounceTimer) clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => generate(), 300);
+                };
+
+                const saveConfig = () => {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                onMounted(() => {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                });
+
+                return {
+                    decision,
+                    optionA,
+                    optionB,
+                    summary,
+                    error,
+                    isLoading,
+                    showSettings,
+                    apiConfig,
+                    debouncedGenerate,
+                    saveConfig
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_decision_branch_story.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

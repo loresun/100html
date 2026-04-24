@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FileSaver.js 文件保存</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fff7ed; color: #431407; }
+    .glass { background: white; border: 1px solid #fed7aa; box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.05); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-orange-900">💾 FileSaver.js</h1>
+    <p class="text-orange-800/60 mt-2 text-lg">在客户端生成并保存文件</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-orange-200 text-orange-800 rounded-lg hover:bg-orange-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-8">
+
+  <!-- 文本文件保存 -->
+  <div class="glass p-8 rounded-2xl">
+    <div class="flex items-center gap-3 mb-6">
+      <span class="text-3xl">📄</span>
+      <h3 class="font-bold text-xl text-slate-800">保存文本文件 (.txt)</h3>
+    </div>
+    <textarea id="text-content" rows="4" class="w-full p-4 bg-orange-50 border border-orange-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-400 mb-4 text-slate-700" placeholder="在此输入要保存的内容..."></textarea>
+    <div class="flex gap-4 items-center">
+      <input id="text-filename" type="text" value="note.txt" class="px-3 py-2 border border-slate-300 rounded-lg" placeholder="文件名">
+      <button onclick="saveText()" class="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold shadow-md shadow-orange-500/20">保存文本</button>
+    </div>
+  </div>
+
+  <!-- 画布保存 -->
+  <div class="glass p-8 rounded-2xl">
+    <div class="flex items-center gap-3 mb-6">
+      <span class="text-3xl">🎨</span>
+      <h3 class="font-bold text-xl text-slate-800">保存 Canvas 图片 (.png)</h3>
+    </div>
+    <div class="flex flex-col md:flex-row gap-6 items-start">
+      <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-inner">
+        <canvas id="myCanvas" width="300" height="200" class="cursor-crosshair"></canvas>
+      </div>
+      <div class="space-y-4">
+        <p class="text-sm text-slate-500">在画布上随便画几笔，然后保存。</p>
+        <button onclick="clearCanvas()" class="px-4 py-2 border border-slate-300 rounded-lg bg-white hover:bg-slate-50 text-slate-600 text-sm">清除画布</button>
+        <button onclick="saveCanvas()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-md shadow-blue-600/20 block w-full">保存为 PNG</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blob 保存 -->
+  <div class="glass p-8 rounded-2xl">
+    <div class="flex items-center gap-3 mb-6">
+      <span class="text-3xl">📦</span>
+      <h3 class="font-bold text-xl text-slate-800">保存 Blob 对象 (JSON)</h3>
+    </div>
+    <div class="bg-slate-900 p-4 rounded-xl text-slate-300 font-mono text-sm mb-4">
+      { "id": 101, "title": "Example", "active": true }
+    </div>
+    <button onclick="saveJSON()" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold shadow-md shadow-emerald-600/20">导出 JSON</button>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script>
+  // 文本保存
+  function saveText() {
+    const content = document.getElementById('text-content').value;
+    const filename = document.getElementById('text-filename').value || 'file.txt';
+    
+    // FileSaver 核心 API
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, filename);
+  }
+
+  // Canvas 绘图逻辑
+  const canvas = document.getElementById('myCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  // 填充白色背景
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 简单的绘图交互
+  let painting = false;
+  canvas.addEventListener('mousedown', () => painting = true);
+  canvas.addEventListener('mouseup', () => painting = false);
+  canvas.addEventListener('mousemove', (e) => {
+    if(!painting) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#ea580c'; // orange
+    
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  });
+  canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+  });
+
+  function clearCanvas() {
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+  }
+
+  // Canvas 保存
+  function saveCanvas() {
+    canvas.toBlob(function(blob) {
+      saveAs(blob, "drawing.png");
+    });
+  }
+
+  // JSON 保存
+  function saveJSON() {
+    const data = { id: 101, title: "Example", active: true, timestamp: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    saveAs(blob, "data.json");
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

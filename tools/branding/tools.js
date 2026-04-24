@@ -1,0 +1,6 @@
+window.toolCollections = window.toolCollections || {};
+window.toolCollections.branding = [
+    { id: 'persona_architect', name: '人设打造师', desc: '交互式人设顾问。通过 3-5 轮深度问诊，为你打造差异化、有记忆点的账号定位与视觉风格。', href: 'tools/branding/persona_architect.html',         icon: 'fa-solid fa-user-tie', category: 'branding', tags: ['小红书', '短视频', '公众号', '知乎'], isNew: true, iconBg: 'bg-purple-50', iconColor: 'text-purple-600', borderColor: 'purple-200', hoverTextColor: 'text-purple-600', linkColor: 'text-purple-600' },
+    { id: 'self_intro', name: '个人IP自我介绍生成器', desc: '多场景自我介绍生成器。支持平台简介、商务合作、演讲开场等场景，可导入人设打造师输出。', href: 'tools/branding/self_intro.html', icon: 'fa-solid fa-circle-user', category: 'branding', tags: ['小红书', '短视频', '公众号', '知乎', '私域'], isNew: true, iconBg: 'bg-pink-50', iconColor: 'text-pink-600', borderColor: 'pink-200', hoverTextColor: 'text-pink-600', linkColor: 'text-pink-600' },
+    { id: 'brand_naming', name: '品牌起名大师', desc: 'AI 商业命名。输入行业与理念，生成 10 个响亮的名字 + Slogan + 命名逻辑。', href: 'tools/branding/brand_naming.html', icon: 'fa-solid fa-award', category: 'branding', tags: ['商业', '创业'], isNew: true, iconBg: 'bg-slate-50', iconColor: 'text-slate-900', borderColor: 'slate-200', hoverTextColor: 'text-slate-900', linkColor: 'text-slate-900' },
+];

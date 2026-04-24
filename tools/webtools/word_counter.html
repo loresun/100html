@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强版字数统计 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-indigo-50 min-h-screen font-sans text-slate-800" x-data="counterApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-indigo-100 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-indigo-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
+                📝 增强版字数统计
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-indigo-50 text-center">
+                <div class="text-3xl font-black text-indigo-600 mb-1" x-text="stats.chars">0</div>
+                <div class="text-xs font-bold text-slate-400 uppercase">总字符 (含空格)</div>
+            </div>
+            
+             <div class="bg-white p-4 rounded-xl shadow-sm border border-indigo-50 text-center">
+                <div class="text-3xl font-black text-slate-700 mb-1" x-text="stats.charsNoSpace">0</div>
+                <div class="text-xs font-bold text-slate-400 uppercase">字符 (不含空格)</div>
+            </div>
+            
+             <div class="bg-white p-4 rounded-xl shadow-sm border border-indigo-50 text-center">
+                <div class="text-3xl font-black text-emerald-500 mb-1" x-text="stats.words">0</div>
+                <div class="text-xs font-bold text-slate-400 uppercase">单词 (Words)</div>
+            </div>
+            
+             <div class="bg-white p-4 rounded-xl shadow-sm border border-indigo-50 text-center">
+                <div class="text-3xl font-black text-violet-500 mb-1" x-text="stats.paragraphs">0</div>
+                <div class="text-xs font-bold text-slate-400 uppercase">段落 (Paragraphs)</div>
+            </div>
+        </div>
+        
+        <!-- Detailed Stats (Collapsible) -->
+        <div class="bg-white rounded-xl shadow-sm border border-indigo-50 p-4 mb-6 flex flex-wrap gap-x-8 gap-y-2 text-sm text-slate-600">
+             <div><span class="font-bold">中文字符:</span> <span x-text="stats.chinese">0</span></div>
+             <div><span class="font-bold">英文字母:</span> <span x-text="stats.alpha">0</span></div>
+             <div><span class="font-bold">数字:</span> <span x-text="stats.number">0</span></div>
+             <div><span class="font-bold">标点符号:</span> <span x-text="stats.punctuation">0</span></div>
+             <div><span class="font-bold">行数:</span> <span x-text="stats.lines">0</span></div>
+             <div><span class="font-bold">阅读时间 (预估):</span> <span x-text="readTime"></span></div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="bg-white rounded-2xl shadow-sm border border-indigo-100 p-2 relative h-[500px] flex flex-col">
+            <textarea 
+                x-model="text" 
+                @input="analyze()"
+                class="w-full flex-1 p-6 text-base leading-relaxed text-slate-700 outline-none resize-none rounded-xl"
+                placeholder="在此输入或粘贴文本..."
+                spellcheck="false"
+            ></textarea>
+            
+            <div class="absolute bottom-4 right-4 flex gap-2">
+                 <button @click="paste()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                    粘贴
+                </button>
+                <button @click="text = ''; analyze()" class="bg-slate-50 hover:bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                    清空
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function counterApp() {
+            return {
+                text: '',
+                stats: {
+                    chars: 0,
+                    charsNoSpace: 0,
+                    words: 0,
+                    paragraphs: 0,
+                    chinese: 0,
+                    alpha: 0,
+                    number: 0,
+                    punctuation: 0,
+                    lines: 0
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_word_counter_content');
+                    if(saved) {
+                        this.text = saved;
+                        this.analyze();
+                    }
+                    // icons removed
+                },
+                
+                async paste() {
+                    try {
+                        const t = await navigator.clipboard.readText();
+                        this.text = t;
+                        this.analyze();
+                    } catch (e) {
+                        alert('无法读取剪贴板，请手动粘贴。');
+                    }
+                },
+
+                analyze() {
+                    // Save content
+                    localStorage.setItem('webtools_word_counter_content', this.text);
+                    
+                    const t = this.text;
+                    const s = this.stats;
+                    
+                    s.chars = t.length;
+                    s.charsNoSpace = t.replace(/\s/g, '').length;
+                    
+                    // Words (English & Mixed) - A simple approximation
+                    // Split by non-word chars, filter empty
+                    const words = t.match(/[\w'-]+/g);
+                    const cjk = t.match(/[\u4e00-\u9fa5]/g); // Count Chinese chars as words too generally? Or separate?
+                    // Common practice: English words + Chinese chars
+                    const engWordCount = words ? words.length : 0;
+                    const chWordCount = cjk ? cjk.length : 0;
+                    s.words = engWordCount + chWordCount;
+                    
+                    s.paragraphs = t.split(/\n\s*\n/).filter(line => line.trim() !== '').length;
+                    if (s.paragraphs === 0 && t.trim() !== '') s.paragraphs = 1;
+                    
+                    s.chinese = chWordCount;
+                    s.alpha = (t.match(/[a-zA-Z]/g) || []).length;
+                    s.number = (t.match(/[0-9]/g) || []).length;
+                    
+                    s.lines = t.split(/\n/).length;
+                    if(t === '') s.lines = 0;
+                    
+                    // Simple punctuation count
+                    s.punctuation = (t.match(/[.,\/#!$%\^&\*;:{}=\-_`~()。，、；：？！…—·《》「」『』]/g) || []).length;
+                },
+                
+                get readTime() {
+                    // Avg reading speed: 300-500 chars/min or 200 words/min
+                    // Let's use 400 chars/min as a rough mix
+                    if (this.stats.chars === 0) return '0 分钟';
+                    const min = Math.ceil(this.stats.chars / 400);
+                    return min + ' 分钟';
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_word_counter.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

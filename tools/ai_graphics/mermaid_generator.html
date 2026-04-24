@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid 图表生成器 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Mermaid.js 图表渲染库 - 使用稳定版本 10.6.1 避免 getBBox 错误 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+
+    <style>
+        /* 引入 Google 字体 - 使用代码风格的字体 */
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+        /* 基础样式 - 采用深邃的蓝绿色调 */
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 代码字体 */
+        .code-font {
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #06b6d4 0%, #0891b2 100%);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #22d3ee 0%, #06b6d4 100%);
+        }
+
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(6, 182, 212, 0.5);
+            }
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.9);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: scale(0.9);
+                opacity: 1;
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        .animate-glow {
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        .loading-pulse {
+            animation: pulse-ring 1.5s ease-in-out infinite;
+        }
+
+        /* 卡片悬浮效果 */
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px -15px rgba(6, 182, 212, 0.3);
+        }
+
+        /* 代码编辑器样式 */
+        .code-editor {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .code-editor textarea {
+            background: transparent;
+            color: #e2e8f0;
+            caret-color: #06b6d4;
+            resize: none;
+        }
+
+        .code-editor textarea::placeholder {
+            color: #64748b;
+        }
+
+        .code-editor textarea:focus {
+            outline: none;
+        }
+
+        /* 行号样式 */
+        .line-numbers {
+            background: rgba(6, 182, 212, 0.1);
+            color: #64748b;
+            user-select: none;
+            text-align: right;
+            padding-right: 12px;
+            border-right: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        /* 预览区域样式 */
+        .preview-container {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            overflow: hidden;
+        }
+
+        /* Mermaid 图表样式覆盖 */
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+            padding: 20px;
+        }
+
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .mermaid svg g {
+            /* 确保 SVG 内容可见 */
+            vector-effect: non-scaling-stroke;
+        }
+
+        /* 按钮样式 */
+        .btn-primary {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px -8px rgba(6, 182, 212, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            color: #06b6d4;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(6, 182, 212, 0.2);
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+
+        /* 图表类型选择按钮 */
+        .chart-type-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            color: #94a3b8;
+            transition: all 0.3s ease;
+        }
+
+        .chart-type-btn:hover {
+            background: rgba(6, 182, 212, 0.15);
+            color: #06b6d4;
+            border-color: rgba(6, 182, 212, 0.4);
+        }
+
+        .chart-type-btn.active {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(8, 145, 178, 0.2) 100%);
+            border-color: #06b6d4;
+            color: #22d3ee;
+            box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.4);
+        }
+
+        /* Toast 动画样式 */
+        .toast-animate {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .toast-show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 错误提示样式 */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        /* 标签页样式 */
+        .tab-btn {
+            position: relative;
+            color: #64748b;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: #06b6d4;
+        }
+
+        .tab-btn.active {
+            color: #06b6d4;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #06b6d4, #22d3ee);
+            border-radius: 1px;
+        }
+
+        /* 示例代码预览 */
+        .example-preview {
+            background: rgba(6, 182, 212, 0.05);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 8px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-300">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50 border-b border-cyan-500/20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <!-- 左侧：返回首页 -->
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="p-2 bg-gradient-to-br from-cyan-500/20 to-teal-500/20 rounded-lg">
+                            <i class="fa-solid fa-code-branch text-cyan-400 text-xl"></i>
+                        </div>
+                        <span class="font-bold text-xl tracking-tight text-white">Mermaid 图表生成器</span>
+                    </div>
+                    <!-- 右侧：模型选择 & 设置 -->
+                    <div class="flex items-center gap-4">
+                        <select v-model="apiConfig.model"
+                            class="text-sm bg-slate-800 border border-cyan-500/30 rounded-lg px-3 py-1.5 text-slate-300 outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <button @click="showSettings = true"
+                            class="text-slate-400 hover:text-cyan-400 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                        <button @click="showPromptSettings = true"
+                            class="text-slate-400 hover:text-cyan-400 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span class="hidden sm:inline">提示词</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：输入 & 代码编辑区 -->
+            <div class="lg:w-1/2 flex flex-col border-r border-cyan-500/20 bg-slate-900/50">
+
+                <!-- 标签切换 -->
+                <div class="flex border-b border-cyan-500/20 px-4">
+                    <button @click="activeTab = 'ai'"
+                        :class="['tab-btn px-4 py-3 text-sm font-medium', activeTab === 'ai' ? 'active' : '']">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            AI 生成
+                        </span>
+                    </button>
+                    <button @click="activeTab = 'code'"
+                        :class="['tab-btn px-4 py-3 text-sm font-medium', activeTab === 'code' ? 'active' : '']">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-code"></i>
+                            代码编辑
+                        </span>
+                    </button>
+                    <button @click="activeTab = 'examples'"
+                        :class="['tab-btn px-4 py-3 text-sm font-medium', activeTab === 'examples' ? 'active' : '']">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-book"></i>
+                            示例模板
+                        </span>
+                    </button>
+                </div>
+
+                <!-- AI 生成面板 -->
+                <div v-show="activeTab === 'ai'" class="flex-grow flex flex-col p-4 overflow-auto">
+                    <!-- 图表类型选择 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-400 mb-2">图表类型</label>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            <button v-for="chart in chartTypes" :key="chart.id" @click="selectedChartType = chart.id"
+                                :class="['chart-type-btn px-3 py-2 rounded-lg text-xs font-medium transition', selectedChartType === chart.id ? 'active' : '']">
+                                <div class="flex flex-col items-center gap-1">
+                                    <i :class="['fa-solid', chart.icon, 'text-sm']"></i>
+                                    <span>{{ chart.name }}</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 需求描述 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-400 mb-2">描述您的需求</label>
+                        <textarea v-model="input.description" rows="6"
+                            class="w-full bg-slate-800/50 border border-cyan-500/30 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 resize-none"
+                            placeholder="例如：用户注册登录的流程图，包含邮箱验证、手机验证两种方式..."></textarea>
+                    </div>
+
+                    <!-- 生成按钮 -->
+                    <button @click="generateWithAI" :disabled="isGenerating"
+                        class="btn-primary w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <template v-if="isGenerating">
+                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <span>AI 正在生成...</span>
+                        </template>
+                        <template v-else>
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>AI 生成图表</span>
+                        </template>
+                    </button>
+
+                    <!-- 推理过程（V4 Pro 模型） -->
+                    <div v-if="reasoningContent" class="mt-4">
+                        <details class="bg-slate-800/30 rounded-lg border border-cyan-500/20">
+                            <summary
+                                class="px-4 py-3 cursor-pointer text-sm font-medium text-cyan-400 hover:text-cyan-300 flex items-center gap-2">
+                                <i class="fa-solid fa-brain"></i>
+                                查看 AI 思考过程
+                            </summary>
+                            <div
+                                class="px-4 pb-4 pt-2 text-sm text-slate-400 whitespace-pre-wrap max-h-60 overflow-auto">
+                                {{ reasoningContent }}</div>
+                        </details>
+                    </div>
+                </div>
+
+                <!-- 代码编辑面板 -->
+                <div v-show="activeTab === 'code'" class="flex-grow flex flex-col p-4 overflow-hidden">
+                    <div class="flex-grow code-editor flex overflow-hidden">
+                        <!-- 行号 -->
+                        <div class="line-numbers code-font text-xs py-4 px-2 overflow-hidden">
+                            <div v-for="n in lineCount" :key="n" class="leading-6">{{ n }}</div>
+                        </div>
+                        <!-- 代码区域 -->
+                        <textarea v-model="mermaidCode" @input="renderPreview"
+                            class="flex-grow code-font text-sm p-4 leading-6" placeholder="在此输入 Mermaid 代码...
+
+示例：
+graph TD
+    A[开始] --> B{判断}
+    B -->|是| C[执行]
+    B -->|否| D[结束]
+    C --> D"></textarea>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex gap-2 mt-4">
+                        <button @click="formatCode"
+                            class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-align-left"></i>
+                            格式化
+                        </button>
+                        <button @click="clearCode"
+                            class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-trash-can"></i>
+                            清空
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 示例模板面板 -->
+                <div v-show="activeTab === 'examples'" class="flex-grow p-4 overflow-auto">
+                    <div class="grid gap-3">
+                        <div v-for="example in examples" :key="example.name" @click="loadExample(example)"
+                            class="example-preview p-4 cursor-pointer hover:bg-cyan-500/10 transition">
+                            <div class="flex items-center gap-3 mb-2">
+                                <i :class="['fa-solid', example.icon, 'text-cyan-400']"></i>
+                                <span class="font-medium text-slate-200">{{ example.name }}</span>
+                            </div>
+                            <p class="text-sm text-slate-400">{{ example.description }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：预览区 -->
+            <div class="lg:w-1/2 flex flex-col bg-slate-800/30">
+                <!-- 预览头部 -->
+                <div class="flex items-center justify-between px-4 py-3 border-b border-cyan-500/20">
+                    <span class="text-sm font-medium text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-eye"></i>
+                        实时预览
+                    </span>
+                    <div class="flex gap-2">
+                        <button @click="copyCode"
+                            class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
+                            <i class="fa-solid fa-copy"></i>
+                            复制代码
+                        </button>
+                        <button @click="downloadSVG"
+                            class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-code"></i>
+                            导出 SVG
+                        </button>
+                        <button @click="downloadPNG"
+                            class="btn-primary px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
+                            <i class="fa-solid fa-image text-[10px]"></i>
+                            导出 PNG
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 预览内容 -->
+                <div class="flex-grow p-4 overflow-auto">
+                    <!-- 错误提示 -->
+                    <div v-if="renderError" class="error-message rounded-lg p-4 mb-4">
+                        <div class="flex items-start gap-3">
+                            <i class="fa-solid fa-triangle-exclamation text-red-400 mt-0.5"></i>
+                            <div>
+                                <p class="font-medium text-red-300">渲染错误</p>
+                                <p class="text-sm mt-1">{{ renderError }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 图表预览容器 -->
+                    <div class="preview-container min-h-[400px]">
+                        <div v-if="!mermaidCode.trim()"
+                            class="flex flex-col items-center justify-center h-96 text-slate-400">
+                            <i class="fa-solid fa-code-branch text-6xl mb-4 opacity-30"></i>
+                            <p class="text-lg font-medium">等待输入 Mermaid 代码</p>
+                            <p class="text-sm mt-2">在左侧输入代码或使用 AI 生成</p>
+                        </div>
+                        <div v-else ref="previewRef" class="mermaid p-4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div v-if="showSettings"
+            class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click.self="showSettings = false">
+            <div class="bg-slate-900 border border-cyan-500/30 rounded-2xl w-full max-w-md shadow-2xl animate-fade-in">
+                <div class="flex justify-between items-center px-6 py-4 border-b border-cyan-500/20">
+                    <h3 class="font-bold text-lg text-white">API 配置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full bg-slate-800 border border-cyan-500/30 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                            placeholder="sk-...">
+                        <p class="text-xs text-slate-500 mt-2">
+                            <a href="https://platform.deepseek.com/" target="_blank"
+                                class="text-cyan-400 hover:underline">获取 DeepSeek API Key →</a>
+                        </p>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-cyan-500/20 flex justify-end gap-3">
+                    <button @click="showSettings = false"
+                        class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">取消</button>
+                    <button @click="saveConfig"
+                        class="btn-primary px-4 py-2 rounded-lg text-sm font-medium">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提示词设置弹窗 -->
+        <div v-if="showPromptSettings"
+            class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            @click.self="showPromptSettings = false">
+            <div
+                class="bg-slate-900 border border-cyan-500/30 rounded-2xl w-full max-w-2xl shadow-2xl animate-fade-in max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center px-6 py-4 border-b border-cyan-500/20">
+                    <h3 class="font-bold text-lg text-white">自定义提示词</h3>
+                    <button @click="showPromptSettings = false" class="text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4 overflow-auto flex-grow">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">系统提示词</label>
+                        <textarea v-model="customPrompt.system" rows="12"
+                            class="w-full bg-slate-800 border border-cyan-500/30 rounded-lg px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 code-font text-sm resize-none"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-cyan-500/20 flex justify-between">
+                    <button @click="resetPrompt"
+                        class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">恢复默认</button>
+                    <div class="flex gap-3">
+                        <button @click="showPromptSettings = false"
+                            class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium">取消</button>
+                        <button @click="savePrompt"
+                            class="btn-primary px-4 py-2 rounded-lg text-sm font-medium">保存提示词</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div v-if="toast.show"
+            :class="['fixed bottom-6 right-6 bg-slate-900 border border-cyan-500/30 rounded-xl px-5 py-3 shadow-2xl z-50 flex items-center gap-3 toast-animate', toast.show ? 'toast-show' : '']">
+            <i :class="['fa-solid', toast.icon, 'text-cyan-400']"></i>
+            <span class="text-sm font-medium text-slate-200">{{ toast.message }}</span>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+
+        // 默认系统提示词
+        const DEFAULT_SYSTEM_PROMPT = `你是一个专业的 Mermaid 图表生成专家。请根据用户的需求生成对应的 Mermaid 代码。
+
+## 要求：
+1. 只返回纯净的 Mermaid 代码，不要包含任何解释性文字
+2. 不要使用 markdown 代码块包裹（不要用 \`\`\`mermaid）
+3. 代码必须符合 Mermaid 语法规范
+4. 使用中文标签，让图表更易读
+5. 适当添加样式让图表更美观
+
+## 支持的图表类型：
+- flowchart/graph：流程图（使用 graph TD/LR/BT/RL 或 flowchart TD/LR）
+- sequence：时序图（使用 sequenceDiagram）
+- class：类图（使用 classDiagram）
+- state：状态图（使用 stateDiagram-v2）
+- er：实体关系图（使用 erDiagram）
+- gantt：甘特图（使用 gantt）
+- pie：饼图（使用 pie）
+- mindmap：思维导图（使用 mindmap）
+
+## 用户选择的图表类型：{chartType}
+
+## 注意事项：
+1. 确保节点 ID 不使用中文，使用英文或拼音
+2. 中文只用于节点标签文字（用方括号[]、圆括号()等包裹）
+3. 箭头和连接线使用正确的语法
+4. 如果用户没有明确指定类型，根据需求智能选择最合适的图表类型`;
+
+        createApp({
+            setup() {
+                // 初始化图标已由 Font Awesome 自动处理
+
+                // ==================== 状态管理 ====================
+
+                // 弹窗控制
+                const showSettings = ref(false);
+                const showPromptSettings = ref(false);
+
+                // API 配置 - 从 global_llm_config 读取（兼容旧版 mermaid_deepseek_key）
+                let savedConfig = {};
+                try {
+                    savedConfig = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                } catch (e) {
+                    console.error('解析 global_llm_config 失败:', e);
+                }
+
+                // 兼容迁移：如果 global 没有但旧版有，则迁移
+                const legacyKey = localStorage.getItem('mermaid_deepseek_key');
+                if (!savedConfig.deepseek && legacyKey) {
+                    savedConfig.deepseek = legacyKey;
+                    localStorage.setItem('global_llm_config', JSON.stringify(savedConfig));
+                    localStorage.removeItem('mermaid_deepseek_key');
+                    localStorage.removeItem('mermaid_model');
+                }
+                const apiConfig = ref({
+                    deepseek: savedConfig.deepseek || '',
+                    model: savedConfig.model || 'deepseek-v4-flash'
+                });
+
+                // 自定义提示词
+                const customPrompt = ref({
+                    system: localStorage.getItem('mermaid_system_prompt') || DEFAULT_SYSTEM_PROMPT
+                });
+
+                // 当前标签页
+                const activeTab = ref('ai');
+
+                // 选中的图表类型
+                const selectedChartType = ref('flowchart');
+
+                // 输入内容
+                const input = ref({
+                    description: ''
+                });
+
+                // Mermaid 代码
+                const mermaidCode = ref('');
+
+                // 预览区引用
+                const previewRef = ref(null);
+
+                // 状态标志
+                const isGenerating = ref(false);
+                const renderError = ref('');
+                const reasoningContent = ref('');
+
+                // Toast 提示
+                const toast = ref({
+                    show: false,
+                    message: '',
+                    icon: 'fa-circle-check'
+                });
+
+                // 图表类型选项
+                const chartTypes = ref([
+                    { id: 'flowchart', name: '流程图', icon: 'fa-code-branch' },
+                    { id: 'sequence', name: '时序图', icon: 'fa-arrow-right-left' },
+                    { id: 'class', name: '类图', icon: 'fa-box' },
+                    { id: 'state', name: '状态图', icon: 'fa-circle-dot' },
+                    { id: 'er', name: 'ER图', icon: 'fa-database' },
+                    { id: 'gantt', name: '甘特图', icon: 'fa-calendar' },
+                    { id: 'pie', name: '饼图', icon: 'fa-chart-pie' },
+                    { id: 'mindmap', name: '思维导图', icon: 'fa-brain' }
+                ]);
+
+                // 示例模板
+                const examples = ref([
+                    {
+                        name: '用户登录流程图',
+                        icon: 'fa-user',
+                        description: '展示用户登录验证的完整流程',
+                        code: `graph TD
+    A[用户访问] --> B{已登录?}
+    B -->|是| C[进入首页]
+    B -->|否| D[显示登录页]
+    D --> E[输入账号密码]
+    E --> F{验证通过?}
+    F -->|是| G[创建会话]
+    G --> C
+    F -->|否| H[显示错误]
+    H --> D`
+                    },
+                    {
+                        name: 'API 调用时序图',
+                        icon: 'fa-arrow-right-left',
+                        description: '前后端 API 交互的时序流程',
+                        code: `sequenceDiagram
+    participant U as 用户
+    participant F as 前端
+    participant B as 后端
+    participant D as 数据库
+
+    U->>F: 点击提交
+    F->>B: POST /api/data
+    B->>D: 查询数据
+    D-->>B: 返回结果
+    B-->>F: JSON 响应
+    F-->>U: 显示结果`
+                    },
+                    {
+                        name: '订单状态图',
+                        icon: 'fa-circle-dot',
+                        description: '电商订单的状态流转',
+                        code: `stateDiagram-v2
+    [*] --> 待支付
+    待支付 --> 已支付: 支付成功
+    待支付 --> 已取消: 超时/取消
+    已支付 --> 待发货: 商家确认
+    待发货 --> 已发货: 商家发货
+    已发货 --> 已签收: 用户签收
+    已签收 --> 已完成: 确认收货
+    已签收 --> 退货中: 申请退货
+    退货中 --> 已退货: 退货成功
+    已完成 --> [*]
+    已退货 --> [*]
+    已取消 --> [*]`
+                    },
+                    {
+                        name: '用户实体关系图',
+                        icon: 'fa-database',
+                        description: '用户与订单的 ER 关系',
+                        code: `erDiagram
+    USER ||--o{ ORDER : places
+    USER {
+        int id PK
+        string name
+        string email
+        date created_at
+    }
+    ORDER ||--|{ ORDER_ITEM : contains
+    ORDER {
+        int id PK
+        int user_id FK
+        decimal total
+        string status
+    }
+    ORDER_ITEM {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+    }
+    PRODUCT ||--o{ ORDER_ITEM : "ordered in"
+    PRODUCT {
+        int id PK
+        string name
+        decimal price
+    }`
+                    },
+                    {
+                        name: '项目甘特图',
+                        icon: 'fa-calendar',
+                        description: '项目开发阶段时间规划',
+                        code: `gantt
+    title 项目开发计划
+    dateFormat YYYY-MM-DD
+    section 需求阶段
+        需求调研    :a1, 2024-01-01, 7d
+        需求评审    :a2, after a1, 3d
+    section 设计阶段
+        原型设计    :b1, after a2, 5d
+        UI设计      :b2, after b1, 7d
+    section 开发阶段
+        前端开发    :c1, after b2, 14d
+        后端开发    :c2, after b2, 14d
+        联调测试    :c3, after c1, 7d
+    section 上线阶段
+        部署发布    :d1, after c3, 3d`
+                    },
+                    {
+                        name: '技术栈饼图',
+                        icon: 'fa-chart-pie',
+                        description: '项目技术栈占比分布',
+                        code: `pie showData
+    title 技术栈使用占比
+    "JavaScript" : 35
+    "Python" : 25
+    "Java" : 20
+    "Go" : 12
+    "其他" : 8`
+                    },
+                    {
+                        name: '类继承关系图',
+                        icon: 'fa-box',
+                        description: '面向对象的类继承结构',
+                        code: `classDiagram
+    Animal <|-- Dog
+    Animal <|-- Cat
+    Animal : +String name
+    Animal : +int age
+    Animal : +makeSound()
+    
+    class Dog{
+        +String breed
+        +bark()
+        +fetch()
+    }
+    
+    class Cat{
+        +String color
+        +meow()
+        +scratch()
+    }`
+                    },
+                    {
+                        name: '知识思维导图',
+                        icon: 'fa-brain',
+                        description: 'Mermaid 语法知识结构',
+                        code: `mindmap
+  root((Mermaid))
+    图表类型
+      流程图
+      时序图
+      类图
+      状态图
+    语法特点
+      简单直观
+      文本描述
+      自动布局
+    应用场景
+      技术文档
+      流程说明
+      架构设计`
+                    }
+                ]);
+
+                // ==================== 计算属性 ====================
+
+                // 计算行号
+                const lineCount = computed(() => {
+                    return mermaidCode.value.split('\n').length || 1;
+                });
+
+                // ==================== 方法 ====================
+
+                /**
+                 * 显示 Toast 提示
+                 * @param {string} message - 提示消息
+                 * @param {string} icon - 图标名称
+                 */
+                const showToast = (message, icon = 'fa-circle-check') => {
+                    const iconMap = {
+                        'check-circle': 'fa-circle-check',
+                        'refresh-cw': 'fa-arrows-rotate',
+                        'alert-circle': 'fa-triangle-exclamation',
+                        'file-text': 'fa-file-lines',
+                        'align-left': 'fa-align-left',
+                        'trash-2': 'fa-trash-can',
+                        'copy': 'fa-copy',
+                        'file-code': 'fa-file-code',
+                        'image': 'fa-image'
+                    };
+                    toast.value.show = true;
+                    toast.value.message = message;
+                    toast.value.icon = iconMap[icon] || icon;
+                    setTimeout(() => {
+                        toast.value.show = false;
+                    }, 3000);
+                };
+
+                /**
+                 * 刷新 Lucide 图标
+                 */
+                const refreshIcons = () => {
+                    // Font Awesome icons are handled automatically
+                };
+
+                /**
+                 * 保存 API 配置 - 统一保存到 global_llm_config
+                 */
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('解析 global_llm_config 失败:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: apiConfig.value.deepseek,
+                        model: apiConfig.value.model
+                    }));
+                    showSettings.value = false;
+                    showToast('配置已保存', 'check-circle');
+                };
+
+                /**
+                 * 保存提示词
+                 */
+                const savePrompt = () => {
+                    localStorage.setItem('mermaid_system_prompt', customPrompt.value.system);
+                    showPromptSettings.value = false;
+                    showToast('提示词已保存', 'check-circle');
+                };
+
+                /**
+                 * 重置提示词
+                 */
+                const resetPrompt = () => {
+                    customPrompt.value.system = DEFAULT_SYSTEM_PROMPT;
+                    localStorage.removeItem('mermaid_system_prompt');
+                    showToast('已恢复默认提示词', 'refresh-cw');
+                };
+
+                /**
+                 * 使用 AI 生成 Mermaid 代码
+                 */
+                const generateWithAI = async () => {
+                    // 检查 API Key
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    // 检查输入
+                    if (!input.value.description.trim()) {
+                        showToast('请输入需求描述', 'alert-circle');
+                        return;
+                    }
+
+                    // 重置状态
+                    isGenerating.value = true;
+                    reasoningContent.value = '';
+                    renderError.value = '';
+
+                    try {
+                        // 构建系统提示词
+                        const chartTypeName = chartTypes.value.find(c => c.id === selectedChartType.value)?.name || '流程图';
+                        const systemPrompt = customPrompt.value.system.replace('{chartType}', chartTypeName);
+
+
+
+                        // 调用 DeepSeek API
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.value.model,
+                                messages: [
+                                    { role: 'system', content: systemPrompt },
+                                    { role: 'user', content: input.value.description }
+                                ],
+                                stream: false
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            const errorMsg = errorData.error?.message || response.statusText;
+                            throw new Error(`API 请求失败 (${response.status}): ${errorMsg}`);
+                        }
+
+                        // 解析响应
+                        const data = await response.json();
+
+
+                        const choice = data.choices?.[0];
+                        if (!choice) {
+                            throw new Error('API 返回格式错误');
+                        }
+
+                        // 提取推理内容
+                        if (choice.message?.reasoning_content) {
+                            reasoningContent.value = choice.message.reasoning_content;
+                        }
+
+                        // 提取代码
+                        let code = choice.message?.content || '';
+
+                        // 清理可能的 markdown 代码块标记
+                        code = code.trim();
+                        if (code.startsWith('```')) {
+                            code = code.replace(/^```(?:mermaid)?\n?/, '').replace(/\n?```$/, '');
+                        }
+
+                        mermaidCode.value = code.trim();
+
+                        // 切换到代码编辑标签
+                        activeTab.value = 'code';
+
+                        // 渲染预览
+                        await nextTick();
+                        renderPreview();
+
+                        showToast('图表代码生成完成', 'check-circle');
+
+                    } catch (error) {
+
+
+                        let errorMsg = '生成失败，请重试';
+                        if (error.message.includes('401')) {
+                            errorMsg = 'API Key 无效，请检查配置';
+                            showSettings.value = true;
+                        } else if (error.message.includes('429')) {
+                            errorMsg = '请求过于频繁，请稍后再试';
+                        } else if (error.message) {
+                            errorMsg = error.message;
+                        }
+
+                        showToast(errorMsg, 'alert-circle');
+                    } finally {
+                        isGenerating.value = false;
+                        refreshIcons();
+                    }
+                };
+
+                /**
+                 * 渲染 Mermaid 预览
+                 * 使用 mermaid.render() 方法避免 getBBox 错误
+                 */
+                const renderPreview = async () => {
+                    if (!mermaidCode.value.trim()) {
+                        renderError.value = '';
+                        return;
+                    }
+
+                    // 检查 mermaid 是否已加载
+                    if (typeof mermaid === 'undefined') {
+                        renderError.value = 'Mermaid 库未加载，请刷新页面重试';
+                        console.error('Mermaid library not loaded');
+                        return;
+                    }
+
+                    try {
+                        renderError.value = '';
+
+                        // 等待 DOM 更新
+                        await nextTick();
+
+                        const container = previewRef.value;
+                        if (!container) {
+                            console.warn('previewRef not ready, retrying...');
+                            // 延迟重试
+                            setTimeout(() => renderPreview(), 100);
+                            return;
+                        }
+
+                        // 清理之前的渲染内容
+                        container.innerHTML = '';
+
+                        // 创建唯一 ID（避免重复 ID 导致的渲染问题）
+                        const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                        console.log('Rendering mermaid diagram with id:', id);
+
+                        // 使用 mermaid.render() 方法：先生成 SVG 字符串，再插入 DOM
+                        // 这样可以避免 getBBox 在隐藏/未完全挂载的元素上报错的问题
+                        const result = await mermaid.render(id, mermaidCode.value);
+
+                        if (!result || !result.svg) {
+                            throw new Error('Mermaid 渲染返回空结果');
+                        }
+
+                        // 将生成的 SVG 插入容器
+                        container.innerHTML = result.svg;
+
+                        // 如果有交互绑定函数，执行它
+                        if (result.bindFunctions) {
+                            result.bindFunctions(container);
+                        }
+
+                        console.log('Mermaid diagram rendered successfully');
+
+                    } catch (error) {
+                        console.error('Mermaid render error:', error);
+                        renderError.value = error.message || '语法错误，请检查 Mermaid 代码';
+                    }
+                };
+
+                /**
+                 * 加载示例模板
+                 * @param {Object} example - 示例对象
+                 */
+                const loadExample = (example) => {
+                    mermaidCode.value = example.code;
+                    activeTab.value = 'code';
+                    nextTick(() => {
+                        renderPreview();
+                    });
+                    showToast(`已加载: ${example.name}`, 'file-text');
+                };
+
+                /**
+                 * 格式化代码（简单整理）
+                 */
+                const formatCode = () => {
+                    // 简单的格式化：移除多余空行，统一缩进
+                    let lines = mermaidCode.value.split('\n');
+                    lines = lines.map(line => line.trimEnd());
+                    lines = lines.filter((line, index, arr) => {
+                        // 保留非空行，但最多保留一个连续空行
+                        if (line.trim() === '') {
+                            return index === 0 || arr[index - 1].trim() !== '';
+                        }
+                        return true;
+                    });
+                    mermaidCode.value = lines.join('\n').trim();
+                    renderPreview();
+                    showToast('代码已格式化', 'align-left');
+                };
+
+                /**
+                 * 清空代码
+                 */
+                const clearCode = () => {
+                    mermaidCode.value = '';
+                    renderError.value = '';
+                    if (previewRef.value) {
+                        previewRef.value.innerHTML = '';
+                    }
+                    showToast('已清空代码', 'trash-2');
+                };
+
+                /**
+                 * 复制代码到剪贴板
+                 */
+                const copyCode = () => {
+                    if (!mermaidCode.value.trim()) {
+                        showToast('没有可复制的代码', 'alert-circle');
+                        return;
+                    }
+                    navigator.clipboard.writeText(mermaidCode.value).then(() => {
+                        showToast('代码已复制到剪贴板', 'copy');
+                    });
+                };
+
+                /**
+                 * 导出 SVG 文件
+                 */
+                const downloadSVG = () => {
+                    const svg = previewRef.value?.querySelector('svg');
+                    if (!svg) {
+                        showToast('请先生成图表', 'alert-circle');
+                        return;
+                    }
+
+                    try {
+                        // 克隆 SVG 并添加样式
+                        const clonedSvg = svg.cloneNode(true);
+                        clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+                        // 序列化
+                        const svgData = new XMLSerializer().serializeToString(clonedSvg);
+                        const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+
+                        // 下载
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `mermaid_${new Date().toISOString().slice(0, 10)}.svg`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+
+                        showToast('SVG 已导出', 'file-code');
+                    } catch (error) {
+
+                        showToast('导出失败: ' + error.message, 'alert-circle');
+                    }
+                };
+
+                /**
+                 * 导出 PNG 图片
+                 */
+                const downloadPNG = () => {
+                    const svg = previewRef.value?.querySelector('svg');
+                    if (!svg) {
+                        showToast('请先生成图表', 'alert-circle');
+                        return;
+                    }
+
+                    try {
+                        // 获取 SVG 尺寸
+                        const bbox = svg.getBoundingClientRect();
+                        const width = bbox.width || 800;
+                        const height = bbox.height || 600;
+
+                        // 克隆并设置属性
+                        const clonedSvg = svg.cloneNode(true);
+                        clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                        clonedSvg.setAttribute('width', width);
+                        clonedSvg.setAttribute('height', height);
+
+                        // 序列化
+                        const svgData = new XMLSerializer().serializeToString(clonedSvg);
+                        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                        const svgUrl = URL.createObjectURL(svgBlob);
+
+                        // 创建 canvas
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const scale = 2; // 高清导出
+                        const padding = 40;
+
+                        canvas.width = (width + padding * 2) * scale;
+                        canvas.height = (height + padding * 2) * scale;
+
+                        // 白色背景
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.scale(scale, scale);
+
+                        // 加载图片
+                        const img = new Image();
+                        img.onload = () => {
+                            ctx.drawImage(img, padding, padding, width, height);
+
+                            // 导出
+                            canvas.toBlob((blob) => {
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `mermaid_${new Date().toISOString().slice(0, 10)}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                URL.revokeObjectURL(svgUrl);
+
+                                showToast('PNG 已导出', 'image');
+                            }, 'image/png');
+                        };
+
+                        img.onerror = () => {
+                            URL.revokeObjectURL(svgUrl);
+                            showToast('图片导出失败', 'alert-circle');
+                        };
+
+                        img.src = svgUrl;
+
+                    } catch (error) {
+
+                        showToast('导出失败: ' + error.message, 'alert-circle');
+                    }
+                };
+
+                // ==================== 生命周期 ====================
+
+                // 挂载后初始化
+                onMounted(async () => {
+                    // 初始化 Lucide 图标
+                    lucide.createIcons();
+
+                    // 初始化 Mermaid（必须先初始化才能使用）
+                    await mermaid.initialize({
+                        startOnLoad: false,
+                        theme: 'default',
+                        securityLevel: 'loose',
+                        fontFamily: 'Noto Sans SC, sans-serif',
+                        flowchart: {
+                            useMaxWidth: true,
+                            htmlLabels: true,
+                            curve: 'basis'
+                        },
+                        sequence: {
+                            useMaxWidth: true,
+                            mirrorActors: false
+                        },
+                        gantt: {
+                            useMaxWidth: true
+                        }
+                    });
+
+                    // 初始化图标
+                    refreshIcons();
+
+                    // 如果已经有代码，尝试渲染
+                    if (mermaidCode.value.trim()) {
+                        await nextTick();
+                        renderPreview();
+                    }
+                });
+
+                // 监听标签切换，刷新图标
+                watch(activeTab, () => {
+                    refreshIcons();
+                });
+
+                // 监听 mermaidCode 变化，自动渲染预览（添加防抖）
+                let renderTimeout = null;
+                watch(mermaidCode, (newVal) => {
+                    if (renderTimeout) {
+                        clearTimeout(renderTimeout);
+                    }
+                    renderTimeout = setTimeout(() => {
+                        renderPreview();
+                    }, 300);
+                });
+
+                // ==================== 返回 ====================
+
+                return {
+                    // 状态
+                    showSettings,
+                    showPromptSettings,
+                    apiConfig,
+                    customPrompt,
+                    activeTab,
+                    selectedChartType,
+                    input,
+                    mermaidCode,
+                    previewRef,
+                    isGenerating,
+                    renderError,
+                    reasoningContent,
+                    toast,
+                    chartTypes,
+                    examples,
+                    lineCount,
+
+                    // 方法
+                    saveConfig,
+                    savePrompt,
+                    resetPrompt,
+                    generateWithAI,
+                    renderPreview,
+                    loadExample,
+                    formatCode,
+                    clearCode,
+                    copyCode,
+                    downloadSVG,
+                    downloadPNG
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_graphics_mermaid_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

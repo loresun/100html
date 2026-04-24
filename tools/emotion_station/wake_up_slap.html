@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>骂醒我清醒剂 - 情绪急救站</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /**
+     * 急诊室 / 警示红基调：冷灰墙面 + 医疗感条纹
+     */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        linear-gradient(135deg, #1c1917 0%, #292524 40%, #450a0a 100%);
+      min-height: 100vh;
+    }
+
+    /** 背景微妙「警报」呼吸光晕 */
+    .er-ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(220, 38, 38, 0.22), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 50%, rgba(185, 28, 28, 0.12), transparent 50%);
+      animation: er-breathe 4s ease-in-out infinite;
+    }
+
+    @keyframes er-breathe {
+
+      0%,
+      100% {
+        opacity: 0.65;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    /** 危险操作区：外圈警报闪烁（微妙，不刺眼） */
+    .danger-halo {
+      animation: alert-ring 2.4s ease-in-out infinite;
+    }
+
+    @keyframes alert-ring {
+
+      0%,
+      100% {
+        box-shadow:
+          0 0 0 1px rgba(248, 113, 113, 0.35),
+          0 0 18px rgba(220, 38, 38, 0.15);
+      }
+
+      50% {
+        box-shadow:
+          0 0 0 2px rgba(248, 113, 113, 0.65),
+          0 0 28px rgba(220, 38, 38, 0.35);
+      }
+    }
+
+    /** 清醒指数进度条：红 → 黄 → 绿 */
+    .wake-bar-fill {
+      background: linear-gradient(90deg, #dc2626 0%, #eab308 45%, #22c55e 100%);
+      transition: width 0.08s linear;
+    }
+
+    /** Markdown 输出：骂人段落偏大字号，加粗由模型用 ** 控制 */
+    .slap-prose {
+      font-size: 1.125rem;
+      line-height: 1.75;
+      color: #fecaca;
+    }
+
+    .slap-prose :where(h2) {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #fef2f2;
+      margin-top: 1.25rem;
+      margin-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(248, 113, 113, 0.35);
+      padding-bottom: 0.35rem;
+    }
+
+    .slap-prose :where(strong) {
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .slap-prose :where(p) {
+      margin-bottom: 0.75rem;
+    }
+
+    .slap-prose :where(ul) {
+      list-style: disc;
+      padding-left: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-red-100">
+  <div class="er-ambient" aria-hidden="true"></div>
+
+  <div x-data="wakeUpSlap()" x-init="init()" class="min-h-screen flex flex-col pb-14 relative z-10">
+
+    <!-- 顶部导航：返回站点首页（工具在 tools/emotion_station/ 下，需两级 ../） -->
+    <nav class="bg-red-950/80 backdrop-blur-md sticky top-0 z-50 border-b border-red-800/60 shadow-lg shadow-red-950/40">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer shrink-0" onclick="location.href='../../index.html'">
+          <i data-lucide="siren" class="text-red-500 h-7 w-7"></i>
+          <span class="font-bold text-lg sm:text-xl text-red-50">骂醒我清醒剂</span>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="hidden sm:flex bg-red-950/80 rounded-lg p-0.5 text-xs border border-red-800/80">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-red-600 text-white shadow' : 'text-red-200'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-red-600 text-white shadow' : 'text-red-200'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true"
+            class="p-2 rounded-lg text-red-200 hover:bg-red-900/60 border border-transparent hover:border-red-800"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+      <p class="text-center text-xs text-red-300/80 max-w-2xl mx-auto leading-relaxed">
+        本工具为情绪自助与写作练习，非医疗建议。若你感到难以自控或心理危机，请优先联系身边信任的人或专业心理援助。
+      </p>
+
+      <div class="grid lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
+
+        <!-- 左侧：危险输入区 -->
+        <section
+          class="rounded-2xl p-5 sm:p-6 space-y-4 bg-red-950/70 border-2 border-red-600/50 backdrop-blur-md danger-halo">
+          <h2 class="text-base font-bold text-red-100 flex items-center gap-2">
+            <i data-lucide="octagon-alert" class="w-5 h-5 text-red-500"></i>
+            登记「危险冲动」
+          </h2>
+
+          <div>
+            <label class="block text-xs font-semibold text-red-200/90 mb-2">你明知不该做、但此刻超想做的事</label>
+            <textarea x-model="userImpulse" rows="5" placeholder="例：想给前任发小作文、想刷手机到天亮、想冲动辞职…"
+              class="w-full rounded-xl border-2 border-red-700/80 bg-stone-950/80 text-red-50 placeholder-red-500/50 p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-y min-h-[120px]"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-red-200/90 mb-2">谁来骂醒你</label>
+            <div class="flex flex-col gap-2">
+              <template x-for="p in personas" :key="p.id">
+                <button type="button" @click="personaId = p.id"
+                  :class="personaId === p.id ? 'bg-red-600 text-white border-red-400 ring-2 ring-red-400/50' : 'bg-stone-900/80 border-red-900 text-red-200 hover:border-red-600'"
+                  class="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium border transition"
+                  x-text="p.label"></button>
+              </template>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-red-200/90 mb-2">常见冲动（点选填入）</label>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="preset in presets" :key="preset">
+                <button type="button" @click="userImpulse = preset"
+                  class="px-2.5 py-1 rounded-lg text-xs font-medium border border-red-800/80 bg-stone-900/60 text-red-200 hover:bg-red-900/40 hover:border-red-500 transition">
+                  <span x-text="preset"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <button type="button" @click="slapMe()" :disabled="isStreaming"
+            class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white font-extrabold py-4 rounded-xl shadow-lg shadow-red-950/50 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-red-400/40 text-lg tracking-wide">
+            <i x-show="!isStreaming" data-lucide="zap" class="w-6 h-6"></i>
+            <i x-show="isStreaming" data-lucide="loader-2" class="w-6 h-6 animate-spin"></i>
+            <span x-text="isStreaming ? '正在输出…' : '骂醒我！'"></span>
+          </button>
+
+          <p x-show="errorMsg" class="text-sm text-red-200 bg-red-950 border border-red-700 rounded-lg px-3 py-2"
+            x-text="errorMsg"></p>
+        </section>
+
+        <!-- 右侧：输出 -->
+        <section class="space-y-4">
+          <!-- V4 Pro 推理过程（可折叠） -->
+          <details x-show="reasoningText" class="rounded-xl border border-red-900/60 bg-stone-900/50 p-4 open:pb-4">
+            <summary class="cursor-pointer text-sm font-semibold text-red-300 flex items-center gap-2">
+              <i data-lucide="brain" class="w-4 h-4"></i>
+              深度思考过程（V4 Pro，点击展开）
+            </summary>
+            <pre class="mt-3 text-xs text-red-200/70 whitespace-pre-wrap font-sans leading-relaxed"
+              x-text="reasoningText"></pre>
+          </details>
+
+          <div
+            class="rounded-2xl border-2 border-red-800/50 bg-stone-950/75 min-h-[280px] p-5 sm:p-8 backdrop-blur-sm shadow-inner shadow-black/40">
+            <div x-show="!resultMarkdown && !isStreaming"
+              class="flex flex-col items-center justify-center text-center py-16 text-red-400/60 gap-3">
+              <i data-lucide="shield-alert" class="w-16 h-16 opacity-40"></i>
+              <p class="text-sm">在左侧写下你的冲动，选好「骂人的人格」，然后按下红色按钮。</p>
+            </div>
+
+            <div x-show="isStreaming || resultMarkdown" class="slap-prose prose-invert max-w-none" x-html="renderedHtml">
+            </div>
+          </div>
+
+          <!-- 清醒指数 -->
+          <div x-show="showWakeMeter"
+            class="rounded-2xl border border-red-900/70 bg-red-950/40 p-4 sm:p-5 space-y-3">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm font-bold text-red-100 flex items-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4 text-green-400"></i>
+                清醒指数
+              </span>
+              <span class="text-2xl font-black tabular-nums"
+                :class="wakeScore >= 80 ? 'text-green-400' : wakeScore >= 40 ? 'text-yellow-300' : 'text-red-400'"
+                x-text="wakeScore + '%'"></span>
+            </div>
+            <div class="h-4 rounded-full bg-stone-900 border border-red-900/50 overflow-hidden">
+              <div class="h-full rounded-full wake-bar-fill" :style="'width:' + wakeScore + '%'"></div>
+            </div>
+          </div>
+
+          <button type="button" x-show="resultMarkdown && !isStreaming" @click="slapMe(true)"
+            class="w-full sm:w-auto px-6 py-3 rounded-xl font-bold border-2 border-amber-500/60 bg-amber-950/40 text-amber-100 hover:bg-amber-900/50 transition flex items-center justify-center gap-2 mx-auto sm:mx-0">
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+            还没醒？再骂一次！
+          </button>
+        </section>
+      </div>
+    </main>
+
+    <!-- API 设置弹窗 -->
+    <div x-show="showSettings" x-transition
+      class="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4" style="display: none;">
+      <div @click.away="showSettings = false"
+        class="bg-stone-900 border-2 border-red-800 rounded-2xl shadow-2xl w-full max-w-md p-6 text-red-50">
+        <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+          <i data-lucide="key-round" class="w-5 h-5 text-red-400"></i>
+          API 配置
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-red-200 mb-1">DeepSeek API Key</label>
+            <input type="password" x-model="apiConfig.deepseek"
+              class="w-full rounded-lg border border-red-900 bg-stone-950 p-2.5 text-sm text-red-50 focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-red-200 mb-1">模型</label>
+            <select x-model="apiConfig.model"
+              class="w-full rounded-lg border border-red-900 bg-stone-950 p-2.5 text-sm text-red-50 focus:ring-2 focus:ring-red-500">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" @click="showSettings = false"
+            class="px-4 py-2 rounded-lg border border-red-900 text-red-200 hover:bg-red-950">取消</button>
+          <button type="button" @click="saveConfig()"
+            class="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-500">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition.opacity.duration.200ms
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl bg-red-950 border border-red-700 text-red-100 text-sm shadow-xl flex items-center gap-2"
+      style="display: none;">
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 根据人格 ID 返回系统提示里用的角色说明（约束口吻，避免真恶毒）
+     * @param {string} id
+     * @returns {string}
+     */
+    function personaInstruction(id) {
+      const map = {
+        bestie: '毒舌闺蜜：口语化、扎心但明显是为你好，可吐槽你的恋爱脑/拖延，禁止人身侮辱与歧视。',
+        drill: '军训教官：短句、吼醒式节奏，强调纪律与自控，可以严厉但不羞辱人格。',
+        tiger_mom: '虎妈：高压期待+怕你走弯路，语气冲但底色是爱，禁止贬低你的价值。',
+        luxun: '鲁迅附体：冷峻讽刺、比喻锋利，偏杂文风，保持克制与文学感，勿用网络烂梗硬套。',
+        future_self: '你未来 65 岁的自己：沧桑、后悔与庆幸交织，用「如果时间倒流」视角劝现在的你，真诚不鸡汤。'
+      };
+      return map[id] || map.bestie;
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('wakeUpSlap', () => ({
+        /** @type {string} 用户输入的冲动 */
+        userImpulse: '',
+        /** @type {string} 当前选中的人格 id */
+        personaId: 'bestie',
+        /** 可选人格列表 */
+        personas: [
+          { id: 'bestie', label: '毒舌闺蜜' },
+          { id: 'drill', label: '军训教官' },
+          { id: 'tiger_mom', label: '虎妈' },
+          { id: 'luxun', label: '鲁迅附体' },
+          { id: 'future_self', label: '你未来65岁的自己' }
+        ],
+        /** 一键填入的常见冲动 */
+        presets: [
+          '想联系前任',
+          '想刷3小时手机',
+          '想熬夜到4点',
+          '想冲动辞职',
+          '想暴饮暴食发泄',
+          '想网购剁手清空购物车',
+          '想跟家人大吵一架',
+          '想翘掉重要会议'
+        ],
+        /** 流式累积的 Markdown 正文 */
+        resultMarkdown: '',
+        /** V4 Pro 推理内容 */
+        reasoningText: '',
+        isStreaming: false,
+        errorMsg: '',
+        showSettings: false,
+        /** @type {{ deepseek: string, model: string }} */
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+        /** 清醒指数 0-100 */
+        wakeScore: 0,
+        /** 是否在流结束后展示进度条区域 */
+        showWakeMeter: false,
+        /** requestAnimationFrame 动画句柄，用于再骂一次时取消上一轮 */
+        _wakeAnimId: null,
+
+        init() {
+          this.loadConfig();
+          if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true });
+          }
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /**
+         * 将 Markdown 渲染为 HTML（供 x-html 使用）
+         * @returns {string}
+         */
+        get renderedHtml() {
+          const md = this.resultMarkdown || '';
+          if (!md) return '';
+          if (typeof marked === 'undefined') return '';
+          return marked.parse(md);
+        },
+
+        /** 从 localStorage 合并加载 global_llm_config */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存 API 配置：必须合并写入，禁止覆盖其他工具字段
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+          setTimeout(() => { this.toast.show = false; }, 2400);
+        },
+
+        /**
+         * 构建系统提示：三段结构 + Markdown + 关键句加粗
+         * @returns {string}
+         */
+        buildSystemPrompt() {
+          const roleLine = personaInstruction(this.personaId);
+          return `你是中文「情绪急救」写作助手，帮助用户抑制冲动行为。内容要有力度，但绝不能真的恶毒：禁止仇恨、歧视、侮辱人格、自伤引导；是带着关心、边界与理智的「骂醒」。
+
+【当前人格】
+${roleLine}
+
+【输出格式】
+必须使用 Markdown，且严格包含三个二级标题（##），顺序如下：
+
+## 一、先把你骂醒
+用所选人格的口吻，写一段 200～400 字的狠话。语气要冲，但要让用户感到「你是为我好」。适当使用 **加粗** 标出 3～6 个关键句（整句或半句即可）。
+
+## 二、为什么不该这么做
+分点说明逻辑：后果、成本、情绪陷阱、关系风险等，条理清晰，可用列表。
+
+## 三、现在请这样做
+给出具体可执行的替代方案：接下来 10 分钟做什么、今天剩下的时间怎么安排、一句自我对话的「刹车语」等。
+
+不要输出任何前言或后记（如「好的以下是」），直接从第一个 ## 开始。`;
+        },
+
+        /**
+         * DeepSeek 流式聊天（Markdown 模式，无 json_object）
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {(chunk:string)=>void} onDelta
+         * @param {(chunk:string)=>void} [onReasoning]
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.82
+            })
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || 'HTTP ' + response.status);
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) {
+                  onReasoning(delta.reasoning_content);
+                }
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 行解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /**
+         * 清醒指数从 0 动画涨到 100（easeOutCubic）
+         */
+        runWakeScoreAnimation() {
+          if (this._wakeAnimId !== null) {
+            cancelAnimationFrame(this._wakeAnimId);
+            this._wakeAnimId = null;
+          }
+          this.wakeScore = 0;
+          this.showWakeMeter = true;
+          const duration = 1400;
+          const start = performance.now();
+          const step = (now) => {
+            const p = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - p, 3);
+            this.wakeScore = Math.round(eased * 100);
+            if (p < 1) {
+              this._wakeAnimId = requestAnimationFrame(step);
+            } else {
+              this._wakeAnimId = null;
+              this.wakeScore = 100;
+            }
+          };
+          this._wakeAnimId = requestAnimationFrame(step);
+        },
+
+        /**
+         * 主流程：骂醒
+         * @param {boolean} [again] 是否为「再骂一次」（清空后重新生成）
+         */
+        async slapMe(again = false) {
+          this.errorMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先在设置中填写 DeepSeek API Key。';
+            return;
+          }
+          const impulse = (this.userImpulse || '').trim();
+          if (!impulse) {
+            this.errorMsg = '先写一件你「明知不该做」的事，我才能骂醒你。';
+            return;
+          }
+
+          if (again) {
+            this.resultMarkdown = '';
+            this.reasoningText = '';
+            /** 再骂一次时先归零，避免边生成边仍显示上次 100% */
+            this.wakeScore = 0;
+          }
+
+          this.isStreaming = true;
+          if (!again) {
+            this.showWakeMeter = false;
+            this.wakeScore = 0;
+          }
+
+          const personaLabel = this.personas.find((p) => p.id === this.personaId)?.label || '毒舌闺蜜';
+          const userMsg = `用户自述此刻很想做、但心里知道不该做的事：\n${impulse}\n\n请严格按系统说明的三段 Markdown 结构输出，人格设定为：${personaLabel}。`;
+
+          const messages = [
+            { role: 'system', content: this.buildSystemPrompt() },
+            { role: 'user', content: userMsg }
+          ];
+
+          try {
+            await this.streamDeepSeek(
+              messages,
+              (chunk) => {
+                this.resultMarkdown += chunk;
+              },
+              (r) => {
+                this.reasoningText += r;
+              }
+            );
+            this.runWakeScoreAnimation();
+            this.showToast('输出完成，深呼吸一下', 'sparkles');
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '请求失败';
+            this.showToast(this.errorMsg, 'alert-circle');
+          } finally {
+            this.isStreaming = false;
+            this.$nextTick(() => {
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            });
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

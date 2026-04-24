@@ -1,0 +1,67 @@
+window.toolCollections = window.toolCollections || {};
+window.toolCollections.cyber_life = [
+    {
+        id: 'cyber_cafe',
+        name: '赛博咖啡馆',
+        desc: 'App 级沉浸式赛博咖啡馆：Web Audio 六路氛围混音（人声/雨/炉/Lo-fi/海/鸟）+ 番茄钟 + 待办 + DeepSeek 流式灵感角，雨天/晴天/夜晚场景',
+        href: 'tools/cyber_life/cyber_cafe.html',
+        icon: 'fa-solid fa-mug-saucer',
+        category: 'cyber_life',
+        tags: ['小红书'],
+        isNew: true,
+        complexity: 2,
+        iconBg: 'bg-amber-50',
+        iconColor: 'text-amber-600',
+        borderColor: 'amber-200',
+        hoverTextColor: 'text-amber-600',
+        linkColor: 'text-amber-600'
+    },
+    {
+        id: 'ai_therapy',
+        name: 'AI 心理树洞',
+        desc: '你的私人心理空间。情绪日记、呼吸练习动画、CBT思维重构、每日正念。温柔治愈的沉浸体验',
+        href: 'tools/cyber_life/ai_therapy.html',
+        icon: 'fa-solid fa-spa',
+        category: 'cyber_life',
+        tags: [],
+        isNew: true,
+        complexity: 2,
+        iconBg: 'bg-teal-50',
+        iconColor: 'text-teal-600',
+        borderColor: 'teal-200',
+        hoverTextColor: 'text-teal-600',
+        linkColor: 'text-teal-600'
+    },
+    {
+        id: 'life_quest',
+        name: '人生成就系统',
+        desc: '把人生变成RPG游戏。设定目标→完成任务→获得成就徽章→升级。完整的等级、经验值和技能树',
+        href: 'tools/cyber_life/life_quest.html',
+        icon: 'fa-solid fa-trophy',
+        category: 'cyber_life',
+        tags: ['小红书'],
+        isNew: true,
+        complexity: 3,
+        iconBg: 'bg-yellow-50',
+        iconColor: 'text-yellow-600',
+        borderColor: 'yellow-200',
+        hoverTextColor: 'text-yellow-600',
+        linkColor: 'text-yellow-600'
+    },
+    {
+        id: 'time_capsule',
+        name: '时间胶囊',
+        desc: '写一封信给未来的自己。设定开启日期，AI 立刻回一封"来自未来你的回信"。精美信封动画',
+        href: 'tools/cyber_life/time_capsule.html',
+        icon: 'fa-solid fa-hourglass-half',
+        category: 'cyber_life',
+        tags: ['小红书'],
+        isNew: true,
+        complexity: 2,
+        iconBg: 'bg-violet-50',
+        iconColor: 'text-violet-600',
+        borderColor: 'violet-200',
+        hoverTextColor: 'text-violet-600',
+        linkColor: 'text-violet-600'
+    }
+];

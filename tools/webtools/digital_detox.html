@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>屏幕时间 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .forest-bg {
+            background: linear-gradient(to bottom right, #052e16, #14532d);
+        }
+        .breathing-circle {
+            animation: breathe 4s infinite ease-in-out;
+        }
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 0.5; }
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-stone-100 min-h-screen font-sans text-stone-800 relative select-none" x-data="detoxApp()" x-init="init()">
+
+    <!-- Header (Hidden when detoxing) -->
+    <header class="bg-white border-b border-stone-200 sticky top-0 z-10" x-show="!isDetoxing">
+        <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-stone-100 text-stone-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold text-stone-800">
+                    🌲 屏幕时间管理
+                </h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 py-8 pb-24" x-show="!isDetoxing">
+
+        <!-- Stats -->
+        <div class="bg-emerald-100 rounded-2xl p-6 text-center mb-8 border border-emerald-200">
+            <div class="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-2">累计专注 (离线)</div>
+            <div class="text-4xl font-bold text-emerald-800 font-mono" x-text="formatTotalTime(totalMinutes)"></div>
+            <div class="mt-2 text-sm text-emerald-700 opacity-80" x-text="sessions.length + ' 次成功挑战'"></div>
+        </div>
+
+        <!-- Setup -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-stone-200">
+            <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-mobile-screen-button w-5 h-5 text-emerald-600"></i>
+                开始“数字排毒”
+            </h2>
+            <p class="text-stone-500 text-sm mb-6 leading-relaxed">
+                选择一段时间，放下手机，专注于现实生活。阅读、冥想、或者只是发发呆。
+            </p>
+            
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <template x-for="min in [15, 30, 45, 60]" :key="min">
+                    <button @click="selectedDuration = min" 
+                            class="py-3 rounded-xl font-bold border-2 transition-all flex flex-col items-center justify-center gap-1"
+                            :class="selectedDuration === min ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-stone-100 text-stone-500 hover:bg-stone-50'">
+                        <span class="text-xl" x-text="min"></span>
+                        <span class="text-[10px] uppercase">分钟</span>
+                    </button>
+                </template>
+            </div>
+            
+            <button @click="startDetox()" class="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold text-lg hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all">
+                开始专注
+            </button>
+        </div>
+
+        <!-- History -->
+        <div class="mt-8" x-show="sessions.length > 0">
+            <h3 class="font-bold text-stone-400 text-xs uppercase tracking-widest mb-4">最近记录</h3>
+            <div class="space-y-3">
+                <template x-for="s in recentSessions" :key="s.id">
+                    <div class="flex justify-between items-center text-sm p-3 bg-white rounded-lg border border-stone-100">
+                        <span class="text-stone-500" x-text="formatDate(s.date)"></span>
+                        <span class="font-bold text-emerald-600" x-text="s.duration + ' 分钟'"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Detox Overlay -->
+    <div x-show="isDetoxing" x-transition.opacity.duration.1000ms class="fixed inset-0 z-50 forest-bg text-emerald-50 flex flex-col items-center justify-center p-8">
+        
+        <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+             <!-- Decorative circles -->
+             <div class="w-96 h-96 rounded-full border border-emerald-400 breathing-circle"></div>
+             <div class="w-[500px] h-[500px] rounded-full border border-emerald-400 breathing-circle absolute animation-delay-2000" style="animation-delay: 1s"></div>
+        </div>
+
+        <div class="relative z-10 text-center">
+            <i class="fa-solid fa-leaf w-12 h-12 mx-auto mb-6 text-emerald-300"></i>
+            
+            <div class="text-6xl font-bold font-mono tracking-wider mb-2" x-text="formatTimer(info.remaining)"></div>
+            <div class="text-sm font-bold text-emerald-300/60 uppercase tracking-widest mb-12">放下手机，享受当下</div>
+            
+            <div class="bg-black/20 backdrop-blur rounded-xl p-6 max-w-sm mx-auto border border-white/10">
+                <p class="italic text-lg text-emerald-100 leading-relaxed font-serif" x-text="currentQuote"></p>
+            </div>
+        </div>
+
+        <button @click="giveUp()" class="absolute bottom-10 text-emerald-500/50 hover:text-emerald-300 text-sm font-bold transition-colors">
+            放弃挑战
+        </button>
+    </div>
+
+    <!-- Success Modal -->
+    <div x-show="showSuccess" x-cloak class="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm text-center shadow-2xl scale-100 transition-transform">
+            <div class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-600 animate-bounce">
+                <i class="fa-solid fa-award w-10 h-10"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-900 mb-2">挑战成功！</h2>
+            <p class="text-slate-500 mb-6">你已经成功离线专注了 <span x-text="lastDuration" class="font-bold text-emerald-600"></span> 分钟。</p>
+            <button @click="showSuccess = false" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-colors">
+                太棒了
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function detoxApp() {
+            return {
+                selectedDuration: 30,
+                isDetoxing: false,
+                info: { remaining: 0, total: 0 },
+                timer: null,
+                sessions: [],
+                showSuccess: false,
+                lastDuration: 0,
+                
+                quotes: [
+                    "生活不只有屏幕，还有诗和远方。",
+                    "在寂静中，我们找到自己。",
+                    "有些风景，只有放下手机才能看见。",
+                    "慢下来，你并没有错过什么。",
+                    "给大脑一点呼吸的空间。"
+                ],
+                currentQuote: '',
+
+                init() {
+                    const saved = localStorage.getItem('webtools_detox');
+                    if (saved) this.sessions = JSON.parse(saved);
+                },
+
+                startDetox() {
+                    this.currentQuote = this.quotes[Math.floor(Math.random() * this.quotes.length)];
+                    this.info.total = this.selectedDuration * 60;
+                    this.info.remaining = this.info.total;
+                    this.isDetoxing = true;
+                    
+                    // Simple wake lock attempt (only works in secure context/supported browsers)
+                    if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(()=>{});
+
+                    this.timer = setInterval(() => {
+                        this.info.remaining--;
+                        if (this.info.remaining <= 0) {
+                            this.finishDetox();
+                        }
+                    }, 1000);
+                },
+
+                giveUp() {
+                    if(confirm('确定要放弃吗？坚持就是胜利。')) {
+                        clearInterval(this.timer);
+                        this.isDetoxing = false;
+                    }
+                },
+
+                finishDetox() {
+                    clearInterval(this.timer);
+                    this.isDetoxing = false;
+                    this.lastDuration = this.selectedDuration;
+                    
+                    this.sessions.unshift({
+                        id: Date.now(),
+                        duration: this.selectedDuration,
+                        date: new Date().toISOString()
+                    });
+                    localStorage.setItem('webtools_detox', JSON.stringify(this.sessions));
+                    
+                    this.showSuccess = true;
+                },
+
+                get totalMinutes() {
+                    return this.sessions.reduce((sum, s) => sum + s.duration, 0);
+                },
+                
+                get recentSessions() {
+                    return this.sessions.slice(0, 5);
+                },
+
+                formatTimer(seconds) {
+                    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                    const s = (seconds % 60).toString().padStart(2, '0');
+                    return `${m}:${s}`;
+                },
+                
+                formatTotalTime(totalMin) {
+                    if (totalMin < 60) return totalMin + 'm';
+                    const h = Math.floor(totalMin / 60);
+                    const m = totalMin % 60;
+                    return `${h}h ${m}m`;
+                },
+                
+                formatDate(iso) {
+                    const d = new Date(iso);
+                    return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_digital_detox.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediaPipe Hands 手势识别</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MediaPipe / Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #18181b; color: #e4e4e7; overflow: hidden; }
+    .glass { background: rgba(24, 24, 27, 0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
+    canvas { transform: scaleX(-1); /* Mirror effect */ }
+    video { transform: scaleX(-1); display: none; }
+    .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #22d3ee; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center relative">
+
+  <!-- Camera Video (Hidden) -->
+  <video class="input_video"></video>
+  
+  <!-- Output Canvas -->
+  <canvas class="output_canvas w-full h-full object-cover absolute top-0 left-0"></canvas>
+
+  <!-- UI Overlay -->
+  <div class="absolute top-0 left-0 w-full p-6 z-10 flex justify-between items-start pointer-events-none">
+    <div class="glass px-6 py-4 rounded-2xl pointer-events-auto">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold text-cyan-400">🖐️ MediaPipe Hands</h1>
+        <div id="loading" class="loader"></div>
+      </div>
+      <p class="text-zinc-400 text-sm mt-1">21点手部骨架实时追踪</p>
+      <div id="status" class="text-xs text-orange-400 mt-2 font-mono">Camera permission required...</div>
+    </div>
+    
+    <a href="index.html" class="glass px-5 py-2 text-zinc-300 rounded-lg hover:bg-white/10 transition pointer-events-auto font-bold no-underline">返回</a>
+  </div>
+
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 glass px-8 py-3 rounded-full flex gap-6 text-sm font-mono text-cyan-300 pointer-events-none">
+    <span id="hand-count">Hands: 0</span>
+    <span>|</span>
+    <span id="fps">FPS: --</span>
+  </div>
+
+<script>
+  const videoElement = document.getElementsByClassName('input_video')[0];
+  const canvasElement = document.getElementsByClassName('output_canvas')[0];
+  const canvasCtx = canvasElement.getContext('2d');
+  const statusEl = document.getElementById('status');
+  const loadingEl = document.getElementById('loading');
+  const fpsEl = document.getElementById('fps');
+  const handCountEl = document.getElementById('hand-count');
+
+  let lastTime = 0;
+  let frameCount = 0;
+
+  function onResults(results) {
+    // Hide loader once we have results
+    loadingEl.style.display = 'none';
+    statusEl.innerText = 'Tracking Active';
+    statusEl.className = 'text-xs text-green-400 mt-2 font-mono';
+
+    // Update FPS
+    frameCount++;
+    const now = performance.now();
+    if (now - lastTime >= 1000) {
+       fpsEl.innerText = `FPS: ${frameCount}`;
+       frameCount = 0;
+       lastTime = now;
+    }
+    
+    // Update Canvas Size
+    canvasElement.width = window.innerWidth;
+    canvasElement.height = window.innerHeight;
+
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Draw Camera Feed
+    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    
+    // Draw Hands
+    if (results.multiHandLandmarks) {
+      handCountEl.innerText = `Hands: ${results.multiHandLandmarks.length}`;
+      
+      for (const landmarks of results.multiHandLandmarks) {
+        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                       {color: '#22d3ee', lineWidth: 5});
+        drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 2, radius: 4});
+      }
+    } else {
+        handCountEl.innerText = `Hands: 0`;
+    }
+    canvasCtx.restore();
+  }
+
+  const hands = new Hands({locateFile: (file) => {
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+  }});
+
+  hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  hands.onResults(onResults);
+
+  // Initialize Camera
+  const camera = new Camera(videoElement, {
+    onFrame: async () => {
+      await hands.send({image: videoElement});
+    },
+    width: 1280,
+    height: 720
+  });
+  
+  camera.start()
+    .then(() => {
+        statusEl.innerText = "Initializing Model...";
+    })
+    .catch(err => {
+        statusEl.innerText = "Error: " + err.message;
+        statusEl.className = 'text-xs text-red-400 mt-2 font-mono';
+        alert('无法启动摄像头。请确保在 localhost 或 HTTPS 环境下运行，并允许摄像头权限。');
+    });
+
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

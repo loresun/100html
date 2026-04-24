@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-M09H8GY78X');</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>活动策划全案 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 3px; opacity: 0.5; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.5s ease-out forwards; }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-in { animation: slideInRight 0.45s ease-out forwards; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.3); }
+            50% { box-shadow: 0 0 20px 4px rgba(79, 70, 229, 0.15); }
+        }
+        .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer-loading {
+            background: linear-gradient(90deg, #e0e7ff 25%, #eef2ff 50%, #e0e7ff 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .step-line { transition: background-color 0.5s ease; }
+
+        .toast-enter { animation: fadeInUp 0.3s ease-out forwards; }
+
+        .tab-btn { transition: all 0.25s ease; }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+            color: white;
+            box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.35);
+        }
+
+        .concept-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .concept-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -4px rgba(79, 70, 229, 0.15);
+        }
+        .concept-card.selected {
+            border-color: #4f46e5;
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+
+        .doc-section h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 0.75rem; color: #1e293b; }
+        .doc-section h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: #334155; }
+
+        .prose-content p { margin-bottom: 0.75em; line-height: 1.8; }
+        .prose-content ul, .prose-content ol { margin-bottom: 0.75em; padding-left: 1.5em; }
+        .prose-content li { margin-bottom: 0.35em; line-height: 1.7; }
+        .prose-content strong { color: #1e293b; }
+        .prose-content h1 { font-size: 1.5em; font-weight: 700; margin: 1em 0 0.5em; color: #1e293b; }
+        .prose-content h2 { font-size: 1.3em; font-weight: 600; margin: 0.8em 0 0.4em; color: #334155; }
+        .prose-content h3 { font-size: 1.1em; font-weight: 600; margin: 0.6em 0 0.3em; color: #475569; }
+        .prose-content table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        .prose-content th, .prose-content td { border: 1px solid #e2e8f0; padding: 0.5em 0.75em; text-align: left; }
+        .prose-content th { background: #f1f5f9; font-weight: 600; }
+
+        /* 甘特图样式 */
+        .gantt-bar {
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="eventPlannerApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-200">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="calendar-check" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">活动策划全案</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">全流程智能编排</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-indigo-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤进度指示器 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-indigo-100">
+            <div class="max-w-3xl mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <template x-for="(s, idx) in steps" :key="idx">
+                        <div class="flex items-center" :class="idx < steps.length - 1 ? 'flex-1' : ''">
+                            <div class="flex flex-col items-center relative">
+                                <div :class="[
+                                    'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500',
+                                    currentStep > idx + 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' :
+                                    currentStep === idx + 1 ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-300 pulse-glow' :
+                                    'bg-slate-200 text-slate-400'
+                                ]">
+                                    <template x-if="currentStep > idx + 1">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="currentStep <= idx + 1">
+                                        <span x-text="idx + 1"></span>
+                                    </template>
+                                </div>
+                                <span :class="[
+                                    'text-xs mt-1.5 font-medium whitespace-nowrap transition-colors duration-300',
+                                    currentStep >= idx + 1 ? 'text-indigo-700' : 'text-slate-400'
+                                ]" x-text="s.label"></span>
+                            </div>
+                            <div x-show="idx < steps.length - 1"
+                                :class="['step-line flex-1 h-0.5 mx-3 rounded-full mt-[-18px]',
+                                    currentStep > idx + 1 ? 'bg-indigo-500' : 'bg-slate-200']">
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="flex-grow flex items-start justify-center px-4 py-8">
+            <div class="w-full max-w-5xl">
+
+                <!-- ========== 步骤 1: 活动信息输入 ========== -->
+                <div x-show="currentStep === 1" x-transition:enter="animate-fade-in" class="max-w-2xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-xl shadow-indigo-100/50 p-8 border border-indigo-100">
+                        <div class="text-center mb-8">
+                            <div class="w-16 h-16 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="calendar-check" class="w-8 h-8 text-indigo-600"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-slate-900">输入活动信息</h2>
+                            <p class="text-slate-500 mt-2 text-sm">AI 将根据活动信息自动编排生成全套策划方案</p>
+                        </div>
+
+                        <div class="space-y-5">
+                            <!-- 活动类型 + 场地偏好 -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                                        活动类型 <span class="text-red-500">*</span>
+                                    </label>
+                                    <select x-model="input.eventType"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                                        <option value="">请选择活动类型</option>
+                                        <option value="品牌发布会">品牌发布会</option>
+                                        <option value="线下沙龙">线下沙龙</option>
+                                        <option value="直播活动">直播活动</option>
+                                        <option value="周年庆典">周年庆典</option>
+                                        <option value="促销活动">促销活动</option>
+                                        <option value="团建活动">团建活动</option>
+                                        <option value="行业峰会">行业峰会</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                                        场地偏好 <span class="text-red-500">*</span>
+                                    </label>
+                                    <select x-model="input.venuePreference"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                                        <option value="">请选择场地类型</option>
+                                        <option value="线上">线上</option>
+                                        <option value="线下">线下</option>
+                                        <option value="混合">混合（线上+线下）</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 活动目标 -->
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                                    活动目标 <span class="text-red-500">*</span>
+                                    <span class="text-xs text-slate-400 font-normal ml-1">（希望通过活动达成什么？）</span>
+                                </label>
+                                <textarea x-model="input.eventGoal" rows="3"
+                                    placeholder="例如：&#10;- 新品发布，提升品牌知名度&#10;- 吸引 500+ 潜在客户参与&#10;- 促成现场转化 50 单"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"></textarea>
+                            </div>
+
+                            <!-- 目标受众 -->
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                                    目标受众 <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" x-model="input.targetAudience"
+                                    placeholder="例如：25-40 岁都市白领、母婴人群、科技爱好者"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                            </div>
+
+                            <!-- 预算 + 时长 -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                                        预算范围 <span class="text-red-500">*</span>
+                                    </label>
+                                    <select x-model="input.budgetRange"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                                        <option value="">请选择预算范围</option>
+                                        <option value="1万以内">1 万以内（小型）</option>
+                                        <option value="1-5万">1-5 万（中小型）</option>
+                                        <option value="5-20万">5-20 万（中型）</option>
+                                        <option value="20-50万">20-50 万（大型）</option>
+                                        <option value="50-100万">50-100 万（高端）</option>
+                                        <option value="100万以上">100 万以上（顶级）</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                                        活动时长
+                                    </label>
+                                    <input type="text" x-model="input.duration"
+                                        placeholder="例如：半天、2 天、1 周线上"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                                </div>
+                            </div>
+
+                            <!-- 补充说明 -->
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                                    补充说明 <span class="text-xs text-slate-400 font-normal ml-1">（可选，品牌调性、特殊要求等）</span>
+                                </label>
+                                <textarea x-model="input.extraNotes" rows="2"
+                                    placeholder="例如：品牌主色调为蓝色、需要设置互动环节、嘉宾列表已定..."
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"></textarea>
+                            </div>
+                        </div>
+
+                        <button @click="startGeneration"
+                            :disabled="!canStart"
+                            class="w-full mt-8 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-300">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                            <span>开始生成策划方案</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ========== 步骤 2: 创意概念选择 ========== -->
+                <div x-show="currentStep === 2" x-transition:enter="animate-slide-in" class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-xl shadow-indigo-100/50 p-8 border border-indigo-100">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="lightbulb" class="w-6 h-6 text-indigo-600"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900">创意概念方案</h2>
+                                <p class="text-sm text-slate-500">AI 为您生成了 3 个创意概念，请选择一个最心仪的</p>
+                            </div>
+                            <div x-show="stepStatus.concepts === 'done'" class="ml-auto">
+                                <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                                    <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 已生成
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 加载态 -->
+                        <div x-show="stepStatus.concepts === 'loading'" class="py-8">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center animate-float">
+                                    <i data-lucide="brain" class="w-4 h-4 text-indigo-600 animate-pulse"></i>
+                                </div>
+                                <span class="text-sm text-slate-600 font-medium">AI 正在构思创意概念...</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <template x-for="i in 3" :key="i">
+                                    <div class="rounded-xl border border-slate-200 p-5 space-y-3">
+                                        <div class="h-5 shimmer-loading rounded-full w-3/4"></div>
+                                        <div class="h-3 shimmer-loading rounded-full"></div>
+                                        <div class="h-3 shimmer-loading rounded-full w-5/6"></div>
+                                        <div class="h-3 shimmer-loading rounded-full w-4/6"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- 概念卡片 -->
+                        <div x-show="stepStatus.concepts === 'done' && concepts.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <template x-for="(concept, idx) in concepts" :key="idx">
+                                <div @click="selectedConcept = idx"
+                                    :class="['concept-card rounded-xl border-2 p-5', selectedConcept === idx ? 'selected' : 'border-slate-200 hover:border-indigo-300']">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-700" x-text="'#' + (idx + 1)"></span>
+                                        <h3 class="font-bold text-slate-900 text-sm" x-text="concept.theme"></h3>
+                                    </div>
+                                    <p class="text-xs text-slate-600 leading-relaxed mb-3" x-text="concept.description"></p>
+                                    <div class="space-y-1.5">
+                                        <span class="text-xs font-semibold text-indigo-600">✨ 亮点时刻</span>
+                                        <template x-for="(h, hi) in concept.highlights" :key="hi">
+                                            <div class="flex items-start gap-1.5 text-xs text-slate-500">
+                                                <span class="text-indigo-400 mt-0.5">•</span>
+                                                <span x-text="h"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div x-show="selectedConcept === idx" class="mt-3 pt-3 border-t border-indigo-200">
+                                        <span class="inline-flex items-center gap-1 text-xs font-bold text-indigo-600">
+                                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 已选择此方案
+                                        </span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- 概念解析失败的备用显示 -->
+                        <div x-show="stepStatus.concepts === 'done' && concepts.length === 0 && conceptsRaw"
+                            class="prose-content text-sm text-slate-700 leading-relaxed max-h-[400px] overflow-y-auto p-4 bg-slate-50 rounded-xl border border-slate-100"
+                            x-html="renderMarkdown(conceptsRaw)">
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div x-show="stepStatus.concepts === 'done'" class="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
+                            <div class="flex gap-3">
+                                <button @click="currentStep = 1; refreshIcons()"
+                                    class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                    <i data-lucide="arrow-left" class="w-4 h-4"></i> 修改信息
+                                </button>
+                                <button @click="regenerateConcepts"
+                                    :disabled="stepStatus.concepts === 'loading'"
+                                    class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition disabled:opacity-50">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 换一批
+                                </button>
+                            </div>
+                            <button @click="proceedToStep(3)"
+                                :disabled="selectedConcept === null && concepts.length > 0"
+                                class="flex items-center gap-1.5 px-6 py-2 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow hover:from-indigo-700 hover:to-violet-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                                生成执行方案 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== 步骤 3: 执行方案 ========== -->
+                <div x-show="currentStep === 3" x-transition:enter="animate-slide-in" class="max-w-3xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-xl shadow-indigo-100/50 p-8 border border-indigo-100">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="clipboard-list" class="w-6 h-6 text-indigo-600"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900">执行方案</h2>
+                                <p class="text-sm text-slate-500">详细时间线、人员分工、场地布置、技术需求、风险预案</p>
+                            </div>
+                            <div x-show="stepStatus.execution === 'done'" class="ml-auto">
+                                <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                                    <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 已完成
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 加载态 -->
+                        <div x-show="stepStatus.execution === 'loading' && !results.execution" class="py-8">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center animate-float">
+                                    <i data-lucide="pen-tool" class="w-4 h-4 text-indigo-600 animate-pulse"></i>
+                                </div>
+                                <span class="text-sm text-slate-600 font-medium">AI 正在规划执行方案...</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="h-4 shimmer-loading rounded-full"></div>
+                                <div class="h-4 shimmer-loading rounded-full w-5/6"></div>
+                                <div class="h-4 shimmer-loading rounded-full w-4/6"></div>
+                            </div>
+                        </div>
+
+                        <!-- 流式内容 -->
+                        <div x-show="results.execution"
+                            class="prose-content text-sm text-slate-700 leading-relaxed max-h-[500px] overflow-y-auto p-4 bg-slate-50 rounded-xl border border-slate-100"
+                            x-html="renderMarkdown(results.execution)">
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div x-show="stepStatus.execution === 'done'" class="flex justify-between items-center mt-4">
+                            <div class="flex gap-3">
+                                <button @click="copyContent(results.execution, '执行方案')"
+                                    class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition">
+                                    <i data-lucide="copy" class="w-4 h-4"></i> 复制
+                                </button>
+                                <button @click="regenerateExecution"
+                                    class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新生成
+                                </button>
+                            </div>
+                            <button @click="proceedToStep(4)"
+                                class="flex items-center gap-1.5 px-6 py-2 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow hover:from-indigo-700 hover:to-violet-700 transition">
+                                下一步：宣传文案 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== 步骤 4: 宣传文案包 ========== -->
+                <div x-show="currentStep === 4" x-transition:enter="animate-slide-in" class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-xl shadow-indigo-100/50 p-8 border border-indigo-100">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 bg-gradient-to-br from-pink-100 to-indigo-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="megaphone" class="w-6 h-6 text-indigo-600"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900">宣传文案包</h2>
+                                <p class="text-sm text-slate-500">社交媒体预热、邀请函、活动后复盘模板</p>
+                            </div>
+                            <div x-show="allCopyDone" class="ml-auto">
+                                <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                                    <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 全部完成
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 渠道标签页 -->
+                        <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-100 pb-4">
+                            <template x-for="(ch, idx) in channels" :key="ch.key">
+                                <button @click="activeChannel = ch.key"
+                                    :class="['tab-btn px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 flex items-center gap-1.5 transition',
+                                        activeChannel === ch.key ? 'active border-transparent' : 'text-slate-600 hover:border-indigo-300 hover:text-indigo-600']">
+                                    <span x-text="ch.icon"></span>
+                                    <span x-text="ch.name"></span>
+                                    <i x-show="results.copy[ch.key]?.done" data-lucide="check" class="w-3.5 h-3.5 ml-0.5"
+                                        :class="activeChannel === ch.key ? 'text-white' : 'text-green-500'"></i>
+                                </button>
+                            </template>
+                        </div>
+
+                        <!-- 渠道内容 -->
+                        <template x-for="ch in channels" :key="ch.key">
+                            <div x-show="activeChannel === ch.key">
+                                <!-- 加载态 -->
+                                <div x-show="!results.copy[ch.key]?.content && stepStatus.copy[ch.key] === 'loading'" class="py-6">
+                                    <div class="flex items-center gap-3 mb-4">
+                                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center animate-float">
+                                            <i data-lucide="sparkles" class="w-4 h-4 text-indigo-600 animate-pulse"></i>
+                                        </div>
+                                        <span class="text-sm text-slate-600 font-medium">正在生成 <span x-text="ch.name" class="font-bold text-indigo-600"></span> 文案...</span>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <div class="h-4 shimmer-loading rounded-full"></div>
+                                        <div class="h-4 shimmer-loading rounded-full w-5/6"></div>
+                                        <div class="h-4 shimmer-loading rounded-full w-3/6"></div>
+                                    </div>
+                                </div>
+
+                                <!-- 流式内容 -->
+                                <div x-show="results.copy[ch.key]?.content"
+                                    class="prose-content text-sm text-slate-700 leading-relaxed max-h-[400px] overflow-y-auto p-4 bg-slate-50 rounded-xl border border-slate-100"
+                                    x-html="renderMarkdown(results.copy[ch.key]?.content || '')">
+                                </div>
+
+                                <!-- 单渠道操作 -->
+                                <div x-show="results.copy[ch.key]?.done" class="flex gap-3 mt-4">
+                                    <button @click="copyContent(results.copy[ch.key]?.content, ch.name)"
+                                        class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition">
+                                        <i data-lucide="copy" class="w-4 h-4"></i> 复制
+                                    </button>
+                                    <button @click="regenerateCopy(ch.key)"
+                                        :disabled="isRegenerating === ch.key"
+                                        class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition disabled:opacity-50">
+                                        <i data-lucide="refresh-cw" class="w-4 h-4" :class="isRegenerating === ch.key ? 'animate-spin' : ''"></i> 重新生成
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- 导航 -->
+                        <div x-show="allCopyDone" class="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
+                            <button @click="currentStep = 3; refreshIcons()"
+                                class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 上一步
+                            </button>
+                            <button @click="proceedToStep(5)"
+                                class="flex items-center gap-1.5 px-6 py-2 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow hover:from-indigo-700 hover:to-violet-700 transition">
+                                预算 & 时间线 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== 步骤 5: 预算分配 + 时间线 + 导出 ========== -->
+                <div x-show="currentStep === 5" x-transition:enter="animate-fade-in" class="max-w-4xl mx-auto">
+
+                    <!-- 顶部操作栏 -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="layout-dashboard" class="w-6 h-6 text-indigo-600"></i>
+                                策划全案总览
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">
+                                <span class="font-medium text-indigo-600" x-text="input.eventType"></span> 活动的完整策划方案
+                            </p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="exportAllMarkdown"
+                                class="flex items-center gap-1.5 px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow hover:from-indigo-700 hover:to-violet-700 transition">
+                                <i data-lucide="download" class="w-4 h-4"></i> 导出 Markdown
+                            </button>
+                            <button @click="resetAll"
+                                class="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 新建活动
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 预算分配 + 时间线加载态 -->
+                    <div x-show="stepStatus.budgetTimeline === 'loading'" class="bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-8 border border-indigo-100 mb-6">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center animate-float">
+                                <i data-lucide="calculator" class="w-4 h-4 text-indigo-600 animate-pulse"></i>
+                            </div>
+                            <span class="text-sm text-slate-600 font-medium">AI 正在规划预算分配和时间线...</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="h-4 shimmer-loading rounded-full"></div>
+                            <div class="h-4 shimmer-loading rounded-full w-5/6"></div>
+                            <div class="h-4 shimmer-loading rounded-full w-3/6"></div>
+                        </div>
+                    </div>
+
+                    <!-- 预算分配 + 时间线内容 -->
+                    <div x-show="results.budgetTimeline" class="bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-8 border border-indigo-100 mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-600"></i>
+                                </div>
+                                <h2 class="text-lg font-bold text-slate-900">预算分配 & 时间线</h2>
+                            </div>
+                            <button @click="copyContent(results.budgetTimeline, '预算时间线')"
+                                class="text-xs font-medium text-indigo-600 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition">
+                                <i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-0.5"></i> 复制
+                            </button>
+                        </div>
+                        <div class="prose-content text-sm text-slate-700 leading-relaxed"
+                            x-html="renderMarkdown(results.budgetTimeline)">
+                        </div>
+                    </div>
+
+                    <!-- 目录导航 -->
+                    <div class="bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-6 border border-indigo-100 mb-6">
+                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">📑 全案目录</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <a href="#sec-concept" class="flex items-center gap-2 px-3 py-2 text-sm text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition font-medium">
+                                <i data-lucide="lightbulb" class="w-4 h-4"></i> 创意概念
+                            </a>
+                            <a href="#sec-execution" class="flex items-center gap-2 px-3 py-2 text-sm text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition font-medium">
+                                <i data-lucide="clipboard-list" class="w-4 h-4"></i> 执行方案
+                            </a>
+                            <a href="#sec-copy" class="flex items-center gap-2 px-3 py-2 text-sm text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition font-medium">
+                                <i data-lucide="megaphone" class="w-4 h-4"></i> 宣传文案
+                            </a>
+                            <a href="#sec-budget" class="flex items-center gap-2 px-3 py-2 text-sm text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition font-medium">
+                                <i data-lucide="pie-chart" class="w-4 h-4"></i> 预算时间线
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 全部内容 -->
+                    <div class="space-y-6">
+                        <!-- 创意概念 -->
+                        <div id="sec-concept" class="doc-section bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-8 border border-indigo-100">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="lightbulb" class="w-5 h-5 text-indigo-600"></i>
+                                </div>
+                                <h2 class="text-lg font-bold text-slate-900">创意概念（已选方案）</h2>
+                            </div>
+                            <div x-show="concepts.length > 0 && selectedConcept !== null" class="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+                                <h3 class="font-bold text-indigo-900 mb-2" x-text="concepts[selectedConcept]?.theme"></h3>
+                                <p class="text-sm text-slate-700 mb-3" x-text="concepts[selectedConcept]?.description"></p>
+                                <div class="space-y-1">
+                                    <span class="text-xs font-semibold text-indigo-600">✨ 亮点时刻：</span>
+                                    <template x-for="(h, i) in (concepts[selectedConcept]?.highlights || [])" :key="i">
+                                        <div class="text-xs text-slate-600 flex items-start gap-1.5">
+                                            <span class="text-indigo-400">•</span>
+                                            <span x-text="h"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <div x-show="conceptsRaw && (concepts.length === 0 || selectedConcept === null)"
+                                class="prose-content text-sm text-slate-700 leading-relaxed p-4 bg-slate-50 rounded-xl"
+                                x-html="renderMarkdown(conceptsRaw)">
+                            </div>
+                        </div>
+
+                        <!-- 执行方案 -->
+                        <div id="sec-execution" class="doc-section bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-8 border border-indigo-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                                        <i data-lucide="clipboard-list" class="w-5 h-5 text-indigo-600"></i>
+                                    </div>
+                                    <h2 class="text-lg font-bold text-slate-900">执行方案</h2>
+                                </div>
+                                <button @click="copyContent(results.execution, '执行方案')"
+                                    class="text-xs font-medium text-indigo-600 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition">
+                                    <i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-0.5"></i> 复制
+                                </button>
+                            </div>
+                            <div class="prose-content text-sm text-slate-700 leading-relaxed"
+                                x-html="renderMarkdown(results.execution)">
+                            </div>
+                        </div>
+
+                        <!-- 宣传文案包 -->
+                        <div id="sec-copy" class="doc-section bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-8 border border-indigo-100">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="megaphone" class="w-5 h-5 text-indigo-600"></i>
+                                </div>
+                                <h2 class="text-lg font-bold text-slate-900">宣传文案包</h2>
+                            </div>
+                            <template x-for="ch in channels" :key="ch.key">
+                                <div class="mb-6 last:mb-0">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                            <span x-text="ch.icon"></span> <span x-text="ch.name"></span>
+                                        </h3>
+                                        <button @click="copyContent(results.copy[ch.key]?.content, ch.name)"
+                                            class="text-xs font-medium text-indigo-600 hover:bg-indigo-50 px-2 py-0.5 rounded-lg transition">
+                                            复制
+                                        </button>
+                                    </div>
+                                    <div class="prose-content text-sm text-slate-700 leading-relaxed p-4 bg-slate-50 rounded-xl border border-slate-100"
+                                        x-html="renderMarkdown(results.copy[ch.key]?.content || '')">
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- 预算分配 & 时间线 -->
+                        <div id="sec-budget" class="doc-section bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-8 border border-indigo-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                                        <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-600"></i>
+                                    </div>
+                                    <h2 class="text-lg font-bold text-slate-900">预算分配 & 时间线</h2>
+                                </div>
+                                <button @click="copyContent(results.budgetTimeline, '预算时间线')"
+                                    class="text-xs font-medium text-indigo-600 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition">
+                                    <i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-0.5"></i> 复制
+                                </button>
+                            </div>
+                            <div class="prose-content text-sm text-slate-700 leading-relaxed"
+                                x-html="renderMarkdown(results.budgetTimeline)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 设置弹窗 ========== -->
+        <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div @click.outside="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-indigo-600"></i> API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">取消</button>
+                    <button @click="saveConfig"
+                        class="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== Toast 通知 ========== -->
+        <div x-show="toast.show" x-transition.opacity
+            class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[200] bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium">
+            <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+            <span x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('eventPlannerApp', () => ({
+            /* ===== 基础状态 ===== */
+            currentStep: 1,
+            showSettings: false,
+            isRegenerating: null,
+            toast: { show: false, message: '', icon: 'check-circle' },
+
+            /* 步骤描述 */
+            steps: [
+                { label: '活动信息' },
+                { label: '创意概念' },
+                { label: '执行方案' },
+                { label: '宣传文案' },
+                { label: '预算&导出' }
+            ],
+
+            /* API 配置 */
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            /* 活动输入 */
+            input: {
+                eventType: '',
+                venuePreference: '',
+                eventGoal: '',
+                targetAudience: '',
+                budgetRange: '',
+                duration: '',
+                extraNotes: ''
+            },
+
+            /* 3 个创意概念（JSON 解析后） */
+            concepts: [],
+            conceptsRaw: '',
+            selectedConcept: null,
+
+            /* 3 个宣传渠道 */
+            channels: [
+                { key: 'teaser', name: '社交媒体预热', icon: '📱', desc: '活动预告、悬念海报、倒计时文案，适配微信/微博/小红书' },
+                { key: 'invitation', name: '邀请函', icon: '💌', desc: '正式邀请信/邮件，含活动详情和报名引导' },
+                { key: 'recap', name: '活动后复盘模板', icon: '📊', desc: '活动总结、数据回顾、精彩回顾文案模板' }
+            ],
+            activeChannel: 'teaser',
+
+            /* 各步骤状态：idle / loading / done */
+            stepStatus: {
+                concepts: 'idle',
+                execution: 'idle',
+                copy: { teaser: 'idle', invitation: 'idle', recap: 'idle' },
+                budgetTimeline: 'idle'
+            },
+
+            /* 生成结果 */
+            results: {
+                execution: '',
+                copy: {
+                    teaser: { content: '', done: false },
+                    invitation: { content: '', done: false },
+                    recap: { content: '', done: false }
+                },
+                budgetTimeline: ''
+            },
+
+            /**
+             * 页面初始化：加载 localStorage 配置，初始化图标
+             */
+            init() {
+                const saved = localStorage.getItem('global_llm_config');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    } catch (e) {}
+                }
+                this.refreshIcons();
+            },
+
+            /**
+             * 保存 API 配置到 localStorage（合并策略，不覆盖其他工具配置）
+             */
+            saveConfig() {
+                try {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存');
+                } catch (e) {
+                    this.showToast('保存失败', 'alert-circle');
+                }
+            },
+
+            /** 刷新 Lucide 图标（延迟执行确保 DOM 更新） */
+            refreshIcons() {
+                setTimeout(() => { try { lucide.createIcons(); } catch (e) {} }, 50);
+            },
+
+            /** 显示 Toast 通知 */
+            showToast(message, icon = 'check-circle') {
+                this.toast = { show: true, message, icon };
+                this.refreshIcons();
+                setTimeout(() => { this.toast.show = false; }, 2500);
+            },
+
+            /** Markdown 渲染（安全处理空值） */
+            renderMarkdown(text) {
+                if (!text) return '';
+                try { return marked.parse(text); } catch (e) { return text; }
+            },
+
+            /** 表单校验：所有必填字段是否已填 */
+            get canStart() {
+                return this.input.eventType.trim() &&
+                       this.input.venuePreference.trim() &&
+                       this.input.eventGoal.trim() &&
+                       this.input.targetAudience.trim() &&
+                       this.input.budgetRange.trim();
+            },
+
+            /** 所有宣传渠道是否全部完成 */
+            get allCopyDone() {
+                return this.channels.every(ch => this.results.copy[ch.key]?.done);
+            },
+
+            /**
+             * 构建活动信息上下文（供所有 prompt 复用）
+             */
+            buildContext() {
+                let ctx = `【活动类型】${this.input.eventType}\n`;
+                ctx += `【场地偏好】${this.input.venuePreference}\n`;
+                ctx += `【活动目标】\n${this.input.eventGoal}\n`;
+                ctx += `【目标受众】${this.input.targetAudience}\n`;
+                ctx += `【预算范围】${this.input.budgetRange}\n`;
+                if (this.input.duration) ctx += `【活动时长】${this.input.duration}\n`;
+                if (this.input.extraNotes) ctx += `【补充说明】${this.input.extraNotes}\n`;
+                return ctx;
+            },
+
+            /**
+             * 获取用户选中的概念文本（供后续步骤引用）
+             */
+            getSelectedConceptText() {
+                if (this.concepts.length > 0 && this.selectedConcept !== null) {
+                    const c = this.concepts[this.selectedConcept];
+                    return `【选定主题】${c.theme}\n【主题描述】${c.description}\n【亮点时刻】${(c.highlights || []).join('；')}`;
+                }
+                if (this.conceptsRaw) return `【创意概念】\n${this.conceptsRaw}`;
+                return '';
+            },
+
+            /* ============================================================ */
+            /*  流式调用 DeepSeek API                                        */
+            /* ============================================================ */
+
+            /**
+             * 流式请求 DeepSeek API，实时回调每次增量文本
+             * @param {Array} messages - 消息数组
+             * @param {Function} onDelta - 增量内容回调 (fullText) => void
+             * @param {number} temperature - 温度参数
+             * @param {Object|null} responseFormat - 响应格式（JSON mode 时传入）
+             * @returns {string} 完整响应文本
+             */
+            async streamChat(messages, onDelta, temperature = 0.7, responseFormat = null) {
+                const body = {
+                    model: this.apiConfig.model,
+                    messages,
+                    stream: true,
+                    temperature
+                };
+                if (responseFormat) body.response_format = responseFormat;
+
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let fullText = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6).trim();
+                            if (data === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices?.[0]?.delta;
+                                if (delta?.reasoning_content) {
+                                    /* V4 Pro 推理内容，暂不回显 */
+                                }
+                                if (delta?.content) {
+                                    fullText += delta.content;
+                                    if (onDelta) onDelta(fullText);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+                return fullText;
+            },
+
+            /**
+             * 非流式 JSON 模式请求（用于结构化输出）
+             * @param {Array} messages - 消息数组
+             * @param {number} temperature - 温度参数
+             * @returns {string} 完整响应文本
+             */
+            async jsonChat(messages, temperature = 0.7) {
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                    },
+                    body: JSON.stringify({
+                        model: this.apiConfig.model,
+                        messages,
+                        temperature,
+                        response_format: { type: 'json_object' }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                }
+
+                const result = await response.json();
+                return result.choices?.[0]?.message?.content || '';
+            },
+
+            /* ============================================================ */
+            /*  步骤编排逻辑                                                  */
+            /* ============================================================ */
+
+            /**
+             * 开始整体生成流程：校验 API Key → 步骤2（创意概念）
+             */
+            async startGeneration() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    this.showToast('请先配置 API Key', 'alert-circle');
+                    return;
+                }
+                this.currentStep = 2;
+                this.refreshIcons();
+                await this.generateConcepts();
+            },
+
+            /**
+             * 步骤 2：生成 3 个创意概念（JSON 模式）
+             */
+            async generateConcepts() {
+                this.stepStatus.concepts = 'loading';
+                this.concepts = [];
+                this.conceptsRaw = '';
+                this.selectedConcept = null;
+                this.refreshIcons();
+
+                const ctx = this.buildContext();
+                const systemPrompt = `你是一位资深活动策划创意总监，擅长策划各类品牌活动。请根据活动信息，构思 3 个差异化的创意概念方案。
+
+请以 JSON 格式返回，结构如下：
+{
+  "concepts": [
+    {
+      "theme": "主题名称（4-8个字，有记忆点）",
+      "description": "主题描述（50-80字，说明创意核心和氛围）",
+      "highlights": ["亮点时刻1", "亮点时刻2", "亮点时刻3"]
+    }
+  ]
+}
+
+要求：
+- 3 个方案风格差异明显（如科技感 vs 温馨感 vs 国潮风）
+- 每个方案都要切合活动类型和目标受众
+- 亮点时刻要具体可执行，有画面感
+- 必须返回合法的 JSON 对象`;
+
+                const userPrompt = `请为以下活动构思 3 个创意概念：\n\n${ctx}`;
+
+                try {
+                    const text = await this.jsonChat(
+                        [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                        0.85
+                    );
+                    this.conceptsRaw = text;
+                    const parsed = this.safeParseJSON(text);
+                    if (parsed && parsed.concepts && Array.isArray(parsed.concepts)) {
+                        this.concepts = parsed.concepts.slice(0, 3);
+                    }
+                    this.stepStatus.concepts = 'done';
+                } catch (error) {
+                    console.error('[EventPlanner] 创意概念生成失败:', error);
+                    this.conceptsRaw = `> ⚠️ 生成失败：${error.message}\n\n请检查 API Key 和网络连接后重试。`;
+                    this.stepStatus.concepts = 'done';
+                }
+                this.refreshIcons();
+            },
+
+            /** 重新生成创意概念 */
+            async regenerateConcepts() {
+                await this.generateConcepts();
+            },
+
+            /**
+             * 步骤 3：生成详细执行方案（流式）
+             */
+            async generateExecution() {
+                this.stepStatus.execution = 'loading';
+                this.results.execution = '';
+                this.refreshIcons();
+
+                const ctx = this.buildContext();
+                const conceptText = this.getSelectedConceptText();
+
+                const systemPrompt = `你是一位经验丰富的活动执行总监。请根据活动信息和选定的创意概念，输出一份详细的执行方案。
+
+必须包含以下板块（用 Markdown 格式）：
+
+## 📅 活动时间线
+分阶段规划：筹备期 → 预热期 → 执行当天 → 复盘期，每阶段列出关键节点和负责人
+
+## 👥 人员分工
+列出核心岗位：总统筹、内容组、设计组、技术组、现场执行、嘉宾接待等，说明职责
+
+## 🏢 场地布置 / 平台搭建
+${this.input.venuePreference === '线上' ? '直播平台选择、虚拟场景设计、互动功能配置' : this.input.venuePreference === '混合' ? '线下场地布置 + 线上直播平台搭建方案' : '场地分区、动线设计、舞台/展区布置、签到区设计'}
+
+## 💻 技术需求
+设备清单、网络需求、视觉物料清单、直播/录制需求
+
+## ⚠️ 风险预案
+列出 5-8 个常见风险及对应预案（天气、设备故障、嘉宾缺席、超预算等）
+
+要求：
+- 内容具体可执行，不要泛泛而谈
+- 结合预算范围给出务实方案
+- 用 Markdown 格式，善用表格和列表`;
+
+                const userPrompt = `活动信息：\n${ctx}\n\n${conceptText}\n\n请输出详细执行方案。`;
+
+                try {
+                    const text = await this.streamChat(
+                        [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                        (t) => { this.results.execution = t; },
+                        0.7
+                    );
+                    this.results.execution = text;
+                    this.stepStatus.execution = 'done';
+                } catch (error) {
+                    console.error('[EventPlanner] 执行方案生成失败:', error);
+                    this.results.execution = `> ⚠️ 生成失败：${error.message}\n\n请检查 API Key 和网络连接后重试。`;
+                    this.stepStatus.execution = 'done';
+                }
+                this.refreshIcons();
+            },
+
+            /** 重新生成执行方案 */
+            async regenerateExecution() {
+                await this.generateExecution();
+            },
+
+            /**
+             * 步骤 4：生成宣传文案包（3 渠道并行流式）
+             */
+            async generateCopyPack() {
+                const ctx = this.buildContext();
+                const conceptText = this.getSelectedConceptText();
+
+                const promises = this.channels.map(async (ch) => {
+                    this.stepStatus.copy[ch.key] = 'loading';
+                    this.results.copy[ch.key] = { content: '', done: false };
+
+                    const systemPrompt = `你是一位资深活动营销文案专家。请根据活动信息和创意概念，撰写「${ch.name}」文案。
+
+文案类型说明：${ch.desc}
+
+要求：
+- 语言生动有感染力，贴合目标受众
+- 包含具体的活动信息（时间、地点、亮点）
+- 适当使用 emoji 增加可读性
+- 用 Markdown 格式输出
+- 直接输出文案内容，不需要额外解释`;
+
+                    const userPrompt = `活动信息：\n${ctx}\n\n${conceptText}\n\n请撰写「${ch.name}」文案。`;
+
+                    try {
+                        const text = await this.streamChat(
+                            [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                            (t) => { this.results.copy[ch.key] = { content: t, done: false }; },
+                            0.8
+                        );
+                        this.results.copy[ch.key] = { content: text, done: true };
+                        this.stepStatus.copy[ch.key] = 'done';
+                    } catch (error) {
+                        console.error(`[EventPlanner] ${ch.name} 生成失败:`, error);
+                        this.results.copy[ch.key] = { content: `> ⚠️ 生成失败：${error.message}`, done: true };
+                        this.stepStatus.copy[ch.key] = 'done';
+                    }
+                    this.refreshIcons();
+                });
+
+                await Promise.allSettled(promises);
+                this.refreshIcons();
+            },
+
+            /**
+             * 重新生成单个渠道文案
+             * @param {string} channelKey - 渠道标识
+             */
+            async regenerateCopy(channelKey) {
+                if (this.isRegenerating) return;
+                this.isRegenerating = channelKey;
+
+                const ch = this.channels.find(x => x.key === channelKey);
+                if (!ch) { this.isRegenerating = null; return; }
+
+                const ctx = this.buildContext();
+                const conceptText = this.getSelectedConceptText();
+                this.stepStatus.copy[ch.key] = 'loading';
+                this.results.copy[ch.key] = { content: '', done: false };
+                this.refreshIcons();
+
+                const systemPrompt = `你是一位资深活动营销文案专家。请根据活动信息和创意概念，重新撰写「${ch.name}」文案。请换一个全新的角度和风格来写。
+
+文案类型说明：${ch.desc}
+
+要求：
+- 语言生动有感染力，贴合目标受众
+- 包含具体的活动信息
+- 适当使用 emoji
+- 用 Markdown 格式输出`;
+
+                const userPrompt = `活动信息：\n${ctx}\n\n${conceptText}\n\n请重新撰写「${ch.name}」文案。`;
+
+                try {
+                    const text = await this.streamChat(
+                        [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                        (t) => { this.results.copy[ch.key] = { content: t, done: false }; },
+                        0.85
+                    );
+                    this.results.copy[ch.key] = { content: text, done: true };
+                    this.stepStatus.copy[ch.key] = 'done';
+                    this.showToast(`${ch.name}文案已重新生成`);
+                } catch (error) {
+                    this.results.copy[ch.key] = { content: `> ⚠️ 重新生成失败：${error.message}`, done: true };
+                    this.stepStatus.copy[ch.key] = 'done';
+                }
+                this.isRegenerating = null;
+                this.refreshIcons();
+            },
+
+            /**
+             * 步骤 5：生成预算分配表 + 甘特式时间线（流式）
+             */
+            async generateBudgetTimeline() {
+                this.stepStatus.budgetTimeline = 'loading';
+                this.results.budgetTimeline = '';
+                this.refreshIcons();
+
+                const ctx = this.buildContext();
+                const conceptText = this.getSelectedConceptText();
+
+                const systemPrompt = `你是一位资深活动运营总监，擅长预算管控和项目排期。请根据活动信息，输出预算分配方案和时间线规划。
+
+必须包含以下两个板块（用 Markdown 格式）：
+
+## 💰 预算分配明细
+
+用 Markdown 表格输出，包含以下列：
+| 费用项目 | 预算金额 | 占比 | 备注 |
+
+至少列出 8-10 个费用项，如：场地租赁、设备器材、嘉宾费用、物料制作、餐饮茶歇、人员费用、宣传推广、应急预备金 等。
+最后一行汇总合计。
+预算总额要匹配用户填写的预算范围：${this.input.budgetRange}。
+
+## 📊 项目时间线（甘特图）
+
+用 Markdown 表格呈现关键里程碑：
+| 阶段 | 时间节点 | 关键任务 | 负责人 | 交付物 |
+
+分为：策划期 → 筹备期 → 预热期 → 执行期 → 复盘期，共 5 个阶段。
+每个阶段 2-4 个关键任务。
+
+## 📋 关键检查清单
+
+列出 10-15 项必须在活动前完成的检查事项，按优先级排列。
+
+要求：
+- 预算数字要合理务实
+- 时间安排要留有缓冲
+- 内容具体可直接落地执行`;
+
+                const userPrompt = `活动信息：\n${ctx}\n\n${conceptText}\n\n请输出预算分配方案和时间线规划。`;
+
+                try {
+                    const text = await this.streamChat(
+                        [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                        (t) => { this.results.budgetTimeline = t; },
+                        0.7
+                    );
+                    this.results.budgetTimeline = text;
+                    this.stepStatus.budgetTimeline = 'done';
+                } catch (error) {
+                    console.error('[EventPlanner] 预算时间线生成失败:', error);
+                    this.results.budgetTimeline = `> ⚠️ 生成失败：${error.message}\n\n请检查 API Key 和网络连接后重试。`;
+                    this.stepStatus.budgetTimeline = 'done';
+                }
+                this.refreshIcons();
+            },
+
+            /**
+             * 进入指定步骤并触发对应生成
+             * @param {number} step - 目标步骤编号
+             */
+            async proceedToStep(step) {
+                this.currentStep = step;
+                this.refreshIcons();
+
+                if (step === 3 && this.stepStatus.execution !== 'done') {
+                    await this.generateExecution();
+                }
+                if (step === 4 && !this.allCopyDone) {
+                    await this.generateCopyPack();
+                }
+                if (step === 5) {
+                    if (this.stepStatus.budgetTimeline !== 'done') {
+                        await this.generateBudgetTimeline();
+                    }
+                    this.refreshIcons();
+                }
+            },
+
+            /* ============================================================ */
+            /*  工具方法                                                      */
+            /* ============================================================ */
+
+            /**
+             * 复制文本到剪贴板
+             * @param {string} text - 要复制的文本
+             * @param {string} label - 内容标签（用于提示）
+             */
+            async copyContent(text, label) {
+                if (!text) return;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    this.showToast(`已复制${label}内容`, 'copy');
+                } catch (e) {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    this.showToast(`已复制${label}内容`, 'copy');
+                }
+            },
+
+            /**
+             * 导出全部内容为 Markdown 文件
+             */
+            exportAllMarkdown() {
+                const now = new Date();
+                let md = `# 活动策划全案 —— ${this.input.eventType}\n\n`;
+                md += `> 生成时间：${now.toLocaleString()}\n\n`;
+
+                md += `## 📋 活动信息\n\n`;
+                md += `- **活动类型**：${this.input.eventType}\n`;
+                md += `- **场地偏好**：${this.input.venuePreference}\n`;
+                md += `- **目标受众**：${this.input.targetAudience}\n`;
+                md += `- **预算范围**：${this.input.budgetRange}\n`;
+                if (this.input.duration) md += `- **活动时长**：${this.input.duration}\n`;
+                md += `- **活动目标**：\n${this.input.eventGoal.split('\n').map(l => `  ${l}`).join('\n')}\n`;
+                if (this.input.extraNotes) md += `- **补充说明**：${this.input.extraNotes}\n`;
+                md += `\n---\n\n`;
+
+                md += `## 💡 创意概念（已选方案）\n\n`;
+                if (this.concepts.length > 0 && this.selectedConcept !== null) {
+                    const c = this.concepts[this.selectedConcept];
+                    md += `### ${c.theme}\n\n`;
+                    md += `${c.description}\n\n`;
+                    md += `**亮点时刻：**\n`;
+                    (c.highlights || []).forEach(h => { md += `- ${h}\n`; });
+                } else if (this.conceptsRaw) {
+                    md += this.conceptsRaw;
+                } else {
+                    md += '未生成\n';
+                }
+                md += `\n---\n\n`;
+
+                md += `## 📋 执行方案\n\n`;
+                md += `${this.results.execution || '未生成'}\n\n`;
+                md += `---\n\n`;
+
+                md += `## 📣 宣传文案包\n\n`;
+                this.channels.forEach(ch => {
+                    md += `### ${ch.icon} ${ch.name}\n\n`;
+                    md += `${this.results.copy[ch.key]?.content || '未生成'}\n\n`;
+                });
+                md += `---\n\n`;
+
+                md += `## 💰 预算分配 & 时间线\n\n`;
+                md += `${this.results.budgetTimeline || '未生成'}\n`;
+
+                const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const safeName = this.input.eventType.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '_').slice(0, 30);
+                a.download = `活动策划全案_${safeName}_${now.toISOString().slice(0, 10)}.md`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                this.showToast('Markdown 文件已导出', 'download');
+            },
+
+            /**
+             * 重置所有状态，回到步骤 1
+             */
+            resetAll() {
+                this.currentStep = 1;
+                this.input = { eventType: '', venuePreference: '', eventGoal: '', targetAudience: '', budgetRange: '', duration: '', extraNotes: '' };
+                this.concepts = [];
+                this.conceptsRaw = '';
+                this.selectedConcept = null;
+                this.stepStatus = {
+                    concepts: 'idle',
+                    execution: 'idle',
+                    copy: { teaser: 'idle', invitation: 'idle', recap: 'idle' },
+                    budgetTimeline: 'idle'
+                };
+                this.results = {
+                    execution: '',
+                    copy: {
+                        teaser: { content: '', done: false },
+                        invitation: { content: '', done: false },
+                        recap: { content: '', done: false }
+                    },
+                    budgetTimeline: ''
+                };
+                this.activeChannel = 'teaser';
+                this.isRegenerating = null;
+                this.refreshIcons();
+            },
+
+            /**
+             * 安全解析 JSON - 处理 AI 返回中常见的格式问题
+             * @param {string} str - 需要解析的 JSON 字符串
+             * @returns {object|null} 解析结果，失败返回 null
+             */
+            safeParseJSON(str) {
+                if (!str) return null;
+                try { return JSON.parse(str); } catch (e) {
+                    try {
+                        const match = str.match(/\{[\s\S]*\}/);
+                        if (match) return JSON.parse(match[0]);
+                    } catch (e2) {}
+                    try {
+                        let fixed = str.replace(/,\s*([\]}])/g, '$1')
+                                       .replace(/```json\s*/g, '').replace(/```\s*/g, '');
+                        const m = fixed.match(/\{[\s\S]*\}/);
+                        if (m) return JSON.parse(m[0]);
+                    } catch (e3) {}
+                    return null;
+                }
+            }
+        }));
+    });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/workflow_event_planner.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

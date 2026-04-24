@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>梦境解析器 - AI心理工具</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+
+        .prose {
+            max-width: none;
+        }
+
+        .prose h1,
+        .prose h2,
+        .prose h3 {
+            color: #1e3a8a;
+            font-weight: bold;
+            margin-top: 1.5rem;
+        }
+
+        .prose p {
+            margin: 1rem 0;
+            line-height: 1.75;
+        }
+
+        .prose ul,
+        .prose ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+
+        .icon-inline {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 min-h-screen">
+    <div id="app" v-cloak>
+        <!-- 导航栏 -->
+        <nav class="bg-white/10 backdrop-blur-md sticky top-0 z-50 border-b border-white/20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i class="fa-solid fa-moon text-blue-300 h-6 w-6"></i>
+                    <span class="font-bold text-xl text-white">梦境解析器</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg">
+                        <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                            :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-blue-500 text-white' : 'bg-white/20 text-white'"
+                            class="px-3 py-1 rounded text-sm font-medium transition-all">V4 Flash</button>
+                        <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                            :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-blue-500 text-white' : 'bg-white/20 text-white'"
+                            class="px-3 py-1 rounded text-sm font-medium transition-all">V4 Pro</button>
+                    </div>
+                    <button @click="showSettings = true" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                        <span class="icon-inline text-white"><i class="fa-solid fa-gear w-5 h-5"></i></span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 左侧输入区 -->
+                <div class="space-y-6">
+                    <div class="bg-white/95 rounded-2xl shadow-lg p-6 border border-white/20">
+                        <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <span class="icon-inline text-blue-600"><i class="fa-solid fa-book-open w-5 h-5"></i></span>
+                            梦境记录
+                        </h2>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">梦境内容</label>
+                                <textarea v-model="formData.dreamContent" rows="6" placeholder="描述你的梦境：人物、地点、事件、情节..."
+                                    class="w-full rounded-lg border-slate-300 border p-3 focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">梦中情绪</label>
+                                <select v-model="formData.emotion"
+                                    class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-blue-500">
+                                    <option value="happy">开心、愉悦</option>
+                                    <option value="anxious">焦虑、紧张</option>
+                                    <option value="scared">恐惧、害怕</option>
+                                    <option value="sad">悲伤、失落</option>
+                                    <option value="confused">困惑、迷茫</option>
+                                    <option value="excited">兴奋、激动</option>
+                                    <option value="neutral">平静、中性</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">近期生活事件（可选）</label>
+                                <textarea v-model="formData.recentEvents" rows="3"
+                                    placeholder="最近有什么重要的事情发生吗？工作、感情、家庭..."
+                                    class="w-full rounded-lg border-slate-300 border p-3 focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">核心符号（可选）</label>
+                                <input v-model="formData.symbols" type="text" placeholder="蛇、水、飞行、坠落、追逐..."
+                                    class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-blue-500" />
+                            </div>
+
+                            <button @click="generate" :disabled="isLoading || !canGenerate"
+                                class="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                                <span v-if="isLoading" class="icon-inline animate-spin"><i
+                                        class="fa-solid fa-spinner w-5 h-5"></i></span>
+                                <span v-else class="icon-inline"><i
+                                        class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i></span>
+                                <span>{{ isLoading ? '解析中...' : '解析梦境' }}</span> </button>
+                        </div>
+                    </div>
+                </div> <!-- 右侧结果区 -->
+                <div class="space-y-6">
+                    <div class="bg-white/95 rounded-2xl shadow-lg p-6 border border-white/20 min-h-[600px]">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2"> <span
+                                    class="icon-inline text-blue-600"><i
+                                        class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i></span> 解析结果 </h2>
+                            <div v-if="result" class="flex gap-2"> <button @click="copyResult"
+                                    class="p-2 hover:bg-slate-100 rounded-lg transition-colors"> <span
+                                        class="icon-inline text-slate-600"><i
+                                            class="fa-solid fa-copy w-4 h-4"></i></span> </button> <button
+                                    @click="exportResult" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                                    <span class="icon-inline text-slate-600"><i
+                                            class="fa-solid fa-download w-4 h-4"></i></span> </button> </div>
+                        </div>
+                        <div v-if="!result && !isLoading"
+                            class="flex flex-col items-center justify-center h-96 text-slate-400"> <span
+                                class="icon-inline w-16 h-16 mb-4 opacity-50"><i
+                                    class="fa-solid fa-moon w-16 h-16"></i></span>
+                            <p class="text-center">记录梦境后点击解析<br />多角度解读梦境含义</p>
+                        </div>
+                        <div v-if="isLoading" class="flex flex-col items-center justify-center h-96"> <span
+                                class="icon-inline w-12 h-12 text-blue-600 animate-spin mb-4"><i
+                                    class="fa-solid fa-spinner w-12 h-12"></i></span>
+                            <p class="text-slate-600">正在解析梦境...</p>
+                        </div>
+                        <div v-if="reasoningContent" class="mb-4">
+                            <details class="bg-slate-50 rounded-lg p-4">
+                                <summary
+                                    class="cursor-pointer text-sm font-medium text-slate-600 flex items-center gap-2">
+                                    <span class="icon-inline"><i class="fa-solid fa-brain w-4 h-4"></i></span> 深度思考过程
+                                    (点击展开) </summary>
+                                <div class="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{{ reasoningContent }}
+                                </div>
+                            </details>
+                        </div>
+
+                        <div v-if="result" class="prose prose-slate max-w-none" v-html="marked.parse(result)"></div>
+
+                        <div v-if="errorMessage" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                            <div class="flex items-center gap-2">
+                                <span class="icon-inline"><i class="fa-solid fa-circle-exclamation w-5 h-5"></i></span>
+                                <span>{{ errorMessage }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-slate-900">API 配置</h3>
+                    <button @click="showSettings = false" class="p-2 hover:bg-slate-100 rounded-lg">
+                        <span class="icon-inline"><i class="fa-solid fa-xmark w-5 h-5"></i></span>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-blue-500" />
+                        <p class="mt-1 text-xs text-slate-500">获取地址: <a href="https://platform.deepseek.com"
+                                target="_blank" class="text-blue-600 hover:underline">platform.deepseek.com</a></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">模型选择</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-blue-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">系统提示词</label>
+                        <textarea v-model="apiConfig.systemPrompt" rows="8"
+                            class="w-full rounded-lg border-slate-300 border p-3 focus:ring-2 focus:ring-blue-500 font-mono text-sm"></textarea>
+                        <p class="mt-1 text-xs text-slate-500">结合心理学和文化象征</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                        取消
+                    </button>
+                    <button @click="saveConfig"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const showSettings = ref(false);
+                const isLoading = ref(false);
+                const result = ref('');
+                const reasoningContent = ref('');
+                const errorMessage = ref('');
+
+                const formData = reactive({
+                    dreamContent: '',
+                    emotion: 'neutral',
+                    recentEvents: '',
+                    symbols: ''
+                });
+
+                const apiConfig = reactive({
+                    deepseek: '',
+                    model: 'deepseek-v4-flash',
+                    systemPrompt: `你是一位梦境解析专家，精通荣格心理学、弗洛伊德精神分析、中国传统文化和现代心理学。
+
+你的任务是多角度解读梦境：
+
+**解析框架**：
+1. **荣格心理学视角**
+   - 集体无意识符号（原型、阴影、阿尼玛/阿尼姆斯）
+   - 个体化进程的暗示
+   - 补偿作用
+
+2. **弗洛伊德精神分析**
+   - 潜意识愿望
+   - 压抑的情感
+   - 象征意义
+
+3. **中国传统文化**
+   - 周公解梦经典象征
+   - 阴阳五行对应
+   - 文化习俗寓意
+
+4. **现代心理学**
+   - 日常心理需求
+   - 情绪处理机制
+   - 压力反应
+
+5. **个人生活关联**
+   - 结合近期事件
+   - 情绪状态呼应
+   - 潜在心理需求
+
+**常见符号库**：
+- 蛇：转变、智慧、恐惧、性能量
+- 水：情感、无意识、流动性
+- 飞行：自由、超越、逃避现实
+- 坠落：失控、焦虑、不安全感
+- 追逐：逃避、压力、未解决问题
+- 死亡：结束与新生、转变
+- 房屋：自我、内心世界
+
+输出格式：
+# 梦境解析报告
+
+## 🌙 梦境概述
+[简要总结]
+
+## 📖 多角度解读
+### 荣格心理学
+[分析]
+
+### 现代心理学
+[分析]
+
+### 文化象征
+[分析]
+
+## 💡 核心启示
+[整合解读，给出生活建议]
+
+使用Markdown，深入而不晦涩。`
+                });
+
+                const canGenerate = computed(() => {
+                    return formData.dreamContent;
+                });
+
+                // renderIcon function removed
+
+                async function generate() {
+                    if (!apiConfig.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    result.value = '';
+                    reasoningContent.value = '';
+                    errorMessage.value = '';
+
+                    const emotionMap = {
+                        happy: '开心、愉悦',
+                        anxious: '焦虑、紧张',
+                        scared: '恐惧、害怕',
+                        sad: '悲伤、失落',
+                        confused: '困惑、迷茫',
+                        excited: '兴奋、激动',
+                        neutral: '平静、中性'
+                    };
+
+                    const userPrompt = `请帮我解析这个梦境：
+
+**梦境内容**：
+${formData.dreamContent}
+
+**梦中情绪**：${emotionMap[formData.emotion]}
+
+${formData.recentEvents ? `**近期生活事件**：\n${formData.recentEvents}\n` : ''}
+
+${formData.symbols ? `**核心符号**：${formData.symbols}\n` : ''}
+
+请从荣格心理学、现代心理学、文化象征等多个角度解读这个梦境，并给出核心启示。`;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: [
+                                    { role: 'system', content: apiConfig.systemPrompt },
+                                    { role: 'user', content: userPrompt }
+                                ],
+                                stream: true,
+                                temperature: 0.8
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`API 请求失败: ${response.status}`);
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop();
+
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const data = line.slice(6);
+                                    if (data === '[DONE]') continue;
+
+                                    try {
+                                        const parsed = JSON.parse(data);
+                                        const delta = parsed.choices[0].delta;
+
+                                        if (delta.reasoning_content) {
+                                            reasoningContent.value += delta.reasoning_content;
+                                        }
+
+                                        if (delta.content) {
+                                            result.value += delta.content;
+                                        }
+                                    } catch (e) {
+
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+
+                        errorMessage.value = error.message || '生成失败，请重试';
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                async function copyResult() {
+                    try {
+                        let text = result.value;
+                        if (reasoningContent.value) {
+                            text = `=== 思考过程 ===\n\n${reasoningContent.value}\n\n=== 梦境解析 ===\n\n${text}`;
+                        }
+                        await navigator.clipboard.writeText(text);
+                        alert('已复制到剪贴板');
+                    } catch (err) {
+
+                    }
+                }
+
+                function exportResult() {
+                    let content = '';
+                    if (reasoningContent.value) {
+                        content += '=== 思考过程 ===\n\n' + reasoningContent.value + '\n\n';
+                    }
+                    content += '=== 梦境解析 ===\n\n' + result.value;
+
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '梦境解析报告.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+
+                function saveConfig() {
+                    try {
+                        const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        localStorage.setItem('global_llm_config', JSON.stringify({
+                            ...current,
+                            deepseek: apiConfig.deepseek,
+                            apiKey: apiConfig.deepseek, // 兼容其他工具
+                            model: apiConfig.model
+                        }));
+                        showSettings.value = false;
+                        alert('配置已保存');
+                    } catch (e) {
+
+                    }
+                }
+
+                function loadConfig() {
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            const config = JSON.parse(saved);
+                            // 兼容多种字段名
+                            apiConfig.deepseek = config.deepseek || config.apiKey || config.deepseek_key || '';
+                            if (config.model) apiConfig.model = config.model;
+                        }
+                    } catch (e) {
+
+                    }
+                }
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    // lucide.createIcons();
+                    loadConfig();
+                });
+
+                return {
+                    // 状态
+                    showSettings,
+                    isLoading,
+                    result,
+                    reasoningContent,
+                    errorMessage,
+                    formData,
+                    apiConfig,
+                    
+                    // 计算属性
+                    canGenerate,
+                    
+                    // 方法
+                    saveConfig,
+                    generate,
+                    copyResult,
+                    exportResult,
+                    
+                    // 库
+                    marked
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/psychological_dream_interpreter.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

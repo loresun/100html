@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 实体编码/解码 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .entity-card { padding: 0.5rem; border-radius: 0.25rem; border: 1px solid #ffedd5; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; text-align: center; }
+        .entity-card:hover { border-color: #fdba74; background-color: #fff7ed; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-orange-50 min-h-screen font-sans text-slate-800" x-data="htmlApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-orange-100 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-orange-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-amber-500">
+                &lt;/&gt; HTML 实体转换
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-24">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            
+            <!-- Decode: Entities -> Text -->
+            <div class="flex flex-col bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden h-[300px]">
+                <div class="bg-orange-50/50 px-4 py-3 border-b border-orange-100 flex justify-between items-center">
+                    <span class="font-bold text-orange-900 text-sm">HTML 代码 (如 &amp;lt;)</span>
+                    <button @click="encoded = ''" class="text-xs text-slate-400 hover:text-orange-600">清空</button>
+                </div>
+                <textarea 
+                    x-model="encoded" 
+                    @input="decode()"
+                    class="flex-1 w-full p-4 resize-none outline-none text-slate-700 font-mono text-sm leading-relaxed"
+                    placeholder="&lt;div&gt;Hello&lt;/div&gt;"
+                ></textarea>
+                <div class="px-4 py-2 border-t border-slate-100 bg-slate-50 flex justify-end">
+                     <button @click="copy(encoded)" class="text-xs font-bold text-slate-500 hover:text-orange-600 flex items-center gap-1">
+                        <i class="fa-solid fa-copy"></i> 复制
+                    </button>
+                </div>
+            </div>
+
+            <!-- Encode: Text -> Entities -->
+            <div class="flex flex-col bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden h-[300px]">
+                <div class="bg-orange-50/50 px-4 py-3 border-b border-orange-100 flex justify-between items-center">
+                    <span class="font-bold text-orange-900 text-sm">普通文本 (如 <)</span>
+                    <button @click="decoded = ''" class="text-xs text-slate-400 hover:text-orange-600">清空</button>
+                </div>
+                <textarea 
+                    x-model="decoded" 
+                    @input="encode()"
+                    class="flex-1 w-full p-4 resize-none outline-none text-slate-700 font-mono text-sm leading-relaxed"
+                    placeholder="<div>Hello</div>"
+                ></textarea>
+                 <div class="px-4 py-2 border-t border-slate-100 bg-slate-50 flex justify-end">
+                     <button @click="copy(decoded)" class="text-xs font-bold text-slate-500 hover:text-orange-600 flex items-center gap-1">
+                        <i class="fa-solid fa-copy"></i> 复制
+                    </button>
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- Common Entities Reference -->
+        <div>
+            <h3 class="font-bold text-slate-600 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-table text-orange-500"></i>
+                常用实体速查 (点击复制)
+            </h3>
+            
+            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                <template x-for="item in commonEntities">
+                    <div @click="copy(item.code)" class="entity-card group relative">
+                        <div class="text-xl font-serif text-slate-800 mb-1" x-text="item.char"></div>
+                        <div class="text-[10px] text-slate-400 font-mono group-hover:text-orange-600" x-text="item.code"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function htmlApp() {
+            return {
+                decoded: '',
+                encoded: '',
+                commonEntities: [
+                    { char: '<', code: '&lt;' },
+                    { char: '>', code: '&gt;' },
+                    { char: '&', code: '&amp;' },
+                    { char: '"', code: '&quot;' },
+                    { char: "'", code: '&apos;' },
+                    { char: ' ', code: '&nbsp;' },
+                    { char: '©', code: '&copy;' },
+                    { char: '®', code: '&reg;' },
+                    { char: '™', code: '&trade;' },
+                    { char: '€', code: '&euro;' },
+                    { char: '£', code: '&pound;' },
+                    { char: '¥', code: '&yen;' },
+                    { char: '×', code: '&times;' },
+                    { char: '÷', code: '&divide;' },
+                    { char: '∞', code: '&infin;' },
+                    { char: '←', code: '&larr;' },
+                    { char: '↑', code: '&uarr;' },
+                    { char: '→', code: '&rarr;' },
+                    { char: '↓', code: '&darr;' },
+                    { char: '♥', code: '&hearts;' },
+                    { char: '•', code: '&bull;' },
+                    { char: '…', code: '&hellip;' },
+                    { char: '—', code: '&mdash;' },
+                    { char: '√', code: '&radic;' }
+                ],
+
+                init() {
+
+                },
+                
+                encode() {
+                    const div = document.createElement('div');
+                    div.innerText = this.decoded;
+                    this.encoded = div.innerHTML;
+                },
+                
+                decode() {
+                    const txt = document.createElement('textarea');
+                    txt.innerHTML = this.encoded;
+                    this.decoded = txt.value;
+                },
+                
+                copy(text) {
+                    if(!text) return;
+                    navigator.clipboard.writeText(text).then(() => {
+                        // Toast here
+                        alert('已复制: ' + text);
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_html_entities.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>播客追踪 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-950 min-h-screen font-sans text-slate-200" x-data="podApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-slate-800 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400">
+                    🎙️ 播客追踪
+                </h1>
+            </div>
+            
+            <button @click="showLogModal = true" class="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg shadow-lg shadow-violet-600/20 transition-all flex items-center gap-2 text-sm font-medium">
+                <i class="fa-solid fa-plus"></i>
+                <span class="hidden sm:inline">记录单集</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-400">
+                    <i class="fa-solid fa-headphones text-xl"></i>
+                </div>
+                <div>
+                     <div class="text-2xl font-bold text-white" x-text="logs.length"></div>
+                     <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">收听集数</div>
+                </div>
+            </div>
+            <div class="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-fuchsia-500/10 flex items-center justify-center text-fuchsia-400">
+                    <i class="fa-solid fa-clock text-xl"></i>
+                </div>
+                <div>
+                     <div class="text-2xl font-bold text-white" x-text="totalHours"></div>
+                     <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">累计小时 (估)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Logs -->
+        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
+            收听记录
+        </h2>
+        
+        <div class="space-y-4">
+            <template x-for="log in sortedLogs" :key="log.id">
+                <div class="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-sm hover:border-slate-700 transition-all group">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-violet-500/20" x-text="getInitials(log.podcast)"></div>
+                            <div>
+                                <div class="font-bold text-slate-200 text-sm" x-text="log.podcast"></div>
+                                <div class="text-xs text-slate-500" x-text="formatDate(log.date)"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 text-yellow-500 text-xs font-bold">
+                             <span x-text="log.rating"></span>
+                             <i class="fa-solid fa-star text-xs fill-current"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-white mb-2 ml-13" x-text="log.episode"></h3>
+                    
+                    <div class="bg-slate-950 rounded-xl p-3 text-sm text-slate-400 leading-relaxed border border-slate-800/50" x-show="log.notes">
+                        <i class="fa-solid fa-quote-left text-xs mb-1 opacity-50"></i>
+                        <span x-text="log.notes"></span>
+                    </div>
+
+                    <div class="flex justify-end mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button @click="deleteLog(log.id)" class="text-slate-500 hover:text-rose-500 text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can text-xs"></i> 删除
+                        </button>
+                    </div>
+                </div>
+            </template>
+            
+            <div x-show="logs.length === 0" class="text-center py-20 text-slate-600">
+                <i class="fa-solid fa-microphone text-5xl mx-auto mb-4 opacity-20"></i>
+                <p>记录你听过的第一个播客</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Log Modal -->
+    <div x-show="showLogModal" x-cloak class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-md p-6" @click.away="showLogModal = false">
+            <h3 class="text-lg font-bold text-white mb-6">记录播客单集</h3>
+            <div class="space-y-4">
+                <div>
+                     <label class="block text-xs font-medium text-slate-500 mb-1">播客名称</label>
+                     <input type="text" x-model="form.podcast" list="pod-list" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none placeholder-slate-600" placeholder="例如: 纵横四海">
+                     <datalist id="pod-list">
+                         <template x-for="p in recentPodcasts" :key="p">
+                             <option :value="p"></option>
+                         </template>
+                     </datalist>
+                </div>
+                <div>
+                     <label class="block text-xs font-medium text-slate-500 mb-1">单集标题</label>
+                     <input type="text" x-model="form.episode" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none placeholder-slate-600" placeholder="Vol.10 ...">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                         <label class="block text-xs font-medium text-slate-500 mb-1">时长 (分钟)</label>
+                         <input type="number" x-model="form.duration" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none" placeholder="60">
+                    </div>
+                    <div>
+                         <label class="block text-xs font-medium text-slate-500 mb-1">评分 (1-5)</label>
+                         <select x-model="form.rating" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none">
+                             <option value="5">⭐⭐⭐⭐⭐</option>
+                             <option value="4">⭐⭐⭐⭐</option>
+                             <option value="3">⭐⭐⭐</option>
+                             <option value="2">⭐⭐</option>
+                             <option value="1">⭐</option>
+                         </select>
+                    </div>
+                </div>
+                <div>
+                     <label class="block text-xs font-medium text-slate-500 mb-1">笔记 / 金句</label>
+                     <textarea x-model="form.notes" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none placeholder-slate-600" placeholder="记录触动你的观点..."></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex gap-3">
+                <button @click="showLogModal = false" class="flex-1 py-3 rounded-xl bg-slate-800 text-slate-400 font-medium hover:bg-slate-700 transition-colors">取消</button>
+                <button @click="addLog()" 
+                        :disabled="!form.podcast || !form.episode"
+                        class="flex-1 py-3 rounded-xl bg-violet-600 text-white font-medium hover:bg-violet-700 shadow-lg shadow-violet-600/20 disabled:opacity-50 disabled:shadow-none transition-all">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function podApp() {
+            return {
+                showLogModal: false,
+                logs: [],
+                
+                form: {
+                    podcast: '', episode: '', duration: '', rating: '5', notes: '', date: new Date().toISOString()
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_podcasts');
+                    if (saved) {
+                        this.logs = JSON.parse(saved);
+                    } else {
+                        // Demo
+                        this.logs = [
+                            { id: 1, podcast: '声东击西', episode: 'Vol.200 如何成为更好的自己', duration: 45, rating: 5, notes: '非常深刻的讨论...', date: new Date().toISOString() }
+                        ];
+                    }
+
+                    this.$watch('logs', () => {
+                        localStorage.setItem('webtools_podcasts', JSON.stringify(this.logs));
+                    });
+                    
+                    // init
+                },
+
+                addLog() {
+                    this.logs.unshift({
+                        id: Date.now(),
+                        ...this.form,
+                        date: new Date().toISOString()
+                    });
+                    this.form = { podcast: '', episode: '', duration: '', rating: '5', notes: '', date: new Date().toISOString() };
+                    this.showLogModal = false;
+                },
+
+                deleteLog(id) {
+                    if(confirm('删除这条记录？')) {
+                        this.logs = this.logs.filter(l => l.id !== id);
+                    }
+                },
+
+                get sortedLogs() {
+                    return [...this.logs].sort((a,b) => new Date(b.date) - new Date(a.date));
+                },
+
+                get recentPodcasts() {
+                    return [...new Set(this.logs.map(l => l.podcast))].slice(0, 5);
+                },
+
+                get totalHours() {
+                    const mins = this.logs.reduce((acc, l) => acc + (parseInt(l.duration) || 0), 0);
+                    return (mins / 60).toFixed(1);
+                },
+
+                getInitials(name) {
+                    return name ? name.substring(0, 2) : 'POD';
+                },
+
+                formatDate(iso) {
+                    const d = new Date(iso);
+                    return `${d.getMonth()+1}/${d.getDate()}`;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_podcast_tracker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

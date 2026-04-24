@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tone.js 音频合成</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fafafa; color: #18181b; }
+    .glass { background: white; border: 1px solid #e4e4e7; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .key { transition: all 0.1s; cursor: pointer; user-select: none; }
+    .key:active, .key.active { transform: translateY(2px); background-color: #fca5a5; }
+    .black-key { z-index: 10; height: 60%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .white-key { z-index: 1; height: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-color: #d4d4d8; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-zinc-800">🎹 Tone.js</h1>
+    <p class="text-zinc-500 mt-2 text-lg">Web Audio API 的强大音频框架</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-lg hover:border-zinc-300 hover:bg-zinc-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-12">
+
+  <!-- 准备提示 -->
+  <div id="start-overlay" class="glass p-8 rounded-2xl text-center">
+    <h2 class="text-2xl font-bold mb-4">🔊 需要用户交互</h2>
+    <p class="text-zinc-500 mb-6">为了遵守浏览器的自动播放策略，请点击下方按钮启动音频引擎。</p>
+    <button onclick="startAudio()" class="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-500/20">启动音频引擎</button>
+  </div>
+
+  <!-- 钢琴键盘 -->
+  <div id="synth-controls" class="hidden glass p-8 rounded-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="font-bold text-xl text-zinc-800">🎹 复音合成器 (PolySynth)</h3>
+      <div class="flex gap-2">
+        <select id="oscillator-type" class="px-3 py-1 border border-zinc-300 rounded text-sm bg-white" onchange="updateSynth()">
+          <option value="triangle">Triangle (三角波)</option>
+          <option value="sine">Sine (正弦波)</option>
+          <option value="square">Square (方波)</option>
+          <option value="sawtooth">Sawtooth (锯齿波)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 键盘 UI -->
+    <div class="relative h-48 flex justify-center bg-zinc-100 rounded-xl overflow-hidden shadow-inner border border-zinc-200">
+      <!-- 白键 -->
+      <div class="flex w-full h-full">
+        <div class="key white-key flex-1 bg-white border-r flex items-end justify-center pb-2 text-xs text-zinc-400" onmousedown="playNote('C4')">C4</div>
+        <div class="key white-key flex-1 bg-white border-r flex items-end justify-center pb-2 text-xs text-zinc-400" onmousedown="playNote('D4')">D4</div>
+        <div class="key white-key flex-1 bg-white border-r flex items-end justify-center pb-2 text-xs text-zinc-400" onmousedown="playNote('E4')">E4</div>
+        <div class="key white-key flex-1 bg-white border-r flex items-end justify-center pb-2 text-xs text-zinc-400" onmousedown="playNote('F4')">F4</div>
+        <div class="key white-key flex-1 bg-white border-r flex items-end justify-center pb-2 text-xs text-zinc-400" onmousedown="playNote('G4')">G4</div>
+        <div class="key white-key flex-1 bg-white border-r flex items-end justify-center pb-2 text-xs text-zinc-400" onmousedown="playNote('A4')">A4</div>
+        <div class="key white-key flex-1 bg-white border-r flex items-end justify-center pb-2 text-xs text-zinc-400" onmousedown="playNote('B4')">B4</div>
+        <div class="key white-key flex-1 bg-white border-r flex items-end justify-center pb-2 text-xs text-zinc-400" onmousedown="playNote('C5')">C5</div>
+      </div>
+      <!-- 黑键 (绝对定位) -->
+      <div class="absolute top-0 left-0 w-full h-full pointer-events-none flex">
+        <div class="flex-1"></div> <!-- C4 -->
+        <div class="w-[6%] h-32 bg-zinc-800 rounded-b-lg absolute left-[10%] key black-key pointer-events-auto" onmousedown="playNote('C#4')"></div>
+        <div class="flex-1"></div> <!-- D4 -->
+        <div class="w-[6%] h-32 bg-zinc-800 rounded-b-lg absolute left-[24%] key black-key pointer-events-auto" onmousedown="playNote('D#4')"></div>
+        <div class="flex-1"></div> <!-- E4 -->
+        <div class="flex-1"></div> <!-- F4 -->
+        <div class="w-[6%] h-32 bg-zinc-800 rounded-b-lg absolute left-[52%] key black-key pointer-events-auto" onmousedown="playNote('F#4')"></div>
+        <div class="flex-1"></div> <!-- G4 -->
+        <div class="w-[6%] h-32 bg-zinc-800 rounded-b-lg absolute left-[67%] key black-key pointer-events-auto" onmousedown="playNote('G#4')"></div>
+        <div class="flex-1"></div> <!-- A4 -->
+        <div class="w-[6%] h-32 bg-zinc-800 rounded-b-lg absolute left-[81%] key black-key pointer-events-auto" onmousedown="playNote('A#4')"></div>
+        <div class="flex-1"></div> <!-- B4 -->
+        <div class="flex-1"></div> <!-- C5 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 节奏器 -->
+  <div id="sequencer" class="hidden glass p-8 rounded-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="font-bold text-xl text-zinc-800">🥁 鼓机 (MembraneSynth)</h3>
+      <button onclick="toggleLoop()" id="loop-btn" class="px-4 py-2 bg-zinc-800 text-white rounded hover:bg-zinc-700">播放 Loop</button>
+    </div>
+    <p class="text-sm text-zinc-500 mb-4">这是一个简单的 4/4 拍示例。Ton.js 的 Transport 用于精确的节奏调度。</p>
+    <div class="flex gap-2 justify-center">
+      <div id="step-0" class="w-12 h-12 rounded-full border-2 border-zinc-300 bg-white"></div>
+      <div id="step-1" class="w-12 h-12 rounded-full border-2 border-zinc-300 bg-white"></div>
+      <div id="step-2" class="w-12 h-12 rounded-full border-2 border-zinc-300 bg-white"></div>
+      <div id="step-3" class="w-12 h-12 rounded-full border-2 border-zinc-300 bg-white"></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script>
+  let synth;
+  let drum;
+  let loop;
+  let isPlaying = false;
+
+  async function startAudio() {
+    await Tone.start();
+    console.log('Audio is ready');
+    
+    // 初始化合成器
+    synth = new Tone.PolySynth(Tone.Synth).toDestination();
+    synth.set({
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.1, decay: 0.2, sustain: 0.5, release: 1 }
+    });
+
+    // 初始化鼓
+    drum = new Tone.MembraneSynth().toDestination();
+
+    // 隐藏遮罩，显示控制
+    document.getElementById('start-overlay').classList.add('hidden');
+    document.getElementById('synth-controls').classList.remove('hidden');
+    document.getElementById('sequencer').classList.remove('hidden');
+
+    // 设置 Loop
+    setupLoop();
+  }
+
+  function playNote(note) {
+    if (!synth) return;
+    synth.triggerAttackRelease(note, "8n");
+    
+    // visual feedback (optional simplistic approach)
+    console.log(`Played ${note}`);
+  }
+
+  function updateSynth() {
+    const type = document.getElementById('oscillator-type').value;
+    synth.set({ oscillator: { type: type } });
+  }
+
+  function setupLoop() {
+    let index = 0;
+    loop = new Tone.Loop(time => {
+      drum.triggerAttackRelease("C2", "8n", time);
+      
+      // Visual feedback
+      Tone.Draw.schedule(() => {
+        document.querySelectorAll('[id^="step-"]').forEach(el => el.classList.remove('bg-red-400'));
+        document.getElementById(`step-${index}`).classList.add('bg-red-400');
+        index = (index + 1) % 4;
+      }, time);
+    }, "4n");
+    
+    Tone.Transport.bpm.value = 120;
+  }
+
+  function toggleLoop() {
+    if (isPlaying) {
+      Tone.Transport.stop();
+      loop.stop();
+      document.getElementById('loop-btn').textContent = "播放 Loop";
+      document.getElementById('loop-btn').classList.remove('bg-red-600');
+      document.getElementById('loop-btn').classList.add('bg-zinc-800');
+    } else {
+      Tone.Transport.start();
+      loop.start(0);
+      document.getElementById('loop-btn').textContent = "停止 Loop";
+      document.getElementById('loop-btn').classList.add('bg-red-600');
+      document.getElementById('loop-btn').classList.remove('bg-zinc-800');
+    }
+    isPlaying = !isPlaying;
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

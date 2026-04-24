@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片再创作引擎</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --bg-color: #eef2ff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">Image Repurpose Engine</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-indigo-50 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-indigo-600': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-indigo-600': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i> API 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+            <div
+                class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-indigo-100 flex flex-col h-full z-20 shadow-lg">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">上传图片</label>
+                        <label
+                            class="w-full h-40 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/60 transition bg-slate-50 text-slate-500">
+                            <i class="fa-solid fa-file-image w-8 h-8 mb-2"></i>
+                            <span class="text-sm font-medium">点击上传或拖拽图片</span>
+                            <input type="file" @change="handleImageUpload" accept="image/*" class="hidden">
+                        </label>
+                        <div v-if="imagePreview" class="space-y-2">
+                            <div class="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                                <img :src="imagePreview" alt="预览" class="w-full h-40 object-cover">
+                                <button @click="clearImage"
+                                    class="absolute top-2 right-2 bg-white/90 text-slate-500 hover:text-indigo-600 rounded-full p-1.5 shadow">
+                                    <i class="fa-solid fa-xmark w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-400">{{ imageFileName }}</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">选择输出类型</label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <div v-for="type in outputTypes" :key="type.id" @click="currentTypeId = type.id"
+                                :class="{'bg-indigo-50 border-indigo-500 text-indigo-700': currentTypeId === type.id, 'bg-slate-50 border-slate-200 text-slate-600': currentTypeId !== type.id}"
+                                class="cursor-pointer border rounded-lg p-3 flex items-center justify-between transition hover:shadow-sm">
+                                <div class="flex items-center gap-2">
+                                    <i :class="type.icon" class="w-4 h-4"></i>
+                                    <span class="text-sm font-medium">{{ type.name }}</span>
+                                </div>
+                                <span class="text-xs opacity-60">{{ type.desc }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="startGenerate" :disabled="isGenerating || !imagePreview"
+                        class="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner animate-spin w-5 h-5"></i>
+                        <span v-else>✨ 生成内容</span>
+                    </button>
+
+                    <div class="text-xs text-center text-slate-400">{{ statusText }}</div>
+                </div>
+            </div>
+
+            <div class="flex-grow bg-[#eef2ff] p-4 md:p-8 overflow-y-auto h-full relative flex flex-col">
+                <div v-if="results.length === 0 && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 opacity-70">
+                    <i class="fa-regular fa-image w-24 h-24 mb-4 text-indigo-200"></i>
+                    <p class="text-lg text-indigo-900/50">上传图片，生成多种可复用文案</p>
+                </div>
+
+                <div v-else class="max-w-5xl mx-auto w-full flex flex-col gap-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-indigo-100 flex flex-col overflow-hidden">
+                        <div
+                            class="p-4 border-b border-indigo-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-indigo-50/40">
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-lg font-bold text-slate-800">生成结果</h2>
+                                <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{{
+                                    getTypeName(currentTypeId) }}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="startGenerate({ reuseDescription: true })" :disabled="isGenerating"
+                                    class="text-indigo-600 text-sm font-medium hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                                    <i class="fa-solid fa-rotate w-4 h-4"></i> 再次生成
+                                </button>
+                                <button @click="saveResults" :disabled="results.length === 0"
+                                    class="text-slate-600 text-sm font-medium hover:bg-slate-100 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                                    <i class="fa-solid fa-download w-4 h-4"></i> 保存结果
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-6 space-y-5">
+                            <div v-if="imageDescription"
+                                class="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-600">
+                                <p class="font-semibold text-slate-700 mb-2">图片描述</p>
+                                <p>{{ imageDescription }}</p>
+                            </div>
+
+                            <div v-if="isGenerating" class="text-sm text-indigo-500 flex items-center gap-2">
+                                <i class="fa-solid fa-spinner animate-spin w-4 h-4"></i>
+                                正在生成 {{ getTypeName(currentTypeId) }}...
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div v-for="(item, index) in results" :key="index"
+                                    class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col gap-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-semibold text-slate-500">方案 {{ index + 1 }}</span>
+                                        <button @click="copyResult(item)"
+                                            class="text-slate-500 hover:text-indigo-600 transition text-xs flex items-center gap-1">
+                                            <i class="fa-regular fa-copy w-3.5 h-3.5"></i> 复制
+                                        </button>
+                                    </div>
+                                    <p class="text-sm text-slate-700 whitespace-pre-line">{{ item }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-800">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">DeepSeek API Key</label>
+                        <input v-model="apiConfig.deepseek" type="password" placeholder="sk-xxx"
+                            class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">GLM-4V API Key</label>
+                        <input v-model="apiConfig.glm4v_key" type="password" placeholder="glm-xxx"
+                            class="w-full border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
+                        <p class="text-xs text-slate-400 mt-1">用于识别图片内容并生成描述</p>
+                        <p class="text-xs text-indigo-600 mt-1">
+                            <i class="fa-solid fa-info-circle mr-1"></i>
+                            GLM-4V-Flash <a href="https://bigmodel.cn/" target="_blank" class="underline hover:text-indigo-800">免费使用</a>，前往
+                            <a href="https://bigmodel.cn/" target="_blank" class="underline hover:text-indigo-800">智谱 AI 大模型平台</a> 获取 API Key
+                        </p>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700">取消</button>
+                    <button @click="saveConfig"
+                        class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">保存设置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+        const OUTPUT_PROMPTS = {
+            title: `你是资深新媒体标题策划。基于图片描述生成 4 个标题，要求：\n1. 每个标题 16-24 字\n2. 语气多样（情绪、提问、数字、对比）\n3. 只输出 JSON 数组，数组元素为字符串`,
+            short_copy: `你是品牌文案。基于图片描述生成 4 条短文案，要求：\n1. 每条 50-80 字\n2. 适合小红书/朋友圈\n3. 突出场景和情绪\n4. 只输出 JSON 数组，数组元素为字符串`,
+            short_script: `你是短视频脚本策划。基于图片描述生成 4 条短脚本，要求：\n1. 每条 3-5 句\n2. 包含画面提示与旁白\n3. 适合 15-30 秒短视频\n4. 只输出 JSON 数组，数组元素为字符串`,
+            summary: `你是内容编辑。基于图片描述生成 4 条结构化摘要，要求：\n1. 每条包含【主体】【场景】【动作】【情绪】【亮点】五项\n2. 每项用全角括号提示\n3. 只输出 JSON 数组，数组元素为字符串`
+        };
+
+        createApp({
+            setup() {
+
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', glm4v_key: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+                const statusText = ref('准备就绪');
+
+                const imagePreview = ref('');
+                const imageFileName = ref('');
+                const imageBase64 = ref('');
+                const imageDescription = ref('');
+
+                const outputTypes = [
+                    { id: 'title', name: '标题', desc: '多风格吸睛标题', icon: 'fa-solid fa-heading' },
+                    { id: 'short_copy', name: '短文案', desc: '50-80字推广文案', icon: 'fa-solid fa-pen-nib' },
+                    { id: 'short_script', name: '短脚本', desc: '3-5句镜头脚本', icon: 'fa-solid fa-clapperboard' },
+                    { id: 'summary', name: '结构化摘要', desc: '要点拆解', icon: 'fa-solid fa-list-check' }
+                ];
+                const currentTypeId = ref('title');
+
+                const results = ref([]);
+
+                onMounted(() => {
+                    const savedConfig = localStorage.getItem('global_llm_config');
+                    if (savedConfig) {
+                        try {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(savedConfig) };
+                        } catch (e) { console.error(e); }
+                    }
+                });
+
+                const handleImageUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    imageFileName.value = file.name;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imagePreview.value = e.target.result;
+                        const base64 = e.target.result.split(',')[1];
+                        imageBase64.value = base64;
+                        imageDescription.value = '';
+                        results.value = [];
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                const clearImage = () => {
+                    imagePreview.value = '';
+                    imageFileName.value = '';
+                    imageBase64.value = '';
+                    imageDescription.value = '';
+                    results.value = [];
+                };
+
+                const getTypeName = (id) => outputTypes.find(t => t.id === id)?.name || id;
+
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    apiConfig.value.glm4v_key = apiConfig.value.glm4v_key.trim();
+                    try {
+                        const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    } catch (e) { console.error('Error saving config:', e); }
+                    showSettings.value = false;
+                };
+
+                const startGenerate = async ({ reuseDescription = false } = {}) => {
+                    if (!apiConfig.value.deepseek || !apiConfig.value.glm4v_key) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!imageBase64.value) return;
+
+                    isGenerating.value = true;
+                    statusText.value = '正在生成图片描述...';
+
+                    try {
+                        if (!reuseDescription || !imageDescription.value) {
+                            imageDescription.value = await callGLM4V(imageBase64.value);
+                        }
+                        statusText.value = '正在生成文案...';
+                        const copy = await callDeepSeek(imageDescription.value);
+                        results.value = parseResults(copy);
+                        statusText.value = '生成完成';
+                    } catch (error) {
+                        console.error(error);
+                        statusText.value = error.message || '生成失败';
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const callGLM4V = async (base64) => {
+                    const prompt = '请用中文简洁描述图片内容，包含主体、场景与氛围，控制在 80 字以内。';
+                    const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiConfig.value.glm4v_key}`
+                        },
+                        body: JSON.stringify({
+                            model: 'glm-4v-flash',
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: [
+                                        { type: 'text', text: prompt },
+                                        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } }
+                                    ]
+                                }
+                            ],
+                            temperature: 0.6,
+                            max_tokens: 800
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`GLM-4V API错误: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices[0].message.content.trim();
+                };
+
+                const callDeepSeek = async (description) => {
+                    const prompt = OUTPUT_PROMPTS[currentTypeId.value];
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: model.value,
+                            messages: [
+                                { role: 'system', content: '你是擅长商业文案的创意助手。' },
+                                { role: 'user', content: `${prompt}\n\n【图片描述】\n${description}` }
+                            ],
+                            temperature: 0.8
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices[0].message.content;
+                };
+
+                const parseResults = (text) => {
+                    if (!text) return [];
+                    try {
+                        const match = text.match(/\[[\s\S]*\]/);
+                        if (match) {
+                            const parsed = JSON.parse(match[0]);
+                            if (Array.isArray(parsed)) {
+                                return parsed.map(item => String(item).trim()).filter(Boolean).slice(0, 5);
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('JSON parse failed', error);
+                    }
+
+                    const lines = text
+                        .split('\n')
+                        .map(line => line.replace(/^\s*[-*\d.、)]\s*/, '').trim())
+                        .filter(Boolean);
+
+                    if (lines.length === 0) {
+                        return [text.trim()];
+                    }
+                    return lines.slice(0, 5);
+                };
+
+                const copyResult = async (content) => {
+                    if (!content) return;
+                    await navigator.clipboard.writeText(content);
+                    statusText.value = '已复制到剪贴板';
+                };
+
+                const saveResults = () => {
+                    if (results.value.length === 0) return;
+                    const content = [
+                        `图片描述：${imageDescription.value}`,
+                        `输出类型：${getTypeName(currentTypeId.value)}`,
+                        '',
+                        ...results.value.map((item, index) => `方案${index + 1}：${item}`)
+                    ].join('\n');
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `image-repurpose-${currentTypeId.value}.txt`;
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                };
+
+                return {
+                    showSettings,
+                    apiConfig,
+                    model,
+                    isGenerating,
+                    statusText,
+                    imagePreview,
+                    imageFileName,
+                    imageDescription,
+                    outputTypes,
+                    currentTypeId,
+                    results,
+                    handleImageUpload,
+                    clearImage,
+                    getTypeName,
+                    saveConfig,
+                    startGenerate,
+                    copyResult,
+                    saveResults
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_tools_image_repurpose_engine.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

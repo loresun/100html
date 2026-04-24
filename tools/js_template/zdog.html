@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zdog 扁平 3D 引擎</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fff7ed; color: #ea580c; }
+    .glass { background: white; border: 1px solid #fed7aa; box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.05); }
+    canvas { display: block; width: 100%; height: 400px; cursor: move; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-orange-900">🐶 Zdog</h1>
+    <p class="text-orange-800/60 mt-2 text-lg">用于 Canvas 和 SVG 的扁平化 3D 引擎 (伪 3D)</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-orange-200 text-orange-800 rounded-lg hover:bg-orange-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-8">
+
+  <!-- 渲染区域 -->
+  <div class="glass p-4 rounded-3xl bg-white relative">
+    <canvas id="zdog-canvas" width="800" height="400"></canvas>
+    
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4">
+      <button onclick="toggleSpin()" class="px-6 py-2 bg-orange-500 text-white rounded-full font-bold shadow-lg shadow-orange-500/30 hover:bg-orange-600 transition active:scale-95" id="spin-btn">
+        停止旋转
+      </button>
+    </div>
+    <div class="absolute top-4 right-4 text-xs text-orange-300">
+      拖拽可自由旋转视图
+    </div>
+  </div>
+
+  <!-- 说明 -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="p-6 rounded-xl border border-orange-100 bg-orange-50">
+      <h3 class="font-bold text-orange-900 mb-2">简单 API</h3>
+      <p class="text-sm tex-orange-800/70">声明式的 API 设计，非常容易上手，适合简单的展示型 3D。</p>
+    </div>
+    <div class="p-6 rounded-xl border border-orange-100 bg-orange-50">
+      <h3 class="font-bold text-orange-900 mb-2">无纹理</h3>
+      <p class="text-sm tex-orange-800/70">Zdog 不使用纹理贴图，所有物体都基于简单的几何形状和颜色。</p>
+    </div>
+    <div class="p-6 rounded-xl border border-orange-100 bg-orange-50">
+      <h3 class="font-bold text-orange-900 mb-2">轻量级</h3>
+      <p class="text-sm tex-orange-800/70">体积小巧 (28KB)，无依赖，非常适合 Web 插画和图标动画。</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // 1. Setup Illustration
+  let isSpinning = true;
+  
+  const illo = new Zdog.Illustration({
+    element: '#zdog-canvas',
+    dragRotate: true,
+    zoom: 0.8
+  });
+
+  // 2. Create Objects
+  
+  // Head
+  const head = new Zdog.Shape({
+    addTo: illo,
+    stroke: 120,
+    color: '#fb923c', // orange-400
+  });
+
+  // Eyes
+  const eye = new Zdog.Ellipse({
+    addTo: head,
+    diameter: 20,
+    quarters: 2, // semi-circle
+    translate: { x: -25, y: -5, z: 40 },
+    rotate: { z: -Math.PI / 4 },
+    color: '#fff',
+    stroke: 8,
+    backface: false
+  });
+  eye.copy({
+    translate: { x: 25, y: -5, z: 40 }
+  });
+
+  // Ears
+  const ear = new Zdog.Ellipse({
+    addTo: head,
+    diameter: 30,
+    translate: { x: -50, y: -30 },
+    rotate: { z: -0.5 },
+    stroke: 20,
+    color: '#f97316', // orange-500
+    fill: true
+  });
+  ear.copy({
+    translate: { x: 50, y: -30 },
+    rotate: { z: 0.5 }
+  });
+
+  // Mouth
+  new Zdog.Ellipse({
+    addTo: head,
+    diameter: 30,
+    quarters: 2,
+    translate: { y: 25, z: 30 },
+    rotate: { z: Math.PI / 2 },
+    stroke: 8,
+    color: '#fff',
+    closed: true
+  });
+
+  // Body
+  new Zdog.Shape({
+    addTo: illo,
+    path: [ { y: 0 }, { y: 60 } ],
+    translate: { y: 50 },
+    stroke: 80,
+    color: '#fb923c'
+  });
+
+  // 3. Animation Loop
+  function animate() {
+    if (isSpinning) {
+      illo.rotate.y += 0.01;
+    }
+    illo.updateRenderGraph();
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // 4. Control
+  function toggleSpin() {
+    isSpinning = !isSpinning;
+    document.getElementById('spin-btn').innerText = isSpinning ? "停止旋转" : "开始旋转";
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

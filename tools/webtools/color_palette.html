@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配色灵感库 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans" x-data="colorApp()" x-init="init()">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-800">🎨 配色灵感库</h1>
+            </div>
+            <button @click="generatePalette()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-rotate w-4 h-4"></i>
+                生成新配色
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- Current Palette -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 mb-8">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">当前配色方案</h2>
+            
+            <div class="grid grid-cols-5 gap-4 mb-6">
+                <template x-for="(color, index) in currentPalette" :key="index">
+                    <div class="group cursor-pointer" @click="copyColor(color)">
+                        <div 
+                            class="aspect-square rounded-xl shadow-md transition-transform hover:scale-105 relative overflow-hidden"
+                            :style="'background-color: ' + color"
+                        >
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                <i class="fa-regular fa-copy w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <div class="font-mono text-sm font-medium text-slate-700" x-text="color"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="flex gap-3">
+                <button @click="savePalette()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-heart w-4 h-4"></i>
+                    保存配色
+                </button>
+                <button @click="exportPalette()" class="flex-1 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download w-4 h-4"></i>
+                    导出代码
+                </button>
+            </div>
+        </div>
+
+        <!-- Saved Palettes -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">我的收藏</h2>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <template x-for="(palette, pIndex) in savedPalettes" :key="palette.id">
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md transition-shadow">
+                        <div class="flex gap-2 mb-3">
+                            <template x-for="(color, cIndex) in palette.colors" :key="cIndex">
+                                <div 
+                                    class="flex-1 h-16 rounded-lg cursor-pointer hover:scale-105 transition-transform"
+                                    :style="'background-color: ' + color"
+                                    @click="copyColor(color)"
+                                    :title="color"
+                                ></div>
+                            </template>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500" x-text="formatDate(palette.createdAt)"></span>
+                            <div class="flex gap-2">
+                                <button @click="loadPalette(palette)" class="text-xs text-indigo-600 hover:text-indigo-700">
+                                    加载
+                                </button>
+                                <button @click="deletePalette(pIndex)" class="text-xs text-rose-600 hover:text-rose-700">
+                                    删除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div x-show="savedPalettes.length === 0" class="text-center py-12 text-slate-400">
+                <i class="fa-solid fa-palette w-12 h-12 mx-auto mb-3 text-slate-300"></i>
+                <p>还没有保存的配色方案</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function colorApp() {
+            return {
+                currentPalette: [],
+                savedPalettes: [],
+
+                init() {
+                    const saved = localStorage.getItem('webtools_color_palettes');
+                    if (saved) {
+                        this.savedPalettes = JSON.parse(saved);
+                    }
+                    this.generatePalette();
+                },
+
+                generatePalette() {
+                    // 生成和谐的配色方案
+                    const baseHue = Math.random() * 360;
+                    const colors = [];
+                    
+                    // 主色
+                    colors.push(this.hslToHex(baseHue, 70, 50));
+                    // 类似色
+                    colors.push(this.hslToHex((baseHue + 30) % 360, 70, 60));
+                    // 互补色
+                    colors.push(this.hslToHex((baseHue + 180) % 360, 70, 50));
+                    // 三角色
+                    colors.push(this.hslToHex((baseHue + 120) % 360, 60, 55));
+                    // 中性色
+                    colors.push(this.hslToHex(baseHue, 10, 70));
+                    
+                    this.currentPalette = colors;
+                },
+
+                hslToHex(h, s, l) {
+                    l /= 100;
+                    const a = s * Math.min(l, 1 - l) / 100;
+                    const f = n => {
+                        const k = (n + h / 30) % 12;
+                        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                        return Math.round(255 * color).toString(16).padStart(2, '0');
+                    };
+                    return `#${f(0)}${f(8)}${f(4)}`;
+                },
+
+                copyColor(color) {
+                    navigator.clipboard.writeText(color).then(() => {
+                        alert(`已复制: ${color}`);
+                    });
+                },
+
+                savePalette() {
+                    this.savedPalettes.unshift({
+                        id: Date.now(),
+                        colors: [...this.currentPalette],
+                        createdAt: new Date().toISOString()
+                    });
+                    localStorage.setItem('webtools_color_palettes', JSON.stringify(this.savedPalettes));
+                },
+
+                loadPalette(palette) {
+                    this.currentPalette = [...palette.colors];
+                },
+
+                deletePalette(index) {
+                    if (confirm('确定要删除这个配色方案吗？')) {
+                        this.savedPalettes.splice(index, 1);
+                        localStorage.setItem('webtools_color_palettes', JSON.stringify(this.savedPalettes));
+                    }
+                },
+
+                exportPalette() {
+                    const css = this.currentPalette.map((color, i) => `--color-${i + 1}: ${color};`).join('\n');
+                    const code = `:root {\n  ${css}\n}`;
+                    
+                    navigator.clipboard.writeText(code).then(() => {
+                        alert('CSS 变量已复制到剪贴板！');
+                    });
+                },
+
+                formatDate(iso) {
+                    const d = new Date(iso);
+                    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_color_palette.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

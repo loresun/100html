@@ -1,0 +1,3956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大模型生成器工具</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: "#165DFF",
+            secondary: "#722ED1",
+            neutral: {
+              100: "#F5F7FA",
+              200: "#E5E6EB",
+              300: "#C9CDD4",
+              400: "#86909C",
+              500: "#4E5969",
+              600: "#272E3B",
+              700: "#1D2129"
+            },
+            success: "#00B42A",
+            warning: "#FF7D00",
+            danger: "#F53F3F",
+            info: "#86909C"
+          },
+          fontFamily: {
+            inter: ["Inter", "sans-serif"]
+          },
+          boxShadow: {
+            card: "0 4px 20px rgba(0, 0, 0, 0.08)",
+            hover: "0 8px 30px rgba(0, 0, 0, 0.12)"
+          }
+        }
+      }
+    };
+  </script>
+
+  <style type="text/tailwindcss">
+    @layer utilities {
+        .content-auto {
+          content-visibility: auto;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .bg-gradient-blue {
+          background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+        }
+        .text-gradient {
+          background-clip: text;
+          -webkit-background-clip: text;
+          color: transparent;
+          background-image: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+        }
+        .card-hover {
+          transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+          transform: translateY(-5px);
+        }
+      }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="font-inter bg-neutral-100 text-neutral-700 min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="bg-gradient-blue p-1.5 rounded-lg">
+          <i class="fa fa-bolt text-white text-xl"></i>
+        </div>
+        <h1 class="text-xl font-bold text-neutral-700">大模型生成器工具</h1>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <button id="settingsBtn" class="p-2 rounded-full hover:bg-neutral-100 transition-colors duration-200 relative">
+          <i class="fa fa-cog text-neutral-500"></i>
+          <span id="apiStatus" class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-danger"></span>
+        </button>
+
+        <div class="hidden md:flex items-center space-x-2">
+          <span class="text-sm text-neutral-500">版本: 1.0.0</span>
+          <button
+            class="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 py-1.5 px-3 rounded-lg text-sm transition-colors duration-200">
+            <i class="fa fa-question-circle mr-1"></i>帮助
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- API设置弹窗 -->
+  <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div
+      class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95 opacity-0"
+      id="modalContent">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-neutral-700">API 设置</h3>
+          <button id="closeModal" class="text-neutral-400 hover:text-neutral-600">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">API 密钥</label>
+            <div class="relative">
+              <input type="password" id="apiKey"
+                class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200"
+                placeholder="请输入您的API密钥" />
+              <button type="button" id="toggleApiKey"
+                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
+                <i class="fa fa-eye-slash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">API 地址</label>
+            <input type="text" id="apiUrl"
+              class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200"
+              value="https://api.deepseek.com/chat/completions" placeholder="请输入API地址" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">模型 ID</label>
+            <select id="modelId"
+              class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 bg-white">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+
+          <div class="pt-2">
+            <button id="testApi"
+              class="w-full py-2 px-4 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors duration-200 flex items-center justify-center">
+              <i class="fa fa-check-circle mr-2"></i>测试连接
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主内容区 -->
+  <main class="flex-grow container mx-auto px-4 py-6">
+    <!-- 模式选择选项卡 -->
+    <div class="mb-6">
+      <div class="flex flex-wrap overflow-x-auto scrollbar-hide space-x-2 -mx-2 px-2 pb-2">
+        <button
+          class="tab-btn active min-w-[120px] py-2 px-4 rounded-lg bg-primary text-white text-sm font-medium text-center transition-all duration-200 whitespace-nowrap"
+          data-tab="tab1">
+          一进一出
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab2">
+          多字段整合
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab3">
+          一进多出
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab4">
+          批量同构
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab5">
+          批量聚合
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab6">
+          一进多模
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab7">
+          多版本并行
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab8">
+          多步流水线
+        </button>
+
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab10">
+          流式输出
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab11">
+          任务队列
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab12">
+          工具增强
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab13">
+          JSON解析
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab14">
+          占位符模板
+        </button>
+        <button
+          class="tab-btn min-w-[120px] py-2 px-4 rounded-lg bg-white text-neutral-700 text-sm font-medium text-center transition-all duration-200 whitespace-nowrap hover:bg-neutral-100"
+          data-tab="tab15">
+          表格渲染
+        </button>
+
+      </div>
+    </div>
+
+    <!-- 选项卡内容区域 -->
+    <div class="tab-content bg-white rounded-xl shadow-card p-6 mb-6">
+      <!-- 一进一出模式 -->
+      <div id="tab1" class="tab-pane active">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                输入
+              </h3>
+              <div class="relative">
+                <textarea id="input1"
+                  class="w-full h-40 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入您的问题...">请解释一下量子计算的基本原理，用通俗易懂的语言，100字以内。</textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="charCount1">0</span>/2000
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                参数设置
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">温度</label>
+                  <div class="flex items-center space-x-2">
+                    <input type="range" id="temperature1" min="0" max="2" step="0.1" value="0.7"
+                      class="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+                    <span id="tempValue1" class="text-sm text-neutral-500 min-w-[30px] text-center">0.7</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">最大长度</label>
+                  <input type="number" id="maxTokens1" min="1" max="4000" value="1000"
+                    class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn1"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn1"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">输出</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn1"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn1"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+                <button id="shareBtn1"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="分享">
+                  <i class="fa fa-share-alt"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output1"
+                class="w-full min-h-[200px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto whitespace-pre-wrap">
+              </div>
+              <div id="loading1"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">思考中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time1">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount1">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 多字段整合模式 -->
+      <div id="tab2" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                多字段输入
+              </h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">产品名称</label>
+                  <input type="text" id="productName2" value="极速空气炸锅"
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200"
+                    placeholder="请输入产品名称" />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">产品描述</label>
+                  <textarea id="productDesc2"
+                    class="w-full h-20 px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                    placeholder="请输入产品描述">由360度热风循环技术驱动，无油烹饪，健康美味，5升大容量。</textarea>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">目标受众</label>
+                  <input type="text" id="targetAudience2" value="注重健康的家庭主妇和忙碌的上班族"
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200"
+                    placeholder="请输入目标受众" />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">风格要求</label>
+                  <select id="styleRequirement2"
+                    class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 appearance-none bg-white">
+                    <option value="专业">专业</option>
+                    <option value="创意">创意</option>
+                    <option value="幽默">幽默</option>
+                    <option value="正式">正式</option>
+                    <option value="简洁">简洁</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                提示词模板
+              </h3>
+              <div class="relative">
+                <textarea id="promptTemplate2"
+                  class="w-full h-24 px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入提示词模板，使用{产品名称}、{产品描述}、{目标受众}、{风格要求}等占位符">
+{产品名称}是一款{产品描述}，面向{目标受众}群体。请以{风格要求}的风格为这款产品撰写一篇宣传文案，100字以内。">
+                </textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="charCount2">0</span>/2000
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn2"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn2"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">输出</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn2"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn2"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+                <button id="shareBtn2"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="分享">
+                  <i class="fa fa-share-alt"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output2"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto whitespace-pre-wrap">
+              </div>
+              <div id="loading2"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">生成中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time2">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount2">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 一进多出模式 -->
+      <div id="tab3" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                输入
+              </h3>
+              <div class="relative">
+                <textarea id="input3"
+                  class="w-full h-32 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入您的问题...">给一只橘猫起5个有趣的名字，100字以内。</textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="charCount3">0</span>/2000
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                参数设置
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">候选数量</label>
+                  <input type="number" id="candidateCount3" min="1" max="10" value="3"
+                    class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">最大长度</label>
+                  <input type="number" id="maxTokens3" min="1" max="4000" value="500"
+                    class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn3"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn3"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">输出</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn3"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制全部">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn3"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output3"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto">
+                <!-- 候选结果将在这里动态生成 -->
+              </div>
+              <div id="loading3"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">生成中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time3">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount3">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 批量同构模式 -->
+      <div id="tab4" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                批量输入
+              </h3>
+              <div class="relative">
+                <textarea id="input4"
+                  class="w-full h-32 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="每行一个输入项...">人工智能
+机器学习
+深度学习</textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="lineCount4">0</span> 行
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                提示词模板
+              </h3>
+              <textarea id="promptTemplate4"
+                class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                placeholder="使用 {item} 作为输入的占位符。">
+为以下主题写一句广告语，50字以内: {item}</textarea>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn4"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn4"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">输出结果</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn4"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制全部">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn4"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载为CSV">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output4"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto">
+                <!-- 批量结果将在这里动态生成 -->
+              </div>
+              <div id="loading4"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">批量处理中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time4">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount4">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 批量聚合模式 -->
+      <div id="tab5" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                批量输入
+              </h3>
+              <div class="relative">
+                <textarea id="input5"
+                  class="w-full h-32 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="每行一个输入项...">第一季度营收增长20%
+用户净推荐值(NPS)提升5点
+新市场拓展计划推迟</textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="lineCount5">0</span> 行
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                聚合指令
+              </h3>
+              <textarea id="promptTemplate5"
+                class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                placeholder="使用 {items} 作为所有输入项的占位符。">
+请总结以下所有要点，100字以内：\n\n{items}</textarea>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn5"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn5"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">聚合结果</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn5"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn5"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output5"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto whitespace-pre-wrap">
+              </div>
+              <div id="loading5"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">聚合中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time5">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount5">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 一进多模模式 -->
+      <div id="tab6" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                输入
+              </h3>
+              <div class="relative">
+                <textarea id="input6"
+                  class="w-full h-32 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入您的问题...">如何评价 DeepSeek V4 Flash 模型？100字以内。</textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="charCount6">0</span>/2000
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                模型列表
+              </h3>
+              <textarea id="models6"
+                class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                placeholder="每行一个模型ID...">
+deepseek-v4-flash
+deepseek-v4-pro</textarea>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn6"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn6"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">
+                多版本输出结果
+              </h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn6"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制全部">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn6"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载为JSON">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output6"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto">
+                <!-- 多版本输出结果将在这里动态生成 -->
+              </div>
+              <div id="loading6"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">多版本处理中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time6">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount6">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 多版本并行模式 -->
+      <div id="tab7" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                输入
+              </h3>
+              <div class="relative">
+                <textarea id="input7"
+                  class="w-full h-32 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入您的问题...">写一首关于秋天的七言绝句，并附带100字以内的赏析。</textarea>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                模型列表
+              </h3>
+              <textarea id="models7"
+                class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                placeholder="每行一个模型ID...">
+deepseek-v4-flash
+deepseek-v4-pro</textarea>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn7"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn7"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">
+                并行输出结果
+              </h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn7"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制全部">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn7"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载为JSON">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output7"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto">
+                <!-- 并行结果将在这里动态生成 -->
+              </div>
+              <div id="loading7"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">并行处理中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time7">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount7">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 多步流水线模式 -->
+      <div id="tab8" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                简单主题
+              </h3>
+              <div class="relative">
+                <textarea id="input8"
+                  class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="输入一个主题，AI 将分三步快速生成内容...">比如：如何保持健康</textarea>
+              </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
+              <h4 class="text-sm font-bold text-neutral-700 mb-3">
+                <i class="fa fa-sitemap mr-2 text-blue-500"></i>简易流水线
+              </h4>
+              <div class="space-y-2 text-sm">
+                <div class="flex items-center gap-3">
+                  <span
+                    class="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                  <span class="text-neutral-600"><strong>构思大纲</strong></span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span
+                    class="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                  <span class="text-neutral-600"><strong>快速撰写</strong></span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span
+                    class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                  <span class="text-neutral-600"><strong>最终润色</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn8"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn8"
+                class="py-2 px-6 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:opacity-90 transition-all duration-200 flex items-center">
+                <i class="fa fa-play mr-2"></i>一键生成
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">流水线输出</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn8"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn8"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output8"
+                class="w-full min-h-[400px] max-h-[600px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto space-y-4">
+                <!-- 流水线结果将在这里动态生成 -->
+                <div class="text-neutral-400 text-sm text-center py-12">
+                  <i class="fa fa-sitemap text-3xl mb-3"></i>
+                  <p>输入主题后，点击"开始流水线"</p>
+                  <p class="text-xs mt-1">系统将分三步完成内容创作</p>
+                </div>
+              </div>
+              <div id="loading8"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p id="pipelineProgress8" class="text-neutral-500 text-sm">准备开始...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time8">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-tasks mr-2"></i>
+                <span id="tokenCount8">0/3 步骤</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <!-- 流式输出模式 -->
+      <div id="tab10" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                输入
+              </h3>
+              <div class="relative">
+                <textarea id="input10"
+                  class="w-full h-32 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入您的问题...">请讲一个关于程序员的冷笑话，100字以内。</textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="charCount10">0</span>/2000
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                参数设置
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">温度</label>
+                  <div class="flex items-center space-x-2">
+                    <input type="range" id="temperature10" min="0" max="2" step="0.1" value="0.7"
+                      class="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+                    <span id="tempValue10" class="text-sm text-neutral-500 min-w-[30px] text-center">0.7</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">最大长度</label>
+                  <input type="number" id="maxTokens10" min="1" max="4000" value="1000"
+                    class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn10"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn10"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">输出</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn10"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn10"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output10"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto whitespace-pre-wrap">
+              </div>
+              <div id="loading10"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">流式生成中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time10">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount10">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 任务队列模式 -->
+      <div id="tab11" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                任务列表 <span class="text-sm font-normal text-neutral-400">(每行一个任务)</span>
+              </h3>
+              <div class="relative">
+                <textarea id="input11"
+                  class="w-full h-40 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none font-mono text-sm"
+                  placeholder="每行输入一个任务...">写一句关于春天的诗
+讲一个关于程序员的笑话
+用一句话解释量子计算</textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="taskCount11Display">3</span> 个任务
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                参数设置
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">每任务最大长度</label>
+                  <input type="number" id="maxTokens11" min="1" max="2000" value="200"
+                    class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">任务间隔(ms)</label>
+                  <input type="number" id="taskDelay11" min="0" max="3000" value="500"
+                    class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn11"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn11"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>依次执行
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">任务执行进度</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn11"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制全部">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn11"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output11"
+                class="w-full min-h-[300px] max-h-[500px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto space-y-3">
+                <!-- 任务队列结果将在这里动态生成 -->
+                <div class="text-neutral-400 text-sm text-center py-8">
+                  <i class="fa fa-list-ol text-2xl mb-2"></i>
+                  <p>任务将依次执行，每个任务完成后显示结果</p>
+                </div>
+              </div>
+              <div id="loading11"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p id="taskProgress11" class="text-neutral-500 text-sm">准备开始...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time11">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-tasks mr-2"></i>
+                <span id="tokenCount11">0/0 完成</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 工具增强模式 -->
+      <div id="tab12" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                用户请求
+              </h3>
+              <div class="relative">
+                <textarea id="input12"
+                  class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入需要调用工具的请求...">北京今天的天气怎么样？</textarea>
+              </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-4 border border-cyan-100">
+              <h4 class="text-sm font-bold text-neutral-700 mb-3">
+                <i class="fa fa-wrench mr-2 text-cyan-500"></i>可用工具
+              </h4>
+              <div class="space-y-2 text-sm">
+                <div class="flex items-center gap-2">
+                  <span
+                    class="px-2 py-0.5 bg-white border border-neutral-200 rounded text-xs font-mono text-cyan-600">get_weather</span>
+                  <span class="text-neutral-600">获取指定城市的天气信息</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="px-2 py-0.5 bg-white border border-neutral-200 rounded text-xs font-mono text-blue-600">web_search</span>
+                  <span class="text-neutral-600">搜索互联网相关信息</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="px-2 py-0.5 bg-white border border-neutral-200 rounded text-xs font-mono text-purple-600">calculator</span>
+                  <span class="text-neutral-600">执行数学计算</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn12"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn12"
+                class="py-2 px-6 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:opacity-90 transition-all duration-200 flex items-center">
+                <i class="fa fa-plug mr-2"></i>智能调用
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">执行过程</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn12"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制结果">
+                  <i class="fa fa-copy"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output12"
+                class="w-full min-h-[350px] max-h-[500px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto space-y-3">
+
+                <div class="text-neutral-400 text-sm text-center py-12">
+                  <i class="fa fa-cogs text-3xl mb-3"></i>
+                  <p>AI 将根据意图自动选择工具并执行</p>
+                </div>
+
+              </div>
+              <div id="loading12"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p id="toolProgress12" class="text-neutral-500 text-sm">分析意图中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time12">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-check-square-o mr-2"></i>
+                <span id="tokenCount12">等待执行</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- JSON解析模式 -->
+      <div id="tab13" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                主题描述
+              </h3>
+              <div class="relative">
+                <textarea id="input13"
+                  class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="输入一个主题，AI 将返回结构化 JSON 数据...">3个热门 AI 工具的介绍</textarea>
+              </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg p-4 border border-orange-100">
+              <h4 class="text-sm font-bold text-neutral-700 mb-2">
+                <i class="fa fa-code mr-2 text-orange-500"></i>功能说明
+              </h4>
+              <p class="text-xs text-neutral-600">
+                AI 将根据您的描述生成结构化 JSON 数据，然后自动解析并渲染为可视化卡片。
+                支持数组类型的 JSON 数据。
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">结果数量</label>
+                <input type="number" id="jsonCount13" min="1" max="10" value="3"
+                  class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">每项最大字数</label>
+                <input type="number" id="maxTokens13" min="50" max="500" value="100"
+                  class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn13"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn13"
+                class="py-2 px-6 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:opacity-90 transition-all duration-200 flex items-center">
+                <i class="fa fa-magic mr-2"></i>生成并解析
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">解析结果</h3>
+              <div class="flex space-x-2">
+                <button id="toggleRawJson13"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="切换原始JSON">
+                  <i class="fa fa-code"></i>
+                </button>
+                <button id="copyBtn13"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制">
+                  <i class="fa fa-copy"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output13"
+                class="w-full min-h-[350px] max-h-[500px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto">
+                <!-- 卡片将在这里动态生成 -->
+                <div class="text-neutral-400 text-sm text-center py-12">
+                  <i class="fa fa-th-large text-3xl mb-3"></i>
+                  <p>输入主题后，AI 将生成 JSON 并渲染为卡片</p>
+                </div>
+              </div>
+              <div id="loading13"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">生成并解析中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="rawJson13" class="hidden">
+              <pre class="text-xs bg-neutral-800 text-green-400 p-3 rounded-lg overflow-auto max-h-[200px]"></pre>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time13">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-th-large mr-2"></i>
+                <span id="tokenCount13">0 卡片</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 占位符模板模式 -->
+      <div id="tab14" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                输入
+              </h3>
+              <div class="relative">
+                <textarea id="input14"
+                  class="w-full h-32 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入占位符模板...">你好，我是{name}，来自{city}。请介绍一下{city}，50字以内。</textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-400">
+                  <span id="charCount14">0</span>/2000
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                参数设置
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">模板内容</label>
+                  <textarea id="templateContent14"
+                    class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                    placeholder="请输入模板内容">你好，我是{name}，来自{city}。请介绍一下{city}，50字以内。</textarea>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-1">占位符</label>
+                  <textarea id="placeholders14"
+                    class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                    placeholder="请输入占位符，多个占位符用逗号分隔">name, city</textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn14"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn14"
+                class="py-2 px-6 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center">
+                <i class="fa fa-paper-plane mr-2"></i>提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">模板结果</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn14"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn14"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output14"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto whitespace-pre-wrap">
+              </div>
+              <div id="loading14"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">生成中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time14">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount14">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 表格渲染模式 -->
+      <div id="tab15" class="tab-pane hidden">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- 输入区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div>
+              <h3 class="text-lg font-semibold text-neutral-700 mb-2">
+                表格主题
+              </h3>
+              <div class="relative">
+                <textarea id="input15"
+                  class="w-full h-24 px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 resize-none"
+                  placeholder="请输入想要生成的表格主题...">2024年畅销书籍排行榜Top5</textarea>
+              </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-100">
+              <h4 class="text-sm font-bold text-neutral-700 mb-2">
+                <i class="fa fa-table mr-2 text-emerald-500"></i>功能说明
+              </h4>
+              <p class="text-xs text-neutral-600">
+                AI 将根据您的主题生成 Markdown 格式的表格，系统会自动将其渲染为精美的 HTML 表格。
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">行数</label>
+                <input type="number" id="rowCount15" min="2" max="20" value="5"
+                  class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">列数(估算)</label>
+                <input type="number" id="colCount15" min="2" max="8" value="4"
+                  class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all duration-200 text-sm" />
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+              <button id="clearBtn15"
+                class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+                <i class="fa fa-eraser mr-2"></i>清空
+              </button>
+              <button id="submitBtn15"
+                class="py-2 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:opacity-90 transition-all duration-200 flex items-center">
+                <i class="fa fa-table mr-2"></i>生成表格
+              </button>
+            </div>
+          </div>
+
+          <!-- 输出区域 -->
+          <div class="lg:w-1/2 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">渲染结果</h3>
+              <div class="flex space-x-2">
+                <button id="copyBtn15"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="复制">
+                  <i class="fa fa-copy"></i>
+                </button>
+                <button id="downloadBtn15"
+                  class="p-1.5 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors duration-200"
+                  title="下载">
+                  <i class="fa fa-download"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="relative">
+              <div id="output15"
+                class="w-full min-h-[300px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto whitespace-pre-wrap">
+              </div>
+              <div id="loading15"
+                class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2">
+                  </div>
+                  <p class="text-neutral-500 text-sm">渲染中...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+              <div class="flex items-center">
+                <i class="fa fa-clock-o mr-2"></i>
+                <span id="time15">0.0s</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2"></i>
+                <span id="tokenCount15">0 tokens</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+
+      <!-- 历史记录 -->
+      <div class="bg-white rounded-xl shadow-card p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-neutral-700">历史记录</h3>
+          <div class="flex space-x-2">
+            <button id="clearHistoryBtn"
+              class="py-1.5 px-3 text-sm border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200 flex items-center">
+              <i class="fa fa-trash-o mr-1"></i>清空
+            </button>
+            <div class="relative">
+              <select id="historyFilter"
+                class="py-1.5 px-3 pr-8 text-sm border border-neutral-300 rounded-lg text-neutral-700 appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="all">全部</option>
+                <option value="success">成功</option>
+                <option value="error">失败</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
+                <i class="fa fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="historyContainer" class="space-y-3 max-h-[400px] overflow-y-auto scrollbar-hide">
+          <!-- 历史记录将在这里动态生成 -->
+          <div class="text-center text-neutral-400 py-8">
+            <i class="fa fa-history text-4xl mb-2 opacity-30"></i>
+            <p>暂无历史记录</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t border-neutral-200 py-4 mt-6">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="text-sm text-neutral-500 mb-2 md:mb-0">
+          © 2025 大模型生成器工具 | 版本 1.0.0
+        </div>
+        <div class="flex space-x-4">
+          <a href="#" class="text-neutral-500 hover:text-primary transition-colors duration-200 text-sm">
+            <i class="fa fa-github mr-1"></i>GitHub
+          </a>
+          <a href="#" class="text-neutral-500 hover:text-primary transition-colors duration-200 text-sm">
+            <i class="fa fa-book mr-1"></i>文档
+          </a>
+          <a href="#" class="text-neutral-500 hover:text-primary transition-colors duration-200 text-sm">
+            <i class="fa fa-envelope-o mr-1"></i>联系我们
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // DOM元素
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsModal = document.getElementById("settingsModal");
+    const modalContent = document.getElementById("modalContent");
+    const closeModal = document.getElementById("closeModal");
+    const apiKey = document.getElementById("apiKey");
+    const apiUrl = document.getElementById("apiUrl");
+    const modelId = document.getElementById("modelId");
+    const testApi = document.getElementById("testApi");
+    const apiStatus = document.getElementById("apiStatus");
+    const toggleApiKey = document.getElementById("toggleApiKey");
+
+    // 选项卡切换
+    const tabBtns = document.querySelectorAll(".tab-btn");
+    const tabPanes = document.querySelectorAll(".tab-pane");
+
+    // 历史记录
+    const historyContainer = document.getElementById("historyContainer");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+    const historyFilter = document.getElementById("historyFilter");
+
+    // 初始化
+    document.addEventListener("DOMContentLoaded", function () {
+      // 加载保存的设置
+      loadSettings();
+
+      // 初始化事件监听
+      initEventListeners();
+
+      // 初始化历史记录
+      loadHistory();
+    });
+
+    // 加载保存的设置
+    function loadSettings() {
+      // 读取全局配置 (参考 ai_roleplay_arena.html)
+      const globalConfigStr = localStorage.getItem("global_llm_config");
+      let config = {
+        apiKey: "",
+        model: "deepseek-v4-flash",
+        baseUrl: "https://api.deepseek.com/chat/completions"
+      };
+
+      if (globalConfigStr) {
+        try {
+          const parsed = JSON.parse(globalConfigStr);
+          // 1. 优先读取 deepseek (与 llm_playground.html 一致)
+          config.apiKey = parsed.deepseek || parsed.deepseek_key || parsed.apiKey || "";
+
+          // 2. 加载模型与 Base URL
+          if (parsed.model) config.model = parsed.model;
+          if (parsed.baseUrl) config.baseUrl = parsed.baseUrl;
+
+          // 3. 静默修正：如果当前模型是已知的图像模型，重置为默认文本模型
+          const imageModels = ['seedream', 'cogview', 'flux', 'dall-e'];
+          if (imageModels.some(m => config.model.includes(m))) {
+            config.model = 'deepseek-v4-flash';
+          }
+        } catch (e) {
+          console.error("解析 global_llm_config 失败", e);
+        }
+      }
+
+      // 兼容旧版本地存储 (如果全局没读到)
+      if (!config.apiKey) {
+        config.apiKey = localStorage.getItem("apiKey") || localStorage.getItem("deepseek") || localStorage.getItem("deepseek_key") || "";
+      }
+
+      // 应用到 UI
+      apiKey.value = config.apiKey;
+      modelId.value = config.model;
+      apiUrl.value = config.baseUrl;
+
+      // 测试API连接
+      if (config.apiKey) {
+        testApiConnection(false); // 传入 false 表示不显示通知
+      }
+    }
+
+    function initEventListeners() {
+      // 设置模态框
+      settingsBtn.addEventListener("click", () => {
+        settingsModal.classList.remove("hidden");
+        setTimeout(() => {
+          modalContent.classList.remove("scale-95", "opacity-0");
+          modalContent.classList.add("scale-100", "opacity-100");
+        }, 10);
+      });
+
+      closeModal.addEventListener("click", closeSettingsModal);
+
+      settingsModal.addEventListener("click", (e) => {
+        if (e.target === settingsModal) closeSettingsModal();
+      });
+
+      // API密钥显示切换
+      toggleApiKey.addEventListener("click", () => {
+        const type = apiKey.getAttribute("type") === "password" ? "text" : "password";
+        apiKey.setAttribute("type", type);
+        toggleApiKey.innerHTML = type === "password" ? '<i class="fa fa-eye-slash"></i>' : '<i class="fa fa-eye"></i>';
+      });
+
+      // Test API connection
+      testApi.addEventListener("click", () => testApiConnection(true));
+
+      // Auto-save settings
+      if (typeof saveSettings === 'function') {
+        apiKey.addEventListener('blur', saveSettings);
+        modelId.addEventListener('change', saveSettings);
+        apiUrl.addEventListener('blur', saveSettings);
+        closeModal.addEventListener('click', saveSettings);
+      }
+
+      // 选项卡切换
+      tabBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          // 重置所有按钮样式
+          tabBtns.forEach((b) => {
+            b.classList.remove("active", "bg-primary", "text-white");
+            b.classList.add("bg-white", "text-neutral-700");
+          });
+          tabPanes.forEach((p) => p.classList.add("hidden"));
+          // 设置当前按钮为激活状态
+          btn.classList.remove("bg-white", "text-neutral-700");
+          btn.classList.add("active", "bg-primary", "text-white");
+          const tabId = btn.getAttribute("data-tab");
+          document.getElementById(tabId).classList.remove("hidden");
+        });
+      });
+
+      // 批量绑定 16 个模式的交互按钮
+      for (let i = 1; i <= 16; i++) {
+        const sBtn = document.getElementById(`submitBtn${i}`);
+        const clBtn = document.getElementById(`clearBtn${i}`);
+        const cpBtn = document.getElementById(`copyBtn${i}`);
+        const dlBtn = document.getElementById(`downloadBtn${i}`);
+        const inEl = document.getElementById(`input${i}`) || document.getElementById(`promptTemplate${i}`);
+
+        if (sBtn) sBtn.addEventListener("click", () => handleSubmit(i));
+        if (clBtn) clBtn.addEventListener("click", () => {
+          if (inEl) inEl.value = "";
+          const outEl = document.getElementById(`output${i}`);
+          if (outEl) outEl.innerHTML = "";
+        });
+        if (cpBtn) cpBtn.addEventListener("click", () => copyToClipboard(`output${i}`));
+        if (dlBtn) dlBtn.addEventListener("click", () => {
+          if (i === 4) downloadBatchResultAsCsv(`output4`, "batch_results.csv");
+          else downloadResult(`output${i}`, `result_mode_${i}.txt`);
+        });
+
+        // 字符/行数计数
+        if (inEl) {
+          inEl.addEventListener("input", function () {
+            const cEl = document.getElementById(`charCount${i}`) || document.getElementById(`lineCount${i}`);
+            if (cEl) {
+              if ([4, 5, 7].includes(i)) {
+                cEl.textContent = this.value.split("\n").filter(l => l.trim()).length;
+              } else {
+                cEl.textContent = this.value.length;
+              }
+            }
+          });
+        }
+      }
+
+      clearHistoryBtn.addEventListener("click", clearHistory);
+      historyFilter.addEventListener("change", filterHistory);
+    }
+
+    // 关闭设置模态框
+    function closeSettingsModal() {
+      modalContent.classList.remove("scale-100", "opacity-100");
+      modalContent.classList.add("scale-95", "opacity-0");
+      setTimeout(() => {
+        settingsModal.classList.add("hidden");
+      }, 300);
+    }
+
+    // 测试API连接
+    async function testApiConnection(showToast = true) {
+      const key = apiKey.value.trim();
+      const url = apiUrl.value.trim();
+      const model = modelId.value.trim();
+
+      if (!key || !url || !model) {
+        showNotification("请填写完整的API信息", "warning");
+        return;
+      }
+
+      // 保存设置到全局配置
+      const currentConfig = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+      const newConfig = {
+        ...currentConfig,
+        apiKey: key,
+        model: model,
+        baseUrl: url,
+        deepseek_key: key, // 统一使用 deepseek_key
+        deepseek: key      // 兼容旧逻辑
+      };
+      localStorage.setItem('global_llm_config', JSON.stringify(newConfig));
+
+      // 同时更新本地独立存储项 (保持兼容)
+      localStorage.setItem("apiKey", key);
+      localStorage.setItem("apiUrl", url);
+      localStorage.setItem("modelId", model);
+
+      testApi.innerHTML =
+        '<i class="fa fa-spinner fa-spin mr-2"></i>测试中...';
+      testApi.disabled = true;
+
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              { role: "system", content: "你是人工智能助手。" },
+              { role: "user", content: "测试连接" },
+            ],
+            max_tokens: 10,
+            temperature: 0
+          })
+        });
+
+        if (response.ok) {
+          apiStatus.classList.remove("bg-danger");
+          apiStatus.classList.add("bg-success");
+          if (showToast) showNotification("API连接成功", "success");
+        } else {
+          apiStatus.classList.remove("bg-success");
+          apiStatus.classList.add("bg-danger");
+          const errorData = await response.json();
+          if (showToast) showNotification(
+            `API连接失败: ${errorData.error?.message || response.statusText}`,
+            "error"
+          );
+        }
+      } catch (error) {
+        apiStatus.classList.remove("bg-success");
+        apiStatus.classList.add("bg-danger");
+        showNotification(`API连接失败: ${error.message}`, "error");
+      } finally {
+        testApi.innerHTML = '<i class="fa fa-check-circle mr-2"></i>测试连接';
+        testApi.disabled = false;
+      }
+    }
+
+    // 处理提交
+    async function handleSubmit(tabIndex) {
+      const key = apiKey.value.trim();
+      const url = apiUrl.value.trim();
+      const model = modelId.value.trim();
+
+      if (!key || !url || !model) {
+        showNotification("请先配置API信息", "warning");
+        return;
+      }
+
+      let messages, options;
+      const loading = document.getElementById(`loading${tabIndex}`);
+      const output = document.getElementById(`output${tabIndex}`);
+      const timeDisplay = document.getElementById(`time${tabIndex}`);
+      const tokenCount = document.getElementById(`tokenCount${tabIndex}`);
+
+      // 根据不同的模式准备不同的请求
+      switch (tabIndex) {
+        case 1:
+          // 一进一出模式
+          const input1 = document.getElementById("input1").value.trim();
+          if (!input1) {
+            showNotification("请输入内容", "warning");
+            return;
+          }
+
+          messages = [
+            { role: "system", content: "你是人工智能助手。" },
+            { role: "user", content: input1 },
+          ];
+
+          const temperature1 = parseFloat(
+            document.getElementById("temperature1").value
+          );
+          const maxTokens1 = parseInt(
+            document.getElementById("maxTokens1").value
+          );
+
+          options = {
+            temperature: temperature1,
+            max_tokens: maxTokens1
+          };
+
+          break;
+
+        case 2:
+          // 多字段整合模式
+          const productName = document
+            .getElementById("productName2")
+            .value.trim();
+          const productDesc = document
+            .getElementById("productDesc2")
+            .value.trim();
+          const targetAudience = document
+            .getElementById("targetAudience2")
+            .value.trim();
+          const styleRequirement =
+            document.getElementById("styleRequirement2").value;
+          let promptTemplate = document
+            .getElementById("promptTemplate2")
+            .value.trim();
+
+          if (
+            !productName ||
+            !productDesc ||
+            !targetAudience ||
+            !promptTemplate
+          ) {
+            showNotification("请填写完整的字段", "warning");
+            return;
+          }
+
+          // 替换模板中的占位符
+          promptTemplate = promptTemplate
+            .replace("{产品名称}", productName)
+            .replace("{产品描述}", productDesc)
+            .replace("{目标受众}", targetAudience)
+            .replace("{风格要求}", styleRequirement);
+
+          messages = [
+            { role: "system", content: "你是人工智能助手。" },
+            { role: "user", content: promptTemplate },
+          ];
+
+          options = {
+            temperature: 0.7,
+            max_tokens: 1000
+          };
+
+          break;
+
+        case 3:
+          // 一进多出模式
+          const input3 = document.getElementById("input3").value.trim();
+          if (!input3) {
+            showNotification("请输入内容", "warning");
+            return;
+          }
+
+          messages = [
+            {
+              role: "system",
+              content: "你是人工智能助手。请为用户提供多个不同的回答。"
+            },
+            { role: "user", content: input3 },
+          ];
+
+          const candidateCount = parseInt(
+            document.getElementById("candidateCount3").value
+          );
+          const maxTokens3 = parseInt(
+            document.getElementById("maxTokens3").value
+          );
+
+          options = {
+            n: candidateCount,
+            max_tokens: maxTokens3
+          };
+
+          break;
+
+        case 4: // 批量同构模式
+          {
+            const input4 = document.getElementById("input4").value.trim();
+            const promptTemplate4 = document
+              .getElementById("promptTemplate4")
+              .value.trim();
+
+            if (!input4 || !promptTemplate4) {
+              showNotification("请输入批量内容和提示词模板", "warning");
+              return;
+            }
+            if (!promptTemplate4.includes("{item}")) {
+              showNotification("提示词模板必须包含 {item} 占位符", "warning");
+              return;
+            }
+
+            const items = input4
+              .split("\n")
+              .filter((line) => line.trim() !== "");
+            if (items.length === 0) {
+              showNotification("请输入至少一个项目", "warning");
+              return;
+            }
+
+            output.innerHTML = "";
+            loading.classList.remove("hidden");
+            timeDisplay.textContent = "0.0s";
+            tokenCount.textContent = "0 tokens";
+            const startTime4 = Date.now();
+
+            const promises = items.map((item) => {
+              const filledPrompt = promptTemplate4.replace("{item}", item);
+              const batchMessages = [
+                { role: "system", content: "你是人工智能助手。" },
+                { role: "user", content: filledPrompt },
+              ];
+
+              return fetch(url, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${key}`
+                },
+                body: JSON.stringify({
+                  model: model,
+                  messages: batchMessages
+                })
+              })
+                .then((res) => {
+                  if (!res.ok)
+                    return res
+                      .json()
+                      .then((err) =>
+                        Promise.reject({ item: item, error: err })
+                      );
+                  return res.json();
+                })
+                .then((data) => {
+                  return {
+                    input: item,
+                    output: data.choices[0].message.content,
+                    reasoning: data.choices[0].message.reasoning_content,
+                    tokens: data.usage?.total_tokens || 0,
+                    success: true
+                  };
+                })
+                .catch((error) => {
+                  return {
+                    input: item,
+                    output: error.error?.message || error.message || "请求失败",
+                    tokens: 0,
+                    success: false,
+                    error: true
+                  };
+                });
+            });
+
+            Promise.all(promises)
+              .then((results) => {
+                const endTime = Date.now();
+                const duration = (endTime - startTime4) / 1000;
+                let totalTokens = 0;
+
+                output.innerHTML = "";
+                results.forEach((result) => {
+                  totalTokens += result.tokens;
+                  const resultCard = document.createElement("div");
+                  resultCard.className = `mb-4 p-3 border rounded-lg bg-white ${!result.success ? "border-danger/30" : "border-neutral-200"
+                    }`;
+                  resultCard.innerHTML = `
+                  <div class="mb-2">
+                      <div class="text-sm font-medium text-neutral-500">输入:</div>
+                      <div class="text-sm text-neutral-700 whitespace-pre-wrap" data-input>${result.input
+                    }</div>
+                </div>
+                  <div>
+                      <div class="text-sm font-medium ${!result.success ? "text-danger" : "text-neutral-500"
+                    }">输出:</div>
+                      ${result.reasoning
+                      ? `<details class="mb-2 bg-yellow-50 p-2 rounded border border-yellow-200"><summary class="cursor-pointer text-xs font-medium text-yellow-700">思考过程</summary><div class="mt-1 text-xs text-neutral-600 whitespace-pre-wrap">${result.reasoning}</div></details>`
+                      : ""
+                    }
+                      <div class="text-sm ${!result.success ? "text-danger" : "text-neutral-700"
+                    } whitespace-pre-wrap" data-output>${result.output}</div>
+          </div>
+            `;
+                  output.appendChild(resultCard);
+                });
+
+                timeDisplay.textContent = `${duration.toFixed(1)}s`;
+                tokenCount.textContent = `${totalTokens} tokens`;
+
+                const historyInput = `模板: ${promptTemplate4}\n---\n${items.join(
+                  "\n"
+                )}`;
+                const historyOutput = results
+                  .map((r) => `[${r.input}] -> ${r.output}`)
+                  .join("\n");
+                const allSuccess = results.every((r) => r.success);
+
+                addToHistory({
+                  mode: "批量同构",
+                  input: historyInput,
+                  output: historyOutput,
+                  success: allSuccess,
+                  tokens: totalTokens,
+                  time: duration.toFixed(1),
+                  timestamp: new Date().toISOString()
+                });
+                showNotification("批量处理完成", "success");
+              })
+              .finally(() => {
+                loading.classList.add("hidden");
+              });
+            return; // Early return for async batch processing
+          }
+
+        case 5:
+          // 批量聚合模式
+          const input5 = document.getElementById("input5").value.trim();
+          const promptTemplate5 = document
+            .getElementById("promptTemplate5")
+            .value.trim();
+
+          if (!input5 || !promptTemplate5) {
+            showNotification("请输入批量内容和聚合指令", "warning");
+            return;
+          }
+          if (!promptTemplate5.includes("{items}")) {
+            showNotification("聚合指令必须包含 {items} 占位符", "warning");
+            return;
+          }
+
+          const items5 = input5
+            .split("\n")
+            .filter((line) => line.trim() !== "")
+            .join("\n");
+          if (items5.length === 0) {
+            showNotification("请输入至少一个项目", "warning");
+            return;
+          }
+
+          const filledPrompt5 = promptTemplate5.replace("{items}", items5);
+
+          messages = [
+            {
+              role: "system",
+              content: "你是一个善于整合和总结信息的人工智能助手。"
+            },
+            { role: "user", content: filledPrompt5 },
+          ];
+
+          options = {
+            temperature: 0.5,
+            max_tokens: 1500,
+          };
+
+          break;
+
+        case 6: // 一进多模模式
+          {
+            const input6 = document.getElementById("input6").value.trim();
+            const models6 = document.getElementById("models6").value.trim();
+
+            if (!input6 || !models6) {
+              showNotification("请输入内容和模型列表", "warning");
+              return;
+            }
+
+            const models = models6
+              .split("\n")
+              .filter((line) => line.trim() !== "");
+            if (models.length === 0) {
+              showNotification("请输入至少一个模型ID", "warning");
+              return;
+            }
+
+            output.innerHTML = "";
+            loading.classList.remove("hidden");
+            timeDisplay.textContent = "0.0s";
+            tokenCount.textContent = "0 tokens";
+            const startTime6 = Date.now();
+
+            const promises = models.map((currentModel) => {
+              const multiMessages = [
+                { role: "system", content: "你是人工智能助手。" },
+                { role: "user", content: input6 },
+              ];
+
+              return fetch(url, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${key}`,
+                },
+                body: JSON.stringify({
+                  model: currentModel.trim(),
+                  messages: multiMessages,
+                }),
+              })
+                .then((res) => {
+                  if (!res.ok)
+                    return res
+                      .json()
+                      .then((err) =>
+                        Promise.reject({ model: currentModel, error: err })
+                      );
+                  return res.json();
+                })
+                .then((data) => {
+                  return {
+                    model: currentModel,
+                    output: data.choices[0].message.content,
+                    reasoning: data.choices[0].message.reasoning_content,
+                    tokens: data.usage?.total_tokens || 0,
+                    success: true,
+                  };
+                })
+                .catch((error) => {
+                  return {
+                    model: currentModel,
+                    output: error.error?.message || error.message || "请求失败",
+                    tokens: 0,
+                    success: false,
+                    error: true,
+                  };
+                });
+            });
+
+            Promise.all(promises)
+              .then((results) => {
+                const endTime = Date.now();
+                const duration = (endTime - startTime6) / 1000;
+                let totalTokens = 0;
+
+                output.innerHTML = "";
+                results.forEach((result) => {
+                  totalTokens += result.tokens;
+                  const resultCard = document.createElement("div");
+                  resultCard.className = `mb-4 p-3 border rounded-lg bg-white ${!result.success ? "border-danger/30" : "border-neutral-200"
+                    }`;
+                  resultCard.innerHTML = `
+                  <div class="mb-2">
+                      <div class="text-sm font-medium text-neutral-500" data-model>${result.model
+                    }</div>
+                </div>
+                  <div>
+                      ${result.reasoning
+                      ? `<details class="mb-2 bg-yellow-50 p-2 rounded border border-yellow-200"><summary class="cursor-pointer text-xs font-medium text-yellow-700">思考过程</summary><div class="mt-1 text-xs text-neutral-600 whitespace-pre-wrap">${result.reasoning}</div></details>`
+                      : ""
+                    }
+                      <div class="text-sm ${!result.success ? "text-danger" : "text-neutral-700"
+                    } whitespace-pre-wrap" data-output>${result.output}</div>
+                </div>
+                `;
+                  output.appendChild(resultCard);
+                });
+
+                timeDisplay.textContent = `${duration.toFixed(1)}s`;
+                tokenCount.textContent = `${totalTokens} tokens`;
+
+                const historyInput = `输入: ${input6}\n---\n模型: ${models.join(
+                  ", "
+                )}`;
+                const historyOutput = results
+                  .map((r) => `[${r.model}] -> ${r.output}`)
+                  .join("\n");
+                const allSuccess = results.every((r) => r.success);
+
+                addToHistory({
+                  mode: "一进多模",
+                  input: historyInput,
+                  output: historyOutput,
+                  success: allSuccess,
+                  tokens: totalTokens,
+                  time: duration.toFixed(1),
+                  timestamp: new Date().toISOString(),
+                });
+                showNotification("多版本处理完成", "success");
+              })
+              .finally(() => {
+                loading.classList.add("hidden");
+              });
+            return; // Early return for async processing
+          }
+
+        case 7: // 多版本并行模式
+          {
+            const input7 = document.getElementById("input7").value.trim();
+            const models7 = document.getElementById("models7").value.trim();
+
+            if (!input7 || !models7) {
+              showNotification("请输入内容和模型列表", "warning");
+              return;
+            }
+
+            const models = models7
+              .split("\n")
+              .filter((line) => line.trim() !== "");
+            if (models.length === 0) {
+              showNotification("请输入至少一个模型ID", "warning");
+              return;
+            }
+
+            output.innerHTML = "";
+            loading.classList.remove("hidden");
+            timeDisplay.textContent = "0.0s";
+            tokenCount.textContent = "0 tokens";
+            const startTime7 = Date.now();
+
+            const promises = models.map((currentModel) => {
+              const parallelMessages = [
+                { role: "system", content: "你是人工智能助手。" },
+                { role: "user", content: input7 },
+              ];
+
+              return fetch(url, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${key}`,
+                },
+                body: JSON.stringify({
+                  model: currentModel.trim(),
+                  messages: parallelMessages,
+                }),
+              })
+                .then((res) => {
+                  if (!res.ok)
+                    return res
+                      .json()
+                      .then((err) =>
+                        Promise.reject({ model: currentModel, error: err })
+                      );
+                  return res.json();
+                })
+                .then((data) => {
+                  return {
+                    model: currentModel,
+                    output: data.choices[0].message.content,
+                    reasoning: data.choices[0].message.reasoning_content,
+                    tokens: data.usage?.total_tokens || 0,
+                    success: true,
+                  };
+                })
+                .catch((error) => {
+                  return {
+                    model: currentModel,
+                    output: error.error?.message || error.message || "请求失败",
+                    tokens: 0,
+                    success: false,
+                    error: true,
+                  };
+                });
+            });
+
+            Promise.all(promises)
+              .then((results) => {
+                const endTime = Date.now();
+                const duration = (endTime - startTime7) / 1000;
+                let totalTokens = 0;
+
+                output.innerHTML = "";
+                results.forEach((result) => {
+                  totalTokens += result.tokens;
+                  const resultCard = document.createElement("div");
+                  resultCard.className = `mb-4 p-3 border rounded-lg bg-white ${!result.success ? "border-danger/30" : "border-neutral-200"
+                    }`;
+                  resultCard.innerHTML = `
+                  <div class="mb-2">
+                      <div class="text-sm font-medium text-neutral-500" data-model>${result.model
+                    }</div>
+            </div>
+                  <div>
+                      ${result.reasoning
+                      ? `<details class="mb-2 bg-yellow-50 p-2 rounded border border-yellow-200"><summary class="cursor-pointer text-xs font-medium text-yellow-700">思考过程</summary><div class="mt-1 text-xs text-neutral-600 whitespace-pre-wrap">${result.reasoning}</div></details>`
+                      : ""
+                    }
+                      <div class="text-sm ${!result.success ? "text-danger" : "text-neutral-700"
+                    } whitespace-pre-wrap" data-output>${result.output}</div>
+            </div>
+                `;
+                  output.appendChild(resultCard);
+                });
+
+                timeDisplay.textContent = `${duration.toFixed(1)}s`;
+                tokenCount.textContent = `${totalTokens} tokens`;
+
+                const historyInput = `输入: ${input7}\n---\n模型: ${models.join(
+                  ", "
+                )}`;
+                const historyOutput = results
+                  .map((r) => `[${r.model}] -> ${r.output}`)
+                  .join("\n");
+                const allSuccess = results.every((r) => r.success);
+
+                addToHistory({
+                  mode: "多版本并行",
+                  input: historyInput,
+                  output: historyOutput,
+                  success: allSuccess,
+                  tokens: totalTokens,
+                  time: duration.toFixed(1),
+                  timestamp: new Date().toISOString(),
+                });
+                showNotification("并行处理完成", "success");
+              })
+              .finally(() => {
+                loading.classList.add("hidden");
+              });
+            return; // Early return for async processing
+          }
+
+        case 8:
+          // 多步流水线模式 - 三步完成内容创作
+          const topic8 = document.getElementById("input8").value.trim();
+
+          if (!topic8) {
+            showNotification("请输入主题", "warning");
+            return;
+          }
+
+          // 定义流水线步骤
+          const pipelineSteps = [
+            {
+              name: "构思大纲",
+              color: "blue",
+              icon: "fa-list-ul",
+              prompt: `请为主题"${topic8}"写出3个简短的核心观点。50字以内。`
+            },
+            {
+              name: "快速撰写",
+              color: "purple",
+              icon: "fa-pencil-square-o",
+              prompt: null
+            },
+            {
+              name: "润色优化",
+              color: "green",
+              icon: "fa-magic",
+              prompt: null
+            }
+          ];
+
+          // 准备输出区域
+          output.innerHTML = '';
+          const progressEl8 = document.getElementById("pipelineProgress8");
+          timeDisplay.textContent = "0.0s";
+          tokenCount.textContent = `0/3 步骤`;
+          const startTime8 = Date.now();
+
+          // 创建步骤卡片
+          const createStepCard = (index, step, status, content = '') => {
+            const statusClasses = {
+              pending: 'border-neutral-200 bg-white opacity-50',
+              running: 'border-yellow-300 bg-yellow-50',
+              done: `border-${step.color}-300 bg-${step.color}-50`,
+              error: 'border-red-300 bg-red-50'
+            };
+            const statusIcons = {
+              pending: '<i class="fa fa-clock-o text-neutral-400"></i>',
+              running: '<i class="fa fa-spinner fa-spin text-yellow-500"></i>',
+              done: `<i class="fa fa-check-circle text-${step.color}-500"></i>`,
+              error: '<i class="fa fa-times-circle text-red-500"></i>'
+            };
+            return `
+              <div id="step-card-${index}" class="border-2 rounded-lg p-4 transition-all duration-300 ${statusClasses[status]}">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-full bg-${step.color}-500 text-white flex items-center justify-center text-xs font-bold">${index + 1}</span>
+                    <span class="font-bold text-neutral-700">${step.name}</span>
+                  </div>
+                  <span id="step-status-${index}">${statusIcons[status]}</span>
+                </div>
+                <div id="step-result-${index}" class="text-sm text-neutral-700 whitespace-pre-wrap">${content}</div>
+              </div>
+            `;
+          };
+
+          // 初始化所有步骤卡片
+          pipelineSteps.forEach((step, i) => {
+            output.innerHTML += createStepCard(i, step, 'pending');
+          });
+
+          let completedSteps = 0;
+          let lastResult = '';
+
+          // 依次执行每个步骤
+          for (let i = 0; i < pipelineSteps.length; i++) {
+            const step = pipelineSteps[i];
+            const cardEl = document.getElementById(`step-card-${i}`);
+            const statusEl = document.getElementById(`step-status-${i}`);
+            const resultEl = document.getElementById(`step-result-${i}`);
+
+            // 更新为 running 状态
+            cardEl.className = 'border-2 rounded-lg p-4 transition-all duration-300 border-yellow-300 bg-yellow-50';
+            cardEl.style.opacity = '1';
+            statusEl.innerHTML = '<i class="fa fa-spinner fa-spin text-yellow-500"></i>';
+            progressEl8.textContent = `正在执行: ${step.name}...`;
+            loading.classList.remove("hidden");
+
+            // 根据步骤动态生成 prompt
+            // 根据步骤动态生成 prompt
+            let stepPrompt = step.prompt;
+            if (i === 1) {
+              stepPrompt = `请根据这些观点"${lastResult}"，写一段连贯的短文（100字左右）。`;
+            } else if (i === 2) {
+              stepPrompt = `请把这段话"${lastResult}"改写得更生动有趣一点。直接输出改写结果。`;
+            }
+
+            try {
+              const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${key}`
+                },
+                body: JSON.stringify({
+                  model: model,
+                  messages: [
+                    { role: "system", content: "你是专业的内容创作助手。" },
+                    { role: "user", content: stepPrompt }
+                  ],
+                  max_tokens: 800,
+                  temperature: 0.7
+                })
+              });
+
+              if (!response.ok) {
+                throw new Error(`请求失败: ${response.status}`);
+              }
+
+              const data = await response.json();
+              const result = data.choices[0].message.content;
+              lastResult = result; // 保存结果供下一步使用
+
+              // 更新为 done 状态
+              cardEl.className = `border-2 rounded-lg p-4 transition-all duration-300 border-${step.color}-300 bg-${step.color}-50`;
+              statusEl.innerHTML = `<i class="fa fa-check-circle text-${step.color}-500"></i>`;
+              resultEl.textContent = result;
+              completedSteps++;
+
+            } catch (error) {
+              cardEl.className = 'border-2 rounded-lg p-4 transition-all duration-300 border-red-300 bg-red-50';
+              statusEl.innerHTML = '<i class="fa fa-times-circle text-red-500"></i>';
+              resultEl.textContent = `错误: ${error.message}`;
+              loading.classList.add("hidden");
+              showNotification(`步骤 ${i + 1} 失败: ${error.message}`, "error");
+              break; // 失败后停止流水线
+            }
+
+            // 更新进度
+            timeDisplay.textContent = ((Date.now() - startTime8) / 1000).toFixed(1) + 's';
+            tokenCount.textContent = `${completedSteps}/3 步骤`;
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            // 步骤间延迟
+            if (i < pipelineSteps.length - 1) {
+              await new Promise(r => setTimeout(r, 300));
+            }
+          }
+
+          loading.classList.add("hidden");
+          timeDisplay.textContent = ((Date.now() - startTime8) / 1000).toFixed(1) + 's';
+          if (completedSteps === 3) {
+            showNotification("流水线完成！", "success");
+          }
+          return; // 直接返回，不走后续逻辑
+
+          break;
+
+
+
+        case 10:
+          // 流式输出模式 - 使用 SSE 流式传输
+          const input10 = document.getElementById("input10").value.trim();
+          const temperature10 = parseFloat(
+            document.getElementById("temperature10").value
+          );
+          const maxTokens10 = parseInt(
+            document.getElementById("maxTokens10").value
+          );
+
+          if (!input10) {
+            showNotification("请输入内容", "warning");
+            return;
+          }
+
+          // 直接在这里处理流式输出，不走后续的统一逻辑
+          output.innerHTML = "";
+          loading.classList.remove("hidden");
+          timeDisplay.textContent = "0.0s";
+          tokenCount.textContent = "0 tokens";
+          const startTime10 = Date.now();
+          let charCount10 = 0;
+
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${key}`
+              },
+              body: JSON.stringify({
+                model: model,
+                messages: [
+                  { role: "system", content: "你是人工智能助手。" },
+                  { role: "user", content: input10 }
+                ],
+                temperature: temperature10,
+                max_tokens: maxTokens10,
+                stream: true  // 启用流式输出
+              })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(`API请求失败: ${response.status} - ${errorData.error?.message || response.statusText}`);
+            }
+
+            loading.classList.add("hidden");
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            // 流式读取并显示
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value);
+              const lines = chunk.split('\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const jsonStr = line.slice(6);
+                  if (jsonStr === '[DONE]') break;
+                  try {
+                    const data = JSON.parse(jsonStr);
+                    const content = data.choices[0].delta.content || '';
+                    output.textContent += content;
+                    charCount10 += content.length;
+                    // 滚动到底部
+                    output.scrollTop = output.scrollHeight;
+                  } catch (e) { /* 忽略解析错误 */ }
+                }
+              }
+              // 更新统计
+              timeDisplay.textContent = ((Date.now() - startTime10) / 1000).toFixed(1) + 's';
+              tokenCount.textContent = `${charCount10} 字符`;
+            }
+
+            // 最终统计
+            timeDisplay.textContent = ((Date.now() - startTime10) / 1000).toFixed(1) + 's';
+            tokenCount.textContent = `${charCount10} 字符`;
+            addToHistory({
+              mode: "流式输出",
+              input: input10,
+              output: output.textContent,
+              success: true,
+              tokens: charCount10,
+              time: ((Date.now() - startTime10) / 1000).toFixed(1)
+            });
+
+          } catch (error) {
+            loading.classList.add("hidden");
+            output.textContent = `错误: ${error.message}`;
+            showNotification(error.message, "error");
+          }
+          return; // 直接返回，不走后续逻辑
+
+          break;
+
+        case 11:
+          // 任务队列模式 - 依次执行多个任务
+          const tasksText = document.getElementById("input11").value.trim();
+          const maxTokens11 = parseInt(document.getElementById("maxTokens11").value);
+          const taskDelay = parseInt(document.getElementById("taskDelay11").value) || 500;
+
+          // 解析任务列表（每行一个任务）
+          const tasks = tasksText.split('\n').filter(line => line.trim());
+          if (tasks.length === 0) {
+            showNotification("请输入至少一个任务", "warning");
+            return;
+          }
+
+          // 准备输出区域
+          output.innerHTML = '';
+          loading.classList.remove("hidden");
+          const progressEl = document.getElementById("taskProgress11");
+          timeDisplay.textContent = "0.0s";
+          tokenCount.textContent = `0/${tasks.length} 完成`;
+          const startTime11 = Date.now();
+
+          // 创建任务卡片容器
+          const createTaskCard = (index, task, status) => {
+            const statusColors = {
+              pending: 'border-neutral-200 bg-white',
+              running: 'border-yellow-300 bg-yellow-50',
+              done: 'border-green-300 bg-green-50',
+              error: 'border-red-300 bg-red-50'
+            };
+            const statusIcons = {
+              pending: '<i class="fa fa-clock-o text-neutral-400"></i>',
+              running: '<i class="fa fa-spinner fa-spin text-yellow-500"></i>',
+              done: '<i class="fa fa-check-circle text-green-500"></i>',
+              error: '<i class="fa fa-times-circle text-red-500"></i>'
+            };
+            return `
+              <div id="task-card-${index}" class="border-2 rounded-lg p-3 transition-all duration-300 ${statusColors[status]}">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-neutral-500">任务 ${index + 1}</span>
+                  <span id="task-status-${index}">${statusIcons[status]}</span>
+                </div>
+                <div class="text-sm text-neutral-600 mb-2 italic">"${task.substring(0, 50)}${task.length > 50 ? '...' : ''}"</div>
+                <div id="task-result-${index}" class="text-sm text-neutral-700"></div>
+              </div>
+            `;
+          };
+
+          // 初始化所有任务卡片（pending 状态）
+          tasks.forEach((task, i) => {
+            output.innerHTML += createTaskCard(i, task, 'pending');
+          });
+
+          loading.classList.add("hidden");
+          let completedCount = 0;
+
+          // 依次执行每个任务
+          for (let i = 0; i < tasks.length; i++) {
+            const task = tasks[i].trim();
+            const cardEl = document.getElementById(`task-card-${i}`);
+            const statusEl = document.getElementById(`task-status-${i}`);
+            const resultEl = document.getElementById(`task-result-${i}`);
+
+            // 更新为 running 状态
+            cardEl.className = 'border-2 rounded-lg p-3 transition-all duration-300 border-yellow-300 bg-yellow-50';
+            statusEl.innerHTML = '<i class="fa fa-spinner fa-spin text-yellow-500"></i>';
+
+            try {
+              const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${key}`
+                },
+                body: JSON.stringify({
+                  model: model,
+                  messages: [
+                    { role: "system", content: "你是人工智能助手。请简洁回答。" },
+                    { role: "user", content: task }
+                  ],
+                  max_tokens: maxTokens11,
+                  temperature: 0.7
+                })
+              });
+
+              if (!response.ok) {
+                throw new Error(`请求失败: ${response.status}`);
+              }
+
+              const data = await response.json();
+              const result = data.choices[0].message.content;
+
+              // 更新为 done 状态
+              cardEl.className = 'border-2 rounded-lg p-3 transition-all duration-300 border-green-300 bg-green-50';
+              statusEl.innerHTML = '<i class="fa fa-check-circle text-green-500"></i>';
+              resultEl.textContent = result;
+              completedCount++;
+
+            } catch (error) {
+              // 更新为 error 状态
+              cardEl.className = 'border-2 rounded-lg p-3 transition-all duration-300 border-red-300 bg-red-50';
+              statusEl.innerHTML = '<i class="fa fa-times-circle text-red-500"></i>';
+              resultEl.textContent = `错误: ${error.message}`;
+            }
+
+            // 更新进度
+            timeDisplay.textContent = ((Date.now() - startTime11) / 1000).toFixed(1) + 's';
+            tokenCount.textContent = `${completedCount}/${tasks.length} 完成`;
+
+            // 滚动到当前任务
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            // 任务间延迟
+            if (i < tasks.length - 1 && taskDelay > 0) {
+              await new Promise(r => setTimeout(r, taskDelay));
+            }
+          }
+
+          // 完成
+          timeDisplay.textContent = ((Date.now() - startTime11) / 1000).toFixed(1) + 's';
+          showNotification(`已完成 ${completedCount}/${tasks.length} 个任务`, completedCount === tasks.length ? "success" : "warning");
+          return; // 直接返回，不走后续逻辑
+
+          break;
+
+        case 12:
+          // 工具增强模式 - 模拟 Function Calling
+          const userInput12 = document.getElementById("input12").value.trim();
+
+          if (!userInput12) {
+            showNotification("请输入请求", "warning");
+            return;
+          }
+
+          loading.classList.remove("hidden");
+          output.innerHTML = '';
+          const toolProgress = document.getElementById("toolProgress12");
+          timeDisplay.textContent = "0.0s";
+          tokenCount.textContent = "分析中...";
+          const startTime12 = Date.now();
+
+          // 模拟工具定义
+          const tools = [
+            {
+              name: "get_weather",
+              description: "获取指定城市的天气信息",
+              parameters: { type: "object", properties: { city: { type: "string" } }, required: ["city"] }
+            },
+            {
+              name: "web_search",
+              description: "搜索互联网相关信息",
+              parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] }
+            },
+            {
+              name: "calculator",
+              description: "执行数学计算",
+              parameters: { type: "object", properties: { expression: { type: "string" } }, required: ["expression"] }
+            }
+          ];
+
+          try {
+            // 第一步：分析意图，选择工具
+            toolProgress.textContent = "1/3 分析用户意图...";
+            const response1 = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${key}`
+              },
+              body: JSON.stringify({
+                model: model,
+                messages: [
+                  {
+                    role: "system",
+                    content: `你是一个智能助手。请判断用户请求需要调用哪个工具。\n可用工具：\n${JSON.stringify(tools)}\n\n如果需要调用工具，请只输出 JSON 格式的工具调用请求，格式如：{"tool": "tool_name", "args": {...}}。\n如果不需调用，直接输出 null。`
+                  },
+                  { role: "user", content: userInput12 }
+                ],
+                temperature: 0.1
+              })
+            });
+
+            const data1 = await response1.json();
+            let toolCallRaw = data1.choices[0].message.content.trim();
+            // 清理 markdown
+            toolCallRaw = toolCallRaw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+
+            let toolCall = null;
+            try {
+              if (toolCallRaw !== 'null') {
+                toolCall = JSON.parse(toolCallRaw);
+              }
+            } catch (e) {
+              console.log("解析工具调用失败，按普通对话处理");
+            }
+
+            // 输出日志函数
+            const addLog = (icon, text, color) => {
+              output.innerHTML += `
+                <div class="flex items-start gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100 mb-2">
+                  <div class="mt-0.5 text-${color}-500"><i class="fa ${icon}"></i></div>
+                  <div class="text-sm text-neutral-700">${text}</div>
+                </div>
+              `;
+            };
+
+            if (toolCall && toolCall.tool) {
+              addLog("fa-crosshairs", `识别到意图：需要调用 <strong>${toolCall.tool}</strong>`, "cyan");
+              addLog("fa-code", `参数提取：<code class="bg-neutral-200 px-1 rounded text-xs">${JSON.stringify(toolCall.args)}</code>`, "neutral");
+
+              // 第二步：模拟执行工具
+              toolProgress.textContent = "2/3 执行工具调用...";
+              await new Promise(r => setTimeout(r, 1000)); // 模拟网络延迟
+
+              let toolResult = "";
+              if (toolCall.tool === "get_weather") {
+                const city = toolCall.args.city || "未知城市";
+                const weathers = ["晴朗", "多云", "小雨", "大风"];
+                const temp = Math.floor(Math.random() * 15) + 15;
+                toolResult = JSON.stringify({ city: city, condition: weathers[Math.floor(Math.random() * weathers.length)], temperature: `${temp}°C` });
+                addLog("fa-sun-o", `API 返回：${toolResult}`, "green");
+              } else if (toolCall.tool === "calculator") {
+                try { output.innerHTML = ""; /* 简单的 eval 不安全，这里仅模拟 */ toolResult = "计算结果: 42"; } catch (e) { toolResult = "Error"; }
+                toolResult = "42 (模拟结果)";
+                addLog("fa-calculator", `计算结果：${toolResult}`, "green");
+              } else {
+                toolResult = "搜索到了相关信息... (模拟数据)";
+                addLog("fa-search", `搜索结果：${toolResult}`, "green");
+              }
+
+              // 第三步：根据结果生成回答
+              toolProgress.textContent = "3/3生成最终回答...";
+              const response2 = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                body: JSON.stringify({
+                  model: model,
+                  messages: [
+                    { role: "system", content: "你是智能助手。请根据以下工具运行结果回答用户的问题。" },
+                    { role: "user", content: `用户问题: ${userInput12}\n\n[系统提示] 工具 ${toolCall.tool} 已执行，返回结果如下:\n${toolResult}` }
+                  ],
+                  temperature: 0.7
+                })
+              });
+              const data2 = await response2.json();
+              if (data2.choices && data2.choices.length > 0) {
+                const finalAnswer = data2.choices[0].message.content;
+
+                output.innerHTML += `
+                    <div class="mt-4 p-4 bg-white border border-blue-100 rounded-lg shadow-sm">
+                      <div class="font-bold text-neutral-800 mb-2"><i class="fa fa-commenting-o mr-2 text-blue-500"></i>最终回答</div>
+                      <div class="text-neutral-700 leading-relaxed">${finalAnswer}</div>
+                    </div>
+                  `;
+              } else {
+                throw new Error("API 返回了空结果");
+              }
+              tokenCount.textContent = "调用成功";
+
+            } else {
+              // 不需要调用工具，直接回答
+              addLog("fa-comment-o", "无需调用工具，直接回答", "neutral");
+              const responseDirect = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                body: JSON.stringify({
+                  model: model,
+                  messages: [
+                    { role: "system", content: "你是智能助手。" },
+                    { role: "user", content: userInput12 }
+                  ],
+                  temperature: 0.7
+                })
+              });
+              const dataDirect = await responseDirect.json();
+              output.innerHTML += `
+                <div class="mt-4 p-4 bg-white border border-neutral-200 rounded-lg">
+                  ${dataDirect.choices[0].message.content}
+                </div>
+              `;
+              tokenCount.textContent = "直接回答";
+            }
+
+          } catch (error) {
+            output.innerHTML += `<div class="text-red-500 mt-2">错误: ${error.message}</div>`;
+            showNotification(error.message, "error");
+          }
+
+          loading.classList.add("hidden");
+          timeDisplay.textContent = ((Date.now() - startTime12) / 1000).toFixed(1) + 's';
+          return; // 直接返回
+
+          break;
+
+          break;
+
+        case 13:
+          // JSON解析模式 - 生成并解析为卡片
+          const topic13 = document.getElementById("input13").value.trim();
+          const jsonCount = parseInt(document.getElementById("jsonCount13").value) || 3;
+          const maxTokens13 = parseInt(document.getElementById("maxTokens13").value);
+
+          if (!topic13) {
+            showNotification("请输入主题描述", "warning");
+            return;
+          }
+
+          loading.classList.remove("hidden");
+          output.innerHTML = '';
+          const rawJsonEl = document.getElementById("rawJson13");
+          const rawJsonPre = rawJsonEl.querySelector('pre');
+          rawJsonEl.classList.add("hidden");
+          timeDisplay.textContent = "0.0s";
+          tokenCount.textContent = "0 卡片";
+          const startTime13 = Date.now();
+
+          // 构建 Prompt 让 AI 生成特定格式的 JSON
+          const prompt13 = `
+            请根据主题 "${topic13}" 生成 ${jsonCount} 个相关条目。
+            必须严格输出为 JSON 数组格式，不要包含 Markdown 代码块标记。
+            
+            JSON 结构示例：
+            [
+              {
+                "title": "标题",
+                "tag": "标签",
+                "description": "简短描述（${maxTokens13}字以内）",
+                "icon": "fa-star" // 请根据内容建议一个 FontAwesome 图标类名（如 fa-home, fa-user, fa-code 等）
+              }
+            ]
+          `;
+
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${key}`
+              },
+              body: JSON.stringify({
+                model: model,
+                messages: [
+                  { role: "system", content: "你是一个只输出 JSON 的 API。" },
+                  { role: "user", content: prompt13 }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error(`请求失败: ${response.status}`);
+            }
+
+            const data = await response.json();
+            let content = (data.choices[0].message.content || '').trim();
+
+            // 清理可能存在的 Markdown 标记
+            content = content.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+
+            // 保存并显示原始 JSON
+            rawJsonPre.textContent = content;
+            document.getElementById("toggleRawJson13").onclick = () => {
+              rawJsonEl.classList.toggle("hidden");
+            };
+
+            // 解析 JSON
+            let items = [];
+            try {
+              items = JSON.parse(content);
+              if (!Array.isArray(items)) {
+                // 如果返回的是对象但包含数组字段
+                items = items.items || items.data || items.list || [items];
+              }
+            } catch (e) {
+              throw new Error("AI 返回的不是有效的 JSON 格式");
+            }
+
+            // 渲染卡片
+            items.forEach((item, index) => {
+              const colors = ['blue', 'purple', 'green', 'yellow', 'red', 'indigo'];
+              const color = colors[index % colors.length];
+
+              const cardHtml = `
+                <div class="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 group">
+                  <div class="h-2 bg-${color}-500"></div>
+                  <div class="p-5">
+                    <div class="flex justify-between items-start mb-3">
+                      <div class="w-10 h-10 rounded-lg bg-${color}-100 flex items-center justify-center text-${color}-600 mb-3 group-hover:scale-110 transition-transform">
+                        <i class="fa ${item.icon || 'fa-star'} text-xl"></i>
+                      </div>
+                      <span class="px-2 py-1 bg-neutral-100 text-neutral-500 text-xs rounded-full font-medium">${item.tag || 'Item'}</span>
+                    </div>
+                    <h4 class="text-lg font-bold text-neutral-800 mb-2">${item.title || 'Untitled'}</h4>
+                    <p class="text-sm text-neutral-600 leading-relaxed">${item.description || ''}</p>
+                  </div>
+                </div>
+              `;
+
+              // 创建一个包装容器来实现 grid 布局
+              if (index === 0) {
+                output.className = "w-full min-h-[350px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start";
+              }
+              output.innerHTML += cardHtml;
+            });
+
+            // 复制 JSON 功能
+            document.getElementById("copyBtn13").onclick = () => {
+              navigator.clipboard.writeText(content).then(() => showNotification("JSON 已复制", "success"));
+            };
+
+            tokenCount.textContent = `${items.length} 卡片`;
+
+          } catch (error) {
+            output.className = "w-full min-h-[350px] px-4 py-3 border border-neutral-300 rounded-lg bg-neutral-50 overflow-auto";
+            output.innerHTML = `<div class="text-red-500 p-4">处理失败: ${error.message}</div>`;
+            showNotification(error.message, "error");
+          }
+
+          loading.classList.add("hidden");
+          timeDisplay.textContent = ((Date.now() - startTime13) / 1000).toFixed(1) + 's';
+          return; // 直接返回
+
+          break;
+
+        case 14:
+          // 占位符模板模式
+          const templateContent = document
+            .getElementById("templateContent14")
+            .value.trim();
+          const placeholders = document
+            .getElementById("placeholders14")
+            .value.trim();
+
+          if (!templateContent || !placeholders) {
+            showNotification("请输入有效的模板内容和占位符", "warning");
+            return;
+          }
+
+          messages = [
+            { role: "system", content: "你是人工智能助手。" },
+            { role: "user", content: templateContent },
+          ];
+
+          options = {
+            temperature: 0.7,
+            max_tokens: 1000,
+            n: placeholders.split(",").length,
+          };
+
+          break;
+
+        case 15:
+          // 表格渲染模式 - 生成并渲染 Markdown 表格
+          const topic15 = document.getElementById("input15").value.trim();
+          const rowCount15 = parseInt(document.getElementById("rowCount15").value) || 5;
+          const colCount15 = parseInt(document.getElementById("colCount15").value) || 4;
+
+          if (!topic15) {
+            showNotification("请输入表格主题", "warning");
+            return;
+          }
+
+          loading.classList.remove("hidden");
+          output.innerHTML = '';
+          timeDisplay.textContent = "0.0s";
+          tokenCount.textContent = "0 cells";
+          const startTime15 = Date.now();
+
+          const prompt15 = `
+            请根据主题 "${topic15}" 生成一个 Markdown 格式的表格。
+            
+            要求：
+            1. 包含约 ${rowCount15} 行数据（不含表头）。
+            2. 包含约 ${colCount15} 列信息。
+            3. 请确保 Markdown 表格格式标准，例如：
+            | 列1 | 列2 | ... |
+            |---|---|---|
+            | 内容 | 内容 | ... |
+            
+            请直接输出 Markdown 表格，不要包含其他啰嗦的文字。
+          `;
+
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${key}`
+              },
+              body: JSON.stringify({
+                model: model,
+                messages: [
+                  { role: "system", content: "你是一个表格生成助手。" },
+                  { role: "user", content: prompt15 }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error(`请求失败: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const content = data.choices[0].message.content || '';
+
+            // 简单的 Markdown 表格解析器
+            const renderTable = (md) => {
+              const lines = md.trim().split('\n').filter(line => line.trim().startsWith('|'));
+              if (lines.length < 3) return `<p class="text-red-500">无法解析表格，原始内容：</p><pre>${md}</pre>`;
+
+              let html = '<table class="w-full text-left border-collapse">';
+
+              // 解析表头
+              const headers = lines[0].split('|').filter(c => c.trim()).map(c => c.trim());
+              html += '<thead><tr class="bg-neutral-100">';
+              headers.forEach(h => html += `<th class="p-3 font-bold border-b-2 border-neutral-200">${h}</th>`);
+              html += '</tr></thead><tbody>';
+
+              // 解析内容 (跳过分割线 lines[1])
+              for (let i = 2; i < lines.length; i++) {
+                const cells = lines[i].split('|').filter(c => c.trim() || c === '').map(c => c.trim());
+                // 忽略可能的首尾空字符串（如果 split 包含了它们）
+                // 实际上 split('|') 会在首尾产生空串如果行是以 | 开头和结尾的
+                const validCells = lines[i].split('|').slice(1, -1).map(c => c.trim());
+
+                html += `<tr class="hover:bg-neutral-50 transition-colors border-b border-neutral-100">`;
+                validCells.forEach(c => html += `<td class="p-3">${c}</td>`);
+                html += '</tr>';
+              }
+              html += '</tbody></table>';
+              return html;
+            };
+
+            output.innerHTML = renderTable(content);
+            tokenCount.textContent = "表格已生成";
+
+            // 复制 HTML 功能 (或者是 Markdown)
+            document.getElementById("copyBtn15").onclick = () => {
+              navigator.clipboard.writeText(content).then(() => showNotification("Markdown 表格已复制", "success"));
+            };
+
+          } catch (error) {
+            output.innerHTML = `<div class="text-red-500 p-4">生成失败: ${error.message}</div>`;
+            showNotification(error.message, "error");
+          }
+
+          loading.classList.add("hidden");
+          timeDisplay.textContent = ((Date.now() - startTime15) / 1000).toFixed(1) + 's';
+          return; // 直接返回
+
+          break;
+
+
+
+        default:
+          showNotification("不支持的模式", "error");
+          return;
+      }
+
+      // 显示加载状态
+      output.innerHTML = "";
+      loading.classList.remove("hidden");
+      timeDisplay.textContent = "0.0s";
+      tokenCount.textContent = "0 tokens";
+
+      const startTime = Date.now();
+
+      try {
+        // DeepSeek API 兼容性处理：模拟 'n' 参数 (多选/多候选)
+        // 如果 options 中包含 n > 1，则发起 n 次并行请求并聚合结果
+        let finalData;
+        let requestCount = 1;
+
+        if (options && options.n && options.n > 1) {
+          requestCount = options.n;
+          delete options.n; // 移除 API 不支持的 n 参数
+        }
+
+        if (requestCount === 1) {
+          // 单次请求
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${key}`,
+            },
+            body: JSON.stringify({
+              model: model,
+              messages: messages,
+              ...options,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`API请求失败: ${response.statusText}`);
+          }
+          finalData = await response.json();
+        } else {
+          // 并行多次请求模拟 n > 1
+          const promises = Array(requestCount).fill().map(() =>
+            fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${key}`,
+              },
+              body: JSON.stringify({
+                model: model,
+                messages: messages,
+                ...options,
+              }),
+            }).then(async res => {
+              if (!res.ok) throw new Error(res.statusText);
+              return res.json();
+            })
+          );
+
+          const results = await Promise.all(promises);
+
+          // 聚合结果：使用第一个结果作为基底，合并所有 choices
+          finalData = results[0];
+          finalData.choices = results.flatMap(r => r.choices);
+          // 累加 Token 消耗
+          if (finalData.usage) {
+            finalData.usage.total_tokens = results.reduce((acc, r) => acc + (r.usage?.total_tokens || 0), 0);
+          }
+        }
+
+        const data = finalData;
+        const endTime = Date.now();
+        const duration = (endTime - startTime) / 1000;
+
+        // 显示结果
+        timeDisplay.textContent = `${duration.toFixed(1)}s`;
+
+        if (data.choices && data.choices.length > 0) {
+          if (tabIndex === 3) {
+            // 一进多出模式，显示多个候选结果
+            output.innerHTML = "";
+            data.choices.forEach((choice, index) => {
+              const resultCard = document.createElement("div");
+              resultCard.className =
+                "mb-4 p-3 border border-neutral-200 rounded-lg bg-white";
+              resultCard.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                  <div class="text-sm font-medium text-neutral-700">候选 ${index + 1
+                }</div>
+                  <button class="text-neutral-400 hover:text-neutral-700 p-1" onclick="copyToClipboard('candidate-${index + 1
+                }')" title="复制">
+                    <i class="fa fa-copy"></i>
+                  </button>
+                </div>
+                <div id="candidate-${index + 1
+                }" class="whitespace-pre-wrap text-neutral-700">${choice.message.content
+                }</div>
+              `;
+              output.appendChild(resultCard);
+            });
+          } else {
+            // 其他模式，显示单个结果
+            const content = data.choices[0].message.content;
+            const reasoning = data.choices[0].message.reasoning_content;
+
+            if (reasoning) {
+              output.innerHTML = `
+                      <details class="mb-4 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                          <summary class="cursor-pointer text-sm font-medium text-yellow-700 hover:text-yellow-800 focus:outline-none">
+                              <i class="fa fa-lightbulb-o mr-1"></i>查看思考过程
+                          </summary>
+                          <div class="mt-2 text-sm text-neutral-600 whitespace-pre-wrap leading-relaxed">${reasoning}</div>
+                      </details>
+                      <div class="whitespace-pre-wrap">${content}</div>
+                  `;
+            } else {
+              output.textContent = content;
+            }
+          }
+
+          tokenCount.textContent = `${data.usage?.total_tokens || 0} tokens`;
+
+          // 添加到历史记录
+          addToHistory({
+            mode: tabBtns[tabIndex - 1].textContent.trim(),
+            input:
+              tabIndex === 2
+                ? `产品名称: ${document.getElementById("productName2").value
+                }\n产品描述: ${document.getElementById("productDesc2").value
+                }\n目标受众: ${document.getElementById("targetAudience2").value
+                }\n风格要求: ${document.getElementById("styleRequirement2").value
+                }`
+                : tabIndex === 5
+                  ? `聚合指令: ${document.getElementById("promptTemplate5").value
+                  }\n---\n${document.getElementById("input5").value}`
+                  : tabIndex === 7
+                    ? `输入: ${document.getElementById("input7").value
+                    }\n---\n模型: ${document
+                      .getElementById("models7")
+                      .value.split("\n")
+                      .filter((line) => line.trim() !== "")
+                      .join(", ")}`
+                    : tabIndex === 11
+                      ? `任务数量: ${JSON.stringify(messages.map(m => m.content))}`
+                      : tabIndex === 12
+                        ? `增强指令: ${document.getElementById("enhancementPrompt12").value}\n增强比例: ${document.getElementById("enhancementRatio12").value}`
+                        : tabIndex === 13
+                          ? `JSON数据: ${document.getElementById("input13").value}\n解析指令: ${document.getElementById("parsePrompt13").value}`
+                          : tabIndex === 14
+                            ? `模板内容: ${document.getElementById("templateContent14").value}\n占位符: ${document.getElementById("placeholders14").value}`
+                            : tabIndex === 15
+                              ? `表格数据: ${document.getElementById("input15").value}\n样式: ${document.getElementById("tableStyle15").value}`
+                              : tabIndex === 16
+                                ? `导出内容: ${document.getElementById("input16").value}\n格式: ${document.getElementById("exportFormats16").value}`
+                                : document.getElementById(`input${tabIndex}`) ? document.getElementById(`input${tabIndex}`).value : "多步/交互模式输入",
+            output: data.choices[0].message.content,
+            success: true,
+            tokens: data.usage?.total_tokens || 0,
+            time: duration.toFixed(1),
+            timestamp: new Date().toISOString(),
+          });
+
+          showNotification("请求成功", "success");
+        } else {
+          throw new Error("API返回结果格式不正确");
+        }
+      } catch (error) {
+        const endTime = Date.now();
+        const duration = (endTime - startTime) / 1000;
+
+        output.innerHTML = `<div class="text-danger">${error.message}</div>`;
+        timeDisplay.textContent = `${duration.toFixed(1)}s`;
+        tokenCount.textContent = "0 tokens";
+
+        // 添加到历史记录
+        addToHistory({
+          mode: tabBtns[tabIndex - 1].textContent.trim(),
+          input:
+            tabIndex === 2
+              ? `产品名称: ${document.getElementById("productName2").value
+              }\n产品描述: ${document.getElementById("productDesc2").value
+              }\n目标受众: ${document.getElementById("targetAudience2").value
+              }\n风格要求: ${document.getElementById("styleRequirement2").value
+              }`
+              : tabIndex === 5
+                ? `聚合指令: ${document.getElementById("promptTemplate5").value
+                }\n---\n${document.getElementById("input5").value}`
+                : tabIndex === 7
+                  ? `输入: ${document.getElementById("input7").value
+                  }\n---\n模型: ${document
+                    .getElementById("models7")
+                    .value.split("\n")
+                    .filter((line) => line.trim() !== "")
+                    .join(", ")}`
+                  : tabIndex === 11
+                    ? `任务数量: ${JSON.stringify(messages.map(m => m.content))}` // messages might be undefined if error happens before loop
+                    : tabIndex === 12
+                      ? `增强指令: ${document.getElementById("enhancementPrompt12").value}\n增强比例: ${document.getElementById("enhancementRatio12").value}`
+                      : tabIndex === 13
+                        ? `JSON数据: ${document.getElementById("input13").value}\n解析指令: ${document.getElementById("parsePrompt13").value}`
+                        : tabIndex === 14
+                          ? `模板内容: ${document.getElementById("templateContent14").value}\n占位符: ${document.getElementById("placeholders14").value}`
+                          : tabIndex === 15
+                            ? `表格数据: ${document.getElementById("input15").value}\n样式: ${document.getElementById("tableStyle15").value}`
+                            : tabIndex === 16
+                              ? `导出内容: ${document.getElementById("input16").value}\n格式: ${document.getElementById("exportFormats16").value}`
+                              : document.getElementById(`input${tabIndex}`) ? document.getElementById(`input${tabIndex}`).value : "多步/交互模式输入",
+          output: error.message,
+          success: false,
+          tokens: 0,
+          time: duration.toFixed(1),
+          timestamp: new Date().toISOString(),
+        });
+
+        showNotification(`请求失败: ${error.message}`, "error");
+      } finally {
+        loading.classList.add("hidden");
+      }
+    }
+
+    // 复制到剪贴板
+    function copyToClipboard(elementId) {
+      const element = document.getElementById(elementId);
+      const text = element.textContent || element.innerText;
+
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          showNotification("已复制到剪贴板", "success");
+        })
+        .catch((err) => {
+          showNotification("复制失败", "error");
+          console.error("复制失败:", err);
+        });
+    }
+
+    // 下载结果
+    function downloadResult(elementId, fileName) {
+      const element = document.getElementById(elementId);
+      const text = element.textContent || element.innerText;
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // 下载批量结果为CSV
+    function downloadBatchResultAsCsv(elementId, fileName) {
+      const outputContainer = document.getElementById(elementId);
+      if (!outputContainer) return;
+
+      const results = [];
+      const resultCards = outputContainer.children;
+
+      if (resultCards.length === 0) {
+        showNotification("没有可供下载的结果", "warning");
+        return;
+      }
+
+      for (const card of resultCards) {
+        const inputElement = card.querySelector("[data-input]");
+        const outputElement = card.querySelector("[data-output]");
+        if (inputElement && outputElement) {
+          results.push({
+            input: inputElement.textContent || inputElement.innerText,
+            output: outputElement.textContent || outputElement.innerText,
+          });
+        }
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Add BOM for Excel
+      csvContent += "Input,Output\n"; // Header
+
+      results.forEach((row) => {
+        const input = `"${(row.input || '').replace(/"/g, '""')}"`;
+        const output = `"${(row.output || '').replace(/"/g, '""')}"`;
+        csvContent += `${input},${output}\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // 下载并行结果为JSON
+    function downloadParallelResultAsJson(elementId, fileName) {
+      const outputContainer = document.getElementById(elementId);
+      if (!outputContainer) return;
+
+      const results = [];
+      const resultCards = outputContainer.children;
+
+      if (resultCards.length === 0) {
+        showNotification("没有可供下载的结果", "warning");
+        return;
+      }
+
+      for (const card of resultCards) {
+        const modelElement = card.querySelector("[data-model]");
+        const outputElement = card.querySelector("[data-output]");
+        if (modelElement && outputElement) {
+          results.push({
+            model: modelElement.textContent || modelElement.innerText,
+            output: outputElement.textContent || outputElement.innerText,
+          });
+        }
+      }
+
+      const jsonContent = JSON.stringify(results, null, 2);
+      const blob = new Blob([jsonContent], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // 显示通知
+    function showNotification(message, type = "info") {
+      // 创建通知元素
+      const notification = document.createElement("div");
+
+      // 设置通知样式
+      let bgColor, textColor, icon;
+      switch (type) {
+        case "success":
+          bgColor = "bg-success";
+          textColor = "text-white";
+          icon = "fa-check-circle";
+          break;
+        case "error":
+          bgColor = "bg-danger";
+          textColor = "text-white";
+          icon = "fa-exclamation-circle";
+          break;
+        case "warning":
+          bgColor = "bg-warning";
+          textColor = "text-white";
+          icon = "fa-exclamation-triangle";
+          break;
+        default:
+          bgColor = "bg-primary";
+          textColor = "text-white";
+          icon = "fa-info-circle";
+      }
+
+      notification.className = `fixed top-4 right-4 ${bgColor} ${textColor} px-4 py-2 rounded-lg shadow-lg z-50 flex items-center transform transition-all duration-300 translate-y-[-20px] opacity-0`;
+      notification.innerHTML = `<i class="fa ${icon} mr-2"></i>${message}`;
+
+      // 添加到页面
+      document.body.appendChild(notification);
+
+      // 显示通知
+      setTimeout(() => {
+        notification.classList.remove("translate-y-[-20px]", "opacity-0");
+      }, 10);
+
+      // 自动关闭
+      setTimeout(() => {
+        notification.classList.add("translate-y-[-20px]", "opacity-0");
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 300);
+      }, 3000);
+    }
+
+    // 添加到历史记录
+    function addToHistory(item) {
+      let history = JSON.parse(localStorage.getItem("history") || "[]");
+      history.unshift(item); // 添加到开头
+
+      // 限制历史记录数量
+      if (history.length > 50) {
+        history = history.slice(0, 50);
+      }
+
+      localStorage.setItem("history", JSON.stringify(history));
+      loadHistory();
+    }
+
+    // 加载历史记录
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem("history") || "[]");
+      const filter = historyFilter.value;
+
+      if (history.length === 0) {
+        historyContainer.innerHTML = `
+          <div class="text-center text-neutral-400 py-8">
+            <i class="fa fa-history text-4xl mb-2 opacity-30"></i>
+            <p>暂无历史记录</p>
+          </div>
+        `;
+        return;
+      }
+
+      // 过滤历史记录
+      const filteredHistory = history.filter((item) => {
+        if (filter === "all") return true;
+        if (filter === "success") return item.success;
+        if (filter === "error") return !item.success;
+        return true;
+      });
+
+      if (filteredHistory.length === 0) {
+        historyContainer.innerHTML = `
+          <div class="text-center text-neutral-400 py-8">
+            <i class="fa fa-filter text-4xl mb-2 opacity-30"></i>
+            <p>没有匹配的历史记录</p>
+          </div>
+        `;
+        return;
+      }
+
+      historyContainer.innerHTML = "";
+
+      filteredHistory.forEach((item, index) => {
+        const date = new Date(item.timestamp);
+        const formattedDate = date.toLocaleString();
+
+        const historyItem = document.createElement("div");
+        historyItem.className = `bg-white rounded-lg border border-neutral-200 p-4 hover:shadow-hover transition-all duration-200 card-hover ${item.success ? "" : "border-danger/30 bg-danger/5"
+          }`;
+        historyItem.innerHTML = `
+          <div class="flex justify-between items-start mb-2">
+            <div class="font-medium ${item.success ? "text-neutral-700" : "text-danger"
+          }">${item.mode}</div>
+            <div class="text-xs text-neutral-400">${formattedDate}</div>
+          </div>
+          
+          <div class="text-sm text-neutral-600 mb-3 line-clamp-2">
+            <span class="font-medium text-neutral-700">输入:</span> ${(item.input || '').replace(
+            /\n/g,
+            "<br>"
+          )}
+            </div>
+          
+          <div class="text-sm text-neutral-600 mb-3 line-clamp-2">
+            <span class="font-medium text-neutral-700">输出:</span> ${item.success
+            ? (item.output || '').replace(/\n/g, "<br>")
+            : `<span class="text-danger">${item.output}</span>`
+          }
+            </div>
+          
+          <div class="flex justify-between items-center text-xs text-neutral-500">
+            <div class="flex space-x-3">
+              <div><i class="fa fa-clock-o mr-1"></i>${item.time}s</div>
+              <div><i class="fa fa-file-text-o mr-1"></i>${item.tokens
+          } tokens</div>
+          </div>
+            <div class="flex space-x-2">
+              <button class="text-neutral-400 hover:text-primary transition-colors duration-200" onclick="viewHistoryDetail(${index})">
+                <i class="fa fa-eye"></i>
+              </button>
+              <button class="text-neutral-400 hover:text-primary transition-colors duration-200" onclick="copyToClipboard('history-output-${index}')">
+                <i class="fa fa-copy"></i>
+              </button>
+              <button class="text-neutral-400 hover:text-danger transition-colors duration-200" onclick="deleteHistory(${index})">
+                <i class="fa fa-trash-o"></i>
+              </button>
+          </div>
+          </div>
+          
+          <div id="history-output-${index}" class="hidden">${item.output}</div>
+        `;
+
+        historyContainer.appendChild(historyItem);
+      });
+    }
+
+    // 查看历史记录详情
+    function viewHistoryDetail(index) {
+      const history = JSON.parse(localStorage.getItem("history") || "[]");
+      if (index >= 0 && index < history.length) {
+        const item = history[index];
+
+        // 创建详情模态框
+        const modal = document.createElement("div");
+        modal.className =
+          "fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center";
+        modal.innerHTML = `
+          <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-neutral-200 flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-neutral-700">历史记录详情</h3>
+              <button onclick="document.body.removeChild(this.parentElement.parentElement.parentElement)" class="text-neutral-400 hover:text-neutral-600">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+            
+            <div class="flex-grow overflow-y-auto p-6">
+              <div class="mb-6">
+                <div class="flex justify-between items-center mb-2">
+                  <div class="font-medium ${item.success ? "text-neutral-700" : "text-danger"
+          }">${item.mode}</div>
+                  <div class="text-sm text-neutral-400">${new Date(
+            item.timestamp
+          ).toLocaleString()}</div>
+                </div>
+                
+                <div class="p-3 bg-neutral-50 rounded-lg border border-neutral-200 mb-4">
+                  <div class="text-sm font-medium text-neutral-700 mb-2">输入</div>
+                  <div class="text-sm text-neutral-600 whitespace-pre-wrap">${item.input
+          }</div>
+                </div>
+                
+                <div class="p-3 ${item.success ? "bg-neutral-50" : "bg-danger/5"
+          } rounded-lg border ${item.success ? "border-neutral-200" : "border-danger/30"
+          }">
+                  <div class="text-sm font-medium ${item.success ? "text-neutral-700" : "text-danger"
+          } mb-2">输出</div>
+                  <div class="text-sm text-neutral-600 whitespace-pre-wrap">${item.output
+          }</div>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4 text-sm text-neutral-500">
+                <div class="flex items-center">
+                  <i class="fa fa-clock-o mr-2"></i>
+                  <span>${item.time}s</span>
+                </div>
+                <div class="flex items-center">
+                  <i class="fa fa-file-text-o mr-2"></i>
+                  <span>${item.tokens} tokens</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="p-4 border-t border-neutral-200 flex justify-end space-x-3">
+              <button onclick="document.body.removeChild(this.parentElement.parentElement.parentElement)" class="py-2 px-4 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors duration-200">
+                关闭
+              </button>
+              <button onclick="copyToClipboard('history-detail-output-${index}'); document.body.removeChild(this.parentElement.parentElement.parentElement)" class="py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200">
+                <i class="fa fa-copy mr-2"></i>复制输出
+              </button>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(modal);
+      }
+    }
+
+    // 删除历史记录
+    function deleteHistory(index) {
+      const history = JSON.parse(localStorage.getItem("history") || "[]");
+      if (index >= 0 && index < history.length) {
+        history.splice(index, 1);
+        localStorage.setItem("history", JSON.stringify(history));
+        loadHistory();
+      }
+    }
+
+    // 清空历史记录
+    function clearHistory() {
+      if (confirm("确定要清空所有历史记录吗？")) {
+        localStorage.removeItem("history");
+        loadHistory();
+        showNotification("历史记录已清空", "success");
+      }
+    }
+
+    // 过滤历史记录
+    function filterHistory() {
+      loadHistory();
+    }
+
+    // --- 设置相关 ---
+
+
+
+    function saveSettings() {
+      const apiKeyElement = document.getElementById('apiKey');
+      const modelElement = document.getElementById('modelId');
+
+      const apiKey = apiKeyElement ? apiKeyElement.value.trim() : '';
+      const model = modelElement ? modelElement.value : 'deepseek-v4-flash';
+
+      let currentConfig = {};
+      try {
+        currentConfig = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+      } catch (e) {
+        console.error('Error parsing config for update:', e);
+      }
+
+      const newConfig = {
+        ...currentConfig,
+        deepseek: apiKey,
+        model: model
+      };
+
+      localStorage.setItem('global_llm_config', JSON.stringify(newConfig));
+      updateApiStatus();
+    }
+
+    function updateApiStatus() {
+      const apiKey = document.getElementById('apiKey') ? document.getElementById('apiKey').value.trim() : '';
+      const apiStatusDot = document.getElementById('apiStatus');
+      if (!apiStatusDot) return;
+
+      if (apiKey) {
+        apiStatusDot.classList.remove('bg-danger');
+        apiStatusDot.classList.add('bg-success'); // custom logic or use tailwind
+        apiStatusDot.style.backgroundColor = '#10b981'; // Tailwind emerald-500
+      } else {
+        apiStatusDot.classList.remove('bg-success');
+        apiStatusDot.style.backgroundColor = '';
+        apiStatusDot.classList.add('bg-danger');
+      }
+    }
+  </script>
+
+  <!-- HELP-WIDGET-START -->
+  <script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_basics_内容生成器案例库.md"></script>
+  <!-- HELP-WIDGET-END -->
+</body>
+
+</html>

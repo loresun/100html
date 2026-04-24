@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商客服话术 (E-commerce CS Guide)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i class="fa-solid fa-comment-dots text-orange-600 h-6 w-6"></i>
+                    <span class="font-bold text-xl text-slate-900">E-commerce CS</span>
+                </div>
+                <button @click="showSettings = true"
+                    class="text-slate-500 hover:text-orange-600 flex items-center gap-1 text-sm font-medium"><i
+                        class="fa-solid fa-gear h-4 w-4"></i> 设置</button>
+            </div>
+        </nav>
+
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+            <div class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-slate-200 p-5 overflow-y-auto space-y-5 z-20">
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700">场景选择</label>
+                    <select v-model="input.scenario"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none">
+                        <option value="催付提醒">⏰ 催付提醒 (未付款)</option>
+                        <option value="售前咨询">🤔 售前咨询 (转粉/逼单)</option>
+                        <option value="物流安抚">🚚 物流安抚 (慢/丢件)</option>
+                        <option value="售后处理">🛡️ 售后处理 (退换货/质量)</option>
+                        <option value="好评邀请">⭐ 好评邀请 (收货后)</option>
+                        <option value="差评挽回">💔 差评挽回 (解释/补偿)</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700">产品/店铺信息</label>
+                    <input type="text" v-model="input.product" placeholder="例如：女装店、数码配件、水果生鲜..."
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700">具体情况描述 (可选)</label>
+                    <textarea v-model="input.details" rows="3" placeholder="例如：客户觉得贵、物流卡在半路3天了..."
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none"></textarea>
+                </div>
+                <button @click="generateScripts" :disabled="isGenerating || !input.product"
+                    class="w-full bg-orange-600 text-white font-bold py-3 rounded-xl shadow hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                    <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin w-4 h-4"></i> <span v-else>生成金牌话术</span>
+                </button>
+            </div>
+
+            <div class="flex-grow bg-slate-50 p-6 md:p-10 overflow-y-auto">
+                <div v-if="!result" class="h-full flex flex-col items-center justify-center text-slate-400">
+                    <i class="fa-solid fa-headset w-16 h-16 mb-4 opacity-50"></i>
+                    <p>选择场景，一键生成高情商客服话术</p>
+                </div>
+
+                <div v-else class="max-w-3xl mx-auto space-y-6 animate-fade-in">
+                    <div v-for="(script, idx) in result.scripts" :key="idx"
+                        class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative group">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="px-3 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-bold">{{
+                                script.style }}</span>
+                            <button @click="copyText(script.content)"
+                                class="text-slate-400 hover:text-orange-600 transition"><i
+                                    class="fa-regular fa-copy w-4 h-4"></i></button>
+                        </div>
+                        <p class="text-slate-700 leading-relaxed whitespace-pre-wrap">{{ script.content }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl w-full max-w-md p-6">
+                <h3 class="font-bold mb-4">API 设置</h3>
+                <input type="password" v-model="apiConfig.deepseek" class="w-full border p-2 rounded mb-4"
+                    placeholder="DeepSeek Key">
+                <div class="flex justify-end gap-2">
+                    <button @click="showSettings=false" class="px-4 py-2 text-slate-500">取消</button>
+                    <button @click="saveConfig" class="bg-orange-600 text-white px-4 py-2 rounded">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+        createApp({
+            setup() {
+                // renderIcon removed
+
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+                const input = reactive({ scenario: '催付提醒', product: '', details: '' });
+                const isGenerating = ref(false);
+                const result = ref(null);
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    // lucide.createIcons();
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                        } catch (e) {
+                            console.error('Failed to parse global_llm_config', e);
+                        }
+                    }
+                });
+
+                const saveConfig = () => {
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...JSON.parse(localStorage.getItem('global_llm_config') || '{}'), ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                const generateScripts = async () => {
+                    if (!apiConfig.value.deepseek) return showSettings.value = true;
+                    isGenerating.value = true;
+                    const prompt = `请为电商客服生成3条不同风格的高转化话术。
+场景：${input.scenario}
+产品：${input.product}
+具体情况：${input.details}
+
+请返回 JSON：
+{
+  "scripts": [
+    { "style": "亲切温柔型 (适合大多数)", "content": "话术内容..." },
+    { "style": "专业干练型 (适合高客单)", "content": "话术内容..." },
+    { "style": "幽默/急迫型 (视场景而定)", "content": "话术内容..." }
+  ]
+}`;
+                    try {
+                        const res = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiConfig.value.deepseek}` },
+                            body: JSON.stringify({
+                                model: apiConfig.value.model,
+                                messages: [{ role: "system", content: "You are a top e-commerce customer service trainer. Return JSON only." }, { role: "user", content: prompt }],
+                                response_format: { type: 'json_object' }
+                            })
+                        });
+                        if (!res.ok) {
+                            const error = await res.json().catch(() => ({}));
+                            throw new Error(error.error?.message || `HTTP error! status: ${res.status}`);
+                        }
+                        const data = await res.json();
+                        result.value = JSON.parse(data.choices[0].message.content);
+                    } catch (e) {
+                        console.error('Generate error:', e);
+                        alert('生成失败: ' + e.message);
+                    }
+                };
+
+                const copyText = (text) => navigator.clipboard.writeText(text).then(() => alert('已复制'));
+
+                return {
+                    showSettings, apiConfig, saveConfig, input, isGenerating, result, generateScripts, copyText
+                };
+            }
+        }).mount('#app');
+    </script>
+
+    <!-- HELP-WIDGET-START -->
+    <script src="../../help/help-widget-v2.js"></script>
+    <!-- HELP-WIDGET-END -->
+</body>
+
+</html>

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics（与项目其他工具一致） -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>老板画饼翻译机 - 职场生存</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /**
+     * 页面主背景：橙琥珀渐变（画饼主题）
+     */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(155deg, #431407 0%, #9a3412 22%, #ea580c 48%, #f97316 72%, #fdba74 100%);
+      min-height: 100vh;
+    }
+
+    /* 标签云：错落大小与轻微旋转 */
+    .tag-cloud-item {
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .tag-cloud-item:hover {
+      transform: scale(1.06) rotate(0deg);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 老板说：左侧气泡 */
+    .bubble-boss {
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      border: 2px solid rgba(234, 88, 12, 0.35);
+      border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
+      box-shadow: 0 4px 20px rgba(124, 45, 18, 0.12);
+    }
+
+    /* 翻译说：右侧气泡 */
+    .bubble-translator {
+      background: linear-gradient(135deg, #1c1917 0%, #292524 100%);
+      border: 2px solid rgba(251, 146, 60, 0.45);
+      border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .report-scroll::-webkit-scrollbar {
+      width: 8px;
+    }
+    .report-scroll::-webkit-scrollbar-thumb {
+      background: rgba(234, 88, 12, 0.45);
+      border-radius: 4px;
+    }
+
+    .prose-report :where(h2, h3) {
+      color: #fed7aa;
+      font-weight: 800;
+      margin-top: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+    .prose-report p {
+      margin: 0.25rem 0;
+      color: #e7e5e4;
+    }
+    .prose-report strong {
+      color: #fdba74;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-stone-900">
+  <div x-data="bossTranslator()" x-init="init()" class="min-h-screen flex flex-col pb-10 relative">
+
+    <!-- 装饰：饼 / 对话图标 -->
+    <div class="pointer-events-none fixed inset-0 overflow-hidden z-0 opacity-[0.08]">
+      <span class="absolute top-20 right-[10%] text-8xl select-none" aria-hidden="true">🥧</span>
+      <span class="absolute bottom-24 left-[8%] text-6xl select-none" aria-hidden="true">💼</span>
+    </div>
+
+    <!-- 顶部导航：返回工具箱首页 -->
+    <nav class="relative z-50 bg-orange-950/65 backdrop-blur-md sticky top-0 border-b border-orange-400/35">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer shrink-0" onclick="location.href='../../index.html'">
+          <i data-lucide="pie-chart" class="text-orange-400 h-7 w-7"></i>
+          <span class="font-black text-lg sm:text-xl tracking-tight text-white drop-shadow-md">老板画饼翻译机</span>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="hidden sm:flex bg-stone-900/50 rounded-lg p-0.5 text-xs border border-orange-500/35">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-orange-500 text-white shadow' : 'text-orange-200'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-orange-500 text-white shadow' : 'text-orange-200'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-orange-100 hover:bg-stone-800/80"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="relative z-10 flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <p class="text-center text-orange-950/90 text-sm mb-5 font-medium drop-shadow-sm">
+        粘贴老板 / HR 的职场黑话，AI 秒翻成大实话，连续翻译可生成「画饼检测报告」。
+      </p>
+
+      <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-6 items-start">
+
+        <!-- 左侧：输入区 + 预设标签云 -->
+        <section class="bg-white/90 backdrop-blur rounded-2xl border-2 border-orange-300/60 shadow-2xl shadow-orange-900/20 p-5 space-y-4">
+          <h2 class="text-base font-black text-orange-950 flex items-center gap-2">
+            <i data-lucide="message-square-text" class="w-5 h-5 text-orange-600"></i>
+            黑话原文
+          </h2>
+
+          <textarea x-model="inputText" rows="8"
+            class="w-full rounded-xl border-2 border-orange-200 bg-orange-50/80 p-3 text-sm text-stone-800 placeholder-stone-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-400 resize-y min-h-[160px]"
+            placeholder="把老板或 HR 的原话贴在这里…&#10;例如：公司实行弹性工作制"></textarea>
+
+          <div>
+            <p class="text-xs font-bold text-orange-800 mb-2 flex items-center gap-1">
+              <i data-lucide="cloud" class="w-3.5 h-3.5"></i>
+              经典职场黑话（点击填入）
+            </p>
+            <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
+              <template x-for="(p, idx) in presets" :key="idx">
+                <button type="button" @click="fillPreset(p)"
+                  class="tag-cloud-item rounded-full px-3 py-1.5 text-xs sm:text-sm font-semibold border-2 border-orange-300 bg-gradient-to-br from-amber-50 to-orange-100 text-orange-950 hover:border-orange-500"
+                  :class="idx % 3 === 0 ? 'text-sm' : (idx % 3 === 1 ? 'text-xs rotate-[-2deg]' : 'text-sm rotate-[1deg]')"
+                  x-text="p.length > 18 ? p.slice(0, 16) + '…' : p"
+                  :title="p"></button>
+              </template>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2 pt-1">
+            <button type="button" @click="translate()" :disabled="isLoading"
+              class="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black py-3.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed border-2 border-orange-300 shadow-lg">
+              <i x-show="!isLoading" data-lucide="languages" class="w-5 h-5"></i>
+              <i x-show="isLoading" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              <span x-text="isLoading ? '翻译中…' : '翻译大实话'"></span>
+            </button>
+            <button type="button" @click="clearInput()"
+              class="sm:w-28 flex items-center justify-center gap-1 border-2 border-orange-400 text-orange-900 font-bold py-3 rounded-xl hover:bg-orange-50 text-sm">
+              <i data-lucide="eraser" class="w-4 h-4"></i>
+              清空输入
+            </button>
+          </div>
+
+          <p x-show="errorMsg" class="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2" x-text="errorMsg"></p>
+        </section>
+
+        <!-- 右侧：结果区（气泡 + 报告列表） -->
+        <section class="bg-stone-900/88 backdrop-blur rounded-2xl border-2 border-orange-500/40 shadow-2xl min-h-[420px] flex flex-col overflow-hidden">
+          <div class="px-4 py-3 border-b border-orange-500/25 flex flex-wrap items-center justify-between gap-2 bg-black/25">
+            <span class="text-sm font-black text-orange-200 flex items-center gap-2">
+              <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+              画饼检测报告
+              <span class="text-xs font-normal text-orange-300/80" x-show="reportItems.length" x-text="'（已收录 ' + reportItems.length + ' 条）'"></span>
+            </span>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" @click="copyFullReport()" :disabled="!reportItems.length"
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-orange-600 text-xs font-bold text-white hover:bg-orange-500 disabled:opacity-40">
+                <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                复制分享
+              </button>
+              <button type="button" @click="clearReport()" :disabled="!reportItems.length && !streamBuffer"
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-stone-800 text-xs font-semibold text-orange-200 border border-orange-500/30 hover:bg-stone-700 disabled:opacity-40">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                清空报告
+              </button>
+            </div>
+          </div>
+
+          <!-- V4 Pro 推理过程 -->
+          <details x-show="reasoningText" class="mx-4 mt-3 border border-orange-600/40 rounded-lg bg-black/35 px-3 py-2 text-xs text-orange-200/90">
+            <summary class="cursor-pointer font-bold text-orange-300 select-none">🧠 深度思考（点击展开）</summary>
+            <pre class="mt-2 whitespace-pre-wrap text-orange-100/80 max-h-36 overflow-y-auto report-scroll" x-text="reasoningText"></pre>
+          </details>
+
+          <div class="flex-1 report-scroll overflow-y-auto max-h-[min(68vh,560px)] px-4 py-4 space-y-6">
+
+            <!-- 流式进行中 -->
+            <div x-show="isLoading" class="space-y-3">
+              <p class="text-xs font-bold text-orange-400/90 flex items-center gap-2">
+                <i data-lucide="radio" class="w-4 h-4 animate-pulse"></i>
+                AI 正在输出…
+              </p>
+              <pre class="whitespace-pre-wrap text-sm text-orange-100/85 font-mono leading-relaxed bg-black/30 rounded-xl p-3 border border-orange-500/20" x-text="streamBuffer"></pre>
+            </div>
+
+            <!-- 历史条目：气泡 + 结构化块 -->
+            <template x-for="(item, i) in reportItems" :key="item.id">
+              <article class="space-y-3 pb-4 border-b border-orange-500/15 last:border-0">
+                <p class="text-[10px] uppercase tracking-wider text-orange-500/70 font-bold" x-text="'#' + (i + 1)"></p>
+
+                <!-- 老板说 -->
+                <div class="flex justify-start">
+                  <div class="bubble-boss max-w-[92%] px-4 py-3">
+                    <p class="text-[10px] font-black text-orange-700 mb-1 flex items-center gap-1">
+                      <i data-lucide="briefcase" class="w-3 h-3"></i> 老板说
+                    </p>
+                    <p class="text-sm text-stone-800 whitespace-pre-wrap leading-relaxed" x-text="item.original"></p>
+                  </div>
+                </div>
+
+                <!-- 翻译说 -->
+                <div class="flex justify-end">
+                  <div class="bubble-translator max-w-[92%] px-4 py-3">
+                    <p class="text-[10px] font-black text-orange-300 mb-1 flex items-center gap-1 justify-end">
+                      大实话 <i data-lucide="sparkles" class="w-3 h-3"></i>
+                    </p>
+                    <p class="text-sm text-orange-50 whitespace-pre-wrap leading-relaxed" x-text="item.translation || '（见下方详情）'"></p>
+                  </div>
+                </div>
+
+                <!-- 画饼指数：饼图 emoji 条 -->
+                <div class="rounded-xl bg-orange-950/50 border border-orange-500/30 px-3 py-2">
+                  <p class="text-xs font-bold text-orange-200 mb-1">画饼指数</p>
+                  <p class="text-lg tracking-tight select-none" :title="'画饼指数 ' + item.pieScore + '/10'" x-html="pieEmojiBar(item.pieScore)"></p>
+                  <p class="text-[11px] text-orange-300/80 mt-0.5" x-text="item.pieScore != null ? (item.pieScore + ' / 10 星') : ''"></p>
+                </div>
+
+                <!-- 意图 + 应对（Markdown） -->
+                <div class="grid sm:grid-cols-1 gap-2">
+                  <div class="rounded-xl bg-black/35 border border-orange-500/25 p-3">
+                    <p class="text-xs font-black text-amber-400 mb-1">老板真实意图分析</p>
+                    <div class="prose-report text-sm" x-html="item.intentHtml"></div>
+                  </div>
+                  <div class="rounded-xl bg-black/35 border border-orange-500/25 p-3">
+                    <p class="text-xs font-black text-green-400 mb-1">正确应对姿势</p>
+                    <div class="prose-report text-sm" x-html="item.adviceHtml"></div>
+                  </div>
+                </div>
+              </article>
+            </template>
+
+            <!-- 空状态 -->
+            <div x-show="!isLoading && !reportItems.length"
+              class="flex flex-col items-center justify-center text-orange-200/50 text-sm px-6 py-20">
+              <span class="text-5xl mb-3" aria-hidden="true">🥧</span>
+              <p class="text-center">在左侧粘贴黑话，点<strong class="text-orange-300">「翻译大实话」</strong></p>
+              <p class="text-center text-xs mt-2 text-orange-300/60">可连续翻译多条，一键复制完整检测报告</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- API 设置 -->
+    <div x-show="showSettings" x-transition.opacity
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/55"
+      @keydown.escape.window="showSettings = false">
+      <div @click.away="showSettings = false" class="bg-stone-900 border-2 border-orange-500/50 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 text-white">
+        <h3 class="text-lg font-black text-orange-300">API 配置</h3>
+        <p class="text-xs text-stone-400">密钥保存在浏览器本地，与其他工具共用 <code class="bg-black/50 px-1 rounded text-orange-300">global_llm_config</code>，保存时<strong>合并</strong>、不覆盖其他字段。</p>
+        <div>
+          <label class="block text-sm font-medium text-orange-200/90 mb-1">DeepSeek API Key</label>
+          <input type="password" x-model="apiConfig.deepseek"
+            class="w-full rounded-lg border border-orange-600/50 bg-stone-950 p-2.5 text-sm text-white" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-orange-200/90 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-orange-600/50 bg-stone-950 p-2.5 text-sm text-white">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-stone-300 hover:bg-stone-800">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-500">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl bg-stone-900 border border-orange-500/40 text-white text-sm shadow-lg flex items-center gap-2">
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * HTML 转义，配合 marked 输出防 XSS
+     * @param {string} s
+     * @returns {string}
+     */
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /**
+     * 将模型返回的 Markdown 按固定小节标题解析为结构化字段
+     * 要求模型输出包含：## 大实话翻译、## 画饼指数、## 老板真实意图分析、## 正确应对姿势
+     * @param {string} md
+     * @returns {{ translation: string, pieScore: number|null, intent: string, advice: string }}
+     */
+    function parseBossMd(md) {
+      const raw = String(md || '');
+      const sections = {
+        translation: '',
+        pieRaw: '',
+        intent: '',
+        advice: ''
+      };
+      /** @type {string|null} */
+      let current = null;
+      const lines = raw.split('\n');
+      const flushLine = (line) => {
+        if (current === 'translation') sections.translation += line + '\n';
+        else if (current === 'pie') sections.pieRaw += line + '\n';
+        else if (current === 'intent') sections.intent += line + '\n';
+        else if (current === 'advice') sections.advice += line + '\n';
+      };
+      for (const line of lines) {
+        const h = line.match(/^##\s*(.+?)\s*$/);
+        if (h) {
+          const title = h[1].trim();
+          if (/大实话/.test(title)) current = 'translation';
+          else if (/画饼指数/.test(title)) current = 'pie';
+          else if (/真实意图|意图分析/.test(title)) current = 'intent';
+          else if (/应对/.test(title)) current = 'advice';
+          else current = null;
+          continue;
+        }
+        if (current) flushLine(line);
+      }
+      let pieScore = null;
+      const pieText = sections.pieRaw.trim();
+      const m1 = pieText.match(/(\d+)\s*[\/／]\s*10/);
+      const m2 = pieText.match(/[:：]?\s*(\d+)\s*星?/);
+      const m3 = pieText.match(/(\d{1,2})/);
+      if (m1) pieScore = Math.min(10, Math.max(1, parseInt(m1[1], 10)));
+      else if (m2) pieScore = Math.min(10, Math.max(1, parseInt(m2[1], 10)));
+      else if (m3) pieScore = Math.min(10, Math.max(1, parseInt(m3[1], 10)));
+
+      return {
+        translation: sections.translation.trim(),
+        pieScore,
+        intent: sections.intent.trim(),
+        advice: sections.advice.trim()
+      };
+    }
+
+    /**
+     * 安全地将正文转为 HTML（空则占位）
+     * @param {string} text
+     * @returns {string}
+     */
+    function mdToSafeHtml(text) {
+      const t = (text || '').trim();
+      if (!t) return '<p class="text-stone-500 text-xs">（无）</p>';
+      if (typeof marked === 'undefined') return '<p>' + escapeHtml(t) + '</p>';
+      return marked.parse(t, { breaks: true });
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('bossTranslator', () => ({
+        /** 用户输入的黑话 */
+        inputText: '',
+        /** 十条经典预设 */
+        presets: [
+          '公司实行弹性工作制',
+          '我们不提倡加班但鼓励奋斗',
+          '年终奖视公司情况而定',
+          '年轻人要多沉淀，别只看眼前',
+          '你是公司的未来骨干',
+          '这次晋升名额有限，你下次一定有机会',
+          '公司原则上双休，项目紧的时候大家一起扛一下',
+          '试用期工资先按标准来，转正后再谈',
+          '扁平化管理，可以直接和我沟通',
+          '期权上市后你就财务自由了'
+        ],
+        streamBuffer: '',
+        reasoningText: '',
+        isLoading: false,
+        errorMsg: '',
+        showSettings: false,
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+        /** 连续翻译累积的报告条目 */
+        reportItems: [],
+        nextId: 1,
+
+        init() {
+          this.loadConfig();
+          if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true });
+          }
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 从 localStorage 合并加载全局 LLM 配置 */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存 API 配置（合并策略，禁止整对象覆盖）
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          setTimeout(() => { this.toast.show = false; }, 2600);
+        },
+
+        /** 一键填入预设黑话 */
+        fillPreset(text) {
+          this.inputText = text;
+          this.showToast('已填入预设', 'tag');
+        },
+
+        clearInput() {
+          this.inputText = '';
+        },
+
+        /** 清空检测报告（不影响输入框） */
+        clearReport() {
+          this.reportItems = [];
+          this.streamBuffer = '';
+          this.showToast('报告已清空', 'trash-2');
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 画饼指数可视化：🥧 表示「饼量」，○ 表示空缺（共 10 格）
+         * @param {number|null} score
+         * @returns {string}
+         */
+        pieEmojiBar(score) {
+          const n = score == null || isNaN(score) ? 0 : Math.min(10, Math.max(0, Math.round(Number(score))));
+          const pies = '🥧'.repeat(n);
+          const empty = '○'.repeat(Math.max(0, 10 - n));
+          return '<span class="tracking-widest">' + pies + empty + '</span>';
+        },
+
+        /**
+         * 系统提示词：约束输出结构，便于前端解析与气泡展示
+         */
+        getSystemPrompt() {
+          return `你是犀利的职场「黑话翻译」助手，专把老板/HR 的场面话翻成打工人能听懂的大实话。语气幽默、克制，不人身攻击具体个人，可讽刺结构性套路。
+
+【输出格式】必须严格使用以下 Markdown 二级标题（标题文字一字不差），并按顺序输出：
+
+## 大实话翻译
+（1～3 段中文，直击本质，可适度玩梗）
+
+## 画饼指数
+（单独一行给出分数，格式必须是：7/10 或 8/10，数字 1～10，10 最饼）
+
+## 老板真实意图分析
+（分点或短段落说明对方真实诉求、风险点）
+
+## 正确应对姿势
+（可执行的建议：如何接话、如何留痕、何时该跑）
+
+不要输出 JSON。不要使用一级标题 #。`;
+        },
+
+        /**
+         * 流式调用 DeepSeek API
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {function(string):void} onDelta
+         * @param {function(string):void} [onReasoning]
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.75
+            })
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || ('HTTP ' + response.status));
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) onReasoning(delta.reasoning_content);
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /** 主流程：翻译当前输入并追加到报告 */
+        async translate() {
+          this.errorMsg = '';
+          const original = (this.inputText || '').trim();
+          if (!original) {
+            this.errorMsg = '请先粘贴或输入老板/HR 的原话。';
+            return;
+          }
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先在设置中填写 DeepSeek API Key。';
+            return;
+          }
+
+          this.isLoading = true;
+          this.streamBuffer = '';
+          this.reasoningText = '';
+
+          const userMsg = `请翻译以下职场黑话（可能是老板或 HR 说的）：\n\n"""${original}"""`;
+
+          try {
+            await this.streamDeepSeek(
+              [
+                { role: 'system', content: this.getSystemPrompt() },
+                { role: 'user', content: userMsg }
+              ],
+              (chunk) => { this.streamBuffer += chunk; },
+              (r) => { this.reasoningText += r; }
+            );
+
+            const parsed = parseBossMd(this.streamBuffer);
+            const item = {
+              id: this.nextId++,
+              original,
+              fullMd: this.streamBuffer,
+              translation: parsed.translation,
+              pieScore: parsed.pieScore,
+              intentHtml: mdToSafeHtml(parsed.intent),
+              adviceHtml: mdToSafeHtml(parsed.advice)
+            };
+            this.reportItems.push(item);
+            this.streamBuffer = '';
+            this.showToast('已加入检测报告', 'check-circle');
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '翻译失败';
+            this.showToast(this.errorMsg, 'alert-circle');
+          } finally {
+            this.isLoading = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /**
+         * 复制完整检测报告（纯文本，便于微信/飞书分享）
+         */
+        async copyFullReport() {
+          if (!this.reportItems.length) {
+            this.showToast('暂无报告内容', 'alert-circle');
+            return;
+          }
+          const fixedLines = [
+            '═══ 画饼检测报告 ═══',
+            '生成工具：老板画饼翻译机',
+            ''
+          ];
+          this.reportItems.forEach((item, i) => {
+            const p = parseBossMd(item.fullMd);
+            fixedLines.push(`--- 第 ${i + 1} 条 ---`);
+            fixedLines.push('【老板说】');
+            fixedLines.push(item.original);
+            fixedLines.push('');
+            fixedLines.push('【大实话翻译】');
+            fixedLines.push(p.translation || item.fullMd.trim());
+            fixedLines.push('');
+            fixedLines.push('【画饼指数】' + (p.pieScore != null ? p.pieScore + '/10（🥧×' + p.pieScore + '）' : '未解析'));
+            fixedLines.push('');
+            fixedLines.push('【老板真实意图分析】');
+            fixedLines.push(p.intent || '—');
+            fixedLines.push('');
+            fixedLines.push('【正确应对姿势】');
+            fixedLines.push(p.advice || '—');
+            fixedLines.push('');
+          });
+          const text = fixedLines.join('\n');
+          try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('已复制完整报告', 'copy');
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('已复制', 'copy');
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

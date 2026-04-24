@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>决定硬币（加戏版）· 命运抛掷</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <style>
+    /**
+     * 舞台：深色背景 + 顶部锥形聚光灯（径向渐变模拟）
+     */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      min-height: 100vh;
+      color: #faf6ef;
+      background:
+        radial-gradient(ellipse 55% 42% at 50% 18%, rgba(255, 220, 150, 0.22) 0%, transparent 55%),
+        radial-gradient(ellipse 90% 60% at 50% 100%, rgba(180, 130, 40, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, #0c0a08 0%, #151210 35%, #080706 100%);
+    }
+
+    /** 3D 舞台透视容器 */
+    .coin-perspective {
+      perspective: 1100px;
+      perspective-origin: 50% 45%;
+    }
+
+    /**
+     * 硬币本体：preserve-3d 让正反面在空间中分离
+     * 厚度用两面各 translateZ 模拟薄圆柱
+     */
+    .coin-3d {
+      width: 168px;
+      height: 168px;
+      position: relative;
+      transform-style: preserve-3d;
+      border-radius: 50%;
+      will-change: transform;
+    }
+
+    /** 硬币面：金色金属渐变 + 内阴影 */
+    .coin-face {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 12px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      line-height: 1.25;
+      backface-visibility: hidden;
+      border: 3px solid rgba(90, 70, 30, 0.85);
+      box-shadow:
+        inset 0 0 0 2px rgba(255, 248, 220, 0.35),
+        inset 0 -12px 28px rgba(0, 0, 0, 0.45),
+        inset 0 10px 22px rgba(255, 255, 255, 0.22),
+        0 18px 40px rgba(0, 0, 0, 0.65);
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255, 252, 235, 0.95) 0%, transparent 42%),
+        radial-gradient(circle at 70% 72%, rgba(120, 85, 20, 0.55) 0%, transparent 50%),
+        linear-gradient(145deg, #f4e4a8 0%, #d4af37 38%, #b8860b 62%, #7a5c12 100%);
+      color: #3a2a0a;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    /** 反面：先绕 Y 轴翻 180°，再推出 z，与正面背对 */
+    .coin-face.back {
+      transform: rotateY(180deg) translateZ(5px);
+    }
+
+    .coin-face.front {
+      transform: translateZ(5px);
+    }
+
+    /** 侧面装饰环（伪立体边缘高光） */
+    .coin-rim {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 215, 120, 0.45);
+      pointer-events: none;
+      transform: translateZ(0);
+    }
+
+    /**
+     * 抛掷动画：抛物线位移 + X 轴翻滚 + Y 轴从当前朝向转到目标朝向
+     * --start-y / --end-y 由 Alpine 注入（单位 deg），保证连续多抛时朝向衔接
+     */
+    @keyframes drama-coin-toss {
+      0% {
+        transform: translateY(0) rotateX(0deg) rotateY(var(--start-y, 0deg)) scale(1);
+      }
+      18% {
+        transform: translateY(-55px) rotateX(220deg) rotateY(calc(var(--start-y, 0deg) + (var(--end-y, 720deg) - var(--start-y, 0deg)) * 0.22)) scale(1.04);
+      }
+      40% {
+        transform: translateY(-165px) rotateX(520deg) rotateY(calc(var(--start-y, 0deg) + (var(--end-y, 720deg) - var(--start-y, 0deg)) * 0.48)) scale(1.1);
+      }
+      62% {
+        transform: translateY(-70px) rotateX(780deg) rotateY(calc(var(--start-y, 0deg) + (var(--end-y, 720deg) - var(--start-y, 0deg)) * 0.72)) scale(1.05);
+      }
+      82% {
+        transform: translateY(-12px) rotateX(980deg) rotateY(calc(var(--start-y, 0deg) + (var(--end-y, 720deg) - var(--start-y, 0deg)) * 0.92)) scale(1.02);
+      }
+      100% {
+        transform: translateY(0) rotateX(1080deg) rotateY(var(--end-y, 720deg)) scale(1);
+      }
+    }
+
+    .coin-3d.is-tossing {
+      animation: drama-coin-toss 2.65s cubic-bezier(0.25, 0.82, 0.18, 1) forwards;
+    }
+
+    /** 落地后轻微「噔」一下的回弹 */
+    @keyframes coin-land-nudge {
+      0% { transform: translateY(0) scale(1); }
+      35% { transform: translateY(4px) scale(0.97, 1.03); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    .coin-3d.land-nudge {
+      animation: coin-land-nudge 0.42s ease-out forwards;
+    }
+
+    /** 揭晓区：幕布感 + 金色扫光 */
+    .reveal-panel {
+      background: linear-gradient(160deg, rgba(35, 28, 18, 0.92) 0%, rgba(12, 10, 8, 0.96) 100%);
+      border: 1px solid rgba(212, 175, 55, 0.4);
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.5),
+        0 24px 60px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 230, 180, 0.06);
+    }
+
+    @keyframes reveal-glow {
+      0% { opacity: 0.35; transform: translateX(-120%) skewX(-12deg); }
+      100% { opacity: 0.65; transform: translateX(120%) skewX(-12deg); }
+    }
+
+    .reveal-sweep::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 0%, rgba(255, 220, 150, 0.12) 45%, transparent 70%);
+      animation: reveal-glow 2.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    /** Markdown 结果区 */
+    .prose-drama :where(h2, h3) {
+      color: #f0d78c;
+      font-weight: 800;
+      margin: 0.75em 0 0.35em;
+      font-size: 1rem;
+    }
+    .prose-drama :where(p) {
+      margin: 0.4em 0;
+      color: rgba(250, 246, 239, 0.88);
+    }
+    .prose-drama :where(strong) {
+      color: #ffe9a8;
+    }
+    .prose-drama :where(ul) {
+      margin: 0.35em 0;
+      padding-left: 1.2em;
+    }
+
+    [x-cloak] {
+      display: none !important;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(212, 175, 55, 0.4);
+      border-radius: 3px;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="antialiased">
+  <!--
+    决定硬币（加戏版）
+    - 双选项输入 → 3D 金币抛掷动画 → 随机结果
+    - DeepSeek 流式：神级理由 + 反向选项的「可怕后果」（娱乐向，非人生建议）
+  -->
+  <div x-data="dramaCoin" x-init="init()" class="min-h-screen flex flex-col pb-24">
+
+    <!-- 顶栏：返回 ../../index.html -->
+    <nav class="sticky top-0 z-50 border-b border-amber-700/25 bg-black/70 backdrop-blur-md">
+      <div class="max-w-lg mx-auto px-4 h-14 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer min-w-0" onclick="location.href='../../index.html'">
+          <i data-lucide="circle-dot" class="text-amber-400 h-7 w-7 shrink-0"></i>
+          <div class="min-w-0">
+            <div class="font-bold text-amber-100 truncate text-sm sm:text-base">决定硬币（加戏版）</div>
+            <div class="text-[10px] text-amber-200/45 hidden sm:block">抛硬币 · AI 帮你把理由说到服</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <div class="hidden sm:flex rounded-lg p-0.5 text-[10px] border border-amber-600/30 bg-black/40">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-amber-500 text-black font-bold' : 'text-amber-100/65'"
+              class="px-2 py-1 rounded-md transition">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-amber-500 text-black font-bold' : 'text-amber-100/65'"
+              class="px-2 py-1 rounded-md transition">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-amber-200/90 hover:bg-amber-900/25"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-1 max-w-lg w-full mx-auto px-4 py-6 space-y-6">
+
+      <!-- 选项输入 -->
+      <section class="rounded-2xl p-5 space-y-4 reveal-panel">
+        <h2 class="text-sm font-bold text-amber-200 flex items-center gap-2">
+          <i data-lucide="git-branch" class="w-4 h-4 text-amber-400"></i>
+          两个让你纠结的选项
+        </h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-amber-200/70 mb-1">选项 A（硬币正面）</label>
+            <input type="text" x-model="optionA" placeholder="例如：辞职"
+              class="w-full rounded-xl bg-black/45 border border-amber-700/35 text-amber-50 placeholder:text-amber-200/25 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/45" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-amber-200/70 mb-1">选项 B（硬币反面）</label>
+            <input type="text" x-model="optionB" placeholder="例如：继续忍"
+              class="w-full rounded-xl bg-black/45 border border-amber-700/35 text-amber-50 placeholder:text-amber-200/25 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/45" />
+          </div>
+        </div>
+        <button type="button" @click="flipCoin()"
+          :disabled="isTossing || isAiLoading || !canFlip"
+          class="w-full py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition
+            bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 text-black shadow-lg shadow-amber-900/40
+            disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-105">
+          <i data-lucide="coins" class="w-5 h-5" :class="{ 'animate-pulse': isTossing }"></i>
+          <span x-text="isTossing ? '命运旋转中…' : '抛硬币！'"></span>
+        </button>
+        <p x-show="errorMsg" class="text-sm text-red-400 flex items-start gap-2" x-cloak>
+          <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+          <span x-text="errorMsg"></span>
+        </p>
+      </section>
+
+      <!-- 硬币舞台：聚光灯中心 -->
+      <section class="relative rounded-3xl py-10 px-4 flex flex-col items-center justify-center min-h-[280px] overflow-hidden
+        border border-amber-800/20 bg-black/35">
+        <div class="absolute inset-0 pointer-events-none opacity-90"
+          style="background: radial-gradient(ellipse 70% 55% at 50% 42%, rgba(255, 210, 120, 0.14) 0%, transparent 60%);">
+        </div>
+
+        <div class="coin-perspective relative z-10 mb-2">
+          <!--
+            外层仅做落地位移动画，避免覆盖内层 3D rotate 的最终朝向
+          -->
+          <div class="relative" :class="{ 'land-nudge': landNudge }">
+            <!--
+              硬币：is-tossing 时播放 keyframes；静止时 lastHoldY 决定朝向
+            -->
+            <div class="coin-3d relative"
+              :class="{ 'is-tossing': isTossing }"
+              :style="coinStyleVars"
+              @animationend="onTossAnimationEnd($event)">
+              <div class="coin-rim"></div>
+              <div class="coin-face front">
+                <span class="block max-w-[130px] break-words" x-text="shortLabel(optionA, '选项 A')"></span>
+              </div>
+              <div class="coin-face back">
+                <span class="block max-w-[130px] break-words" x-text="shortLabel(optionB, '选项 B')"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs text-amber-200/50 text-center mt-2 relative z-10" x-show="!isTossing && !lastWinnerLabel">
+          填好选项后点击「抛硬币」
+        </p>
+      </section>
+
+      <!-- 揭晓：命运 + 彩蛋 -->
+      <section class="rounded-2xl p-6 relative overflow-hidden reveal-panel reveal-sweep" x-show="lastWinnerLabel && !isTossing" x-cloak>
+        <div class="text-center space-y-2 mb-5">
+          <p class="text-[10px] uppercase tracking-[0.4em] text-amber-500/90 font-bold">And the universe chooses</p>
+          <p class="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-amber-300 to-amber-600 leading-tight px-1"
+            x-text="'命运选择了：' + lastWinnerLabel"></p>
+          <p x-show="destinyMessage" class="text-sm font-bold text-amber-300/95 animate-pulse" x-text="destinyMessage"></p>
+        </div>
+
+        <!-- AI 输出 -->
+        <div class="space-y-3">
+          <div class="flex items-center gap-2 text-amber-200/80 text-sm font-bold">
+            <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+            命运辩护状
+            <span x-show="isAiLoading" class="text-xs font-normal text-amber-200/45">（AI 奋笔疾书中…）</span>
+          </div>
+          <div class="prose-drama text-sm leading-relaxed min-h-[48px] rounded-xl bg-black/35 border border-amber-900/30 p-4"
+            x-html="renderedAi"></div>
+          <details x-show="reasoningBuffer" class="text-xs text-amber-200/45">
+            <summary class="cursor-pointer text-amber-400/90">🧠 思考过程（V4 Pro）</summary>
+            <pre class="mt-2 whitespace-pre-wrap text-amber-200/55 bg-black/40 rounded-lg p-3 border border-amber-900/25" x-text="reasoningBuffer"></pre>
+          </details>
+        </div>
+
+        <button type="button" @click="flipCoin()"
+          :disabled="isTossing || isAiLoading || !canFlip"
+          class="mt-6 w-full py-3 rounded-xl font-bold border border-amber-600/50 text-amber-100 hover:bg-amber-900/25 transition disabled:opacity-40">
+          不服气？再抛一次
+        </button>
+      </section>
+
+      <!-- 底部统计 -->
+      <section class="rounded-2xl p-4 reveal-panel text-center text-sm text-amber-100/80 space-y-2">
+        <div class="flex items-center justify-center gap-2 font-bold text-amber-200">
+          <i data-lucide="bar-chart-2" class="w-4 h-4 text-amber-400"></i>
+          命运统计
+        </div>
+        <p>本局已抛：<span class="text-amber-300 font-mono font-bold" x-text="totalFlips"></span> 次</p>
+        <p class="text-xs text-amber-200/65" x-show="totalFlips > 0">
+          「<span class="text-amber-200 font-semibold" x-text="shortLabel(optionA, 'A')"></span>」<span class="font-mono text-amber-300" x-text="countA"></span> 次
+          · 「<span class="text-amber-200 font-semibold" x-text="shortLabel(optionB, 'B')"></span>」<span class="font-mono text-amber-300" x-text="countB"></span> 次
+        </p>
+        <p class="text-amber-300/95 font-semibold" x-show="totalFlips > 0" x-text="fateLeanText"></p>
+      </section>
+
+      <p class="text-[11px] text-center text-amber-200/35 px-2 leading-relaxed">
+        本工具仅供娱乐与脑洞启发，不构成任何人生、法律、医疗或财务建议。重大决定请理性评估并咨询专业人士。
+      </p>
+    </main>
+
+    <!-- 设置弹窗 -->
+    <div x-show="showSettings" x-cloak
+      class="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4"
+      @keydown.escape.window="showSettings = false">
+      <div class="bg-zinc-900 border border-amber-700/40 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4"
+        @click.outside="showSettings = false">
+        <h3 class="text-lg font-bold text-amber-100 flex items-center gap-2">
+          <i data-lucide="key-round" class="w-5 h-5 text-amber-400"></i>
+          API 配置
+        </h3>
+        <div>
+          <label class="block text-sm text-amber-200/80 mb-1">DeepSeek API Key</label>
+          <input type="password" x-model="apiConfig.deepseek"
+            class="w-full rounded-lg bg-black/50 border border-amber-800/50 text-amber-50 px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/50" />
+        </div>
+        <div>
+          <label class="block text-sm text-amber-200/80 mb-1">模型</label>
+          <select x-model="apiConfig.model"
+            class="w-full rounded-lg bg-black/50 border border-amber-800/50 text-amber-50 px-3 py-2 text-sm">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showSettings = false"
+            class="px-4 py-2 rounded-lg text-amber-200/80 hover:bg-amber-900/20">取消</button>
+          <button type="button" @click="saveConfig()"
+            class="px-4 py-2 rounded-lg bg-amber-500 text-black font-bold hover:brightness-110">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition.opacity.duration.200ms x-cloak
+      class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-full bg-amber-500 text-black text-sm font-bold shadow-lg">
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('dramaCoin', () => ({
+        /** 用户输入的两个选项 */
+        optionA: '',
+        optionB: '',
+
+        /** API：与 global_llm_config 合并读写，禁止整对象覆盖 */
+        apiConfig: {
+          deepseek: '',
+          model: 'deepseek-v4-flash'
+        },
+        showSettings: false,
+        toast: { show: false, message: '' },
+
+        /** 抛掷中：播放 CSS 动画 */
+        isTossing: false,
+        /** 落地瞬间的回弹 class 开关 */
+        landNudge: false,
+
+        /**
+         * 硬币朝向（deg）：0 = 显示选项 A，180 = 显示选项 B
+         * 每次动画结束更新，用于下一轮的 --start-y
+         */
+        lastHoldY: 0,
+        /** 当前这一轮动画要到达的 rotateY（deg） */
+        endRotateY: 0,
+
+        /** 随机结果：'A' | 'B' */
+        pendingOutcome: null,
+        /** 上一轮结果，用于连续三次彩蛋 */
+        lastOutcomeKey: null,
+        sameStreak: 0,
+
+        /** 揭晓文案 */
+        lastWinnerLabel: '',
+        destinyMessage: '',
+
+        /** AI 流式 */
+        aiMarkdown: '',
+        renderedAi: '',
+        reasoningBuffer: '',
+        isAiLoading: false,
+        errorMsg: '',
+
+        /** 统计 */
+        totalFlips: 0,
+        countA: 0,
+        countB: 0,
+
+        /**
+         * 计算注入到 .coin-3d 的 CSS 变量（动画中与静止时）
+         */
+        get coinStyleVars() {
+          const start = this.lastHoldY;
+          const end = this.endRotateY;
+          if (this.isTossing) {
+            return `--start-y:${start}deg;--end-y:${end}deg;`;
+          }
+          /** 静止：保持 X 翻滚为整圈，避免停在中途侧立 */
+          return `transform: rotateX(1080deg) rotateY(${start}deg);`;
+        },
+
+        get canFlip() {
+          return (this.optionA || '').trim().length > 0 && (this.optionB || '').trim().length > 0;
+        },
+
+        get fateLeanText() {
+          if (this.totalFlips === 0) return '';
+          if (this.countA === this.countB) {
+            return '命运之力：势均力敌，宇宙还在观望。';
+          }
+          if (this.countA > this.countB) {
+            return `命运之力暂时偏向：「${this.shortLabel(this.optionA, 'A')}」`;
+          }
+          return `命运之力暂时偏向：「${this.shortLabel(this.optionB, 'B')}」`;
+        },
+
+        /**
+         * 初始化：读配置、订阅 Markdown 渲染、图标
+         */
+        init() {
+          this.loadConfig();
+          this.$watch('aiMarkdown', (v) => {
+            this.renderedAi = this.safeMarkdown(v);
+          });
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 合并加载 global_llm_config */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /** 保存 API：与已有对象合并后写入 */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.toast = { show: true, message: '配置已保存' };
+          setTimeout(() => { this.toast.show = false; }, 2000);
+          this.showSettings = false;
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 截断过长选项用于刻在硬币上
+         * @param {string} s
+         * @param {string} fallback
+         */
+        shortLabel(s, fallback) {
+          const t = (s || '').trim();
+          if (!t) return fallback;
+          return t.length > 14 ? t.slice(0, 13) + '…' : t;
+        },
+
+        /**
+         * 安全渲染 Markdown
+         * @param {string} md
+         */
+        safeMarkdown(md) {
+          const raw = (md || '').trim();
+          if (!raw) return '';
+          if (typeof marked === 'undefined') return this.escapeHtml(raw);
+          const html = marked.parse(raw, { breaks: true });
+          if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+          return html;
+        },
+
+        escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        },
+
+        /**
+         * 主流程：校验 → 随机结果 → 计算旋转终点 → 开启动画
+         */
+        flipCoin() {
+          this.errorMsg = '';
+          this.destinyMessage = '';
+          if (!this.canFlip) {
+            this.errorMsg = '请填写选项 A 和选项 B';
+            return;
+          }
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先配置 DeepSeek API Key';
+            return;
+          }
+
+          /** 新的一次抛掷：清空上一轮 AI 文案 */
+          this.aiMarkdown = '';
+          this.reasoningBuffer = '';
+          this.lastWinnerLabel = '';
+
+          /** 随机命运 */
+          this.pendingOutcome = Math.random() < 0.5 ? 'A' : 'B';
+
+          /** 目标朝向（deg）：A→0，B→180 */
+          const targetY = this.pendingOutcome === 'A' ? 0 : 180;
+          const startY = this.lastHoldY;
+          /** 多转几圈增加仪式感：3～5 圈 + 补角到目标面 */
+          const fullSpins = 3 + Math.floor(Math.random() * 3);
+          const deltaBase = (targetY - startY + 360) % 360;
+          this.endRotateY = startY + fullSpins * 360 + deltaBase;
+
+          this.landNudge = false;
+          this.isTossing = true;
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * CSS 动画结束：只处理 toss 动画（忽略子层 land-nudge）
+         * @param {AnimationEvent} ev
+         */
+        onTossAnimationEnd(ev) {
+          if (ev.animationName !== 'drama-coin-toss') return;
+          this.isTossing = false;
+          /** 归一化到 0/180，避免数值无限增长 */
+          this.lastHoldY = this.pendingOutcome === 'A' ? 0 : 180;
+
+          const winText = this.pendingOutcome === 'A'
+            ? (this.optionA || '').trim()
+            : (this.optionB || '').trim();
+          this.lastWinnerLabel = winText;
+
+          /** 统计 */
+          this.totalFlips++;
+          if (this.pendingOutcome === 'A') this.countA++;
+          else this.countB++;
+
+          /** 连续同一选项三次 → 彩蛋 */
+          if (this.pendingOutcome === this.lastOutcomeKey) {
+            this.sameStreak++;
+          } else {
+            this.sameStreak = 1;
+            this.lastOutcomeKey = this.pendingOutcome;
+          }
+          if (this.sameStreak >= 3) {
+            this.destinyMessage = '这就是天意！';
+          }
+
+          /** 落地回弹 */
+          this.landNudge = true;
+          setTimeout(() => { this.landNudge = false; }, 500);
+
+          this.streamDrama();
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 调用 DeepSeek 流式：极具说服力的理由 + 另一选项的夸张后果（娱乐）
+         */
+        async streamDrama() {
+          const key = (this.apiConfig.deepseek || '').trim();
+          const a = (this.optionA || '').trim();
+          const b = (this.optionB || '').trim();
+          const chosen = this.pendingOutcome === 'A' ? a : b;
+          const other = this.pendingOutcome === 'A' ? b : a;
+
+          this.isAiLoading = true;
+          this.aiMarkdown = '';
+          this.reasoningBuffer = '';
+
+          const system = `你是「决定硬币（加戏版）」的剧场旁白。用户用抛硬币在两个选项间纠结，结果已经随机落定。
+请用中文 Markdown 输出，语气戏剧化、有说服力，但明确这是娱乐化表达，不要冒充专业顾问。
+
+## 为什么命运选「${chosen}」是对的
+（3～6 句，分点或小标题均可，要有「听起来无法反驳」的修辞，但保持轻松幽默。）
+
+## 如果当初走向「${other}」
+（用夸张、脑洞式的方式描述「潜在糟糕后果」——可以是戏谑的平行宇宙、内心戏、社交尴尬、机会成本等，禁止渲染自残、违法或仇恨内容；避免针对真实群体的歧视。）
+
+文末一行小字：「以上为娱乐化脑洞，请理性决策。」`;
+
+          const user = `选项 A：${a}\n选项 B：${b}\n硬币结果：${this.pendingOutcome === 'A' ? 'A（正面）' : 'B（反面）'}，即应偏向「${chosen}」。请按 system 要求输出。`;
+
+          try {
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + key
+              },
+              body: JSON.stringify({
+                model: this.apiConfig.model || 'deepseek-v4-flash',
+                messages: [
+                  { role: 'system', content: system },
+                  { role: 'user', content: user }
+                ],
+                stream: true,
+                temperature: 0.88,
+                max_tokens: 1800
+              })
+            });
+
+            if (!res.ok) {
+              const errText = await res.text().catch(() => '');
+              throw new Error('API 错误 ' + res.status + (errText ? ': ' + errText.slice(0, 120) : ''));
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const t = line.trim();
+                if (!t.startsWith('data:')) continue;
+                const data = t.slice(5).trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta;
+                  if (!delta) continue;
+                  if (delta.reasoning_content) {
+                    this.reasoningBuffer += delta.reasoning_content;
+                  }
+                  if (delta.content) {
+                    this.aiMarkdown += delta.content;
+                  }
+                } catch (parseErr) {
+                  console.warn('流式 JSON 解析跳过:', parseErr);
+                }
+              }
+            }
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || 'AI 生成失败，请重试';
+            this.aiMarkdown = '（命运链路暂时中断，请检查网络或 API Key 后重试。）\n\n*你也可以先深呼吸三次，再点「再抛一次」。*';
+          } finally {
+            this.isAiLoading = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

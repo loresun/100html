@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏时间追踪 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-900 min-h-screen font-sans text-slate-100" x-data="gameApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-slate-700 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400">
+                    🎮 游戏时间追踪
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-4 text-sm font-medium">
+                <div class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                     <span class="text-slate-400 text-xs uppercase mr-1">总时长</span>
+                     <span class="font-bold font-mono text-violet-400" x-text="formatDuration(totalHours)"></span>
+                </div>
+                <button @click="showLogModal = true" class="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg shadow-lg shadow-violet-600/20 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-plus w-4 h-4"></i>
+                    <span class="hidden sm:inline">记录</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Top Games -->
+            <div class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl">
+                <h3 class="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-trophy w-4 h-4 text-yellow-500"></i>
+                    玩的最多
+                </h3>
+                <div class="space-y-4">
+                    <template x-for="(game, idx) in topGames" :key="game.name">
+                        <div class="flex items-center gap-3 group">
+                            <span class="text-xs font-mono w-4 text-slate-500" x-text="'#' + (idx + 1)"></span>
+                            <div class="flex-1">
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="font-bold group-hover:text-violet-400 transition-colors" x-text="game.name"></span>
+                                    <span class="text-slate-400" x-text="formatDuration(game.hours)"></span>
+                                </div>
+                                <div class="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                    <div class="h-full bg-violet-500 rounded-full" :style="`width: ${(game.hours / maxGameHours) * 100}%`"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="topGames.length === 0" class="text-slate-500 text-sm text-center py-4">暂无数据</div>
+                </div>
+            </div>
+
+            <!-- Weekly Activity Chart -->
+            <div class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl flex flex-col">
+                <h3 class="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line w-4 h-4 text-emerald-500"></i>
+                    近7天趋势
+                </h3>
+                <div class="flex-1 relative min-h-[150px]">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Logs -->
+        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-history w-5 h-5 text-slate-400"></i>
+            最近记录
+        </h2>
+        <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-xl overflow-hidden">
+            <template x-for="log in sortedLogs" :key="log.id">
+                <div class="border-b border-slate-700 last:border-0 p-4 hover:bg-slate-700/50 transition-colors flex items-center justify-between group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-violet-400">
+                             <i :class="getPlatformIcon(log.platform)" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-200" x-text="log.game"></div>
+                            <div class="text-xs text-slate-500" x-text="formatDate(log.date)"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="font-mono font-bold text-violet-300" x-text="formatDuration(log.duration)"></span>
+                        <button @click="deleteLog(log.id)" class="text-slate-500 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fa-solid fa-trash w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <div x-show="logs.length === 0" class="p-8 text-center text-slate-500">
+                记录你的第一次游戏时间吧！
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Log Modal -->
+    <div x-show="showLogModal" x-cloak class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-md p-6" @click.away="showLogModal = false">
+            <h3 class="text-lg font-bold text-white mb-6">记录游戏时间</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">游戏名称</label>
+                    <input type="text" x-model="newLog.game" list="games-list" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none" placeholder="Elden Ring">
+                    <datalist id="games-list">
+                        <template x-for="g in recentGameNames" :key="g">
+                            <option :value="g"></option>
+                        </template>
+                    </datalist>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">平台</label>
+                        <select x-model="newLog.platform" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none">
+                            <option value="PC">PC</option>
+                            <option value="Switch">Switch</option>
+                            <option value="PS5">PlayStation</option>
+                            <option value="Xbox">Xbox</option>
+                            <option value="Mobile">Mobile</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">时长 (小时)</label>
+                        <input type="number" x-model="newLog.duration" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none" placeholder="2.5">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">日期</label>
+                    <input type="date" x-model="newLog.date" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-violet-500 outline-none">
+                </div>
+            </div>
+            
+            <div class="mt-8 flex gap-3">
+                <button @click="showLogModal = false" class="flex-1 py-3 rounded-xl bg-slate-700 text-slate-300 font-medium hover:bg-slate-600 transition-colors">取消</button>
+                <button @click="addLog()" 
+                        :disabled="!newLog.game || !newLog.duration"
+                        class="flex-1 py-3 rounded-xl bg-violet-600 text-white font-medium hover:bg-violet-700 shadow-lg shadow-violet-600/20 disabled:opacity-50 disabled:shadow-none transition-all">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function gameApp() {
+            return {
+                showLogModal: false,
+                logs: [],
+                chart: null,
+                
+                newLog: {
+                    game: '',
+                    platform: 'PC',
+                    duration: '',
+                    date: new Date().toISOString().split('T')[0]
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_games');
+                    if (saved) {
+                        this.logs = JSON.parse(saved);
+                    } else {
+                        // Demo data
+                        this.logs = [
+                            { id: 1, game: 'Elden Ring', platform: 'PC', duration: 2.5, date: new Date().toISOString().split('T')[0] },
+                            { id: 2, game: 'Zelda: TOTK', platform: 'Switch', duration: 1.5, date: new Date(Date.now() - 86400000).toISOString().split('T')[0] }
+                        ];
+                    }
+
+                    this.$watch('logs', () => {
+                        localStorage.setItem('webtools_games', JSON.stringify(this.logs));
+                        this.updateChart();
+                    });
+
+                    this.$nextTick(() => {
+                        this.initChart();
+                    });
+                },
+
+                addLog() {
+                    this.logs.unshift({
+                        id: Date.now(),
+                        game: this.newLog.game,
+                        platform: this.newLog.platform,
+                        duration: parseFloat(this.newLog.duration),
+                        date: this.newLog.date
+                    });
+                    this.newLog.game = '';
+                    this.newLog.duration = '';
+                    this.showLogModal = false;
+                    this.showLogModal = false;
+                },
+                
+                deleteLog(id) {
+                    if(confirm('删除这条记录？')) {
+                        this.logs = this.logs.filter(l => l.id !== id);
+                    }
+                },
+
+                get sortedLogs() {
+                    return [...this.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+                },
+
+                get totalHours() {
+                    return this.logs.reduce((sum, log) => sum + log.duration, 0);
+                },
+
+                get topGames() {
+                    const map = {};
+                    this.logs.forEach(l => {
+                        map[l.game] = (map[l.game] || 0) + l.duration;
+                    });
+                    return Object.entries(map)
+                        .map(([name, hours]) => ({ name, hours }))
+                        .sort((a, b) => b.hours - a.hours)
+                        .slice(0, 5);
+                },
+                
+                get maxGameHours() {
+                    const top = this.topGames[0];
+                    return top ? top.hours : 1;
+                },
+
+                get recentGameNames() {
+                    return [...new Set(this.logs.map(l => l.game))].slice(0, 10);
+                },
+
+                getPlatformIcon(p) {
+                    if (p === 'PC') return 'fa-solid fa-desktop';
+                    if (p === 'Switch') return 'fa-solid fa-gamepad'; 
+                    if (p === 'Mobile') return 'fa-solid fa-mobile-screen';
+                    return 'fa-solid fa-gamepad';
+                },
+
+                formatDuration(h) {
+                    return h + 'h';
+                },
+
+                formatDate(str) {
+                    const d = new Date(str);
+                    return `${d.getMonth()+1}月${d.getDate()}日`;
+                },
+
+                initChart() {
+                    const ctx = document.getElementById('activityChart');
+                    if (!ctx) return;
+
+                    // Last 7 days labels
+                    const labels = [];
+                    const dataPoints = [];
+                    for(let i=6; i>=0; i--) {
+                        const d = new Date();
+                        d.setDate(d.getDate() - i);
+                        const dateStr = d.toISOString().split('T')[0];
+                        labels.push(`${d.getMonth()+1}/${d.getDate()}`);
+                        
+                        // Sum duration for this date
+                        const sum = this.logs
+                            .filter(l => l.date === dateStr)
+                            .reduce((acc, l) => acc + l.duration, 0);
+                        dataPoints.push(sum);
+                    }
+
+                    this.chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: '游戏时长 (小时)',
+                                data: dataPoints,
+                                backgroundColor: '#8b5cf6',
+                                borderRadius: 4,
+                                barThickness: 12
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8' }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                updateChart() {
+                    if (!this.chart) return;
+                    
+                    const dataPoints = [];
+                    for(let i=6; i>=0; i--) {
+                        const d = new Date();
+                        d.setDate(d.getDate() - i);
+                        const dateStr = d.toISOString().split('T')[0];
+                        const sum = this.logs
+                            .filter(l => l.date === dateStr)
+                            .reduce((acc, l) => acc + l.duration, 0);
+                        dataPoints.push(sum);
+                    }
+                    
+                    this.chart.data.datasets[0].data = dataPoints;
+                    this.chart.update();
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_game_tracker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

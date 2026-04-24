@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人记账本 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans" x-data="expenseApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-800">💰 个人记账本</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="activeTab = 'records'" :class="activeTab === 'records' ? 'bg-slate-100 text-slate-800' : 'text-slate-500'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                    记录
+                </button>
+                <button @click="activeTab = 'stats'" :class="activeTab === 'stats' ? 'bg-slate-100 text-slate-800' : 'text-slate-500'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                    统计
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-2xl p-6 shadow-lg">
+                <div class="text-sm opacity-90 mb-1">本月支出</div>
+                <div class="text-3xl font-bold" x-text="'¥' + formatMoney(monthExpense)">¥0</div>
+                <div class="text-xs opacity-75 mt-2" x-text="expenseCount + ' 笔'"></div>
+            </div>
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl p-6 shadow-lg">
+                <div class="text-sm opacity-90 mb-1">本月收入</div>
+                <div class="text-3xl font-bold" x-text="'¥' + formatMoney(monthIncome)">¥0</div>
+                <div class="text-xs opacity-75 mt-2" x-text="incomeCount + ' 笔'"></div>
+            </div>
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl p-6 shadow-lg">
+                <div class="text-sm opacity-90 mb-1">本月结余</div>
+                <div class="text-3xl font-bold" x-text="'¥' + formatMoney(monthBalance)">¥0</div>
+                <div class="text-xs opacity-75 mt-2" :class="monthBalance >= 0 ? 'text-emerald-200' : 'text-rose-200'" x-text="monthBalance >= 0 ? '盈余' : '赤字'"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Records -->
+        <div x-show="activeTab === 'records'" x-transition>
+            
+            <!-- Quick Add Form -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">快速记账</h3>
+                
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">类型</label>
+                        <div class="flex gap-2">
+                            <button 
+                                @click="newRecord.type = 'expense'"
+                                :class="newRecord.type === 'expense' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="flex-1 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                支出
+                            </button>
+                            <button 
+                                @click="newRecord.type = 'income'"
+                                :class="newRecord.type === 'income' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="flex-1 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                收入
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">金额</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">¥</span>
+                            <input 
+                                type="number" 
+                                x-model.number="newRecord.amount"
+                                step="0.01"
+                                placeholder="0.00"
+                                class="w-full pl-8 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">分类</label>
+                        <select x-model="newRecord.category" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <template x-if="newRecord.type === 'expense'">
+                                <optgroup label="支出分类">
+                                    <option value="餐饮">🍜 餐饮</option>
+                                    <option value="交通">🚗 交通</option>
+                                    <option value="购物">🛍️ 购物</option>
+                                    <option value="娱乐">🎮 娱乐</option>
+                                    <option value="医疗">💊 医疗</option>
+                                    <option value="教育">📚 教育</option>
+                                    <option value="住房">🏠 住房</option>
+                                    <option value="其他">📦 其他</option>
+                                </optgroup>
+                            </template>
+                            <template x-if="newRecord.type === 'income'">
+                                <optgroup label="收入分类">
+                                    <option value="工资">💼 工资</option>
+                                    <option value="奖金">🎁 奖金</option>
+                                    <option value="投资">📈 投资</option>
+                                    <option value="兼职">💰 兼职</option>
+                                    <option value="其他">📦 其他</option>
+                                </optgroup>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">备注</label>
+                        <input 
+                            type="text" 
+                            x-model="newRecord.note"
+                            placeholder="简单描述..."
+                            class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                        />
+                    </div>
+                </div>
+
+                <button 
+                    @click="addRecord()"
+                    class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-plus w-4 h-4"></i>
+                    记录一笔
+                </button>
+            </div>
+
+            <!-- Records List -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">最近记录</h3>
+                
+                <div class="space-y-3">
+                    <template x-for="record in recentRecords" :key="record.id">
+                        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors group">
+                            <div class="flex items-center gap-4 flex-1">
+                                <div 
+                                    :class="record.type === 'expense' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'"
+                                    class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
+                                    x-text="record.category.substring(0, 2)"
+                                ></div>
+                                <div class="flex-1">
+                                    <div class="font-medium text-slate-800" x-text="record.category"></div>
+                                    <div class="text-sm text-slate-500" x-text="record.note || '无备注'"></div>
+                                    <div class="text-xs text-slate-400 mt-1" x-text="formatDateTime(record.createdAt)"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div 
+                                    :class="record.type === 'expense' ? 'text-rose-600' : 'text-emerald-600'"
+                                    class="text-lg font-bold"
+                                    x-text="(record.type === 'expense' ? '-' : '+') + '¥' + formatMoney(record.amount)"
+                                ></div>
+                                <button @click="deleteRecord(record.id)" class="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="fa-solid fa-trash w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div x-show="records.length === 0" class="text-center py-12 text-slate-400">
+                    <i class="fa-solid fa-inbox w-12 h-12 mx-auto mb-3 text-slate-200"></i>
+                    <p>还没有记录，开始记账吧</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Stats -->
+        <div x-show="activeTab === 'stats'" x-transition>
+            <div class="grid md:grid-cols-2 gap-6">
+                
+                <!-- Expense Chart -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">支出分类占比</h3>
+                    <canvas id="expenseChart" class="max-h-64"></canvas>
+                </div>
+
+                <!-- Category Breakdown -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">分类明细</h3>
+                    <div class="space-y-3">
+                        <template x-for="cat in categoryStats" :key="cat.name">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-sm font-medium text-slate-700" x-text="cat.name"></span>
+                                    <span class="text-sm font-bold text-slate-800" x-text="'¥' + formatMoney(cat.amount)"></span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-2">
+                                    <div 
+                                        class="bg-indigo-500 h-2 rounded-full transition-all"
+                                        :style="'width: ' + cat.percentage + '%'"
+                                    ></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function expenseApp() {
+            return {
+                records: [],
+                activeTab: 'records',
+                newRecord: {
+                    type: 'expense',
+                    amount: null,
+                    category: '餐饮',
+                    note: ''
+                },
+                chart: null,
+
+                init() {
+                    const saved = localStorage.getItem('webtools_expenses');
+                    if (saved) {
+                        this.records = JSON.parse(saved);
+                    }
+                    this.$watch('records', () => {
+                        localStorage.setItem('webtools_expenses', JSON.stringify(this.records));
+                        this.$nextTick(() => {
+                            if (this.activeTab === 'stats') {
+                                this.renderChart();
+                            }
+                        });
+                    });
+                    this.$watch('activeTab', (val) => {
+                        if (val === 'stats') {
+                            this.$nextTick(() => this.renderChart());
+                        }
+                    });
+                },
+
+                addRecord() {
+                    if (!this.newRecord.amount || this.newRecord.amount <= 0) {
+                        alert('请输入有效金额');
+                        return;
+                    }
+
+                    this.records.unshift({
+                        id: Date.now(),
+                        type: this.newRecord.type,
+                        amount: this.newRecord.amount,
+                        category: this.newRecord.category,
+                        note: this.newRecord.note.trim(),
+                        createdAt: new Date().toISOString()
+                    });
+
+                    this.newRecord.amount = null;
+                    this.newRecord.note = '';
+                },
+
+                deleteRecord(id) {
+                    if (confirm('确定要删除这条记录吗？')) {
+                        this.records = this.records.filter(r => r.id !== id);
+                    }
+                },
+
+                get recentRecords() {
+                    return this.records.slice(0, 20);
+                },
+
+                get monthExpense() {
+                    return this.getMonthRecords().filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
+                },
+
+                get monthIncome() {
+                    return this.getMonthRecords().filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+                },
+
+                get monthBalance() {
+                    return this.monthIncome - this.monthExpense;
+                },
+
+                get expenseCount() {
+                    return this.getMonthRecords().filter(r => r.type === 'expense').length;
+                },
+
+                get incomeCount() {
+                    return this.getMonthRecords().filter(r => r.type === 'income').length;
+                },
+
+                get categoryStats() {
+                    const monthRecords = this.getMonthRecords().filter(r => r.type === 'expense');
+                    const total = monthRecords.reduce((sum, r) => sum + r.amount, 0);
+                    
+                    const stats = {};
+                    monthRecords.forEach(r => {
+                        if (!stats[r.category]) {
+                            stats[r.category] = 0;
+                        }
+                        stats[r.category] += r.amount;
+                    });
+
+                    return Object.entries(stats)
+                        .map(([name, amount]) => ({
+                            name,
+                            amount,
+                            percentage: total > 0 ? (amount / total * 100).toFixed(1) : 0
+                        }))
+                        .sort((a, b) => b.amount - a.amount);
+                },
+
+                getMonthRecords() {
+                    const now = new Date();
+                    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                    return this.records.filter(r => new Date(r.createdAt) >= monthStart);
+                },
+
+                formatMoney(amount) {
+                    return amount.toFixed(2);
+                },
+
+                formatDateTime(iso) {
+                    const d = new Date(iso);
+                    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+                },
+
+                renderChart() {
+                    const canvas = document.getElementById('expenseChart');
+                    if (!canvas) return;
+
+                    if (this.chart) {
+                        this.chart.destroy();
+                    }
+
+                    const stats = this.categoryStats;
+                    
+                    this.chart = new Chart(canvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: stats.map(s => s.name),
+                            datasets: [{
+                                data: stats.map(s => s.amount),
+                                backgroundColor: [
+                                    '#f43f5e', '#ec4899', '#a855f7', '#8b5cf6',
+                                    '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_expense_tracker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创意风暴 - 灵感碎片重组</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Three.js -->
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <!-- TWEEN.js for smooth animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #8b5cf6;
+            /* Violet/Purple for Creative vibe */
+            --bg-color: #0f172a;
+            /* Dark background for 3D contrast */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+            overflow: hidden;
+            /* Prevent scrollbars, let Three.js handle it or use specific scroll areas */
+        }
+
+        /* Custom Scrollbar for overlay content */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 3px;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-layer {
+            position: relative;
+            z-index: 10;
+            pointer-events: none;
+            /* Let clicks pass through to canvas where needed */
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+    <div id="app" class="h-screen flex flex-col relative">
+
+        <!-- 3D Canvas Background -->
+        <div id="canvas-container"></div>
+
+        <!-- UI Layer -->
+        <div class="ui-layer flex flex-col h-full justify-between">
+
+            <!-- Top Navigation -->
+            <nav class="glass-panel w-full border-b border-white/10 interactive">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between h-16 items-center">
+                        <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                            <i class="fa-solid fa-bolt text-violet-400 text-2xl"></i>
+                            <span class="font-bold text-xl tracking-tight text-white">Creative Storm</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <!-- Animation Preset Selector -->
+                            <div class="relative group">
+                                <button @click="isDropdownOpen = !isDropdownOpen"
+                                    class="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-violet-400"></i>
+                                    <span>{{ currentAnimationName }}</span>
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </button>
+                                <div v-if="isDropdownOpen"
+                                    class="absolute right-0 mt-2 w-48 bg-slate-800 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+                                    <button @click="setAnimation('falling')"
+                                        class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-violet-600 hover:text-white transition">
+                                        🌧️ 灵感雨 (Falling)
+                                    </button>
+                                    <button @click="setAnimation('spiral')"
+                                        class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-violet-600 hover:text-white transition">
+                                        🧬 螺旋上升 (Spiral)
+                                    </button>
+                                    <button @click="setAnimation('galaxy')"
+                                        class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-violet-600 hover:text-white transition">
+                                        🌌 星系漫游 (Galaxy)
+                                    </button>
+                                    <button @click="setAnimation('assembly')"
+                                        class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-violet-600 hover:text-white transition">
+                                        🌪️ 风中重组 (Assembly)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Model Selector -->
+                            <div class="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10">
+                                <button @click="model = 'deepseek-v4-flash'"
+                                    :class="{'bg-violet-600 text-white': model === 'deepseek-v4-flash', 'text-slate-400 hover:text-white': model !== 'deepseek-v4-flash'}"
+                                    class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                                <button @click="model = 'deepseek-v4-pro'"
+                                    :class="{'bg-violet-600 text-white': model === 'deepseek-v4-pro', 'text-slate-400 hover:text-white': model !== 'deepseek-v4-pro'}"
+                                    class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                            </div>
+
+                            <button @click="showSettings = true"
+                                class="text-slate-400 hover:text-white transition p-2 hover:bg-white/10 rounded-full">
+                                <i class="fa-solid fa-gear text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Middle Area (Empty for 3D view, but can hold overlays) -->
+            <div class="flex-grow relative">
+                <!-- Reasoning Overlay (Top Left) -->
+                <div v-if="reasoningContent" class="absolute top-4 left-4 max-w-md interactive">
+                    <div
+                        class="glass-panel rounded-xl p-4 text-xs text-slate-300 font-mono max-h-[40vh] overflow-y-auto custom-scrollbar border-l-4 border-violet-500">
+                        <div class="font-bold text-violet-400 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-brain"></i> 深度思考中...
+                        </div>
+                        <div class="whitespace-pre-wrap">{{ reasoningContent }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Input Area -->
+            <div
+                class="w-full interactive pb-8 pt-4 px-4 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent">
+                <div class="max-w-3xl mx-auto">
+                    <div
+                        class="glass-panel rounded-2xl p-2 flex flex-col gap-2 shadow-2xl shadow-violet-900/20 ring-1 ring-white/20">
+                        <textarea v-model="inputPrompt" @keydown.enter.ctrl="startGenerate"
+                            placeholder="输入你的初始想法、关键词或需求... (Ctrl + Enter 发送)"
+                            class="w-full bg-transparent text-white placeholder-slate-500 p-3 outline-none resize-none text-base min-h-[80px] rounded-xl focus:bg-white/5 transition"></textarea>
+
+                        <div class="flex justify-between items-center px-2 pb-1">
+                            <div class="text-xs text-slate-500 flex items-center gap-2">
+                                <span v-if="isGenerating" class="text-violet-400 flex items-center gap-1">
+                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                                    正在生成灵感碎片...
+                                </span>
+                                <span v-else>Ready to create.</span>
+                            </div>
+                            <button @click="startGenerate" :disabled="isGenerating || !inputPrompt.trim()"
+                                class="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                开始重组
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Settings Modal -->
+        <div v-if="showSettings"
+            class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 interactive">
+            <div class="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4 text-white">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full bg-slate-800 rounded-lg border-slate-700 border p-2 text-white focus:ring-2 focus:ring-violet-500 outline-none">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-400 px-4 py-2 hover:bg-slate-800 rounded-lg transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700 transition">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, nextTick, watch } = Vue;
+
+        createApp({
+            setup() {
+
+                // State
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+                const inputPrompt = ref('');
+                const reasoningContent = ref('');
+                const currentAnimation = ref('falling'); // 'falling' or 'assembly'
+                const textChunks = ref([]);
+
+                // Three.js State
+                let scene, camera, renderer;
+                let fragments = [];
+                let frameId;
+                const clock = new THREE.Clock();
+
+                // Computed
+                const currentAnimationName = ref('🌧️ 灵感雨 (Falling)');
+
+                // Methods
+                const setAnimation = (type) => {
+                    currentAnimation.value = type;
+                    const names = {
+                        'falling': '🌧️ 灵感雨 (Falling)',
+                        'assembly': '🌪️ 风中重组 (Assembly)',
+                        'spiral': '🧬 螺旋上升 (Spiral)',
+                        'galaxy': '🌌 星系漫游 (Galaxy)'
+                    };
+                    currentAnimationName.value = names[type] || type;
+                    isDropdownOpen.value = false; // Close dropdown
+
+                    // Clear existing fragments
+                    clearFragments();
+                    // Rebuild fragments from history
+                    textChunks.value.forEach(chunk => {
+                        addFragment(chunk);
+                    });
+                };
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                // Three.js Initialization
+                const initThree = () => {
+                    const container = document.getElementById('canvas-container');
+
+                    scene = new THREE.Scene();
+                    // Add some fog for depth
+                    scene.fog = new THREE.FogExp2(0x0f172a, 0.002);
+
+                    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                    camera.position.z = 50;
+
+                    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    renderer.setPixelRatio(window.devicePixelRatio);
+                    container.appendChild(renderer.domElement);
+
+                    // Lights
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                    scene.add(ambientLight);
+
+                    const pointLight = new THREE.PointLight(0x8b5cf6, 2, 100);
+                    pointLight.position.set(10, 10, 10);
+                    scene.add(pointLight);
+
+                    // Resize Handler
+                    window.addEventListener('resize', () => {
+                        camera.aspect = window.innerWidth / window.innerHeight;
+                        camera.updateProjectionMatrix();
+                        renderer.setSize(window.innerWidth, window.innerHeight);
+                    });
+
+                    animate();
+                };
+
+                const createTextTexture = (text) => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const fontSize = 48;
+                    ctx.font = `bold ${fontSize}px "Microsoft YaHei", sans-serif`;
+
+                    // Measure text
+                    const metrics = ctx.measureText(text);
+                    const textWidth = Math.ceil(metrics.width);
+                    const textHeight = Math.ceil(fontSize * 1.5); // Add some padding
+
+                    canvas.width = textWidth + 20;
+                    canvas.height = textHeight;
+
+                    // Redraw with correct size
+                    ctx.font = `bold ${fontSize}px "Microsoft YaHei", sans-serif`;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    // Add glow effect
+                    ctx.shadowColor = '#8b5cf6';
+                    ctx.shadowBlur = 10;
+
+                    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+                    const texture = new THREE.CanvasTexture(canvas);
+                    texture.minFilter = THREE.LinearFilter;
+                    return {
+                    texture, width: canvas.width / 20, height: canvas.height / 20 }; // Scale down for 3D units
+                };
+
+                // Dropdown State
+                const isDropdownOpen = ref(false);
+
+                // Layout Cursor for Assembly Mode
+                let layoutCursor = { x: -40, y: 20 };
+                const LINE_HEIGHT = 6;
+                const MAX_WIDTH = 40;
+
+                // Auto-Settle Timer
+                let settleTimer = null;
+
+                const addFragment = (text) => {
+                    const { texture, width, height } = createTextTexture(text);
+                    const geometry = new THREE.PlaneGeometry(width, height);
+                    const material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        side: THREE.DoubleSide,
+                        opacity: 0
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+
+                    // 1. Calculate Target Position (Reading Layout)
+                    // We calculate this immediately so we can transition to it later
+                    if (layoutCursor.x + width > MAX_WIDTH) {
+                        layoutCursor.x = -40;
+                        layoutCursor.y -= LINE_HEIGHT;
+                    }
+                    const targetX = layoutCursor.x + width / 2;
+                    const targetY = layoutCursor.y;
+                    layoutCursor.x += width + 0.2; // Add spacing
+
+                    const targetPos = new THREE.Vector3(targetX, targetY, 0);
+
+                    // 2. Initial Position based on Animation Type
+                    if (currentAnimation.value === 'falling') {
+                        mesh.position.x = (Math.random() - 0.5) * 80;
+                        mesh.position.y = 40 + Math.random() * 10;
+                        mesh.position.z = (Math.random() - 0.5) * 20;
+                        mesh.rotation.set((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5));
+
+                        mesh.userData = {
+                            velocity: new THREE.Vector3(0, -0.1 - Math.random() * 0.2, 0),
+                            rotationSpeed: new THREE.Vector3(Math.random() * 0.02, Math.random() * 0.02, Math.random() * 0.02),
+                            type: 'falling',
+                            targetPos: targetPos
+                        };
+                    } else if (currentAnimation.value === 'spiral') {
+                        const t = fragments.length * 0.5;
+                        mesh.position.x = Math.cos(t) * 20;
+                        mesh.position.y = -40 + (fragments.length * 0.5); // Rising spiral
+                        mesh.position.z = Math.sin(t) * 20;
+                        mesh.lookAt(0, mesh.position.y, 0);
+
+                        mesh.userData = {
+                            velocity: new THREE.Vector3(0, 0.05, 0),
+                            rotationSpeed: new THREE.Vector3(0, 0.02, 0),
+                            type: 'spiral',
+                            targetPos: targetPos
+                        };
+                    } else if (currentAnimation.value === 'galaxy') {
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = 10 + Math.random() * 30;
+                        mesh.position.x = Math.cos(angle) * radius;
+                        mesh.position.y = (Math.random() - 0.5) * 10;
+                        mesh.position.z = Math.sin(angle) * radius;
+                        mesh.rotation.y = angle;
+
+                        mesh.userData = {
+                            angle: angle,
+                            radius: radius,
+                            speed: 0.002 + Math.random() * 0.005,
+                            type: 'galaxy',
+                            targetPos: targetPos
+                        };
+                    } else {
+                        // Assembly (Directly go to target, maybe with slight offset)
+                        mesh.position.x = targetX + (Math.random() - 0.5) * 100;
+                        mesh.position.y = targetY + (Math.random() - 0.5) * 100;
+                        mesh.position.z = (Math.random() - 0.5) * 100;
+
+                        mesh.userData = {
+                            type: 'assembly',
+                            targetPos: targetPos
+                        };
+                    }
+
+                    scene.add(mesh);
+                    fragments.push(mesh);
+
+                    new TWEEN.Tween(mesh.material).to({ opacity: 1 }, 500).start();
+                };
+
+                const clearFragments = () => {
+                    fragments.forEach(f => scene.remove(f));
+                    fragments = [];
+                    layoutCursor = { x: -40, y: 20 };
+                };
+
+                // Animation Loop
+                const animate = () => {
+                    frameId = requestAnimationFrame(animate);
+                    TWEEN.update();
+
+                    // Check if we should settle (if not generating and timer passed)
+                    // Actually, let's use a global 'settling' flag or just check mode
+                    // If mode is 'assembly', we always settle.
+                    // If other modes, we settle if isGenerating is false AND some time passed?
+                    // User said: "Animation for a while, then reasonably display".
+                    // Let's make 'assembly' the state of "Settled".
+                    // When generation finishes, we can auto-switch to 'assembly' after N seconds.
+
+                    fragments.forEach((mesh) => {
+                        const type = currentAnimation.value;
+
+                        if (type === 'assembly') {
+                            // Move to Target
+                            mesh.position.lerp(mesh.userData.targetPos, 0.05);
+                            mesh.rotation.x += (0 - mesh.rotation.x) * 0.05;
+                            mesh.rotation.y += (0 - mesh.rotation.y) * 0.05;
+                            mesh.rotation.z += (0 - mesh.rotation.z) * 0.05;
+                        }
+                        else if (type === 'falling') {
+                            mesh.position.add(mesh.userData.velocity);
+                            mesh.rotation.x += mesh.userData.rotationSpeed.x;
+                            mesh.rotation.y += mesh.userData.rotationSpeed.y;
+                            mesh.rotation.z += mesh.userData.rotationSpeed.z;
+                            if (mesh.position.y < -40) {
+                                mesh.position.y = 40;
+                                mesh.position.x = (Math.random() - 0.5) * 80;
+                            }
+                        }
+                        else if (type === 'spiral') {
+                            mesh.position.y += 0.05;
+                            mesh.rotation.y += 0.02;
+                            if (mesh.position.y > 40) mesh.position.y = -40;
+                        }
+                        else if (type === 'galaxy') {
+                            mesh.userData.angle += mesh.userData.speed;
+                            mesh.position.x = Math.cos(mesh.userData.angle) * mesh.userData.radius;
+                            mesh.position.z = Math.sin(mesh.userData.angle) * mesh.userData.radius;
+                            mesh.lookAt(0, 0, 0);
+                        }
+                    });
+
+                    renderer.render(scene, camera);
+                };
+
+                // API Logic
+                const startGenerate = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!inputPrompt.value.trim()) return;
+
+                    isGenerating.value = true;
+                    reasoningContent.value = '';
+                    textChunks.value = [];
+
+                    // Reset timer
+                    if (settleTimer) clearTimeout(settleTimer);
+
+                    // If currently in 'assembly' (settled), switch to a dynamic mode for generation
+                    if (currentAnimation.value === 'assembly') {
+                        setAnimation('falling');
+                    } else {
+                        clearFragments();
+                    }
+
+                    const systemPrompt = "你是一个创意文案生成器。请根据用户的需求，生成一系列简短有力、富有画面感的文案片段。请不要输出长篇大论，而是输出一句句的'金句'或'灵感碎片'。";
+
+                    try {
+                        await callDeepSeek(systemPrompt, inputPrompt.value, true,
+                            (chunk) => {
+                                if (chunk) {
+                                    addFragment(chunk);
+                                    textChunks.value.push(chunk);
+                                }
+                            },
+                            (reasoning) => {
+                                reasoningContent.value += reasoning;
+                            }
+                        );
+
+                        // Auto-Settle after generation finishes
+                        settleTimer = setTimeout(() => {
+                            if (currentAnimation.value !== 'assembly') {
+                                // Smoothly transition to assembly
+                                currentAnimation.value = 'assembly';
+                                currentAnimationName.value = '🌪️ 风中重组 (Assembly)';
+                                // Note: We don't call setAnimation('assembly') because that clears fragments.
+                                // We just change the mode variable so the animate loop picks it up.
+                            }
+                        }, 3000); // Wait 3 seconds after generation
+
+                    } catch (e) {
+                        console.error(e);
+                        alert('生成失败: ' + e.message);
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const callDeepSeek = async (systemPrompt, userContent, stream = false, onChunk = null, onReasoning = null) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 未配置");
+
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: model.value,
+                                messages: [
+                                    { "role": "system", "content": systemPrompt },
+                                    { "role": "user", "content": userContent }
+                                ],
+                                stream: stream
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+
+                                    // Reasoning
+                                    const reasoning = json.choices[0].delta.reasoning_content;
+                                    if (reasoning && onReasoning) onReasoning(reasoning);
+
+                                    // Content
+                                    const content = json.choices[0].delta.content || "";
+                                    if (onChunk) onChunk(content);
+
+                                } catch (e) {
+                                    console.error("Stream parse error", e);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    try {
+                        const savedConfig = localStorage.getItem('global_llm_config');
+                        if (savedConfig) {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(savedConfig) };
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+
+                    initThree();
+
+                });
+
+                return {
+                    showSettings, apiConfig, model, isGenerating, inputPrompt, reasoningContent,
+                    saveConfig, startGenerate, currentAnimationName, setAnimation, isDropdownOpen
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/topic_creative_storm.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

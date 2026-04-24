@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>劳动纠纷指南 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#d97706',
+                        'primary-dark': '#b45309',
+                        'primary-light': '#f59e0b',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #f8fafc 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        .step-connector {
+            height: 2px;
+            flex: 1;
+            transition: background-color 0.4s ease;
+        }
+
+        @keyframes typing-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .typing-cursor::after {
+            content: '▋';
+            animation: typing-cursor 0.8s infinite;
+            color: #d97706;
+        }
+
+        .prose h1, .prose h2, .prose h3 { color: #1e293b; }
+        .prose h2 { font-size: 1.25rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .prose h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .prose p { color: #334155; line-height: 1.8; margin-bottom: 0.5rem; }
+        .prose ul, .prose ol { color: #334155; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+        .prose li { margin-bottom: 0.25rem; line-height: 1.7; }
+        .prose strong { color: #0f172a; }
+        .prose blockquote { border-left: 3px solid #d97706; padding-left: 1rem; color: #64748b; font-style: italic; margin: 1rem 0; }
+        .prose hr { border-color: #e2e8f0; margin: 1.5rem 0; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+        .prose th, .prose td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; font-size: 0.875rem; }
+        .prose th { background: #f8fafc; font-weight: 600; }
+
+        .dispute-card {
+            transition: all 0.25s ease;
+        }
+        .dispute-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px -8px rgba(217, 119, 6, 0.2);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="laborDisputeApp()" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-amber-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-amber-600 to-amber-800 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="gavel" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">劳动纠纷指南</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 劳动权益维护助手</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-amber-700 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-amber-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-amber-100 py-4">
+            <div class="max-w-3xl mx-auto px-4 flex items-center">
+                <template x-for="(step, idx) in steps" :key="idx">
+                    <div class="flex items-center" :class="idx < steps.length - 1 ? 'flex-1' : ''">
+                        <div class="flex items-center gap-2 cursor-pointer" @click="canGoToStep(idx) && goToStep(idx)">
+                            <div :class="[
+                                'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300',
+                                currentStep === idx ? 'bg-amber-600 text-white shadow-lg scale-110' :
+                                currentStep > idx ? 'bg-emerald-500 text-white' :
+                                'bg-slate-200 text-slate-500'
+                            ]">
+                                <template x-if="currentStep > idx">
+                                    <i data-lucide="check" class="w-4 h-4"></i>
+                                </template>
+                                <template x-if="currentStep <= idx">
+                                    <span x-text="idx + 1"></span>
+                                </template>
+                            </div>
+                            <span :class="[
+                                'text-sm font-medium hidden sm:inline transition-colors',
+                                currentStep === idx ? 'text-amber-800' :
+                                currentStep > idx ? 'text-emerald-600' : 'text-slate-400'
+                            ]" x-text="step.name"></span>
+                        </div>
+                        <div x-show="idx < steps.length - 1"
+                            :class="['step-connector mx-3', currentStep > idx ? 'bg-emerald-400' : 'bg-slate-200']">
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 错误消息 -->
+        <div x-show="errorMsg" x-transition
+            class="max-w-5xl mx-auto px-4 mt-4">
+            <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-2 text-red-700 text-sm">
+                <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+                <span x-text="errorMsg"></span>
+                <button @click="errorMsg = ''" class="ml-auto text-red-400 hover:text-red-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow overflow-y-auto">
+            <div class="max-w-5xl mx-auto px-4 py-6">
+
+                <!-- ============ 步骤1：填写纠纷信息 ============ -->
+                <div x-show="currentStep === 0" x-transition class="animate-fade-in space-y-5">
+                    <!-- 纠纷类型选择 -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+                        <div class="p-6 border-b border-amber-50">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="list-checks" class="w-5 h-5 text-amber-600"></i>
+                                选择纠纷类型
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">请选择您遇到的劳动纠纷类型</p>
+                        </div>
+                        <div class="p-6">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <template x-for="dt in disputeTypes" :key="dt.value">
+                                    <button @click="input.disputeType = dt.value"
+                                        :class="[
+                                            'dispute-card flex flex-col items-center gap-2 p-4 rounded-xl border-2 text-center',
+                                            input.disputeType === dt.value
+                                                ? 'border-amber-500 bg-amber-50 shadow-md'
+                                                : 'border-slate-200 bg-white hover:border-amber-300'
+                                        ]">
+                                        <span class="text-2xl" x-text="dt.icon"></span>
+                                        <span :class="[
+                                            'text-sm font-semibold',
+                                            input.disputeType === dt.value ? 'text-amber-800' : 'text-slate-700'
+                                        ]" x-text="dt.label"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 详细信息 -->
+                    <div x-show="input.disputeType" x-transition class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+                        <div class="p-6 border-b border-amber-50">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="file-text" class="w-5 h-5 text-amber-600"></i>
+                                填写纠纷详情
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">详细信息有助于 AI 给出更精准的法律分析</p>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div class="space-y-1.5">
+                                <label class="font-semibold text-sm text-slate-700">纠纷详细描述 <span class="text-red-500">*</span></label>
+                                <textarea x-model="input.description" rows="5"
+                                    placeholder="请详细描述您遇到的劳动纠纷情况，包括：事件经过、时间节点、争议焦点等。描述越详细，AI 分析越准确。"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition resize-none leading-relaxed"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="space-y-1.5">
+                                    <label class="font-semibold text-sm text-slate-700">工作年限 <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="input.employmentDuration"
+                                        placeholder="例：3年6个月"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="font-semibold text-sm text-slate-700">月薪（税前）<span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="input.monthlySalary"
+                                        placeholder="例：15000元"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="font-semibold text-sm text-slate-700">所在城市 <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="input.location"
+                                        placeholder="例：北京 / 上海浦东"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+                                </div>
+                            </div>
+
+                            <!-- 下一步按钮 -->
+                            <button @click="analyzeLaws"
+                                :disabled="!canProceedStep1 || isLoading"
+                                class="w-full bg-gradient-to-r from-amber-600 to-amber-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                                <template x-if="isLoading">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                        正在分析适用法条...
+                                    </span>
+                                </template>
+                                <template x-if="!isLoading">
+                                    <span class="flex items-center gap-2">
+                                        <i data-lucide="scale" class="w-5 h-5"></i>
+                                        AI 法条分析
+                                    </span>
+                                </template>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤2：AI法条分析 ============ -->
+                <div x-show="currentStep === 1" x-transition class="animate-fade-in space-y-5">
+                    <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+                        <div class="p-6 border-b border-amber-50 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <i data-lucide="book-open" class="w-5 h-5 text-amber-600"></i>
+                                    AI 法条分析
+                                </h2>
+                                <p class="text-sm text-slate-500 mt-1">适用的劳动法律法规及条文解读</p>
+                            </div>
+                            <div x-show="!isLoading && lawAnalysis" class="flex items-center gap-2">
+                                <button @click="copyText(lawAnalysis)" class="text-slate-500 hover:text-amber-700 p-2 rounded-lg hover:bg-amber-50 transition" title="复制">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- 加载中 -->
+                            <div x-show="isLoading && !lawAnalysis" class="flex flex-col items-center justify-center py-12 text-slate-500">
+                                <div class="relative mb-6">
+                                    <div class="w-20 h-20 rounded-full border-4 border-amber-100 border-t-amber-600 animate-spin"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <i data-lucide="book-open" class="w-8 h-8 text-amber-600"></i>
+                                    </div>
+                                </div>
+                                <p class="text-lg font-semibold text-slate-700">正在检索适用法条...</p>
+                                <p class="text-sm text-slate-400 mt-1">AI 正在分析相关劳动法律法规</p>
+                            </div>
+
+                            <!-- 深度思考 -->
+                            <details x-show="lawReasoning" class="mb-4">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-amber-700 flex items-center gap-1">
+                                    <i data-lucide="brain" class="w-4 h-4"></i>
+                                    深度思考过程（点击展开）
+                                </summary>
+                                <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm text-slate-600 whitespace-pre-wrap max-h-64 overflow-y-auto" x-text="lawReasoning"></div>
+                            </details>
+
+                            <!-- 结果渲染 -->
+                            <div x-show="lawAnalysis" :class="['prose max-w-none', isLoading ? 'typing-cursor' : '']" x-html="renderMarkdown(lawAnalysis)"></div>
+
+                            <!-- 空态 -->
+                            <div x-show="!isLoading && !lawAnalysis" class="flex flex-col items-center justify-center py-12 text-slate-400">
+                                <i data-lucide="file-question" class="w-16 h-16 mb-4 opacity-50"></i>
+                                <p>暂无法条分析结果</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex gap-3">
+                        <button @click="currentStep = 0"
+                            class="flex-shrink-0 px-6 py-3.5 rounded-xl border-2 border-slate-300 text-slate-600 font-semibold hover:bg-slate-100 transition flex items-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 上一步
+                        </button>
+                        <button @click="analyzeRightsPath"
+                            :disabled="!lawAnalysis || isLoading"
+                            class="flex-1 bg-gradient-to-r from-amber-600 to-amber-800 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                            <i data-lucide="route" class="w-5 h-5"></i>
+                            生成维权路径
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤3：AI维权路径 ============ -->
+                <div x-show="currentStep === 2" x-transition class="animate-fade-in space-y-5">
+                    <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+                        <div class="p-6 border-b border-amber-50 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <i data-lucide="route" class="w-5 h-5 text-amber-600"></i>
+                                    AI 维权路径
+                                </h2>
+                                <p class="text-sm text-slate-500 mt-1">从协商到诉讼的完整维权步骤指南</p>
+                            </div>
+                            <div x-show="!isLoading && rightsPath" class="flex items-center gap-2">
+                                <button @click="copyText(rightsPath)" class="text-slate-500 hover:text-amber-700 p-2 rounded-lg hover:bg-amber-50 transition" title="复制">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- 加载中 -->
+                            <div x-show="isLoading && !rightsPath" class="flex flex-col items-center justify-center py-12 text-slate-500">
+                                <div class="relative mb-6">
+                                    <div class="w-20 h-20 rounded-full border-4 border-amber-100 border-t-amber-600 animate-spin"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <i data-lucide="route" class="w-8 h-8 text-amber-600"></i>
+                                    </div>
+                                </div>
+                                <p class="text-lg font-semibold text-slate-700">正在规划维权路径...</p>
+                                <p class="text-sm text-slate-400 mt-1">AI 正在生成详细的维权步骤指南</p>
+                            </div>
+
+                            <!-- 深度思考 -->
+                            <details x-show="pathReasoning" class="mb-4">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-amber-700 flex items-center gap-1">
+                                    <i data-lucide="brain" class="w-4 h-4"></i>
+                                    深度思考过程（点击展开）
+                                </summary>
+                                <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm text-slate-600 whitespace-pre-wrap max-h-64 overflow-y-auto" x-text="pathReasoning"></div>
+                            </details>
+
+                            <!-- 结果渲染 -->
+                            <div x-show="rightsPath" :class="['prose max-w-none', isLoading ? 'typing-cursor' : '']" x-html="renderMarkdown(rightsPath)"></div>
+
+                            <!-- 空态 -->
+                            <div x-show="!isLoading && !rightsPath" class="flex flex-col items-center justify-center py-12 text-slate-400">
+                                <i data-lucide="file-question" class="w-16 h-16 mb-4 opacity-50"></i>
+                                <p>暂无维权路径分析</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex gap-3">
+                        <button @click="currentStep = 1; $nextTick(() => lucide.createIcons())"
+                            class="flex-shrink-0 px-6 py-3.5 rounded-xl border-2 border-slate-300 text-slate-600 font-semibold hover:bg-slate-100 transition flex items-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 上一步
+                        </button>
+                        <button @click="generateDocuments"
+                            :disabled="!rightsPath || isLoading"
+                            class="flex-1 bg-gradient-to-r from-amber-600 to-amber-800 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                            <i data-lucide="file-check" class="w-5 h-5"></i>
+                            生成材料清单与模板
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤4：AI材料清单+模板 ============ -->
+                <div x-show="currentStep === 3" x-transition class="animate-fade-in space-y-5">
+                    <!-- 免责声明（醒目） -->
+                    <div class="bg-red-50 border-2 border-red-200 rounded-2xl p-5 flex items-start gap-3">
+                        <div class="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-red-800 mb-1">重要免责声明</h3>
+                            <p class="text-sm text-red-700 leading-relaxed">
+                                本工具生成的所有内容（法条分析、维权路径、材料模板）<strong>仅供参考，不构成法律建议</strong>。
+                                每个案件的具体情况不同，建议您咨询专业律师或联系当地劳动仲裁部门（劳动人事争议仲裁委员会）获取专业指导。
+                                法律法规可能随时更新，请以最新法规为准。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+                        <div class="p-6 border-b border-amber-50 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <i data-lucide="file-check" class="w-5 h-5 text-amber-600"></i>
+                                    材料清单与申请模板
+                                </h2>
+                                <p class="text-sm text-slate-500 mt-1">所需文件清单及投诉/申请书模板</p>
+                            </div>
+                            <div x-show="!isLoading && documentsContent" class="flex items-center gap-2">
+                                <button @click="copyText(documentsContent)" class="text-slate-500 hover:text-amber-700 p-2 rounded-lg hover:bg-amber-50 transition" title="复制">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- 加载中 -->
+                            <div x-show="isLoading && !documentsContent" class="flex flex-col items-center justify-center py-12 text-slate-500">
+                                <div class="relative mb-6">
+                                    <div class="w-20 h-20 rounded-full border-4 border-amber-100 border-t-amber-600 animate-spin"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <i data-lucide="file-check" class="w-8 h-8 text-amber-600"></i>
+                                    </div>
+                                </div>
+                                <p class="text-lg font-semibold text-slate-700">正在生成材料清单...</p>
+                                <p class="text-sm text-slate-400 mt-1">AI 正在准备所需文件和申请模板</p>
+                            </div>
+
+                            <!-- 深度思考 -->
+                            <details x-show="docsReasoning" class="mb-4">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-amber-700 flex items-center gap-1">
+                                    <i data-lucide="brain" class="w-4 h-4"></i>
+                                    深度思考过程（点击展开）
+                                </summary>
+                                <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm text-slate-600 whitespace-pre-wrap max-h-64 overflow-y-auto" x-text="docsReasoning"></div>
+                            </details>
+
+                            <!-- 结果渲染 -->
+                            <div x-show="documentsContent" :class="['prose max-w-none', isLoading ? 'typing-cursor' : '']" x-html="renderMarkdown(documentsContent)"></div>
+
+                            <!-- 空态 -->
+                            <div x-show="!isLoading && !documentsContent" class="flex flex-col items-center justify-center py-12 text-slate-400">
+                                <i data-lucide="file-question" class="w-16 h-16 mb-4 opacity-50"></i>
+                                <p>暂无材料清单</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex flex-wrap gap-3">
+                        <button @click="currentStep = 2; $nextTick(() => lucide.createIcons())"
+                            class="flex-shrink-0 px-6 py-3.5 rounded-xl border-2 border-slate-300 text-slate-600 font-semibold hover:bg-slate-100 transition flex items-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 上一步
+                        </button>
+                        <button @click="exportAllMarkdown"
+                            :disabled="isLoading"
+                            class="flex-1 bg-gradient-to-r from-amber-600 to-amber-800 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            导出完整报告 (Markdown)
+                        </button>
+                        <button @click="resetAll"
+                            class="flex-shrink-0 px-6 py-3.5 rounded-xl border-2 border-amber-300 text-amber-700 font-semibold hover:bg-amber-50 transition flex items-center gap-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新开始
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toastMsg" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl text-sm font-medium z-[200] flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+            <span x-text="toastMsg"></span>
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div x-show="showSettings" x-transition class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-amber-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div class="space-y-1.5">
+                        <label class="block text-sm font-medium text-slate-700">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="block text-sm font-medium text-slate-700">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition text-sm font-medium">
+                        取消
+                    </button>
+                    <button @click="saveConfig"
+                        class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-lg transition text-sm font-medium">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    function laborDisputeApp() {
+        return {
+            /* ===== 步骤定义 ===== */
+            steps: [
+                { name: '纠纷信息' },
+                { name: 'AI法条分析' },
+                { name: 'AI维权路径' },
+                { name: '材料清单+模板' }
+            ],
+            currentStep: 0,
+
+            /* ===== 纠纷类型 ===== */
+            disputeTypes: [
+                { value: '拖欠工资', label: '拖欠工资', icon: '💰' },
+                { value: '违法解雇', label: '违法解雇', icon: '🚪' },
+                { value: '工伤赔偿', label: '工伤赔偿', icon: '🏥' },
+                { value: '加班费争议', label: '加班费争议', icon: '⏰' },
+                { value: '社保公积金', label: '社保公积金', icon: '🏦' },
+                { value: '竞业限制', label: '竞业限制', icon: '📋' },
+                { value: '劳动合同纠纷', label: '劳动合同纠纷', icon: '📝' },
+                { value: '其他', label: '其他', icon: '❓' }
+            ],
+
+            /* ===== 用户输入 ===== */
+            input: {
+                disputeType: '',
+                description: '',
+                employmentDuration: '',
+                monthlySalary: '',
+                location: ''
+            },
+
+            /* ===== AI 生成结果 ===== */
+            lawAnalysis: '',
+            lawReasoning: '',
+            rightsPath: '',
+            pathReasoning: '',
+            documentsContent: '',
+            docsReasoning: '',
+
+            /* ===== UI 状态 ===== */
+            isLoading: false,
+            errorMsg: '',
+            toastMsg: '',
+            showSettings: false,
+
+            /* ===== API 配置 ===== */
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            /* ===== 计算属性：步骤1是否可以继续 ===== */
+            get canProceedStep1() {
+                return this.input.disputeType &&
+                       this.input.description.trim().length >= 10 &&
+                       this.input.employmentDuration.trim() &&
+                       this.input.monthlySalary.trim() &&
+                       this.input.location.trim();
+            },
+
+            /* ===== 初始化 ===== */
+            init() {
+                const saved = localStorage.getItem('global_llm_config');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    } catch (e) { /* 忽略解析失败 */ }
+                }
+                this.$nextTick(() => { lucide.createIcons(); });
+            },
+
+            /* ===== 保存配置（合并策略） ===== */
+            saveConfig() {
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                localStorage.setItem('global_llm_config', JSON.stringify({
+                    ...current,
+                    deepseek: this.apiConfig.deepseek,
+                    model: this.apiConfig.model
+                }));
+                this.showSettings = false;
+                this.showToast('配置已保存');
+            },
+
+            /* ===== 步骤导航 ===== */
+            canGoToStep(idx) {
+                return idx < this.currentStep;
+            },
+            goToStep(idx) {
+                if (this.canGoToStep(idx)) {
+                    this.currentStep = idx;
+                    this.$nextTick(() => { lucide.createIcons(); });
+                }
+            },
+
+            /* ===== 构建用户情况摘要 ===== */
+            _buildCaseSummary() {
+                return `纠纷类型：${this.input.disputeType}
+详细描述：${this.input.description}
+工作年限：${this.input.employmentDuration}
+月薪（税前）：${this.input.monthlySalary}
+所在城市：${this.input.location}`;
+            },
+
+            /* ===== 步骤1 → 步骤2：法条分析（流式） ===== */
+            async analyzeLaws() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isLoading = true;
+                this.errorMsg = '';
+                this.lawAnalysis = '';
+                this.lawReasoning = '';
+                this.currentStep = 1;
+                this.$nextTick(() => { lucide.createIcons(); });
+
+                const systemPrompt = `你是一位精通中国劳动法律法规的资深劳动法律师。请根据用户描述的劳动纠纷情况，进行全面的法条分析。
+
+分析要求：
+1. **适用法律法规**：明确列出所有相关的法律法规名称（如《中华人民共和国劳动法》《劳动合同法》《工伤保险条例》《劳动争议调解仲裁法》《社会保险法》《最高人民法院关于审理劳动争议案件适用法律问题的解释》等）
+2. **关键条文解读**：列出每部法律中直接相关的条文编号和原文要点，并用通俗易懂的语言解释其含义和适用情形
+3. **权利义务分析**：基于法条，分析劳动者在该情形下的具体权利和用人单位的法定义务
+4. **赔偿标准**：如涉及赔偿，列出法定计算方式和参考标准（如N+1、2N、工伤等级赔偿等）
+5. **时效提醒**：提醒相关的仲裁时效（一般为1年）和诉讼时效
+
+请使用 Markdown 格式输出，结构清晰，每部分使用 ## 或 ### 标题。重点条文请加粗标注。`;
+
+                const userPrompt = `请分析以下劳动纠纷涉及的法律法规：
+
+${this._buildCaseSummary()}
+
+请详细列出适用法条并用通俗语言解读。`;
+
+                await this._streamCall(systemPrompt, userPrompt, 'law');
+            },
+
+            /* ===== 步骤2 → 步骤3：维权路径（流式） ===== */
+            async analyzeRightsPath() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isLoading = true;
+                this.errorMsg = '';
+                this.rightsPath = '';
+                this.pathReasoning = '';
+                this.currentStep = 2;
+                this.$nextTick(() => { lucide.createIcons(); });
+
+                const systemPrompt = `你是一位经验丰富的劳动争议维权顾问。请根据用户的劳动纠纷情况和适用法条，生成一份完整的分步维权指南。
+
+维权路径必须按以下四个阶段逐一详细说明：
+
+## 第一阶段：协商（与用人单位直接沟通）
+- 协商的策略和技巧
+- 协商要点和底线
+- 需要保留的证据
+- 预期时间和成功因素
+
+## 第二阶段：劳动监察投诉（向劳动行政部门投诉举报）
+- 投诉渠道（线上线下）和受理部门
+- 所需材料清单
+- 办理流程和时间线
+- 适用情形和成功因素
+
+## 第三阶段：劳动仲裁（向劳动人事争议仲裁委员会申请仲裁）
+- 申请条件和管辖
+- 所需材料和费用
+- 仲裁流程详解（申请→受理→开庭→裁决）
+- 时间线（从申请到裁决通常45-60天）
+- 关键成功因素和注意事项
+
+## 第四阶段：法院诉讼（向人民法院起诉）
+- 起诉条件（需先经仲裁前置）
+- 管辖法院
+- 起诉材料和费用
+- 诉讼流程和时间线
+- 关键成功因素
+
+对每个阶段，请同时说明：所在城市（${this.input.location}）的具体办理地点或咨询电话（如有通用信息可提供）。
+
+请使用 Markdown 格式，结构清晰。`;
+
+                const userPrompt = `请为以下劳动纠纷生成详细的维权路径指南：
+
+${this._buildCaseSummary()}
+
+【已分析的适用法条】
+${this.lawAnalysis}
+
+请按协商→劳动监察→劳动仲裁→法院诉讼四个阶段详细说明。`;
+
+                await this._streamCall(systemPrompt, userPrompt, 'path');
+            },
+
+            /* ===== 步骤3 → 步骤4：材料清单+模板（流式） ===== */
+            async generateDocuments() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isLoading = true;
+                this.errorMsg = '';
+                this.documentsContent = '';
+                this.docsReasoning = '';
+                this.currentStep = 3;
+                this.$nextTick(() => { lucide.createIcons(); });
+
+                const systemPrompt = `你是一位专业的劳动争议法律文书撰写专家。请根据用户的劳动纠纷情况，完成以下两项任务：
+
+## 任务一：完整材料清单
+列出从协商到仲裁/诉讼各阶段需要准备的所有证据材料和文书，包括：
+1. **证据材料**：劳动合同、工资流水、考勤记录、工作证、社保缴纳记录等（按获取难度标注优先级）
+2. **法律文书**：投诉书、仲裁申请书、起诉状等
+3. **辅助材料**：身份证复印件、企业工商信息等
+4. 对每份材料说明：用途、获取方式、注意事项
+
+## 任务二：申请/投诉书模板
+根据用户的具体情况（纠纷类型、个人信息、诉求），起草一份可直接使用的劳动仲裁申请书（或劳动监察投诉书）模板，包含：
+- 申请人/投诉人信息（用占位符标注需填写内容）
+- 被申请人/被投诉人信息
+- 仲裁请求/投诉事项（具体化、可量化）
+- 事实与理由（条理清晰，引用法条）
+- 证据清单
+- 落款格式
+
+注意：
+- 模板中需要用户自行填写的信息用【】标注，如【姓名】【身份证号】
+- 金额计算请给出公式和示例
+- 末尾必须加上醒目提示：「⚠️ 以上内容仅供参考，不构成法律建议，建议咨询专业律师或当地劳动仲裁部门。」
+
+请使用 Markdown 格式输出。`;
+
+                const userPrompt = `请为以下劳动纠纷生成完整的材料清单和申请书模板：
+
+${this._buildCaseSummary()}
+
+【适用法条】
+${this.lawAnalysis}
+
+【维权路径】
+${this.rightsPath}
+
+请生成详细的材料清单和可直接使用的仲裁申请书/投诉书模板。`;
+
+                await this._streamCall(systemPrompt, userPrompt, 'docs');
+            },
+
+            /* ===== 流式调用核心方法 ===== */
+            async _streamCall(systemPrompt, userPrompt, target) {
+                try {
+                    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    /* 处理 V4 Pro 推理内容 */
+                                    if (delta.reasoning_content) {
+                                        if (target === 'law') this.lawReasoning += delta.reasoning_content;
+                                        else if (target === 'path') this.pathReasoning += delta.reasoning_content;
+                                        else if (target === 'docs') this.docsReasoning += delta.reasoning_content;
+                                    }
+
+                                    /* 处理正文内容 */
+                                    if (delta.content) {
+                                        if (target === 'law') this.lawAnalysis += delta.content;
+                                        else if (target === 'path') this.rightsPath += delta.content;
+                                        else if (target === 'docs') this.documentsContent += delta.content;
+                                    }
+                                } catch (e) { /* 跳过解析错误 */ }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('流式请求失败:', e);
+                    this.errorMsg = '生成失败：' + e.message;
+                    setTimeout(() => { this.errorMsg = ''; }, 6000);
+                } finally {
+                    this.isLoading = false;
+                    this.$nextTick(() => { lucide.createIcons(); });
+                }
+            },
+
+            /* ===== Markdown 渲染 ===== */
+            renderMarkdown(text) {
+                if (!text) return '';
+                try {
+                    return marked.parse(text);
+                } catch (e) {
+                    return text;
+                }
+            },
+
+            /* ===== 复制文本 ===== */
+            async copyText(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    this.showToast('已复制到剪贴板');
+                } catch (e) {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    this.showToast('已复制到剪贴板');
+                }
+            },
+
+            /* ===== 导出完整 Markdown 报告 ===== */
+            exportAllMarkdown() {
+                const disputeLabel = this.input.disputeType;
+                let md = `# 劳动纠纷维权指南\n\n`;
+                md += `> 生成时间：${new Date().toLocaleString('zh-CN')}\n\n`;
+                md += `---\n\n`;
+
+                md += `## 📋 案件基本信息\n\n`;
+                md += `| 项目 | 内容 |\n`;
+                md += `|------|------|\n`;
+                md += `| 纠纷类型 | ${disputeLabel} |\n`;
+                md += `| 工作年限 | ${this.input.employmentDuration} |\n`;
+                md += `| 月薪（税前） | ${this.input.monthlySalary} |\n`;
+                md += `| 所在城市 | ${this.input.location} |\n\n`;
+                md += `### 纠纷详情\n\n${this.input.description}\n\n`;
+                md += `---\n\n`;
+
+                if (this.lawAnalysis) {
+                    md += `## ⚖️ 法条分析\n\n${this.lawAnalysis}\n\n---\n\n`;
+                }
+
+                if (this.rightsPath) {
+                    md += `## 🛤️ 维权路径\n\n${this.rightsPath}\n\n---\n\n`;
+                }
+
+                if (this.documentsContent) {
+                    md += `## 📄 材料清单与申请模板\n\n${this.documentsContent}\n\n---\n\n`;
+                }
+
+                md += `## ⚠️ 免责声明\n\n`;
+                md += `本报告由 AI 生成，**仅供参考，不构成法律建议**。每个案件的具体情况不同，建议咨询专业律师或联系当地劳动仲裁部门获取专业指导。法律法规可能随时更新，请以最新法规为准。\n`;
+
+                const filename = `劳动纠纷指南_${disputeLabel}_${this.input.location}_${new Date().toISOString().slice(0, 10)}.md`;
+                this._download(md, filename, 'text/markdown');
+                this.showToast('完整报告已导出');
+            },
+
+            /* ===== 下载文件辅助 ===== */
+            _download(content, filename, mime) {
+                const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+
+            /* ===== Toast 提示 ===== */
+            showToast(msg) {
+                this.toastMsg = msg;
+                setTimeout(() => { this.toastMsg = ''; }, 2500);
+            },
+
+            /* ===== 重置所有 ===== */
+            resetAll() {
+                this.currentStep = 0;
+                this.input = {
+                    disputeType: '',
+                    description: '',
+                    employmentDuration: '',
+                    monthlySalary: '',
+                    location: ''
+                };
+                this.lawAnalysis = '';
+                this.lawReasoning = '';
+                this.rightsPath = '';
+                this.pathReasoning = '';
+                this.documentsContent = '';
+                this.docsReasoning = '';
+                this.errorMsg = '';
+                this.$nextTick(() => { lucide.createIcons(); });
+            }
+        };
+    }
+    </script>
+</body>
+</html>

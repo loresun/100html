@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Frappe Charts 图表</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/frappe-charts@1.6.1/dist/frappe-charts.min.iife.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fff1f2; color: #881337; }
+    .glass { background: white; border: 1px solid #fecdd3; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.05); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-rose-900">📊 Frappe Charts</h1>
+    <p class="text-rose-800/60 mt-2 text-lg">受 GitHub 启发的轻量级 SVG 图表库，零依赖</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-rose-200 text-rose-800 rounded-lg hover:bg-rose-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-8">
+
+  <!-- Type 1: Bar Chart -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-rose-900 mb-4">月度贡献 (Bar)</h3>
+    <div id="chart-bar"></div>
+    <div class="mt-4 flex gap-2 justify-center">
+      <button onclick="updateData()" class="px-3 py-1 bg-rose-100 text-rose-700 rounded text-sm font-bold hover:bg-rose-200">更新数据</button>
+      <button onclick="chartBar.export()" class="px-3 py-1 bg-white border border-rose-200 text-rose-700 rounded text-sm hover:bg-rose-50">导出 SVG</button>
+    </div>
+  </div>
+
+  <!-- Type 2: Heatmap -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-rose-900 mb-4">活动热力图 (GitHub Style)</h3>
+    <div id="chart-heatmap"></div>
+  </div>
+
+  <!-- Type 3: Line Chart -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-rose-900 mb-4">趋势分析 (Line)</h3>
+    <div id="chart-line"></div>
+  </div>
+
+</main>
+
+<script>
+  // 1. Bar Chart
+  const dataBar = {
+    labels: ["12am-3am", "3am-6pm", "6am-9am", "9am-12am", "12pm-3pm", "3pm-6pm", "6pm-9pm", "9am-12am"],
+    datasets: [
+        { name: "Some Data", type: "bar", values: [25, 40, 30, 35, 8, 52, 17, -4] },
+        { name: "Another Set", type: "line", values: [25, 50, -10, 15, 18, 32, 27, 14] }
+    ]
+  };
+
+  const chartBar = new data.frappe.Chart("#chart-bar", { // Note: cdn wraps in data object usually not for iife? check
+    // Direct global FrappeChart usually
+    title: "My Awesome Chart",
+    data: dataBar,
+    type: 'axis-mixed', // or 'bar', 'line', 'scatter', 'pie', 'percentage'
+    height: 250,
+    colors: ['#7cd6fd', '#743ee2']
+  });
+  
+  // Correction: CDN iife exposes `frappe.Chart` or just `Chart`. 
+  // Let's protect against namespace issues by checking window.frappe
+  let ChartC = window.frappe ? window.frappe.Chart : window.Chart;
+
+  // Re-init with correct constructor if needed
+  if(!chartBar.parent) {
+     document.getElementById('chart-bar').innerHTML = '';
+     window.chartBar = new ChartC("#chart-bar", {
+        data: dataBar,
+        type: 'axis-mixed',
+        height: 250,
+        colors: ['#fb7185', '#e11d48']
+     });
+  }
+
+  function updateData() {
+    const newValues = dataBar.datasets[0].values.map(v => Math.floor(Math.random() * 50));
+    window.chartBar.update({
+        labels: dataBar.labels,
+        datasets: [{ name: "Some Data", type: "bar", values: newValues }]
+    });
+  }
+
+
+  // 2. Heatmap
+  const today = new Date();
+  const dataHeatmap = {};
+  for(let i=0; i<365; i++) {
+     const d = new Date(today);
+     d.setDate(d.getDate() - i);
+     dataHeatmap[Math.floor(d.getTime()/1000)] = Math.floor(Math.random() * 5);
+  }
+
+  new ChartC("#chart-heatmap", {
+    type: 'heatmap',
+    data: {
+        dataPoints: dataHeatmap,
+        start: new Date(today.getFullYear(), 0, 1),
+        end: new Date(today.getFullYear(), 11, 31)
+    },
+    countLabel: 'Commits',
+    colors: ['#ffe4e6', '#fda4af', '#fb7185', '#f43f5e', '#e11d48'] // Rose theme
+  });
+
+  // 3. Line
+  new ChartC("#chart-line", {
+    type: 'line',
+    data: {
+        labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        datasets: [
+            { name: "S1", values: [18, 40, 30, 35, 8, 52, 17] },
+            { name: "S2", values: [30, 50, 10, 15, 18, 32, 27] }
+        ]
+    },
+    colors: ['#f43f5e', '#881337']
+  });
+
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

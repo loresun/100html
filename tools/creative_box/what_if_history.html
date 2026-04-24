@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHAT IF 历史推演器 - AI 创意生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #f7f8fa; }
+        .linear-button { background-color: #5E6AD2; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 500; transition: background-color 0.2s; }
+        .linear-button:hover { background-color: #4a54a8; }
+        .linear-button:disabled { background-color: #a5b4fc; cursor: not-allowed; }
+        .input-field { border: 1px solid #E1E5E9; border-radius: 8px; padding: 12px 16px; width: 100%; transition: border-color 0.2s, box-shadow 0.2s; }
+        .input-field:focus { outline: none; border-color: #5E6AD2; box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.2); }
+        #settings-panel { transition: transform 0.3s ease-in-out; transform: translateX(100%); }
+        #settings-panel.open { transform: translateX(0); }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 10px 20px; border-radius: 8px; z-index: 1000; opacity: 0; transition: opacity 0.3s, transform 0.3s; }
+        .toast.show { opacity: 1; transform: translate(-50%, -10px); }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #5E6AD2; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .result-container { background-color: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05); border: 1px solid #e5e7eb; padding: 24px; transition: all 0.3s; }
+        .example-tag { background-color: #eef2ff; color: #4338ca; padding: 4px 12px; border-radius: 999px; font-size: 0.875rem; cursor: pointer; transition: background-color 0.2s; }
+        .example-tag:hover { background-color: #e0e7ff; }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 { font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; }
+        .markdown-content h1 { font-size: 1.75rem; }
+        .markdown-content h2 { font-size: 1.5rem; }
+        .markdown-content h3 { font-size: 1.25rem; }
+        .markdown-content p { margin-bottom: 1em; line-height: 1.7; }
+        .markdown-content ul { list-style-type: disc; padding-left: 2em; margin-bottom: 1em; }
+        .markdown-content strong { font-weight: 600; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">
+                <i class="fa-solid fa-gavel text-indigo-500"></i>
+                "WHAT IF" 历史推演器
+            </h1>
+            <button id="settings-btn" class="text-gray-600 hover:text-indigo-500 transition-colors">
+                <i class="fa-solid fa-gear fa-lg"></i>
+            </button>
+        </header>
+
+        <!-- Input Section -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
+            <h2 class="text-xl font-bold mb-4 text-gray-700">提出一个改变历史的关键节点</h2>
+            <p class="text-gray-500 mb-4">AI将扮演来自该平行宇宙的历史学家，为你系统阐述这个世界的样貌。</p>
+            <textarea id="what-if-input" class="input-field" rows="3" placeholder="例如：如果罗马帝国从未衰落..."></textarea>
+            <div class="mt-4 space-x-2">
+                <span class="example-tag">如果郑和的船队继续航行并发现了美洲...</span>
+                <span class="example-tag">如果第二次世界大战的结果不同...</span>
+                <span class="example-tag">如果互联网没有被发明...</span>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="generate-btn" class="linear-button text-lg">
+                    <i class="fa-solid fa-feather-pointed mr-2"></i>开始推演
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="result-wrapper" class="hidden">
+             <div id="loader" class="text-center py-10 hidden">
+                <div class="spinner mx-auto"></div>
+                <p class="mt-4 text-gray-600">正在穿越时空，构建平行宇宙的历史...</p>
+            </div>
+            <div id="result-container" class="result-container hidden">
+                <div class="flex justify-between items-start">
+                    <h2 id="result-title" class="text-2xl font-bold text-indigo-600 mb-4"></h2>
+                    <div>
+                        <button id="copy-btn" class="text-gray-500 hover:text-indigo-500" title="复制结果"><i class="fa-solid fa-copy"></i></button>
+                        <button id="download-btn" class="text-gray-500 hover:text-indigo-500 ml-2" title="下载为Markdown"><i class="fa-solid fa-download"></i></button>
+                    </div>
+                </div>
+                <div id="result-output" class="markdown-content text-gray-800 leading-relaxed space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settings-panel" class="fixed top-0 right-0 h-full w-96 bg-white shadow-lg p-6 z-50">
+        <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">API 设置</h2><button id="close-settings-btn" class="text-gray-500 hover:text-gray-800"><i class="fa-solid fa-xmark fa-2x"></i></button></div>
+        <div class="space-y-4">
+            <div><label for="api-url" class="font-medium text-gray-700">API URL</label><input type="text" id="api-url" class="input-field mt-1"></div>
+            <div><label for="api-key" class="font-medium text-gray-700">API Key</label><input type="password" id="api-key" class="input-field mt-1" placeholder="留空使用默认Key"></div>
+            <div><label for="api-model" class="font-medium text-gray-700">模型选择</label><select id="api-model" class="input-field mt-1"><option value="deepseek-v4-flash">DeepSeek V4 Flash</option><option value="deepseek-v4-pro">DeepSeek V4 Pro</option></select></div>
+            <button id="save-settings-btn" class="linear-button w-full mt-4">保存设置</button>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <script>
+        // 获取全局 DeepSeek Key
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        // --- DOM Elements ---
+        const whatIfInput = document.getElementById('what-if-input');
+        const generateBtn = document.getElementById('generate-btn');
+        const resultWrapper = document.getElementById('result-wrapper');
+        const loader = document.getElementById('loader');
+        const resultContainer = document.getElementById('result-container');
+        const resultTitle = document.getElementById('result-title');
+        const resultOutput = document.getElementById('result-output');
+        const copyBtn = document.getElementById('copy-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        
+        const settingsBtn = document.getElementById('settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const apiUrlInput = document.getElementById('api-url');
+        const apiKeyInput = document.getElementById('api-key');
+        const apiModelInput = document.getElementById('api-model');
+        const toast = document.getElementById('toast');
+
+        // --- State & Defaults ---
+        const DEFAULT_API_KEY = "";
+        let lastResultMarkdown = '';
+        const markdownConverter = new showdown.Converter();
+
+        // --- Settings Logic ---
+        function loadSettings() {
+            apiUrlInput.value = localStorage.getItem('apiUrl') || 'https://api.deepseek.com/chat/completions';
+            apiKeyInput.value = localStorage.getItem('apiKey') || '';
+            apiModelInput.value = localStorage.getItem('apiModel') || 'deepseek-v4-flash';
+        }
+
+        function saveSettings() {
+            localStorage.setItem('apiUrl', apiUrlInput.value);
+            localStorage.setItem('apiKey', apiKeyInput.value);
+            localStorage.setItem('apiModel', apiModelInput.value);
+            showToast('设置已保存！');
+            settingsPanel.classList.remove('open');
+        }
+
+        function getApiKey() { return apiKeyInput.value.trim() || getGlobalDeepSeekKey(); }
+        function getApiUrl() { return apiUrlInput.value.trim(); }
+        function getModel() { return apiModelInput.value; }
+        
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // --- UI Logic ---
+        function setLoading(isLoading) {
+            resultWrapper.classList.remove('hidden');
+            if (isLoading) {
+                loader.classList.remove('hidden');
+                resultContainer.classList.add('hidden');
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = `<i class="fa-solid fa-sync fa-spin mr-2"></i>正在推演...`;
+            } else {
+                loader.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = `<i class="fa-solid fa-feather-pointed mr-2"></i>开始推演`;
+            }
+        }
+
+        // --- Core Logic ---
+        async function generateHistory() {
+            const query = whatIfInput.value.trim();
+            if (!query) {
+                showToast('请输入一个历史假设。');
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const prompt = `你是一位顶尖的历史学家，但来自一个不同的平行宇宙。你的任务是基于用户提出的"What If"情景，系统地阐述在该情景下，你所在的世界历史是如何发展的。你的回答应该结构清晰、逻辑严谨，并充满引人入胜的细节。
+
+                **历史情景假设:** ${query}
+
+                **请按照以下结构，以第一人称（作为历史学家）撰写一篇完整的历史分析报告:**
+
+                1.  **引言：一个不同的世界**
+                    *   简要概述这个世界的基本面貌，以及与我们所知历史的最大区别。
+                2.  **转折点：历史的岔路**
+                    *   详细描述关键事件发生后，最初的几年或几十年里，世界是如何走上不同道路的。
+                3.  **多米诺骨牌效应**
+                    *   分析这一改变如何引发了政治、经济、文化、科技等领域的连锁反应。
+                    *   请提供至少三个具体领域的例子。
+                4.  **今日世界：一个剪影**
+                    *   描绘当前这个平行世界的社会结构、国际关系和日常生活的大致图景。
+                5.  **结语：历史的回声**
+                    *   以历史学家的口吻，对这个世界的历史进行简短的反思和总结。
+
+                请使用Markdown格式进行撰写，确保内容丰富且具有说服力。`;
+
+                const messages = [{ role: 'system', content: '你是一位来自平行宇宙的顶尖历史学家。' }, { role: 'user', content: prompt }];
+                
+                const response = await fetch(getApiUrl(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getApiKey()}` },
+                    body: JSON.stringify({ model: getModel(), messages: messages, temperature: 0.7 })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error.message || `API 请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                lastResultMarkdown = data.choices[0].message.content;
+                
+                resultTitle.textContent = `平行宇宙档案: "${query}"`;
+                resultOutput.innerHTML = markdownConverter.makeHtml(lastResultMarkdown);
+                resultContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("API Error:", error);
+                resultContainer.classList.remove('hidden');
+                resultOutput.innerHTML = `<p class="text-red-500">推演失败: ${error.message}</p>`;
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        function copyResult() {
+            if (!lastResultMarkdown) {
+                showToast('没有可复制的内容。');
+                return;
+            }
+            navigator.clipboard.writeText(lastResultMarkdown).then(() => {
+                showToast('已复制到剪贴板！');
+            }, () => {
+                showToast('复制失败！');
+            });
+        }
+        
+        function downloadResult() {
+             if (!lastResultMarkdown) {
+                showToast('没有可下载的内容。');
+                return;
+            }
+            const blob = new Blob([lastResultMarkdown], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `what_if_历史推演.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- Event Listeners ---
+        generateBtn.addEventListener('click', generateHistory);
+        copyBtn.addEventListener('click', copyResult);
+        downloadBtn.addEventListener('click', downloadResult);
+        
+        document.querySelectorAll('.example-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                whatIfInput.value = tag.textContent;
+                generateHistory();
+            });
+        });
+        
+        settingsBtn.addEventListener('click', () => settingsPanel.classList.add('open'));
+        closeSettingsBtn.addEventListener('click', () => settingsPanel.classList.remove('open'));
+        saveSettingsBtn.addEventListener('click', saveSettings);
+        
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+        });
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_what_if_history.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html> 

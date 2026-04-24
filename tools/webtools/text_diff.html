@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本差异对比 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .diff-ins { background-color: #d1fae5; color: #065f46; border-bottom: 2px solid #6ee7b7; text-decoration: underline; text-decoration-color: #10b981; }
+        .diff-del { background-color: #ffe4e6; color: #9f1239; border-bottom: 2px solid #fda4af; text-decoration: line-through; text-decoration-color: #f43f5e; text-decoration-thickness: 2px; }
+        .diff-equal { color: #475569; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800" x-data="diffApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-500">
+                ⚖️ 文本差异对比 (Diff)
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 pb-24 h-[calc(100vh-64px)] flex flex-col">
+
+        <!-- Input Area -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[300px]" x-show="!resultMode">
+            <div class="flex flex-col h-full">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase">原文 (Original)</label>
+                    <button @click="text1=''" class="text-xs text-rose-500 hover:text-rose-600">清空</button>
+                </div>
+                <textarea x-model="text1" class="w-full flex-1 p-4 rounded-xl border border-slate-200 resize-none outline-none focus:border-blue-500 font-mono text-sm leading-relaxed" placeholder="输入原始文本..."></textarea>
+            </div>
+            <div class="flex flex-col h-full">
+                 <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase">新文本 (Modified)</label>
+                    <button @click="text2=''" class="text-xs text-rose-500 hover:text-rose-600">清空</button>
+                </div>
+                <textarea x-model="text2" class="w-full flex-1 p-4 rounded-xl border border-slate-200 resize-none outline-none focus:border-green-500 font-mono text-sm leading-relaxed" placeholder="输入修改后的文本..."></textarea>
+            </div>
+        </div>
+
+        <!-- Result Area -->
+        <div class="flex-1 min-h-[300px] flex flex-col" x-show="resultMode" x-cloak>
+             <div class="flex justify-between items-center mb-2">
+                <div class="flex gap-4 text-xs font-bold uppercase">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 bg-rose-200 border-b-2 border-rose-300 line-through"></span> 删除</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 bg-emerald-200 border-b-2 border-emerald-300"></span> 新增</span>
+                </div>
+                <!-- Stats -->
+                <div class="text-xs text-slate-400">
+                    <span x-text="stats.insert"></span> 新增, <span x-text="stats.delete"></span> 删除
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl border border-slate-200 flex-1 p-6 overflow-auto font-mono text-sm leading-8 whitespace-pre-wrap shadow-inner" x-html="diffHtml"></div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="mt-6 flex justify-center gap-4">
+            <button @click="compare()" x-show="!resultMode" class="px-8 py-3 bg-slate-800 hover:bg-black text-white rounded-xl font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2">
+                <i class="fa-solid fa-arrow-right-arrow-left w-4 h-4"></i>
+                开始对比
+            </button>
+            
+            <button @click="resultMode = false" x-show="resultMode" class="px-8 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold transition-all flex items-center gap-2">
+                <i class="fa-solid fa-pen w-4 h-4"></i>
+                返回编辑
+            </button>
+            
+            <button @click="sample()" x-show="!resultMode && !text1 && !text2" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-all text-xs">
+                加载示例
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        function diffApp() {
+            return {
+                text1: '',
+                text2: '',
+                resultMode: false,
+                diffHtml: '',
+                stats: { insert: 0, delete: 0 },
+                dmp: null,
+
+                init() {
+                    this.dmp = new diff_match_patch();
+                    // icons removed
+                },
+                
+                compare() {
+                    const diffs = this.dmp.diff_main(this.text1, this.text2);
+                    this.dmp.diff_cleanupSemantic(diffs);
+                    
+                    let html = '';
+                    let ins = 0; 
+                    let del = 0;
+                    
+                    diffs.forEach(part => {
+                        const type = part[0]; // -1, 0, 1
+                        const text = part[1]
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/\n/g, '<br/>');
+                            
+                        if (type === 1) {
+                            html += `<span class="bg-emerald-100 text-emerald-900 border-b-2 border-emerald-300 decoration-emerald-500 mx-0.5 px-0.5 rounded-sm">${text}</span>`;
+                            ins++;
+                        } else if (type === -1) {
+                            html += `<span class="bg-rose-100 text-rose-900 border-b-2 border-rose-300 decoration-rose-500 line-through decoration-2 mx-0.5 px-0.5 rounded-sm opacity-60">${text}</span>`;
+                            del++;
+                        } else {
+                            html += `<span class="text-slate-500">${text}</span>`;
+                        }
+                    });
+                    
+                    this.diffHtml = html;
+                    this.stats = { insert: ins, delete: del };
+                    this.resultMode = true;
+                    this.$nextTick(() => { });
+                },
+                
+                sample() {
+                    this.text1 = "The quick brown fox jumps over the lazy dog.\nThis is a simple text comparison tool.";
+                    this.text2 = "The quick red fox jumped over the lazy dog.\nThis is a super simple text comparison tool.";
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_text_diff.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chart.js 数据仪表盘</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #334155; }
+    .glass { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .card-title { font-size: 0.875rem; font-weight: 600; color: #64748b; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-8">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold text-slate-800">📊 Chart.js Dashboard</h1>
+    <p class="text-slate-500 mt-1">简单灵活的 HTML5 图表库演示</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto space-y-6">
+
+  <!-- 顶部统计卡片 -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div class="glass p-6 rounded-xl border-l-4 border-blue-500">
+      <div class="text-sm text-slate-400 font-bold uppercase">总访问量</div>
+      <div class="text-3xl font-bold text-slate-800 mt-2">128,430</div>
+      <div class="text-xs text-green-500 mt-1">▲ 12% 较上周</div>
+    </div>
+    <div class="glass p-6 rounded-xl border-l-4 border-indigo-500">
+      <div class="text-sm text-slate-400 font-bold uppercase">活跃用户</div>
+      <div class="text-3xl font-bold text-slate-800 mt-2">45,200</div>
+      <div class="text-xs text-green-500 mt-1">▲ 5% 较上周</div>
+    </div>
+    <div class="glass p-6 rounded-xl border-l-4 border-pink-500">
+      <div class="text-sm text-slate-400 font-bold uppercase">转化率</div>
+      <div class="text-3xl font-bold text-slate-800 mt-2">2.4%</div>
+      <div class="text-xs text-red-500 mt-1">▼ 0.1% 较上周</div>
+    </div>
+    <div class="glass p-6 rounded-xl border-l-4 border-orange-500">
+      <div class="text-sm text-slate-400 font-bold uppercase">总收入</div>
+      <div class="text-3xl font-bold text-slate-800 mt-2">$24,500</div>
+      <div class="text-xs text-green-500 mt-1">▲ 18% 较上周</div>
+    </div>
+  </div>
+
+  <!-- 主要图表区域 -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- 1. 折线图 (Main) -->
+    <div class="glass p-6 rounded-xl lg:col-span-2">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="card-title">月度流量趋势</h3>
+        <button onclick="randomizeData()" class="text-xs px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">随机数据</button>
+      </div>
+      <div class="relative h-72 w-full">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 2. 环形图 (Side) -->
+    <div class="glass p-6 rounded-xl lg:col-span-1">
+      <h3 class="card-title">设备来源分布</h3>
+      <div class="relative h-64 w-full flex justify-center">
+        <canvas id="doughnutChart"></canvas>
+      </div>
+      <div class="mt-4 text-center text-xs text-slate-400">
+        数据基于最近 30 天访问记录
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 底部图表 -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    
+    <!-- 3. 柱状图 -->
+    <div class="glass p-6 rounded-xl">
+      <h3 class="card-title">各渠道销售额对比</h3>
+      <div class="relative h-60 w-full">
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 4. 雷达图 -->
+    <div class="glass p-6 rounded-xl">
+      <h3 class="card-title">项目能力评估</h3>
+      <div class="relative h-60 w-full flex justify-center">
+        <canvas id="radarChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // 通用配置 - 使用 Light Mode 颜色
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = '#64748b';
+  Chart.defaults.borderColor = '#e2e8f0';
+
+  // 1. Line Chart
+  const ctxLine = document.getElementById('lineChart').getContext('2d');
+  
+  // 创建渐变背景
+  const gradient = ctxLine.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)'); // Blue start
+  gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)'); // Blue end
+
+  const lineChart = new Chart(ctxLine, {
+    type: 'line',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      datasets: [{
+        label: '访问量 (Visits)',
+        data: [65, 59, 80, 81, 56, 55, 40, 70, 90, 100, 85, 95],
+        fill: true,
+        backgroundColor: gradient,
+        borderColor: '#3b82f6', // blue-500
+        tension: 0.4, // smooth curve
+        borderWidth: 2,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: '#3b82f6',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { borderDash: [2, 4] } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 2. Doughnut Chart
+  const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
+  const doughnutChart = new Chart(ctxDoughnut, {
+    type: 'doughnut',
+    data: {
+      labels: ['Mobile', 'Desktop', 'Tablet'],
+      datasets: [{
+        data: [55, 30, 15],
+        backgroundColor: [
+          '#6366f1', // Indigo
+          '#0ea5e9', // Sky
+          '#f43f5e'  // Rose
+        ],
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
+      },
+      cutout: '70%'
+    }
+  });
+
+  // 3. Bar Chart
+  const ctxBar = document.getElementById('barChart').getContext('2d');
+  const barChart = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: ['Direct', 'Social', 'Referral', 'Email', 'Ads'],
+      datasets: [{
+        label: 'Sales ($)',
+        data: [12000, 19000, 3000, 5000, 2000],
+        backgroundColor: '#10b981', // Emerald
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { display: false } }, // Minimalist look
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 4. Radar Chart
+  const ctxRadar = document.getElementById('radarChart').getContext('2d');
+  const radarChart = new Chart(ctxRadar, {
+    type: 'radar',
+    data: {
+      labels: ['Coding', 'Design', 'Marketing', 'Sales', 'Management', 'Support'],
+      datasets: [{
+        label: 'Team A',
+        data: [85, 90, 60, 50, 70, 80],
+        fill: true,
+        backgroundColor: 'rgba(234, 88, 12, 0.2)', // Orange
+        borderColor: 'rgba(234, 88, 12, 1)',
+        pointBackgroundColor: 'rgba(234, 88, 12, 1)',
+        pointBorderColor: '#fff'
+      }, {
+        label: 'Team B',
+        data: [60, 70, 90, 85, 60, 50],
+        fill: true,
+        backgroundColor: 'rgba(124, 58, 237, 0.2)', // Violet
+        borderColor: 'rgba(124, 58, 237, 1)',
+        pointBackgroundColor: 'rgba(124, 58, 237, 1)',
+        pointBorderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          angleLines: { color: '#e2e8f0' },
+          grid: { color: '#e2e8f0' },
+          pointLabels: { font: { size: 11 } }
+        }
+      },
+      plugins: {
+        legend: { display: true, labels: { boxWidth: 10 } }
+      }
+    }
+  });
+
+  // Helper: Random Data
+  function randomizeData() {
+    // Update Line Chart
+    lineChart.data.datasets[0].data = Array.from({length: 12}, () => Math.floor(Math.random() * 100));
+    lineChart.update();
+
+    // Update Bar Chart
+    barChart.data.datasets[0].data = Array.from({length: 5}, () => Math.floor(Math.random() * 20000));
+    barChart.update();
+  }
+
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平行宇宙模拟器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .universe-gradient { background: linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4C1D95 100%); }
+        .universe-card { background: linear-gradient(135deg, #1F2937 0%, #374151 100%); border: 2px solid #8B5CF6; color: #E5E7EB; }
+        @keyframes orbit {
+            from { transform: rotate(0deg) translateX(30px) rotate(0deg); }
+            to { transform: rotate(360deg) translateX(30px) rotate(-360deg); }
+        }
+        .orbit-animation { animation: orbit 4s linear infinite; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="universe-gradient min-h-screen">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 border-b-2 border-purple-500">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-atom text-white text-xl"></i>
+                        </div>
+                        <span class="font-bold text-xl text-white">平行宇宙模拟器</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 bg-purple-900 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'" :class="{'bg-purple-600 shadow text-white': apiConfig.model === 'deepseek-v4-flash'}" class="px-3 py-1 text-xs font-medium rounded-md transition text-purple-200">V4 Flash</button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'" :class="{'bg-purple-600 shadow text-white': apiConfig.model === 'deepseek-v4-pro'}" class="px-3 py-1 text-xs font-medium rounded-md transition text-purple-200">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true" class="text-purple-400 hover:text-purple-300 transition"><i class="fa-solid fa-gear text-base"></i></button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow max-w-6xl mx-auto w-full p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+                <div class="universe-card rounded-2xl p-6 shadow-lg">
+                    <h2 class="text-lg font-bold mb-4 text-purple-200">关键选择点</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1 text-purple-200">人生岔路口</label>
+                            <textarea v-model="input.decision" placeholder="例如：当年如果选择出国留学；如果没有换那份工作；如果勇敢表白..." rows="3" class="w-full bg-slate-800 border-2 border-purple-500 rounded-lg p-3 text-white placeholder-slate-400"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1 text-purple-200">当时的年龄/时间</label>
+                            <input v-model="input.age" placeholder="例如：22岁大学毕业时；2018年春天" class="w-full bg-slate-800 border-2 border-purple-500 rounded-lg p-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1 text-purple-200">实际选择及现状</label>
+                            <textarea v-model="input.actualPath" placeholder="描述你的实际选择和当前生活状态..." rows="2" class="w-full bg-slate-800 border-2 border-purple-500 rounded-lg p-3 text-white"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1 text-purple-200">模拟深度</label>
+                            <select v-model="input.depth" class="w-full bg-slate-800 border-2 border-purple-500 rounded-lg p-3 text-white">
+                                <option value="乐观">乐观宇宙（最好情况）</option>
+                                <option value="现实">现实宇宙（合理推演）</option>
+                                <option value="多元">多元宇宙（3种可能）</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button @click="simulate" :disabled="isGenerating || !input.decision || !input.actualPath" class="w-full mt-4 bg-gradient-to-r from-purple-500 to-violet-600 text-white font-bold py-3 rounded-xl hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center">
+                        <span v-if="isGenerating" class="flex items-center">
+                            <i class="fa-solid fa-spinner animate-spin mr-2"></i>正在穿越...
+                        </span>
+                        <span v-else class="flex items-center">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>启动模拟
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="universe-card rounded-2xl p-6 shadow-lg min-h-[500px]">
+                <div v-if="isGenerating" class="flex flex-col items-center justify-center h-full text-purple-400">
+                    <div class="relative">
+                        <i class="fa-regular fa-circle text-5xl"></i>
+                        <i class="fa-regular fa-circle-dot text-base absolute top-0 left-0 orbit-animation text-purple-300"></i>
+                    </div>
+                    <p class="text-lg font-medium mt-4">正在穿越平行宇宙...</p>
+                </div>
+                <div v-else-if="!result" class="flex flex-col items-center justify-center h-full text-slate-500">
+                    <i class="fa-solid fa-atom text-6xl mb-4 opacity-50"></i>
+                    <p>想象另一种人生可能...</p>
+                </div>
+                <div v-else class="space-y-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-purple-200">平行宇宙</h3>
+                        <div class="flex gap-2">
+                            <button @click="copyResult" class="text-sm text-purple-400 hover:text-purple-300">
+                                <i class="fa-solid fa-copy mr-1"></i>复制
+                            </button>
+                            <button @click="exportResult" class="text-sm text-purple-400 hover:text-purple-300">
+                                <i class="fa-solid fa-download mr-1"></i>导出
+                            </button>
+                        </div>
+                    </div>
+                    <div class="prose prose-invert max-w-none" v-html="renderMarkdown(result)"></div>
+                </div>
+            </div>
+        </main>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click="showSettings = false">
+            <div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl p-6 border-2 border-purple-500" @click.stop>
+                <h3 class="text-xl font-bold mb-4 text-white">高级设置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-2 text-purple-200">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" class="w-full rounded-lg border-2 border-purple-500 p-3 bg-slate-700 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2 text-purple-200">系统提示词</label>
+                        <textarea v-model="apiConfig.systemPrompt" rows="12" class="w-full rounded-lg border-2 border-purple-500 p-3 font-mono text-sm bg-slate-700 text-white"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-6 py-2 rounded-lg hover:bg-slate-700 text-white">取消</button>
+                    <button @click="saveConfig" class="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+        // Markdown 渲染函数
+        const renderMarkdown = (text) => {
+            if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+                return marked.parse(text || '');
+            }
+            return text || '';
+        };
+
+        const DEFAULT_SYSTEM_PROMPT = `你是一位叙事心理学家和人生可能性探索专家，擅长通过"平行宇宙思维实验"帮助人们获得洞察。
+
+**核心目的**：
+- 不是预测未来，而是通过想象"可能性"来理解当前选择
+- 帮助用户看到：每个选择都有得有失，没有完美路径
+- 减轻遗憾感，增强当下选择的意义感
+
+**模拟原则**：
+1. **基于现实的推演**：
+   - 考虑用户的性格、能力、时代背景
+   - 不做过度浪漫化或悲观化的想象
+   - 每个选择都会带来新的挑战和机遇
+
+2. **多维度展开**：
+   - 事业发展
+   - 人际关系（家庭、爱情、友谊）
+   - 个人成长与心理状态
+   - 生活方式与价值观
+
+3. **辩证视角**：
+   - 每种可能都包含"得到"和"失去"
+   - 强调：不同选择塑造不同的人，没有优劣
+   - 帮助用户看到当前路径的价值
+
+**输出结构（根据深度调整）**：
+
+【乐观宇宙模式】：
+# 🌟 平行宇宙 A：如果你当年选择了...
+## 可能的发展轨迹
+[详细描述这条路径的展开]
+
+## 你可能获得的
+[3-5 个方面]
+
+## 你可能失去的
+[3-5 个方面]
+
+## 对当下的启示
+[这个思维实验能给你什么洞察]
+
+---
+
+【现实宇宙模式】：
+类似结构，但更中性、更辩证
+
+---
+
+【多元宇宙模式】：
+# 🌌 三个平行宇宙
+## 宇宙 A：[乐观路径]
+## 宇宙 B：[现实路径]
+## 宇宙 C：[挑战路径]
+
+## 跨宇宙洞察
+[对比三条路径后的深层理解]
+
+**风格**：富有想象力但不失现实感，温暖、不评判，强调接纳和意义。`;
+
+        createApp({
+            setup() {
+                const showSettings = ref(false);
+                const isGenerating = ref(false);
+                const result = ref('');
+                const apiConfig = reactive({ deepseek: '', model: 'deepseek-v4-pro', systemPrompt: DEFAULT_SYSTEM_PROMPT });
+                const input = reactive({ decision: '', age: '', actualPath: '', depth: '现实' });
+
+                onMounted(() => {
+                    // 初始化配置
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const config = JSON.parse(saved);
+                            apiConfig.deepseek = config.deepseek || '';
+                            apiConfig.model = config.model || 'deepseek-v4-pro';
+                        } catch (e) {
+                             console.error('JSON parse error:', e);
+                        }
+                    }
+                });
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, deepseek: apiConfig.deepseek, model: apiConfig.model }));
+                    showSettings.value = false;
+                    alert('配置已保存！');
+                };
+
+                const simulate = async () => {
+                    if (!apiConfig.deepseek) { showSettings.value = true; return; }
+                    isGenerating.value = true;
+                    // Refresh icons for loading spinner
+                    result.value = '';
+
+                    try {
+                        const userPrompt = `岔路口：${input.decision}\n时间：${input.age}\n实际选择与现状：${input.actualPath}\n模拟深度：${input.depth}\n\n请帮我模拟平行宇宙。`;
+
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiConfig.deepseek}` },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: [{ role: 'system', content: apiConfig.systemPrompt }, { role: 'user', content: userPrompt }],
+                                stream: true
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop();
+
+                            for (const line of lines) {
+                                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                                    try {
+                                        const data = JSON.parse(line.slice(6));
+                                        const delta = data.choices[0].delta;
+                                        if (delta.content) result.value += delta.content;
+                                    } catch (e) {
+                                        console.error('Stream parse error:', e);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        alert('生成失败：' + error.message);
+                    } finally {
+                        isGenerating.value = false;
+                        // Refresh icons for normal button state
+                    }
+                };
+
+                const copyResult = async () => {
+                    await navigator.clipboard.writeText(result.value);
+                    alert('已复制到剪贴板！');
+                };
+
+                const exportResult = () => {
+                    const text = `【平行宇宙模拟】\n生成时间：${new Date().toLocaleString()}\n\n${result.value}`;
+                    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `平行宇宙_${Date.now()}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+
+                return {
+                    showSettings, isGenerating, result, apiConfig, input, saveConfig, simulate, copyResult, exportResult, renderMarkdown };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/psychological_parallel_universe.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

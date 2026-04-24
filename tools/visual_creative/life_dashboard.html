@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics：与项目其他工具页保持一致 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人生仪表盘 - AI 可视化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* 页面整体：紫罗兰渐变背景 */
+        body {
+            background: linear-gradient(145deg, #f5f3ff 0%, #ede9fe 35%, #ddd6fe 65%, #c4b5fd 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        /* 分步指示器连线 */
+        .step-line-active {
+            background: linear-gradient(90deg, #7c3aed, #a78bfa);
+        }
+
+        /* 范围滑块：紫色主题 */
+        input[type="range"].slider-violet {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: #e9d5ff;
+        }
+        input[type="range"].slider-violet::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.45);
+        }
+        input[type="range"].slider-violet::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            cursor: pointer;
+            border: none;
+        }
+
+        /* 预览 iframe：科技感暗角 */
+        .preview-frame {
+            background: #0f172a;
+            border-radius: 1rem;
+            box-shadow:
+                0 0 0 1px rgba(139, 92, 246, 0.35),
+                0 25px 50px -12px rgba(88, 28, 135, 0.45);
+        }
+
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+    <div x-data="lifeDashboardApp()" x-init="init()" class="min-h-screen pb-12">
+
+        <!-- 顶部导航：返回站点首页 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-violet-200/80 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i data-lucide="gauge" class="text-violet-600 h-6 w-6"></i>
+                    <span class="font-bold text-xl text-slate-900">人生仪表盘</span>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button type="button" x-show="dashboardHtml && !isLoading" @click="downloadHtml()"
+                        class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        下载 HTML
+                    </button>
+                    <button type="button" @click="showScreenshotHint()"
+                        class="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-violet-50 transition">
+                        <i data-lucide="camera" class="w-4 h-4"></i>
+                        截图说明
+                    </button>
+                    <button type="button" @click="showSettings = true"
+                        class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-slate-500 hover:bg-violet-50 hover:text-violet-700 transition">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">设置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex flex-col lg:flex-row gap-6 lg:gap-8">
+
+            <!-- 左侧：分步输入表单 -->
+            <div class="w-full lg:w-[min(440px,100%)] flex-shrink-0 space-y-4">
+
+                <!-- 分步指示 -->
+                <div class="bg-white/90 backdrop-blur rounded-2xl border border-violet-100 shadow-md p-4">
+                    <div class="flex items-center justify-between text-xs font-medium text-slate-500 mb-2">
+                        <span>填写进度</span>
+                        <span x-text="'第 ' + step + ' / 4 步'"></span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <!-- Alpine x-for 需遍历数组，不能写 in 4 -->
+                        <template x-for="s in [1, 2, 3, 4]" :key="s">
+                            <div class="flex-1 flex items-center">
+                                <button type="button"
+                                    @click="step = s"
+                                    :class="step === s ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30' : (step > s ? 'bg-violet-200 text-violet-800' : 'bg-slate-100 text-slate-400')"
+                                    class="w-8 h-8 rounded-full text-sm font-bold transition shrink-0"
+                                    x-text="s"></button>
+                                <div x-show="s < 4" class="flex-1 h-1 mx-1 rounded-full"
+                                    :class="step > s ? 'step-line-active' : 'bg-slate-200'"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 第 1 步：基本信息 -->
+                <div x-show="step === 1" x-transition class="bg-white/90 backdrop-blur rounded-2xl border border-violet-100 shadow-lg p-5 sm:p-6 animate-fade-in">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+                        <i data-lucide="user" class="w-5 h-5 text-violet-600"></i>
+                        基本信息
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">年龄</label>
+                            <input type="number" min="1" max="120" x-model.number="form.age" placeholder="例如：28"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none focus:ring-2 focus:ring-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">性别</label>
+                            <select x-model="form.gender"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none focus:ring-2 focus:ring-violet-500">
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                                <option value="不愿透露">不愿透露</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">职业</label>
+                            <input type="text" x-model="form.career" placeholder="例如：产品经理、学生、自由职业"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none focus:ring-2 focus:ring-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">城市</label>
+                            <input type="text" x-model="form.city" placeholder="例如：上海"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none focus:ring-2 focus:ring-violet-500">
+                        </div>
+                    </div>
+                    <button type="button" @click="step = 2"
+                        class="mt-6 w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-violet-500/25 transition">
+                        下一步
+                    </button>
+                </div>
+
+                <!-- 第 2 步：爱好 + 成就 -->
+                <div x-show="step === 2" x-transition class="bg-white/90 backdrop-blur rounded-2xl border border-violet-100 shadow-lg p-5 sm:p-6 animate-fade-in">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-1">
+                        <i data-lucide="heart" class="w-5 h-5 text-violet-600"></i>
+                        爱好与成就
+                    </h2>
+                    <p class="text-xs text-slate-500 mb-4">爱好最多选择 5 个；可从标签点选或添加自定义。</p>
+
+                    <div class="mb-4">
+                        <span class="text-sm font-medium text-slate-700">已选爱好（<span x-text="selectedHobbies.length"></span>/5）</span>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <template x-for="h in hobbyPresets" :key="h">
+                                <button type="button"
+                                    @click="toggleHobby(h)"
+                                    :disabled="!selectedHobbies.includes(h) && selectedHobbies.length >= 5"
+                                    :class="selectedHobbies.includes(h)
+                                        ? 'bg-violet-600 text-white border-violet-600 shadow-md'
+                                        : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 disabled:opacity-40'"
+                                    class="px-3 py-1.5 rounded-full text-sm border transition"
+                                    x-text="h"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" x-model="customHobby" @keydown.enter.prevent="addCustomHobby()" placeholder="自定义爱好后按回车"
+                            class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500">
+                        <button type="button" @click="addCustomHobby()"
+                            class="px-4 py-2 rounded-xl text-sm font-medium bg-violet-100 text-violet-800 hover:bg-violet-200 transition">
+                            添加
+                        </button>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">人生成就（每行一条或自由书写）</label>
+                        <textarea x-model="form.achievements" rows="5" placeholder="例如：&#10;学会了吉他&#10;跑完了半程马拉松&#10;养了一只猫"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-violet-500 resize-y min-h-[120px]"></textarea>
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="button" @click="step = 1" class="flex-1 py-3 rounded-xl font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition">上一步</button>
+                        <button type="button" @click="step = 3" class="flex-1 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-lg shadow-violet-500/25 transition">下一步</button>
+                    </div>
+                </div>
+
+                <!-- 第 3 步：六维自评 -->
+                <div x-show="step === 3" x-transition class="bg-white/90 backdrop-blur rounded-2xl border border-violet-100 shadow-lg p-5 sm:p-6 animate-fade-in">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-1">
+                        <i data-lucide="target" class="w-5 h-5 text-violet-600"></i>
+                        当前状态自评
+                    </h2>
+                    <p class="text-xs text-slate-500 mb-4">每项 1–10 分，将用于雷达图展示。</p>
+
+                    <div class="space-y-4">
+                        <template x-for="dim in scoreDimensions" :key="dim.key">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="font-medium text-slate-700" x-text="dim.label"></span>
+                                    <span class="text-violet-600 font-bold" x-text="form.scores[dim.key]"></span>
+                                </div>
+                                <input type="range" min="1" max="10" x-model.number="form.scores[dim.key]" class="w-full slider-violet">
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="button" @click="step = 2" class="flex-1 py-3 rounded-xl font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition">上一步</button>
+                        <button type="button" @click="step = 4" class="flex-1 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-lg shadow-violet-500/25 transition">下一步</button>
+                    </div>
+                </div>
+
+                <!-- 第 4 步：目标 + 生成 -->
+                <div x-show="step === 4" x-transition class="bg-white/90 backdrop-blur rounded-2xl border border-violet-100 shadow-lg p-5 sm:p-6 animate-fade-in">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+                        <i data-lucide="rocket" class="w-5 h-5 text-violet-600"></i>
+                        人生目标
+                    </h2>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">未来想做的事</label>
+                        <textarea x-model="form.goals" rows="5" placeholder="例如：三年内换到更喜欢的行业、带家人出国旅行、坚持每周运动……"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-violet-500 resize-y min-h-[120px]"></textarea>
+                    </div>
+
+                    <button type="button" @click="generateDashboard()"
+                        :disabled="isLoading || !canGenerate"
+                        class="mt-6 w-full py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-violet-600 via-fuchsia-600 to-purple-600 hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-violet-600/30 transition flex items-center justify-center gap-2">
+                        <i x-show="isLoading" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                        <span x-text="isLoading ? 'AI 正在生成仪表盘…' : '生成仪表盘'"></span>
+                    </button>
+                    <p x-show="!canGenerate && step === 4" class="mt-2 text-xs text-amber-700">请填写年龄（1–120）后再生成。</p>
+                    <p x-show="errorMsg" class="mt-2 text-sm text-red-600" x-text="errorMsg"></p>
+
+                    <!-- 流式过程：V4 Pro 思考 + 原始缓冲（便于排错） -->
+                    <div x-show="isLoading && reasoningBuffer" class="mt-4">
+                        <details open class="text-xs">
+                            <summary class="cursor-pointer text-slate-500 font-medium">🧠 深度思考过程（可折叠）</summary>
+                            <pre class="mt-2 p-3 bg-slate-50 rounded-lg whitespace-pre-wrap text-slate-600 max-h-32 overflow-y-auto border border-slate-100" x-text="reasoningBuffer"></pre>
+                        </details>
+                    </div>
+                    <div x-show="isLoading && streamRaw" class="mt-2 text-xs text-slate-400 truncate" x-text="'已接收 ' + streamRaw.length + ' 字符…'"></div>
+
+                    <div class="mt-6">
+                        <button type="button" @click="step = 3" class="w-full py-2.5 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition">上一步</button>
+                    </div>
+
+                    <!-- 移动端：下载与截图 -->
+                    <div class="sm:hidden flex gap-2 mt-4">
+                        <button type="button" x-show="dashboardHtml" @click="downloadHtml()"
+                            class="flex-1 py-2 rounded-xl text-sm bg-violet-600 text-white">下载 HTML</button>
+                        <button type="button" @click="showScreenshotHint()" class="flex-1 py-2 rounded-xl text-sm border border-violet-200 text-violet-700">截图说明</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：预览区 -->
+            <div class="flex-1 min-w-0 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 text-violet-600"></i>
+                        仪表盘预览
+                    </h3>
+                    <span class="text-xs text-slate-500" x-show="dashboardHtml">iframe 内为独立页面样式</span>
+                </div>
+
+                <div class="preview-frame flex-1 min-h-[480px] lg:min-h-[calc(100vh-8rem)] overflow-hidden relative">
+                    <!-- 空状态 -->
+                    <div x-show="!dashboardHtml && !isLoading" class="absolute inset-0 flex flex-col items-center justify-center text-violet-200/80 p-8 text-center">
+                        <i data-lucide="sparkles" class="w-16 h-16 mb-4 opacity-60"></i>
+                        <p class="text-lg font-medium text-violet-100">尚未生成</p>
+                        <p class="text-sm mt-2 text-violet-300/70 max-w-sm">完成左侧四步并点击「生成仪表盘」，AI 将为你渲染科技感人生看板。</p>
+                    </div>
+                    <!-- 加载遮罩 -->
+                    <div x-show="isLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 z-10 text-violet-200">
+                        <i data-lucide="loader-2" class="w-12 h-12 animate-spin mb-3"></i>
+                        <p class="text-sm">正在生成可视化页面…</p>
+                    </div>
+                    <!-- 预览 iframe：使用 srcdoc 注入 AI 返回的完整 HTML -->
+                    <iframe x-show="dashboardHtml"
+                        title="人生仪表盘预览"
+                        class="w-full h-full min-h-[480px] lg:min-h-[calc(100vh-8rem)] border-0 bg-slate-900"
+                        :srcdoc="dashboardHtml"
+                        sandbox="allow-scripts allow-same-origin"></iframe>
+                </div>
+
+                <p class="text-xs text-slate-500 mt-2">
+                    提示：下载的 HTML 可离线打开分享；若需整页截图，请查看导航栏「截图说明」。
+                </p>
+            </div>
+        </div>
+
+        <!-- 设置弹窗：DeepSeek API，合并写入 global_llm_config -->
+        <div x-show="showSettings" x-transition class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" x-cloak>
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="key-round" class="w-5 h-5 text-violet-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg hover:bg-slate-100 text-slate-700">取消</button>
+                    <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-500">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium text-white"
+            :class="toast.type === 'error' ? 'bg-red-600' : 'bg-violet-700'"
+            x-cloak>
+            <span x-text="toast.msg"></span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Alpine 根组件：人生仪表盘生成器
+         * 负责表单分步、调用 DeepSeek 流式接口、解析 HTML、预览与下载
+         */
+        function lifeDashboardApp() {
+            return {
+                step: 1,
+                showSettings: false,
+                isLoading: false,
+                errorMsg: '',
+                streamRaw: '',
+                reasoningBuffer: '',
+                dashboardHtml: '',
+                toast: { show: false, msg: '', type: 'info' },
+
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                /** 基本信息与文本字段 */
+                form: {
+                    age: '',
+                    gender: '男',
+                    career: '',
+                    city: '',
+                    achievements: '',
+                    goals: '',
+                    scores: {
+                        health: 5,
+                        finance: 5,
+                        love: 5,
+                        career: 5,
+                        social: 5,
+                        learning: 5
+                    }
+                },
+
+                /** 六维自评：键与展示文案（顺序与雷达图轴一致） */
+                scoreDimensions: [
+                    { key: 'health', label: '健康' },
+                    { key: 'finance', label: '财务' },
+                    { key: 'love', label: '爱情' },
+                    { key: 'career', label: '事业' },
+                    { key: 'social', label: '社交' },
+                    { key: 'learning', label: '学习' }
+                ],
+
+                /** 预设爱好标签（胶囊多选，最多 5 个） */
+                hobbyPresets: [
+                    '阅读', '运动', '音乐', '旅行', '摄影', '美食', '游戏', '电影',
+                    '编程', '绘画', '写作', '冥想', '园艺', '宠物', '手工', '舞蹈',
+                    '咖啡', '骑行', '登山', '瑜伽'
+                ],
+                selectedHobbies: [],
+                customHobby: '',
+
+                /** 是否满足生成条件（年龄必填且合法） */
+                get canGenerate() {
+                    const a = Number(this.form.age);
+                    return !Number.isNaN(a) && a >= 1 && a <= 120;
+                },
+
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        } catch (e) { /* 忽略损坏配置 */ }
+                    }
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    /* 分步切换后重新扫描 DOM，避免 Lucide 图标不显示 */
+                    this.$watch('step', () => {
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    });
+                },
+
+                /** 切换预设爱好，上限 5 */
+                toggleHobby(h) {
+                    const i = this.selectedHobbies.indexOf(h);
+                    if (i >= 0) {
+                        this.selectedHobbies.splice(i, 1);
+                    } else if (this.selectedHobbies.length < 5) {
+                        this.selectedHobbies.push(h);
+                    }
+                },
+
+                /** 添加自定义爱好 */
+                addCustomHobby() {
+                    const t = (this.customHobby || '').trim();
+                    if (!t) return;
+                    if (this.selectedHobbies.includes(t)) {
+                        this.showToast('该爱好已在列表中', 'error');
+                        return;
+                    }
+                    if (this.selectedHobbies.length >= 5) {
+                        this.showToast('最多选择 5 个爱好', 'error');
+                        return;
+                    }
+                    this.selectedHobbies.push(t);
+                    this.customHobby = '';
+                },
+
+                /**
+                 * 合并保存 global_llm_config，避免覆盖其他工具字段
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'success');
+                },
+
+                showToast(msg, type = 'info') {
+                    this.toast = { show: true, msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2800);
+                },
+
+                /** 截图保存说明（浏览器无直接 API 时引导用户） */
+                showScreenshotHint() {
+                    alert('保存为图片的方式：\n\n1. Windows：Win + Shift + S 区域截图，或浏览器全屏后 PrtScn。\n2. macOS：Cmd + Shift + 4 框选截图；或 Cmd + Shift + 3 全屏。\n3. 也可在预览区域右键（若浏览器支持）或使用开发者工具截取节点。\n\n建议先「下载 HTML」再在浏览器中打开，全屏后截图效果更佳。');
+                },
+
+                /**
+                 * 将表单整理为发给模型的结构化 JSON 字符串
+                 */
+                buildUserPayloadJson() {
+                    const payload = {
+                        age: Number(this.form.age),
+                        gender: this.form.gender,
+                        career: (this.form.career || '').trim(),
+                        city: (this.form.city || '').trim(),
+                        hobbies: [...this.selectedHobbies],
+                        achievements: (this.form.achievements || '').trim(),
+                        goals: (this.form.goals || '').trim(),
+                        scores: { ...this.form.scores },
+                        /** 雷达图与文案用中文维度名 */
+                        scoreLabels: {
+                            health: '健康',
+                            finance: '财务',
+                            love: '爱情',
+                            career: '事业',
+                            social: '社交',
+                            learning: '学习'
+                        },
+                        lifeExpectancyAssumption: 80
+                    };
+                    return JSON.stringify(payload, null, 2);
+                },
+
+                /**
+                 * 系统提示：约束模型只输出 html 代码块，且内含指定可视化模块
+                 */
+                getSystemPrompt() {
+                    return `你是「人生仪表盘」可视化生成引擎，只根据用户提供的 JSON 数据生成**一个**完整、可独立打开的 HTML 页面。
+
+【输出格式（必须严格遵守）】
+1. 你的回复中**只能**包含一个 Markdown 代码块，语言标记为 html。
+2. 代码块内是从 <!DOCTYPE html> 开始到 </html> 结束的完整文档，不要省略。
+3. 不要在代码块外输出任何解释、前言或后记。
+
+【页面内容要求】
+- 使用**暗色科技风**（深色背景），主色调为紫色/品红/青色霓虹感，内联 <style> 写全部 CSS。
+- 包含**平滑动画**（如渐变流动、卡片 hover、进度条过渡、轻微 pulse），禁止使用外部 CSS/JS 文件；可使用内联 <script> 做简单交互（可选）。
+- **人生进度条**：假设寿命 80 岁，用 age 与 80 计算百分比，展示「人生旅程」进度（可配文案）。
+- **六维雷达图**：使用 SVG 多边形绘制，六个轴对应 scores 与 scoreLabels（健康、财务、爱情、事业、社交、学习），数值为 1–10，请正确映射到雷达半径。
+- **成就展示墙**：将 achievements 按行或段落拆成多条，用卡片/徽章样式展示；若内容为空则显示友好占位。
+- **AI 洞察评价**：基于用户整体数据写一段有温度的中文洞察（100–220 字）。
+- **每日格言**：一句针对该用户情况的原创格言（可副标题形式）。
+- **未来建议**：基于 goals 与 scores，给出 3–5 条可执行建议（列表）。
+
+【数据与语言】
+- 页面内展示的用户信息（年龄、性别、职业、城市、爱好等）须来自用户 JSON，勿编造虚假字段值。
+- 所有面向阅读者的文案使用**中文**。
+
+【技术约束】
+- 单文件、无外链字体也可（用系统字体栈）；若使用 Google Fonts 需 https 完整 URL（优先仍用系统字体以免 iframe 限制）。
+- 确保在常见桌面浏览器中布局正常、对比度足够。`;
+                },
+
+                /**
+                 * 主流程：流式请求 DeepSeek，结束后解析 HTML 填入预览
+                 */
+                async generateDashboard() {
+                    this.errorMsg = '';
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 DeepSeek API Key', 'error');
+                        return;
+                    }
+                    if (!this.canGenerate) {
+                        this.errorMsg = '请填写有效年龄（1–120）。';
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    this.streamRaw = '';
+                    this.reasoningBuffer = '';
+                    this.dashboardHtml = '';
+
+                    const userContent = `以下是我的结构化数据（JSON）：\n\n${this.buildUserPayloadJson()}\n\n请严格按照系统说明，只输出一个 \`\`\`html 代码块，生成完整仪表盘页面。`;
+
+                    const messages = [
+                        { role: 'system', content: this.getSystemPrompt() },
+                        { role: 'user', content: userContent }
+                    ];
+
+                    try {
+                        await this.streamApi(messages, (deltaContent, deltaReason) => {
+                            if (deltaReason) this.reasoningBuffer += deltaReason;
+                            if (deltaContent) this.streamRaw += deltaContent;
+                        });
+
+                        const html = this.extractHtmlDocument(this.streamRaw);
+                        if (!html) {
+                            this.errorMsg = '未能从 AI 回复中解析出完整 HTML。请重试，或切换为 deepseek-v4-flash 模型。';
+                            this.showToast('解析失败', 'error');
+                            return;
+                        }
+                        this.dashboardHtml = html;
+                        this.showToast('仪表盘已生成', 'success');
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = e.message || '生成失败，请检查网络与 Key';
+                        this.showToast(this.errorMsg, 'error');
+                    } finally {
+                        this.isLoading = false;
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    }
+                },
+
+                /**
+                 * DeepSeek Chat Completions 流式读取
+                 * @param {Array} messages OpenAI 格式 messages
+                 * @param {(content: string, reasoning: string) => void} onDelta
+                 */
+                async streamApi(messages, onDelta) {
+                    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages,
+                            stream: true,
+                            temperature: 0.75
+                        })
+                    });
+
+                    if (!resp.ok) {
+                        const errData = await resp.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || ('API 错误 ' + resp.status));
+                    }
+
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const raw = line.slice(6).trim();
+                            if (raw === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(raw);
+                                const delta = parsed.choices[0]?.delta || {};
+                                const r = delta.reasoning_content || '';
+                                const c = delta.content || '';
+                                if (r || c) onDelta(c, r);
+                            } catch (e) { /* 忽略损坏行 */ }
+                        }
+                    }
+                },
+
+                /**
+                 * 从模型全文提取 HTML：优先 ```html 围栏，否则抓取 DOCTYPE…html 闭合
+                 */
+                extractHtmlDocument(full) {
+                    if (!full || typeof full !== 'string') return '';
+
+                    const fence = full.match(/```html\s*([\s\S]*?)```/i);
+                    if (fence && fence[1]) {
+                        const inner = fence[1].trim();
+                        if (/<!DOCTYPE/i.test(inner) && /<\/html>/i.test(inner)) return inner;
+                    }
+
+                    const loose = full.match(/```\s*([\s\S]*?)```/);
+                    if (loose && loose[1]) {
+                        const inner = loose[1].trim();
+                        if (/<!DOCTYPE/i.test(inner) && /<\/html>/i.test(inner)) return inner;
+                    }
+
+                    const docMatch = full.match(/<!DOCTYPE[\s\S]*<\/html>/i);
+                    if (docMatch) return docMatch[0].trim();
+
+                    return '';
+                },
+
+                /**
+                 * 下载当前仪表盘为独立 .html 文件
+                 */
+                downloadHtml() {
+                    if (!this.dashboardHtml) {
+                        this.showToast('请先生成仪表盘', 'error');
+                        return;
+                    }
+                    const blob = new Blob([this.dashboardHtml], { type: 'text/html;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '人生仪表盘_' + new Date().toISOString().slice(0, 10) + '_' + Date.now() + '.html';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showToast('已下载 HTML 文件', 'success');
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

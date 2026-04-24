@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>竞品拆解器 (Competitor Decoder)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* 自定义卡片样式 */
+        .analysis-card {
+            transition: all 0.3s ease;
+        }
+        .analysis-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-bullseye text-blue-600 text-xl"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">Competitor Decoder</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="hidden md:flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'; saveConfig()" 
+                                :class="{'bg-white shadow text-blue-600': apiConfig.model === 'deepseek-v4-flash', 'text-slate-500 hover:text-slate-700': apiConfig.model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1">
+                                <i class="fa-solid fa-bolt"></i> V4 Flash (快)
+                            </button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'; saveConfig()"
+                                :class="{'bg-white shadow text-purple-600': apiConfig.model === 'deepseek-v4-pro', 'text-slate-500 hover:text-slate-700': apiConfig.model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1">
+                                <i class="fa-solid fa-brain"></i> V4 Pro (深)
+                            </button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-blue-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear"></i> 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主布局容器 -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：输入与控制 -->
+            <div class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-slate-200 flex flex-col h-full z-20">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+
+                    <!-- 1. 竞品信息 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">
+                            竞品账号/品牌名称
+                        </label>
+                        <input type="text" v-model="input.competitorName" placeholder="例如：某某职场干货、xx美妆日记"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition text-sm">
+                    </div>
+
+                    <!-- 2. 爆款内容输入 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-fire text-orange-500"></i>
+                            竞品爆款内容 (可多篇)
+                        </label>
+                        <textarea v-model="input.sourceContents" rows="12" placeholder="请粘贴竞品的高赞笔记正文、标题或视频文案脚本。建议输入 2-3 篇以便分析共性..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition text-sm font-mono leading-relaxed"></textarea>
+                        <p class="text-xs text-slate-400">AI 将深度分析其选题逻辑、钩子结构及变现路径。</p>
+                    </div>
+
+                    <!-- 分析按钮 -->
+                    <button @click="analyzeCompetitor" :disabled="isAnalyzing || !input.sourceContents"
+                        class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isAnalyzing" class="fa-solid fa-spinner fa-spin"></i>
+                        <span v-else>🕵️ 开始深度拆解</span>
+                    </button>
+
+                    <div class="border-t border-slate-100 my-2"></div>
+
+                    <!-- 提示信息 -->
+                    <div class="bg-blue-50 p-4 rounded-xl text-xs text-blue-700 leading-relaxed">
+                        <p class="font-bold mb-1 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> 核心理念</p>
+                        "像素级借鉴"不是抄袭，而是学习其底层逻辑（用户心理、叙事结构），结合你自己的定位进行差异化重塑。
+                    </div>
+
+                </div>
+
+                <!-- 底部状态 -->
+                <div class="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
+                    <span>{{ statusText }}</span>
+                    <span v-if="apiConfig.deepseek" class="text-green-600 flex items-center gap-1 font-medium bg-green-100 px-2 py-1 rounded-full">
+                        <i class="fa-solid fa-circle-check"></i> API Ready
+                    </span>
+                    <span v-else class="text-red-500 font-medium bg-red-100 px-2 py-1 rounded-full cursor-pointer" @click="showSettings = true">
+                        未配置 API
+                    </span>
+                </div>
+            </div>
+
+            <!-- 右侧：结果展示 -->
+            <div class="flex-grow bg-[#f8fafc] flex flex-col h-full overflow-hidden relative">
+
+                <!-- 空状态 -->
+                <div v-if="!result && !isAnalyzing && !reasoningText" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-8 text-center z-0">
+                    <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-satellite-dish text-4xl text-slate-300"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-600 mb-2">等待拆解</h3>
+                    <p class="max-w-md">在左侧输入竞品内容，AI 将为你揭示其流量背后的秘密。</p>
+                </div>
+
+                <!-- 结果容器 -->
+                <div class="flex-grow overflow-y-auto p-6 md:p-10 z-10 space-y-6">
+
+                    <!-- 深度思考过程 (V4 Pro Only) -->
+                    <div v-if="reasoningText" class="bg-white rounded-2xl border border-purple-100 shadow-sm overflow-hidden">
+                        <details class="group" :open="isAnalyzing">
+                            <summary class="bg-purple-50/50 px-6 py-3 cursor-pointer hover:bg-purple-50 transition flex items-center justify-between">
+                                <div class="flex items-center gap-2 text-purple-700 font-medium">
+                                    <i class="fa-solid fa-brain"></i>
+                                    <span>深度思考过程 (DeepSeek V4 Pro)</span>
+                                    <span v-if="isAnalyzing" class="flex h-2 w-2 relative">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                                    </span>
+                                </div>
+                                <i class="fa-solid fa-chevron-down text-purple-400 transition-transform group-open:rotate-180"></i>
+                            </summary>
+                            <div class="p-6 bg-slate-50/50 text-sm text-slate-600 leading-relaxed font-mono whitespace-pre-wrap border-t border-purple-100 max-h-96 overflow-y-auto">
+                                {{ reasoningText }}
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- 分析结果卡片网格 -->
+                    <div v-if="result" class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+                        
+                        <!-- 1. 选题逻辑 (Title Logic) -->
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm analysis-card">
+                            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                    <i class="fa-solid fa-compass"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800">选题底层逻辑</h3>
+                            </div>
+                            <p class="text-slate-600 text-sm leading-relaxed mb-4">{{ result.title_logic.summary }}</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="tag in result.title_logic.tags" :key="tag" class="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs rounded-md font-medium border border-slate-200">
+                                    #{{ tag }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 2. 钩子结构 (Hook Structure) -->
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm analysis-card">
+                            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
+                                    <i class="fa-solid fa-anchor"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800">开头钩子结构</h3>
+                            </div>
+                            <ul class="space-y-3">
+                                <li v-for="(hook, idx) in result.hook_structure" :key="idx" class="flex gap-3 text-sm text-slate-700">
+                                    <span class="flex-shrink-0 w-5 h-5 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-xs font-bold">{{ idx + 1 }}</span>
+                                    <span>{{ hook }}</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- 3. 变现路径 (Monetization Path) -->
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm analysis-card md:col-span-2">
+                            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
+                                    <i class="fa-solid fa-circle-dollar-to-slot"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800">变现与转化路径</h3>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-green-50/50 p-4 rounded-xl border border-green-100">
+                                    <h4 class="text-green-800 font-bold text-sm mb-2">流量引入</h4>
+                                    <p class="text-slate-600 text-sm">{{ result.monetization_path.traffic }}</p>
+                                </div>
+                                <div class="bg-green-50/50 p-4 rounded-xl border border-green-100">
+                                    <h4 class="text-green-800 font-bold text-sm mb-2">信任建立</h4>
+                                    <p class="text-slate-600 text-sm">{{ result.monetization_path.trust }}</p>
+                                </div>
+                                <div class="bg-green-50/50 p-4 rounded-xl border border-green-100">
+                                    <h4 class="text-green-800 font-bold text-sm mb-2">最终转化</h4>
+                                    <p class="text-slate-600 text-sm">{{ result.monetization_path.conversion }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. 情绪价值 (Emotion Value) -->
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm analysis-card">
+                            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                                <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center text-yellow-600">
+                                    <i class="fa-solid fa-face-smile-wink"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800">情绪价值分析</h3>
+                            </div>
+                             <div class="flex flex-wrap gap-2 mb-3">
+                                <span v-for="emo in result.emotion_value.keywords" :key="emo" class="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-sm font-bold">
+                                    {{ emo }}
+                                </span>
+                            </div>
+                            <p class="text-slate-600 text-sm">{{ result.emotion_value.analysis }}</p>
+                        </div>
+
+                         <!-- 5. 可复制公式 (Replication Tips) -->
+                         <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm analysis-card">
+                            <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
+                                    <i class="fa-solid fa-clipboard-check"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800">可复制的公式</h3>
+                            </div>
+                             <ul class="space-y-3">
+                                <li v-for="(tip, idx) in result.replication_tips" :key="idx" class="flex gap-3 text-sm text-slate-700">
+                                    <i class="fa-solid fa-check text-indigo-500 flex-shrink-0 mt-0.5"></i>
+                                    <span>{{ tip }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <!-- 底部操作栏 -->
+                        <div class="md:col-span-2 flex justify-end gap-3 mt-4">
+                            <button @click="copyAnalysis" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 text-sm font-bold hover:bg-slate-50 transition flex items-center gap-2">
+                                <i class="fa-solid fa-copy"></i> 复制分析结果
+                            </button>
+                             <button @click="exportReport" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800 transition flex items-center gap-2">
+                                <i class="fa-solid fa-download"></i> 导出报告
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">全局 API 设置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="sk-...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">默认模型</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+                const isAnalyzing = ref(false);
+                const statusText = ref('准备就绪');
+                
+                const input = reactive({
+                    competitorName: '',
+                    sourceContents: ''
+                });
+
+                const reasoningText = ref('');
+                const result = ref(null);
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            const parsed = JSON.parse(saved);
+                            apiConfig.value = { ...apiConfig.value, ...parsed };
+                            if(!apiConfig.value.model) apiConfig.value.model = 'deepseek-v4-flash';
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                });
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                    alert('配置已保存');
+                };
+
+                const analyzeCompetitor = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isAnalyzing.value = true;
+                    statusText.value = '正在深度拆解...';
+                    reasoningText.value = '';
+                    result.value = null;
+
+                    const systemPrompt = `你是一位资深的新媒体运营专家，擅长拆解爆款账号的底层逻辑。
+你的任务是深度分析用户提供的竞品内容，从中提炼出选题逻辑、钩子结构、变现路径和可复制的公式。
+
+请严格按照以下 JSON 格式返回分析结果：
+{
+  "title_logic": {
+    "summary": "选题的核心逻辑分析（如：利用了用户的身份焦虑...）",
+    "tags": ["焦虑", "职场", "逆袭"]
+  },
+  "hook_structure": [
+    "钩子1：具体分析开头是如何吸引注意力的...",
+    "钩子2：...",
+    "钩子3：..."
+  ],
+  "monetization_path": {
+    "traffic": "如何引入流量（如：争议性话题...）",
+    "trust": "如何建立信任（如：展示专业数据...）",
+    "conversion": "最终如何转化（如：引导私信领资料...）"
+  },
+  "emotion_value": {
+    "keywords": ["爽感", "认同感"],
+    "analysis": "该内容提供了什么样的情绪价值..."
+  },
+  "replication_tips": [
+    "建议1：我们可以借鉴...",
+    "建议2：...",
+    "建议3：..."
+  ]
+}
+`;
+
+                    const userPrompt = `
+竞品名称：${input.competitorName || '未提供'}
+待分析内容：
+${input.sourceContents}
+`;
+
+                    let fullContent = '';
+
+                    try {
+                        let response;
+                        try {
+                            response = await fetch('https://api.deepseek.com/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                                },
+                                body: JSON.stringify({
+                                    model: apiConfig.value.model,
+                                    messages: [
+                                        { role: 'system', content: systemPrompt },
+                                        { role: 'user', content: userPrompt }
+                                    ],
+                                    response_format: { type: 'json_object' },
+                                    stream: true
+                                })
+                            });
+                        } catch (e) {
+                            throw new Error(`网络请求失败: ${e.message}`);
+                        }
+
+                        if (!response.ok) {
+                            const err = await response.json().catch(() => ({}));
+                            throw new Error(err.error?.message || `API Error: ${response.status}`);
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value, { stream: true });
+                            const lines = chunk.split('\n');
+
+                            for (const line of lines) {
+                                if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const data = JSON.parse(line.substring(6));
+                                        const delta = data.choices[0].delta;
+
+                                        // 处理思考过程 (V4 Pro)
+                                        if (delta.reasoning_content) {
+                                            reasoningText.value += delta.reasoning_content;
+                                        }
+
+                                        // 处理内容
+                                        if (delta.content) {
+                                            fullContent += delta.content;
+                                        }
+                                    } catch (e) {
+                                        console.error('Parse error', e);
+                                    }
+                                }
+                            }
+                        }
+
+                        // 解析最终 JSON
+                        try {
+                            result.value = JSON.parse(fullContent);
+                            statusText.value = '拆解完成';
+                        } catch (e) {
+                            console.error('JSON Parse Error', e);
+                            statusText.value = '解析结果失败，请重试';
+                            alert('API 返回格式异常，未能正确解析为 JSON。');
+                        }
+
+                    } catch (error) {
+                        console.error(error);
+                        statusText.value = '请求失败';
+                        alert('分析过程中出错：' + error.message);
+                    } finally {
+                        isAnalyzing.value = false;
+                    }
+                };
+
+                const copyAnalysis = () => {
+                    if(!result.value) return;
+                    const text = `【竞品拆解报告】\n\n1. 选题逻辑：${result.value.title_logic.summary}\n\n2. 钩子结构：\n${result.value.hook_structure.join('\n')}\n\n3. 变现路径：\n- 流量：${result.value.monetization_path.traffic}\n- 信任：${result.value.monetization_path.trust}\n- 转化：${result.value.monetization_path.conversion}\n\n4. 借鉴建议：\n${result.value.replication_tips.join('\n')}`;
+                    navigator.clipboard.writeText(text);
+                    alert('已复制分析报告！');
+                };
+
+                const exportReport = () => {
+                    if(!result.value) return;
+                    const text = JSON.stringify(result.value, null, 2);
+                    const blob = new Blob([text], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `competitor_analysis_${new Date().toISOString().slice(0,10)}.json`;
+                    a.click();
+                };
+
+                return {
+                    input, showSettings, apiConfig, saveConfig,
+                    isAnalyzing, statusText, reasoningText, result,
+                    analyzeCompetitor, copyAnalysis, exportReport
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/research_competitor_decoder.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>
+

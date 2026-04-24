@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPT 架构与演讲稿生成器 - AI Office</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* PPT 预览卡片样式 */
+        .ppt-slide {
+            aspect-ratio: 16 / 9;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ppt-slide::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: #3b82f6;
+        }
+
+        .slide-number {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: bold;
+        }
+
+        .prose h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+
+        .prose h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #334155;
+            margin-top: 0;
+        }
+
+        .prose p {
+            font-size: 0.95rem;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .prose ul {
+            list-style-type: disc;
+            padding-left: 1.2rem;
+            margin-top: 0.5rem;
+        }
+
+        .prose li {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 0.2rem;
+        }
+
+        /* 演讲稿区域 */
+        .speech-note {
+            background: #f1f5f9;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #475569;
+            border-left: 3px inset #3b82f6;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+    <div id="app" class="flex-grow flex flex-col">
+
+        <!-- 导航栏 -->
+        <nav
+            class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                    <i class="fa-solid fa-person-chalkboard text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-800">PPT 架构生成器</h1>
+                    <p class="text-xs text-slate-500">逻辑大纲 + 视觉建议 + 演讲稿</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <a href="../../index.html"
+                    class="text-slate-500 hover:text-blue-600 transition flex items-center gap-1 text-sm">
+                    <i class="fa-solid fa-arrow-left text-xs"></i> 返回首页
+                </a>
+
+                <div class="hidden md:flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                    <span class="text-xs text-slate-500 pl-2">模型:</span>
+                    <select v-model="apiConfig.model" @change="saveConfig"
+                        class="text-sm bg-transparent border-none focus:ring-0 text-slate-700 font-medium outline-none cursor-pointer">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+
+                <button @click="showSettings = true"
+                    class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- 主体内容 -->
+        <main
+            class="flex-grow p-6 md:p-8 max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8 overflow-hidden">
+
+            <!-- 左侧：输入与配置 -->
+            <div class="flex flex-col h-[calc(100vh-140px)] space-y-4">
+                <div
+                    class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 flex-grow overflow-y-auto custom-scrollbar">
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-pen-nib text-blue-500"></i>
+                            汇报主题与核心目标
+                        </label>
+                        <textarea v-model="topic"
+                            class="w-full h-32 p-4 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none resize-none bg-slate-50 text-slate-700"
+                            placeholder="例如：公司年度品牌升级计划汇报。目标是说服老板增加 20% 的预算。关键点包括：新社交媒体策略、联名合作、线下活动。"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-2">演讲场合</label>
+                            <select v-model="context" class="w-full text-sm border-slate-200 rounded-lg p-2 bg-white">
+                                <option value="internal">内部汇报 (严谨实用)</option>
+                                <option value="external">外部演讲 (启发煽情)</option>
+                                <option value="pitch">融资路演 (数据驱动)</option>
+                                <option value="edu">知识分享 (通俗易懂)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-2">幻灯片页数</label>
+                            <select v-model="slideCount"
+                                class="w-full text-sm border-slate-200 rounded-lg p-2 bg-white">
+                                <option value="5-8">精简版 (5-8页)</option>
+                                <option value="10-15">标准版 (10-15页)</option>
+                                <option value="20+">详细版 (20+页)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-2">逻辑框架 (可选)</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="frame in frameworks" :key="frame.id" @click="activeFramework = frame.id"
+                                :class="['px-3 py-1.5 rounded-full text-xs font-medium transition', activeFramework === frame.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200']">
+                                {{ frame.name }}
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-2">{{ currentFrameworkDesc }}</p>
+                    </div>
+
+                    <button @click="generatePPT" :disabled="isGenerating || !topic"
+                        class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg mt-4">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin"></i>
+                        <span v-else>🚀 生成 PPT 架构</span>
+                    </button>
+                </div>
+
+                <!-- 技巧提示 -->
+                <div class="bg-blue-50 rounded-xl p-4 border border-blue-100 flex items-start gap-3">
+                    <i class="fa-solid fa-lightbulb text-blue-500 flex-shrink-0 mt-0.5"></i>
+                    <p class="text-xs text-blue-700 leading-relaxed">
+                        <strong>小技巧：</strong> 使用生成的 Markdown 内容，你可以直接复制到 <strong>Gamma.app</strong> 或
+                        <strong>Slidev</strong> 中，几秒钟即可生成真实的 PPT 文件。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 右侧：结构预览 -->
+            <div class="flex flex-col h-[calc(100vh-140px)]">
+                <div
+                    class="bg-white rounded-2xl shadow-sm border border-slate-200 flex-grow flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                        <h2 class="font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-table-columns text-blue-500"></i>
+                            架构预览
+                        </h2>
+                        <div class="flex gap-2" v-if="slides.length > 0">
+                            <button @click="copyAll"
+                                class="text-xs text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition font-medium">
+                                复制 Markdown
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex-grow overflow-auto p-8 custom-scrollbar bg-slate-50">
+                        <!-- 思考过程 (仅 V4 Pro) -->
+                        <div v-if="reasoningContent"
+                            class="mb-8 p-4 bg-white/50 border border-slate-200 rounded-xl text-xs text-slate-400 italic">
+                            <div class="flex items-center gap-1 mb-2 font-bold uppercase tracking-wider not-italic"><i
+                                    class="fa-solid fa-brain text-xs"></i> 逻辑构建中...</div>
+                            <div class="whitespace-pre-wrap">{{ reasoningContent }}</div>
+                        </div>
+
+                        <!-- 幻灯片列表 -->
+                        <div v-if="slides.length > 0">
+                            <div v-for="(slide, index) in slides" :key="index" class="ppt-slide prose max-w-none">
+                                <span class="slide-number">SLIDE {{ index + 1 }}</span>
+                                <h2 v-if="slide.title">{{ slide.title }}</h2>
+                                <ul v-if="slide.points">
+                                    <li v-for="p in slide.points">{{ p }}</li>
+                                </ul>
+                                <div class="mt-4 flex gap-4">
+                                    <div class="flex-1 text-[10px] text-slate-400">
+                                        <div class="font-bold text-blue-400 mb-1">视觉建议:</div>
+                                        {{ slide.visual }}
+                                    </div>
+                                </div>
+                                <div class="speech-note">
+                                    <div class="flex items-center gap-1 font-bold text-blue-600 mb-1">
+                                        <i class="fa-solid fa-microphone-lines text-xs"></i> 演讲稿提示:
+                                    </div>
+                                    {{ slide.speech }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div v-else-if="!isGenerating"
+                            class="h-full flex flex-col items-center justify-center text-slate-400">
+                            <i class="fa-solid fa-desktop text-6xl mb-4 opacity-20"></i>
+                            <p class="text-sm">生成的 PPT 结构将在这里展示</p>
+                        </div>
+
+                        <!-- 加载中 -->
+                        <div v-else class="space-y-8 animate-pulse">
+                            <div v-for="i in 3" :key="i" class="h-64 bg-white rounded-xl border border-slate-200"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold">API 配置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="sk-...">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                // Removed renderIcon as Font Awesome is used via CSS classes
+
+                const topic = ref('');
+                const context = ref('internal');
+                const slideCount = ref('10-15');
+                const activeFramework = ref('auto');
+                const isGenerating = ref(false);
+                const slides = ref([]);
+                const reasoningContent = ref('');
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                const frameworks = [
+                    { id: 'auto', name: '自动匹配', desc: 'AI 根据内容自动选择最佳逻辑' },
+                    { id: 'scqa', name: 'SCQA 模型', desc: '情境(S)-冲突(C)-问题(Q)-答案(A)，适合解决问题类汇报' },
+                    { id: 'pyramid', name: '金字塔原理', desc: '结论先行，以上统下，逻辑递进，适合严肃商务汇报' },
+                    { id: 'why', name: '黄金圈法则', desc: 'Why-How-What，适合愿景宣讲、新品发布' },
+                    { id: 'timeline', name: '时间轴结构', desc: '过去-现在-未来，适合年度计划、回顾性汇报' }
+                ];
+
+                const currentFrameworkDesc = computed(() => {
+                    const f = frameworks.find(f => f.id === activeFramework.value);
+                    return f ? f.desc : '';
+                });
+
+                onMounted(() => {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) apiConfig.value = JSON.parse(saved);
+                });
+
+                const saveConfig = () => {
+                    localStorage.setItem('global_llm_config', JSON.stringify(apiConfig.value));
+                    showSettings.value = false;
+                };
+
+                const generatePPT = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isGenerating.value = true;
+                    slides.value = [];
+                    reasoningContent.value = '';
+
+                    let fullContent = "";
+
+                    const systemPrompt = `你是一个顶级战略咨询顾问和 PPT 设计专家。你的任务是根据用户的主题，设计一套逻辑严密、视觉专业的 PPT 架构。
+
+【输出格式要求】
+必须严格输出以下格式的 JSON 数组（不要包含任何其他文字）：
+[
+  {
+    "title": "幻灯片标题",
+    "points": ["核心要点1", "核心要点2", "核心要点3"],
+    "visual": "对此页的视觉排版、插图、数据展示的建议",
+    "speech": "此页演讲者的逐字稿或关键话术提示"
+  },
+  ...
+]
+
+【内容要求】
+1. **逻辑框架**: 使用 ${activeFramework.value === 'auto' ? '最适合该主题的专业模型' : activeFramework.value}。
+2. **场合适配**: 语气应符合 ${context.value} 场合。
+3. **页数**: 大约规划 ${slideCount.value} 页。
+4. **高质量**: 每一页的标题要具有吸引力（不要只写"第一章"），内容要有干货。`;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.value.model,
+                                messages: [
+                                    { role: "system", content: systemPrompt },
+                                    { role: "user", content: `主题：${topic.value}` }
+                                ],
+                                stream: true
+                            })
+                        });
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value);
+                            const lines = chunk.split('\n');
+
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const jsonStr = line.slice(6);
+                                    if (jsonStr === '[DONE]') break;
+                                    try {
+                                        const data = JSON.parse(jsonStr);
+                                        if (data.choices[0].delta.reasoning_content) {
+                                            reasoningContent.value += data.choices[0].delta.reasoning_content;
+                                        }
+                                        if (data.choices[0].delta.content) {
+                                            fullContent += data.choices[0].delta.content;
+                                        }
+                                    } catch (e) { }
+                                }
+                            }
+                        }
+
+                        // 解析生成的 JSON
+                        try {
+                            // 预处理字符串，防止包含 Markdown 标记
+                            const jsonText = fullContent.replace(/```json/g, '').replace(/```/g, '').trim();
+                            slides.value = JSON.parse(jsonText);
+                        } catch (err) {
+                            console.error("JSON 解析失败", err);
+                            // 如果解析失败，可能是 AI 输出了带格式的内容，这里可以加个更强的正则匹配
+                            const match = fullContent.match(/[\[\]\{\}]/s);
+                            if (match) slides.value = JSON.parse(match[0]);
+                        }
+
+                    } catch (e) {
+                        alert('生成失败，请检查网络');
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const copyAll = () => {
+                    let md = slides.value.map((s, i) => `# ${s.title}\n\n${s.points.map(p => `- ${p}`).join('\n')}\n\n---\n\n`).join('\n');
+                    navigator.clipboard.writeText(md);
+                    alert('已复制 Markdown 格式，可直接导入 Gamma/Slidev 等工具！');
+                };
+
+                return {
+                    topic, context, slideCount, activeFramework, frameworks, currentFrameworkDesc,
+                    isGenerating, slides, reasoningContent, showSettings, apiConfig,
+                    saveConfig, generatePPT, copyAll
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_ppt_architect.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

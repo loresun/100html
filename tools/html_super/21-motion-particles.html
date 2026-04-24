@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Motion Particles // HTML_SUPER</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        .ui { position: absolute; top: 20px; left: 20px; color: #fff; z-index: 10; pointer-events: none; }
+        #webcam-container { position: absolute; bottom: 20px; right: 20px; width: 160px; height: 120px; border: 1px solid rgba(255,255,255,0.3); z-index: 5; }
+        video { width: 100%; height: 100%; transform: scaleX(-1); opacity: 0.5; }
+        h1 { margin: 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px; }
+        p { margin-top: 5px; color: #aaa; font-size: 0.9rem; }
+        button { pointer-events: auto; padding: 10px 20px; background: #00ff88; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        a { color: #fff; text-decoration: none; border-bottom: 1px solid #fff; pointer-events: auto; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui">
+        <a href="index.html">← BACK</a>
+        <h1>Motion Magician</h1>
+        <p>Wave your hands to disturb the digital dust.</p>
+        <button id="startBtn">ENABLE CAMERA</button>
+    </div>
+
+    <div id="webcam-container">
+        <video id="video" autoplay playsinline muted></video>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+
+        let width, height;
+        let particles = [];
+        const numParticles = 3000;
+        
+        // Motion detection
+        let prevFrame = null;
+        let diffCanvas = document.createElement('canvas'); // Offscreen for processing
+        let diffCtx = diffCanvas.getContext('2d');
+        const motionScale = 20; // Resolution divider for motion detection (performance)
+
+        // Setup Particles
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = 0;
+                this.vy = 0;
+                this.size = Math.random() * 2 + 1;
+                this.col = `hsl(${Math.random()*60 + 180}, 100%, 70%)`; // Blue-Cyan
+                this.baseX = this.x;
+                this.baseY = this.y;
+                this.friction = 0.96;
+                this.spring = 0.05;
+            }
+
+            update(motionBuffer) {
+                // Return to base
+                /* 
+                   We want particles to float freely but be pushed by motion.
+                   If motion is detecting at (mx, my), push particles nearby.
+                */
+               
+               // Map screen x to diff buffer x (flipped because of CSS mirror)
+               // Screen X=0 (Left) should map to Diff Image Right (where the hand actually is in raw camera)
+               let mx = Math.floor(this.x / width * diffCanvas.width);
+               mx = diffCanvas.width - 1 - mx; // FLIP HERE to match CSS transform: scaleX(-1)
+               
+               const my = Math.floor(this.y / height * diffCanvas.height);
+               
+               // Check bounds
+               if(mx >= 0 && mx < diffCanvas.width && my >=0 && my < diffCanvas.height) {
+                   const index = (my * diffCanvas.width + mx) * 4;
+                   // Use Green channel for motion intensity
+                   const motion = motionBuffer[index + 1]; 
+                   
+                   if (motion > 20) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const force = motion * 0.2;
+                        this.vx += Math.cos(angle) * force;
+                        this.vy += Math.sin(angle) * force;
+                   }
+               }
+
+               this.x += this.vx;
+               this.y += this.vy;
+               
+               this.vx *= this.friction;
+               this.vy *= this.friction;
+
+               // Bounce borders
+               if(this.x < 0) { this.x = 0; this.vx *= -1; }
+               if(this.x > width) { this.x = width; this.vx *= -1; }
+               if(this.y < 0) { this.y = 0; this.vy *= -1; }
+               if(this.y > height) { this.y = height; this.vy *= -1; }
+            }
+
+            draw() {
+                ctx.fillStyle = this.col;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            
+            // Diff canvas is much smaller for speed
+            diffCanvas.width = 64; 
+            diffCanvas.height = 48; // Aspect ratio of typical webcam roughly
+
+            particles = [];
+            for(let i=0; i<numParticles; i++) particles.push(new Particle());
+        }
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+                video.srcObject = stream;
+                startBtn.style.display = 'none';
+                loop();
+            } catch(e) {
+                alert("Camera access denied or error: " + e);
+            }
+        });
+
+        function loop() {
+            // Draw video to diff canvas
+            diffCtx.drawImage(video, 0, 0, diffCanvas.width, diffCanvas.height);
+            
+            // Get data
+            const frame = diffCtx.getImageData(0, 0, diffCanvas.width, diffCanvas.height);
+            const d = frame.data;
+            
+            // Calculate motion
+            // We use the Alpha channel of 'frame' to store Motion diff for next pass? No, creates loop.
+            // Create a motion buffer array
+            // Or simpler: Reuse prevFrame global
+            let motionData = new Uint8ClampedArray(d.length);
+
+            if (prevFrame) {
+                // calc diff
+                for(let i=0; i<d.length; i+=4) {
+                    // Compare green channel (usually good enough)
+                    const diff = Math.abs(d[i+1] - prevFrame[i+1]);
+                    // If big diff, store in motionData
+                    if(diff > 30) {
+                        motionData[i+1] = diff; // Green stored
+                    }
+                }
+            }
+            prevFrame = d; // Store current for next
+
+            // Draw Main
+            ctx.fillStyle = 'rgba(0,0,0,0.2)'; // trails
+            ctx.fillRect(0,0,width,height);
+
+            particles.forEach(p => {
+                p.update(motionData);
+                p.draw();
+            });
+
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', init);
+        init();
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

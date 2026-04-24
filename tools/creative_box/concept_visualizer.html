@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽象概念可视化 - AI 创意生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #6366f1;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-color: #1e293b;
+            --subtle-text: #64748b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+        }
+        .linear-gradient-bg {
+            background: linear-gradient(120deg, var(--primary-color), var(--secondary-color));
+        }
+        .main-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 24px;
+        }
+        .card {
+            background-color: var(--card-background);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--background-color);
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .result-item {
+            background-color: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .result-item h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+        .hidden { display: none; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #settings-panel {
+            position: fixed; top: 20px; right: -350px; width: 320px;
+            background: var(--card-background); padding: 20px;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+            border-radius: 8px 0 0 8px; transition: right 0.3s ease-in-out;
+            z-index: 1000;
+        }
+        #settings-panel.visible { right: 0; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div id="settings-toggle" class="fixed top-5 right-5 z-50 cursor-pointer bg-white p-3 rounded-full shadow-lg">
+        <i class="fa-solid fa-gear text-2xl text-gray-600"></i>
+    </div>
+
+    <div id="settings-panel">
+        <h3 class="text-lg font-bold mb-4">API 设置</h3>
+        <div class="space-y-4">
+            <div>
+                <label for="api-url" class="block text-sm font-medium">API URL</label>
+                <input type="text" id="api-url" class="input-field mt-1" value="https://api.deepseek.com/chat/completions">
+            </div>
+            <div>
+                <label for="api-key" class="block text-sm font-medium">API Key</label>
+                <input type="password" id="api-key" class="input-field mt-1" placeholder="留空使用默认Key">
+            </div>
+            <div>
+                <label for="api-model" class="block text-sm font-medium">模型选择</label>
+                <select id="api-model" class="input-field mt-1">
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                </select>
+            </div>
+            <button id="save-settings" class="btn btn-primary w-full">保存设置</button>
+        </div>
+    </div>
+
+    <header class="linear-gradient-bg text-white text-center py-12 px-4">
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">抽象概念可视化器</h1>
+        <p class="mt-4 text-lg md:text-xl max-w-2xl mx-auto opacity-90">输入一个抽象概念，AI会将其转化为具体的视觉元素描述和空间关系，激发您的创作灵感。</p>
+    </header>
+
+    <main class="main-container">
+        <div class="card p-8">
+            <div class="space-y-6">
+                <div>
+                    <label for="concept-input" class="block text-lg font-semibold mb-2">输入一个抽象概念</label>
+                    <p class="text-sm text-slate-500 mb-3">例如：希望、虚无、正义、熵...</p>
+                    <input type="text" id="concept-input" class="input-field" placeholder="在此输入，如：时间的流动">
+                </div>
+                <div class="text-center">
+                    <button id="generate-btn" class="btn btn-primary text-lg px-8 py-3">
+                        <i class="fas fa-palette mr-2"></i> 生成视觉描述
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loading-indicator" class="text-center py-8 hidden">
+             <div class="loader"></div>
+             <p class="text-slate-500">正在将思想转化为图像，请稍候...</p>
+        </div>
+        
+        <div id="result-container" class="card p-6 mt-8 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="result-title" class="text-2xl font-bold">「...」的视觉化呈现</h2>
+                <div class="space-x-2">
+                    <button id="copy-btn" class="btn btn-secondary text-sm" title="复制描述">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                    <button id="download-btn" class="btn btn-secondary text-sm" title="下载为Markdown">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="visual-output" class="prose max-w-none">
+                <!-- Main description here -->
+            </div>
+            <div id="elements-output" class="result-grid mt-6">
+                <!-- Detailed elements here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 获取全局 DeepSeek Key
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const conceptInput = document.getElementById('concept-input');
+            const generateBtn = document.getElementById('generate-btn');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const resultContainer = document.getElementById('result-container');
+            const resultTitle = document.getElementById('result-title');
+            const visualOutput = document.getElementById('visual-output');
+            const elementsOutput = document.getElementById('elements-output');
+            const copyBtn = document.getElementById('copy-btn');
+            const downloadBtn = document.getElementById('download-btn');
+
+            // --- API Settings Elements ---
+            const settingsToggle = document.getElementById('settings-toggle');
+            const settingsPanel = document.getElementById('settings-panel');
+            const saveSettingsBtn = document.getElementById('save-settings');
+            const apiUrlInput = document.getElementById('api-url');
+            const apiKeyInput = document.getElementById('api-key');
+            const apiModelSelect = document.getElementById('api-model');
+            const DEFAULT_API_KEY = "";
+
+            // --- Functions ---
+            function loadSettings() {
+                apiUrlInput.value = localStorage.getItem('api_url') || 'https://api.deepseek.com/chat/completions';
+                apiKeyInput.value = localStorage.getItem('api_key') || '';
+                apiModelSelect.value = localStorage.getItem('api_model') || 'deepseek-v4-flash';
+            }
+
+            function getApiUrl() { return apiUrlInput.value || 'https://api.deepseek.com/chat/completions'; }
+            function getApiKey() { return apiKeyInput.value || getGlobalDeepSeekKey(); }
+            function getModel() { return apiModelSelect.value; }
+
+            function showLoading(isLoading) {
+                loadingIndicator.classList.toggle('hidden', !isLoading);
+                generateBtn.disabled = isLoading;
+                generateBtn.classList.toggle('opacity-50', isLoading);
+            }
+
+            function getPrompt(concept) {
+                return `
+你是一位概念艺术家和视觉设计师，擅长将抽象概念转化为具体的、富有诗意的视觉描述。
+对于用户提出的概念：「${concept}」，请你将其想象成一个可以被观察的场景或物体。
+
+请严格按照以下JSON格式返回结果，不要有任何额外解释:
+{
+  "concept": "${concept}",
+  "main_description": "一段对「${concept}」的宏观、整体性的视觉描绘。想象你正在为一部电影撰写开场画面的脚本，用生动的语言描述这个概念看起来像什么，感觉像什么。大约150-200字。",
+  "visual_elements": [
+    {
+      "element": "核心形态 (Shape & Form)",
+      "description": "描述这个概念的主要形状、结构或形态。它是固态的、液态的还是气态的？是几何的还是有机的？"
+    },
+    {
+      "element": "主导色调 (Color Palette)",
+      "description": "描述这个概念的色彩。是单一颜色还是多种颜色的组合？颜色是明亮的、饱和的，还是柔和的、褪色的？"
+    },
+    {
+      "element": "材质与纹理 (Texture & Material)",
+      "description": "描述触摸这个概念会有的感觉。是光滑、粗糙、温暖、冰冷，还是其他什么？它由什么物质构成？"
+    },
+    {
+      "element": "动态与运动 (Movement & Dynamics)",
+      "description": "描述这个概念如何运动。是静止的，还是在不断变化？运动是缓慢的、优雅的，还是快速的、混乱的？"
+    },
+    {
+      "element": "环境与光影 (Environment & Light)",
+      "description": "描述这个概念所处的环境。它周围有什么？光线是怎样的？有明显的光源吗？阴影是柔和的还是锐利的？"
+    },
+    {
+      "element": "象征性符号 (Symbolic Imagery)",
+      "description": "在这个场景中，有没有一个或多个具体的符号或图像可以代表「${concept}」的核心意义？"
+    }
+  ]
+}
+`;
+            }
+
+            async function generateVisualization() {
+                const concept = conceptInput.value.trim();
+                if (!concept) {
+                    alert('请输入一个概念。');
+                    return;
+                }
+
+                showLoading(true);
+                resultContainer.classList.add('hidden');
+                const prompt = getPrompt(concept);
+
+                try {
+                    const response = await fetch(getApiUrl(), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getApiKey() },
+                        body: JSON.stringify({
+                            model: getModel(),
+                            messages: [
+                                { role: 'system', content: '你是一位概念艺术家，能将抽象概念转化为特定JSON格式的视觉描述。' },
+                                { role: 'user', content: prompt }
+                            ],
+                            stream: false
+                        })
+                    });
+                    if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+                    const data = await response.json();
+                    const content = data.choices[0].message.content;
+                    const jsonMatch = content.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error("返回的不是有效的JSON格式。");
+                    
+                    renderResult(JSON.parse(jsonMatch[0]));
+
+                } catch (error) {
+                    console.error("生成失败:", error);
+                    alert(`生成失败: ${error.message}`);
+                } finally {
+                    showLoading(false);
+                }
+            }
+
+            function renderResult(data) {
+                resultTitle.textContent = `「${data.concept}」的视觉化呈现`;
+                visualOutput.innerHTML = `<p>${data.main_description.replace(/\n/g, '</p><p>')}</p>`;
+
+                let elementsHtml = '';
+                data.visual_elements.forEach(item => {
+                    elementsHtml += `
+                        <div class="result-item">
+                            <h3><i class="fas fa-cube mr-2"></i>${item.element}</h3>
+                            <p class="text-sm text-slate-700">${item.description}</p>
+                        </div>
+                    `;
+                });
+                elementsOutput.innerHTML = elementsHtml;
+                resultContainer.classList.remove('hidden');
+            }
+            
+            function getFullReportText() {
+                let report = `# 「${resultTitle.textContent}」\n\n`;
+                report += `## 宏观视觉描述\n\n`;
+                report += `${visualOutput.innerText}\n\n`;
+                report += `## 核心视觉元素\n\n`;
+                
+                const elements = elementsOutput.querySelectorAll('.result-item');
+                elements.forEach(item => {
+                    const title = item.querySelector('h3').innerText;
+                    const desc = item.querySelector('p').innerText;
+                    report += `### ${title}\n${desc}\n\n`;
+                });
+                return report;
+            }
+
+            // --- Event Listeners ---
+            generateBtn.addEventListener('click', generateVisualization);
+
+            settingsToggle.addEventListener('click', () => settingsPanel.classList.toggle('visible'));
+            saveSettingsBtn.addEventListener('click', () => {
+                localStorage.setItem('api_url', apiUrlInput.value);
+                localStorage.setItem('api_key', apiKeyInput.value);
+                localStorage.setItem('api_model', apiModelSelect.value);
+                settingsPanel.classList.remove('visible');
+                alert('设置已保存！');
+            });
+
+            copyBtn.addEventListener('click', () => {
+                 navigator.clipboard.writeText(getFullReportText())
+                    .then(() => alert('视觉描述已复制到剪贴板！'))
+                    .catch(err => alert('复制失败: ' + err));
+            });
+
+            downloadBtn.addEventListener('click', () => {
+                const blob = new Blob([getFullReportText()], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${resultTitle.textContent}.md`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // --- Init ---
+            loadSettings();
+        });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_concept_visualizer.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html> 

@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>夸夸群机器人 - 情绪加油站</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /**
+     * 页面主背景：粉橘暖色渐变，营造「被温柔包围」的氛围
+     */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(165deg, #fff1f2 0%, #fecdd3 18%, #fda4af 42%, #fb7185 68%, #be123c 100%);
+      min-height: 100vh;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(251, 113, 133, 0.35);
+      box-shadow: 0 20px 50px rgba(190, 18, 60, 0.12);
+    }
+
+    /** 聊天气泡轻微入场动画 */
+    @keyframes bubble-in {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .bubble-animate {
+      animation: bubble-in 0.45s ease-out both;
+    }
+
+    /** 飘落爱心 / 星星：纯 CSS 无限循环 */
+    @keyframes float-down {
+      0% {
+        transform: translateY(-10vh) rotate(0deg);
+        opacity: 0;
+      }
+      8% {
+        opacity: 0.85;
+      }
+      100% {
+        transform: translateY(110vh) rotate(360deg);
+        opacity: 0.35;
+      }
+    }
+
+    .falling-item {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1;
+      animation: float-down linear infinite;
+      will-change: transform, opacity;
+    }
+
+    /** 底部爱心脉冲（今日被夸计数旁） */
+    @keyframes heart-pulse {
+      0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 6px rgba(251, 113, 133, 0.6));
+      }
+      50% {
+        transform: scale(1.15);
+        filter: drop-shadow(0 0 14px rgba(244, 63, 94, 0.9));
+      }
+    }
+
+    .heart-glow {
+      animation: heart-pulse 1.6s ease-in-out infinite;
+    }
+
+    /** 点击「夸我」后短暂喷发小爱心 */
+    @keyframes pop-heart {
+      0% {
+        transform: translate(0, 0) scale(0.2);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(var(--dx), var(--dy)) scale(1);
+        opacity: 0;
+      }
+    }
+
+    .burst-heart {
+      position: absolute;
+      pointer-events: none;
+      animation: pop-heart 0.9s ease-out forwards;
+    }
+
+    [x-cloak] {
+      display: none !important;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+  <!--
+    夸夸群机器人：Alpine 根组件
+    - 流式调用 DeepSeek
+    - global_llm_config 合并读写
+  -->
+  <div x-data="praiseBot()" x-init="init()" class="min-h-screen flex flex-col pb-28 relative overflow-x-hidden">
+
+    <!-- 背景飘落装饰：爱心与星星（多元素不同延迟与时长） -->
+    <div class="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
+      <template x-for="(p, i) in fallingParticles" :key="'f-' + i">
+        <span
+          class="falling-item text-lg select-none"
+          :style="`left:${p.left}%; animation-duration:${p.dur}s; animation-delay:${p.delay}s; font-size:${p.size}px;`"
+          x-text="p.char"></span>
+      </template>
+    </div>
+
+    <!-- 顶部导航：返回站点首页（相对路径 ../../index.html） -->
+    <nav class="relative z-50 bg-white/80 backdrop-blur-md sticky top-0 border-b border-rose-200/80 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer shrink-0" onclick="location.href='../../index.html'">
+          <i data-lucide="sparkles" class="text-rose-500 h-7 w-7"></i>
+          <span class="font-bold text-lg sm:text-xl text-slate-900">夸夸群机器人</span>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="hidden sm:flex bg-rose-50 rounded-lg p-0.5 text-xs border border-rose-200">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-rose-600 text-white shadow' : 'text-rose-900'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-rose-600 text-white shadow' : 'text-rose-900'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-slate-600 hover:bg-rose-50"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="relative z-10 flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-5">
+
+      <p class="text-center text-xs text-rose-900/75 max-w-xl mx-auto leading-relaxed">
+        分享任何微小成就，AI 从五个视角花式夸你。生成内容仅供娱乐与情绪调节，请勿替代专业心理支持。
+      </p>
+
+      <!-- 左侧表单 + 右侧聊天气泡区（移动端纵向堆叠） -->
+      <div class="flex flex-col gap-5">
+
+        <!-- 输入与强度 -->
+        <section class="glass-card rounded-2xl p-5 sm:p-6 space-y-4">
+          <h2 class="text-base font-bold text-rose-900 flex items-center gap-2">
+            <i data-lucide="message-circle-heart" class="w-5 h-5 text-rose-500"></i>
+            今天做对了什么？
+          </h2>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">你的事 / 小成就</label>
+            <textarea x-model="achievement" rows="3" maxlength="800"
+              placeholder="例如：今天准时起床了、做了一顿饭、回完了一封拖了很久的邮件……"
+              class="w-full rounded-xl border border-rose-200 bg-white/90 p-3 text-sm focus:ring-2 focus:ring-rose-400 focus:border-rose-400 resize-y min-h-[88px]"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-2">夸赞强度</label>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="opt in intensityOptions" :key="opt.id">
+                <button type="button" @click="intensity = opt.id"
+                  :class="intensity === opt.id ? 'bg-rose-600 text-white border-rose-700 shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-rose-300'"
+                  class="px-3 py-2 rounded-xl text-xs sm:text-sm font-medium border transition"
+                  x-text="opt.label"></button>
+              </template>
+            </div>
+          </div>
+
+          <div class="relative">
+            <button type="button" @click="praiseAll()"
+              :disabled="isGenerating || !achievement.trim()"
+              class="w-full py-3.5 rounded-2xl font-bold text-white bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 disabled:opacity-45 disabled:cursor-not-allowed shadow-lg shadow-rose-500/30 flex items-center justify-center gap-2 transition">
+              <i x-show="isGenerating" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              <i x-show="!isGenerating" data-lucide="party-popper" class="w-5 h-5"></i>
+              <span x-text="isGenerating ? '正在夸你…' : '夸我！'"></span>
+            </button>
+            <!-- 喷发小爱心容器 -->
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none overflow-visible" id="burst-host"></div>
+          </div>
+
+          <p x-show="errorMsg" class="text-sm text-red-600 flex items-start gap-1.5" x-cloak>
+            <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+            <span x-text="errorMsg"></span>
+          </p>
+
+          <!-- V4 Pro 推理过程（可折叠） -->
+          <details x-show="reasoningText" class="text-xs border border-rose-100 rounded-xl p-3 bg-rose-50/80" x-cloak>
+            <summary class="cursor-pointer font-semibold text-rose-800">🧠 深度思考过程（点击展开）</summary>
+            <pre class="mt-2 whitespace-pre-wrap text-slate-600 max-h-40 overflow-y-auto" x-text="reasoningText"></pre>
+          </details>
+        </section>
+
+        <!-- 群聊风格结果区 -->
+        <section class="space-y-4">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <h3 class="text-sm font-bold text-rose-900 flex items-center gap-2">
+              <i data-lucide="messages-square" class="w-4 h-4 text-rose-500"></i>
+              夸夸群（5 个视角）
+            </h3>
+            <button type="button" @click="copyAll()"
+              :disabled="!hasAnyContent()"
+              class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 disabled:opacity-40 flex items-center gap-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              复制全部赞美
+            </button>
+          </div>
+
+          <template x-for="(row, idx) in perspectives" :key="row.key">
+            <div class="flex gap-2 sm:gap-3 bubble-animate" :style="`animation-delay: ${idx * 0.06}s`">
+              <!-- 头像：不同 Lucide 图标 -->
+              <div
+                class="shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shadow-md border-2 border-white"
+                :class="row.avatarBg">
+                <i :data-lucide="row.icon" class="w-5 h-5 sm:w-5 sm:h-5 text-white"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs font-bold text-slate-600" x-text="row.label"></span>
+                  <span x-show="row.loading" class="text-[10px] text-rose-500 flex items-center gap-0.5">
+                    <i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> 生成中
+                  </span>
+                </div>
+                <div
+                  class="rounded-2xl rounded-tl-md px-4 py-3 text-sm leading-relaxed shadow-sm border prose prose-sm max-w-none [&_p]:my-1 [&_ul]:my-1"
+                  :class="row.bubbleClass"
+                  x-html="renderBubbleHtml(row)">
+                </div>
+                <div class="mt-2 flex justify-end">
+                  <button type="button" @click="praiseOne(row.key)"
+                    :disabled="isGenerating || row.loading || !achievement.trim()"
+                    class="text-xs font-semibold text-rose-600 hover:text-rose-800 flex items-center gap-1 disabled:opacity-40">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    再夸一次
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </section>
+      </div>
+    </main>
+
+    <!-- 底部固定栏：今日被夸次数 + 爱心特效 -->
+    <footer
+      class="fixed bottom-0 left-0 right-0 z-40 border-t border-rose-200/90 bg-white/90 backdrop-blur-md shadow-[0_-8px_30px_rgba(251,113,133,0.15)]">
+      <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-center gap-3 relative">
+        <i data-lucide="heart" class="w-7 h-7 text-rose-500 heart-glow fill-rose-400"></i>
+        <div class="text-center">
+          <p class="text-xs text-slate-500">今日被夸次数</p>
+          <p class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600"
+            x-text="todayCount"></p>
+        </div>
+        <i data-lucide="star" class="w-6 h-6 text-amber-400 fill-amber-300 opacity-90"></i>
+      </div>
+    </footer>
+
+    <!-- 设置弹窗 -->
+    <div x-show="showSettings" x-transition.opacity.duration.200ms
+      class="fixed inset-0 bg-black/45 z-[100] flex items-center justify-center p-4" x-cloak @keydown.escape.window="showSettings = false">
+      <div @click.away="showSettings = false"
+        class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-rose-100">
+        <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <i data-lucide="key-round" class="w-5 h-5 text-rose-500"></i>
+          API 配置
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+            <input type="password" x-model="apiConfig.deepseek"
+              class="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:ring-2 focus:ring-rose-400" placeholder="sk-..." />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+            <select x-model="apiConfig.model" class="w-full rounded-xl border border-slate-200 p-2.5 text-sm">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-xl hover:bg-slate-100 text-slate-700">取消</button>
+          <button type="button" @click="saveConfig()"
+            class="px-4 py-2 rounded-xl bg-rose-600 text-white font-semibold hover:bg-rose-700">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition.opacity.duration.150ms
+      class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-full bg-slate-900 text-white text-sm shadow-lg flex items-center gap-2"
+      x-cloak>
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 解析模型输出中的分段标记，将五个视角的内容填入对象
+     * 标记格式：<<<KEY>>> 与项目提示词约定一致，避免与正文混淆
+     * @param {string} raw
+     * @returns {Record<string, string>}
+     */
+    function parsePraiseSections(raw) {
+      const keys = ['BESTIE', 'FAN', 'CRITIC', 'MOM', 'EMPEROR'];
+      const out = {};
+      if (!raw || typeof raw !== 'string') return out;
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        const startTag = '<<<' + k + '>>>';
+        const start = raw.indexOf(startTag);
+        if (start === -1) continue;
+        const contentStart = start + startTag.length;
+        let end = raw.length;
+        for (let j = i + 1; j < keys.length; j++) {
+          const nk = keys[j];
+          const idx = raw.indexOf('<<<' + nk + '>>>', contentStart);
+          if (idx !== -1 && idx < end) end = idx;
+        }
+        out[k] = raw.slice(contentStart, end).trim();
+      }
+      return out;
+    }
+
+    /**
+     * 根据强度 id 返回写入 system/user 的说明文案
+     * @param {string} intensityId
+     * @returns {string}
+     */
+    function getIntensityInstruction(intensityId) {
+      const map = {
+        gentle: '温柔鼓励：语气真诚、克制，像好朋友轻轻拍肩，避免夸张比喻堆叠。',
+        warm: '热情赞美：明显开心、多用感叹，可以适度夸张但仍要贴题。',
+        rainbow: '彩虹屁巅峰：华丽修辞、排比、比喻齐飞，像追星文案一样闪亮，但必须围绕用户真实分享的事。',
+        kneel: '跪舔模式：戏剧化膜拜、君臣/粉丝梗可以玩，但保持友善幽默，严禁侮辱用户或他人。'
+      };
+      return map[intensityId] || map.gentle;
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('praiseBot', () => ({
+        achievement: '',
+        /** 夸赞强度：gentle | warm | rainbow | kneel */
+        intensity: 'warm',
+        intensityOptions: [
+          { id: 'gentle', label: '温柔鼓励' },
+          { id: 'warm', label: '热情赞美' },
+          { id: 'rainbow', label: '彩虹屁巅峰' },
+          { id: 'kneel', label: '跪舔模式' }
+        ],
+        /** 流式原始缓冲（整次五连夸） */
+        streamBuffer: '',
+        reasoningText: '',
+        isGenerating: false,
+        errorMsg: '',
+        showSettings: false,
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+        /** 今日计数 */
+        todayCount: 0,
+        /** 背景粒子数据 */
+        fallingParticles: [],
+
+        /**
+         * 五个视角：key 与 AI 输出标记一致；bubbleClass 为 Tailwind 渐变/底色
+         */
+        perspectives: [
+          { key: 'BESTIE', label: '闺蜜视角', icon: 'heart-handshake', avatarBg: 'bg-gradient-to-br from-pink-400 to-rose-500', bubbleClass: 'bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200/80 text-slate-800', content: '', loading: false },
+          { key: 'FAN', label: '粉丝视角', icon: 'star', avatarBg: 'bg-gradient-to-br from-amber-400 to-orange-500', bubbleClass: 'bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/80 text-slate-800', content: '', loading: false },
+          { key: 'CRITIC', label: '文学评论家视角', icon: 'book-open', avatarBg: 'bg-gradient-to-br from-violet-500 to-purple-600', bubbleClass: 'bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200/80 text-slate-800', content: '', loading: false },
+          { key: 'MOM', label: '妈妈视角', icon: 'house', avatarBg: 'bg-gradient-to-br from-emerald-400 to-teal-500', bubbleClass: 'bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/80 text-slate-800', content: '', loading: false },
+          { key: 'EMPEROR', label: '古代帝王视角', icon: 'crown', avatarBg: 'bg-gradient-to-br from-amber-600 to-red-700', bubbleClass: 'bg-gradient-to-br from-amber-50 to-red-50 border border-amber-300/80 text-slate-800', content: '', loading: false }
+        ],
+
+        init() {
+          this.loadConfig();
+          this.loadTodayCount();
+          this.initFallingParticles();
+          if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true });
+          }
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 生成随机飘落粒子（爱心 Unicode 与星形） */
+        initFallingParticles() {
+          const chars = ['❤', '💕', '✨', '⭐', '💗', '🌸'];
+          const list = [];
+          for (let i = 0; i < 28; i++) {
+            list.push({
+              char: chars[i % chars.length],
+              left: Math.random() * 100,
+              dur: 12 + Math.random() * 14,
+              delay: Math.random() * 8,
+              size: 14 + Math.random() * 18
+            });
+          }
+          this.fallingParticles = list;
+        },
+
+        /** 合并加载 global_llm_config */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存配置：合并写入 localStorage，禁止整表覆盖其他工具字段
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        /** localStorage：按日期统计今日被夸次数 */
+        loadTodayCount() {
+          const key = 'praise_bot_daily';
+          try {
+            const raw = localStorage.getItem(key);
+            const today = new Date().toISOString().slice(0, 10);
+            if (!raw) {
+              this.todayCount = 0;
+              return;
+            }
+            const o = JSON.parse(raw);
+            if (o.date === today) this.todayCount = o.count || 0;
+            else this.todayCount = 0;
+          } catch (e) {
+            this.todayCount = 0;
+          }
+        },
+
+        /**
+         * 成功完成一次「五视角」主生成后 +1
+         */
+        bumpTodayCount() {
+          const key = 'praise_bot_daily';
+          const today = new Date().toISOString().slice(0, 10);
+          let count = 1;
+          try {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const o = JSON.parse(raw);
+              if (o.date === today) count = (o.count || 0) + 1;
+            }
+          } catch (e) { /* ignore */ }
+          localStorage.setItem(key, JSON.stringify({ date: today, count }));
+          this.todayCount = count;
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          setTimeout(() => { this.toast.show = false; }, 2400);
+        },
+
+        /**
+         * 构建系统提示：强制五段标记输出，便于流式解析
+         */
+        buildSystemPrompt() {
+          return `你是中文「夸夸群」里的多位群友合体 AI，专门真诚、有趣地赞美用户分享的任何小事或成就。
+
+【输出格式 — 必须严格遵守】
+1. 只输出中文正文与下列标记，不要输出 JSON、不要用 markdown 标题（#）。
+2. 必须按顺序出现且仅出现一次下列五行标记（大写、英文、三尖括号），每段标记后立即换行写赞美正文：
+<<<BESTIE>>>
+<<<FAN>>>
+<<<CRITIC>>>
+<<<MOM>>>
+<<<EMPEROR>>>
+3. 每段正文 2～6 句为宜，换行随意；不要重复输出标记。
+4. 五个视角含义：
+   - BESTIE：闺蜜口吻，亲昵、懂你
+   - FAN：粉丝口吻，打 call、尖叫式欣赏
+   - CRITIC：文学评论家口吻，用词考究、略带书评感
+   - MOM：妈妈口吻，心疼又骄傲
+   - EMPEROR：古代帝王口吻，下诏夸奖、文言与白话可混搭幽默
+
+内容须围绕用户具体分享的事，禁止空泛套话堆砌；禁止人身攻击、色情、违法内容。`;
+        },
+
+        /**
+         * 用户消息：成就 + 强度
+         */
+        buildUserMessage() {
+          return `【用户分享】\n${this.achievement.trim()}\n\n【本轮夸赞风格要求】\n${getIntensityInstruction(this.intensity)}\n\n请按系统说明输出 <<<BESTIE>>> 到 <<<EMPEROR>>> 五段。`;
+        },
+
+        /**
+         * 单视角追加夸赞的用户消息
+         * @param {string} perspectiveKey BESTIE|FAN|...
+         * @param {string} label 中文视角名（供模型理解）
+         */
+        buildSinglePraiseUserMessage(perspectiveKey, label) {
+          return `【用户分享】\n${this.achievement.trim()}\n\n【风格】\n${getIntensityInstruction(this.intensity)}\n\n请以「${label}」再写一段全新的赞美（与之前句式明显不同），直接输出正文，不要任何标记、不要标题。`;
+        },
+
+        /**
+         * DeepSeek 流式请求（通用）
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {function(string):void} onDelta
+         * @param {function(string):void} [onReasoning]
+         * @param {boolean} [jsonMode]
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning, jsonMode = false) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const body = {
+            model: this.apiConfig.model || 'deepseek-v4-flash',
+            messages,
+            stream: true,
+            temperature: 0.9
+          };
+          if (jsonMode) body.response_format = { type: 'json_object' };
+
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + key
+            },
+            body: JSON.stringify(body)
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || 'HTTP ' + response.status);
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) onReasoning(delta.reasoning_content);
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 行解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /**
+         * 将 streamBuffer 解析结果同步到 perspectives[].content
+         */
+        applyParsedToPerspectives() {
+          const sections = parsePraiseSections(this.streamBuffer);
+          for (const row of this.perspectives) {
+            if (sections[row.key]) {
+              row.content = sections[row.key];
+            }
+          }
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /** 是否至少有一段非空内容（用于复制按钮） */
+        hasAnyContent() {
+          return this.perspectives.some((p) => (p.content || '').trim().length > 0);
+        },
+
+        /**
+         * 复制全部赞美为纯文本
+         */
+        /**
+         * 将单条气泡内容渲染为安全 HTML（AI 输出经 Marked；空则占位）
+         * @param {{ content: string }} row
+         * @returns {string}
+         */
+        renderBubbleHtml(row) {
+          const t = (row.content || '').trim();
+          if (!t) {
+            return '<span class="text-slate-400 italic">等待夸夸…</span>';
+          }
+          if (typeof marked !== 'undefined') {
+            return marked.parse(t, { async: false });
+          }
+          return t.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        },
+
+        async copyAll() {
+          const lines = [];
+          for (const p of this.perspectives) {
+            const t = (p.content || '').trim();
+            if (t) {
+              const strip = t.replace(/<[^>]+>/g, '');
+              lines.push('【' + p.label + '】\n' + strip + '\n');
+            }
+          }
+          const plain = lines.join('\n');
+          if (!plain.trim()) {
+            this.showToast('还没有可复制的赞美', 'alert-circle');
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(plain);
+            this.showToast('已全部复制', 'copy');
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = plain;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('已全部复制', 'copy');
+          }
+        },
+
+        /**
+         * 主流程：五视角一次性流式生成
+         */
+        async praiseAll() {
+          this.errorMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先在设置中填写 DeepSeek API Key。';
+            return;
+          }
+          if (!this.achievement.trim()) {
+            this.errorMsg = '先写一件你做的小事吧～';
+            return;
+          }
+
+          this.isGenerating = true;
+          this.streamBuffer = '';
+          this.reasoningText = '';
+          for (const p of this.perspectives) {
+            p.content = '';
+          }
+          this.triggerHeartBurst();
+
+          const messages = [
+            { role: 'system', content: this.buildSystemPrompt() },
+            { role: 'user', content: this.buildUserMessage() }
+          ];
+
+          try {
+            await this.streamDeepSeek(
+              messages,
+              (chunk) => {
+                this.streamBuffer += chunk;
+                this.applyParsedToPerspectives();
+              },
+              (r) => { this.reasoningText += r; },
+              false
+            );
+            this.applyParsedToPerspectives();
+            const filled = this.perspectives.filter((p) => (p.content || '').trim()).length;
+            if (filled < 3) {
+              this.errorMsg = '解析到的赞美段落较少，模型可能未按格式输出。可换 V4 Flash 重试或缩短/改写你的描述。';
+              this.showToast('格式解析不完整', 'alert-circle');
+            } else {
+              this.showToast('夸夸已送达 💕', 'sparkles');
+              this.bumpTodayCount();
+            }
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败';
+            this.showToast(this.errorMsg, 'alert-circle');
+          } finally {
+            this.isGenerating = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /**
+         * 按钮旁喷发小爱心 DOM 动画（纯客户端特效）
+         */
+        triggerHeartBurst() {
+          const host = document.getElementById('burst-host');
+          if (!host) return;
+          for (let i = 0; i < 10; i++) {
+            const el = document.createElement('span');
+            el.className = 'burst-heart text-rose-500 text-lg';
+            el.textContent = ['❤', '💕', '✨'][i % 3];
+            const dx = (Math.random() - 0.5) * 120 + 'px';
+            const dy = (-80 - Math.random() * 60) + 'px';
+            el.style.setProperty('--dx', dx);
+            el.style.setProperty('--dy', dy);
+            host.appendChild(el);
+            setTimeout(() => el.remove(), 950);
+          }
+        },
+
+        /**
+         * 单视角「再夸一次」
+         * @param {string} perspectiveKey
+         */
+        async praiseOne(perspectiveKey) {
+          this.errorMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            return;
+          }
+          const row = this.perspectives.find((p) => p.key === perspectiveKey);
+          if (!row) return;
+
+          row.loading = true;
+          this.reasoningText = '';
+          const messages = [
+            { role: 'system', content: '你是夸夸群成员，只输出中文赞美正文，不要标题、不要列表符号开头、不要重复用户原话整段照抄。' },
+            { role: 'user', content: this.buildSinglePraiseUserMessage(perspectiveKey, row.label) }
+          ];
+
+          let acc = '';
+          try {
+            await this.streamDeepSeek(
+              messages,
+              (chunk) => {
+                acc += chunk;
+                row.content = acc.trim();
+                this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+              },
+              (r) => { this.reasoningText += r; },
+              false
+            );
+            row.content = acc.trim();
+            this.showToast(row.label + ' 已刷新', 'refresh-cw');
+          } catch (e) {
+            console.error(e);
+            this.showToast(e.message || '生成失败', 'alert-circle');
+          } finally {
+            row.loading = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

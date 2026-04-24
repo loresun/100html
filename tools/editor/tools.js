@@ -1,0 +1,6 @@
+window.toolCollections = window.toolCollections || {};
+window.toolCollections.editor = [
+    { id: 'ai_editor', name: 'AI 智能编辑器', desc: '沉浸式写作体验。支持选中文字即时修改、Tab 键智能续写，并提供可视化的修改历史回溯。', href: 'tools/editor/ai_editor.html', icon: 'fa-solid fa-pen-to-square', category: 'editor', tags: ['公众号', '知乎'], isNew: true, iconBg: 'bg-blue-50', iconColor: 'text-blue-600', borderColor: 'blue-200', hoverTextColor: 'text-blue-600', linkColor: 'text-blue-600', badgeStyle: 'bg-blue-100 text-blue-700' },
+    { id: 'wechat_editor', name: '公众号排版助手', desc: '一键生成公众号风格排版。支持多种风格模板、智能引用框、关键词高亮，可直接复制到公众号后台。', href: 'tools/editor/wechat_editor.html', icon: 'fa-solid fa-table-columns', category: 'editor', tags: ['公众号'], isNew: true, iconBg: 'bg-green-50', iconColor: 'text-green-600', borderColor: 'green-200', hoverTextColor: 'text-green-600', linkColor: 'text-green-600' },
+    { id: 'super_editor', name: '超级编校编辑器', desc: '支持 AI 编校、Diff 对比、文档导入与压缩提取的专业编辑器。', href: 'tools/editor/super_editor.html',         icon: 'fa-solid fa-pen-to-square', category: 'editor', tags: ['写作', '编辑'], isNew: true, iconBg: 'bg-indigo-50', iconColor: 'text-indigo-600', borderColor: 'indigo-200', hoverTextColor: 'text-indigo-600', linkColor: 'text-indigo-600' },
+];

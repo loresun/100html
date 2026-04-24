@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Particle Text // HTML_SUPER</title>
+    <style>body { margin: 0; background: #000; overflow: hidden; } .ui { position: absolute; top: 20px; left: 20px; color: #fff; z-index: 10; font-family: monospace; } a { color: #fff; }</style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui"><a href="index.html">← BACK</a></div>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        let mouse = { x: null, y: null, radius: 100 };
+
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        ctx.fillStyle = 'white';
+        ctx.font = '30px Verdana';
+        ctx.fillText('HTML_SUPER', 0, 30);
+        
+        // Scan text data
+        // We will render large text center screen and scan it
+        function init() {
+            particles = [];
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 15vw sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('PARTICLES', canvas.width/2, canvas.height/2);
+            
+            const textCoordinates = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Sample
+            const step = 8; // skip pixels for performance
+            
+            for(let y=0; y<textCoordinates.height; y+=step) {
+                for(let x=0; x<textCoordinates.width; x+=step) {
+                    // alpha > 128
+                    if(textCoordinates.data[(y * 4 * textCoordinates.width) + (x * 4) + 3] > 128) {
+                        particles.push(new Particle(x, y));
+                    }
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x; 
+                this.y = y;
+                this.size = 3;
+                this.baseX = this.x;
+                this.baseY = this.y;
+                this.density = (Math.random() * 30) + 1;
+            }
+            
+            draw() {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            update() {
+                let dx = mouse.x - this.x;
+                let dy = mouse.y - this.y;
+                let distance = Math.sqrt(dx*dx + dy*dy);
+                let forceDirectionX = dx / distance;
+                let forceDirectionY = dy / distance;
+                let maxDistance = mouse.radius;
+                let force = (maxDistance - distance) / maxDistance;
+                let directionX = forceDirectionX * force * this.density;
+                let directionY = forceDirectionY * force * this.density;
+                
+                if (distance < mouse.radius) {
+                    this.x -= directionX * 5; // Explosion strength
+                    this.y -= directionY * 5;
+                } else {
+                    if (this.x !== this.baseX) {
+                        let dx = this.x - this.baseX;
+                        this.x -= dx/10;
+                    } 
+                    if (this.y !== this.baseY) {
+                        let dy = this.y - this.baseY;
+                        this.y -= dy/10;
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for(let i=0; i<particles.length; i++){
+                particles[i].draw();
+                particles[i].update();
+            }
+            requestAnimationFrame(animate);
+        }
+        
+        init();
+        animate();
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; init(); });
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

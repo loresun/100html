@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Draw.io 绘图师 - 创意百宝箱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Draw.io 官方 Viewer 库 -->
+    <script src="https://viewer.diagrams.net/js/viewer-static.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #FFF0F5 0%, #E6E6FA 100%); /* 这里的背景色可以根据喜好调整 */
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+            color: #5e4b56;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 154, 158, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: white;
+            color: #4b5563;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+         /* 版本历史面板样式 */
+         .history-panel {
+            position: fixed;
+            top: 0;
+            left: -400px;
+            width: 380px;
+            height: 100vh;
+            background: white;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: left 0.3s ease;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .history-panel.open { left: 0; }
+        .version-item {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .version-item:hover { border-color: #fca5a5; background: #fff1f2; }
+        .version-item.active { border-color: #fca5a5; background: #fff1f2; }
+        .version-badge-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #fee2e2;
+            color: #ef4444;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        /* 设置面板 */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 380px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: right 0.3s ease;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .settings-panel.open { right: 0; }
+        .settings-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        .settings-overlay.open { opacity: 1; visibility: visible; }
+        
+        /* 聊天模态框 */
+        .chat-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .chat-modal.open { display: flex; }
+        .chat-content {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        .chat-message {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            max-width: 85%;
+        }
+        .chat-message.user {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: #5e4b56;
+            margin-left: auto;
+        }
+        .chat-message.assistant {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        /* 渲染容器 */
+        #graphContainer {
+            min-height: 500px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        /* Viewer 修复 */
+        .geDiagramContainer {
+            background: white !important;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1f2937;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            z-index: 3000;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- 顶部按钮 -->
+    <button id="historyBtn" class="fixed top-4 left-4 z-50 w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-50 transition">
+        <i class="fas fa-history text-gray-600 text-xl"></i>
+    </button>
+    <button id="settingsBtn" class="fixed top-4 right-4 z-50 w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-50 transition">
+        <i class="fas fa-cog text-gray-600 text-xl"></i>
+    </button>
+    
+    <div id="settingsOverlay" class="settings-overlay"></div>
+
+    <!-- 历史面板 -->
+    <div id="historyPanel" class="history-panel">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-history mr-2 text-orange-500"></i>版本历史
+            </h3>
+            <button id="closeHistoryBtn" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div id="versionList" class="space-y-2">
+            <p class="text-gray-400 text-center py-8">暂无历史版本</p>
+        </div>
+        <div class="mt-4 pt-4 border-t border-gray-100">
+            <button id="clearHistoryBtn" class="text-xs text-red-500 hover:text-red-600 w-full text-center">
+                <i class="fas fa-trash-alt mr-1"></i>清空所有历史
+            </button>
+        </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div id="settingsPanel" class="settings-panel">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-sliders-h mr-2 text-orange-500"></i>API 设置
+            </h3>
+            <button id="closeSettingsBtn" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">API URL</label>
+                <input type="text" id="apiUrl" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none" value="https://api.deepseek.com/chat/completions">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                <input type="password" id="apiKey" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none" placeholder="sk-...">
+                <p class="text-xs text-gray-500 mt-1">Key 仅存储在本地浏览器，不会上传。</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">模型选择</label>
+                <select id="modelSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-200 outline-none">
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                </select>
+            </div>
+            <button id="saveSettingsBtn" class="w-full py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition">保 存</button>
+        </div>
+    </div>
+
+    <!-- 主界面 -->
+    <div class="max-w-6xl mx-auto pt-8 pb-20">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-3 tracking-tight">
+                <i class="fas fa-pen-fancy mr-3 text-orange-400"></i>AI Draw.io 绘图师
+            </h1>
+            <p class="text-gray-600">输入描述，AI 自动为您编写 Draw.io (mxGraph) 源码并实时渲染</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧：输入控制 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 生成卡片 -->
+                <div class="glass-card p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-magic mr-2 text-orange-500"></i>描述你的图表
+                    </h3>
+                    <div class="relative mb-4">
+                        <textarea id="promptInput" class="w-full h-40 p-4 border-2 border-orange-100 rounded-xl focus:outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100 transition resize-none text-gray-700 placeholder-gray-400" placeholder="例如：
+- 画一个三层架构的系统流程图，包含用户、Web服务器和数据库
+- 生成一个电商购物的泳道图
+- 绘制一个简单的公司组织结构图"></textarea>
+                        <div class="absolute bottom-3 right-3 text-xs text-gray-400" id="charCount">0/500</div>
+                    </div>
+                    
+                    <button id="generateBtn" class="w-full py-3 btn-primary rounded-xl flex items-center justify-center text-lg shadow-lg">
+                        <i class="fas fa-wand-magic-sparkles mr-2"></i>生成图表
+                    </button>
+                    
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs text-center text-gray-400 mb-3">或者加载本地文件</p>
+                        <input type="file" id="fileInput" accept=".drawio,.xml" class="hidden">
+                        <button onclick="document.getElementById('fileInput').click()" class="w-full py-2 btn-secondary rounded-lg text-sm flex items-center justify-center">
+                            <i class="fas fa-upload mr-2"></i>打开 Draw.io 文件
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 操作栏（仅在有图表时可用） -->
+                <div class="glass-card p-6 opacity-50 pointer-events-none transition" id="actionPanel">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-wrench mr-2 text-orange-500"></i>操作
+                    </h3>
+                    <div class="space-y-3">
+                        <button id="chatBtn" class="w-full py-3 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition flex items-center justify-center font-medium">
+                            <i class="fas fa-comments mr-2"></i>对话修改
+                        </button>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button id="downloadBtn" class="py-2 btn-secondary rounded-lg text-sm flex items-center justify-center">
+                                <i class="fas fa-download mr-1"></i>下载 .drawio
+                            </button>
+                            <button id="copyXmlBtn" class="py-2 btn-secondary rounded-lg text-sm flex items-center justify-center">
+                                <i class="fas fa-code mr-1"></i>复制 XML
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：预览区 -->
+            <div class="lg:col-span-2">
+                <div class="glass-card p-1 h-full min-h-[600px] flex flex-col">
+                    <div class="flex justify-between items-center px-4 py-3 bg-gray-50/50 border-b border-gray-100 rounded-t-xl">
+                        <span class="text-sm font-medium text-gray-600 flex items-center">
+                            <i class="fas fa-eye mr-2 text-gray-400"></i>预览画布
+                        </span>
+                        <span class="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded" id="statusBadge">就绪</span>
+                    </div>
+                    
+                    <div id="graphContainer" class="flex-1 w-full bg-white relative">
+                        <!-- 占位符 -->
+                        <div id="placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
+                            <i class="fas fa-project-diagram text-6xl mb-4 opacity-50"></i>
+                            <p>请在左侧输入描述生成图表</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 对话修改模态框 -->
+    <div id="chatModal" class="chat-modal">
+        <div class="chat-content">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="font-bold text-gray-800">
+                    <i class="fas fa-comments mr-2 text-indigo-500"></i>对话修改图表
+                </h3>
+                <button id="closeChatBtn" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="chatMessages" class="chat-messages bg-gray-50">
+                <div class="chat-message assistant shadow-sm">
+                    <p>你好！我是你的 AI 绘图助手。告诉我你想怎么修改这张图？比如：</p>
+                    <ul class="list-disc list-inside mt-2 text-sm text-gray-600 ml-2">
+                        <li>把“开始”节点变成红色</li>
+                        <li>在 A 和 B 之间加一个关联</li>
+                        <li>调整布局，使其更紧凑</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="p-4 bg-white border-t border-gray-200">
+                <div class="flex gap-2">
+                    <input type="text" id="chatInput" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500" placeholder="输入修改指令...">
+                    <button id="sendChatBtn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // === 全局变量 ===
+        let currentXml = '';
+        let versionHistory = [];
+        let currentVersionIndex = -1;
+        
+        // === DOM 元素 ===
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const actionPanel = document.getElementById('actionPanel');
+        const graphContainer = document.getElementById('graphContainer');
+        const placeholder = document.getElementById('placeholder');
+        const statusBadge = document.getElementById('statusBadge');
+        
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        
+        const historyBtn = document.getElementById('historyBtn');
+        const historyPanel = document.getElementById('historyPanel');
+        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+        const versionList = document.getElementById('versionList');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        
+        const chatBtn = document.getElementById('chatBtn');
+        const chatModal = document.getElementById('chatModal');
+        const closeChatBtn = document.getElementById('closeChatBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendChatBtn = document.getElementById('sendChatBtn');
+        
+        const downloadBtn = document.getElementById('downloadBtn');
+        const copyXmlBtn = document.getElementById('copyXmlBtn');
+        const fileInput = document.getElementById('fileInput');
+
+        // === 工具函数 ===
+        const showToast = (msg) => {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        };
+
+        const setLoading = (loading, text) => {
+            if (loading) {
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${text || '生成中...'}`;
+                statusBadge.textContent = '生成中...';
+                statusBadge.className = 'text-xs px-2 py-1 bg-orange-100 text-orange-600 rounded animate-pulse';
+            } else {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = `<i class="fas fa-wand-magic-sparkles mr-2"></i>生成图表`;
+                statusBadge.textContent = '完成';
+                statusBadge.className = 'text-xs px-2 py-1 bg-green-100 text-green-600 rounded';
+            }
+        };
+
+        // === API 配置 ===
+        function getApiConfig() {
+            return {
+                url: document.getElementById('apiUrl').value,
+                key: document.getElementById('apiKey').value || getGlobalDeepSeekKey(), 
+                model: document.getElementById('modelSelect').value
+            };
+        }
+        
+        // 获取全局 Key (使用 global_llm_config)
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch { return ''; }
+        }
+
+        // 保存全局 Key (合并保存到 global_llm_config)
+        function saveGlobalDeepSeekKey(key) {
+            try {
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                current.deepseek = key;
+                localStorage.setItem('global_llm_config', JSON.stringify(current));
+            } catch (e) {
+                console.error('保存全局配置失败', e);
+            }
+        }
+
+
+        // === 核心：生成 Draw.io XML ===
+        async function generateDrawioXml(userPrompt, mode = 'create', originalXml = '') {
+            const { url, key, model } = getApiConfig();
+            if (!key) {
+                showToast('请先在右上角设置 API Key');
+                settingsPanel.classList.add('open');
+                settingsOverlay.classList.add('open');
+                return;
+            }
+
+            setLoading(true, mode === 'create' ? '正在构思结构...' : '正在修改...');
+
+            const systemPrompt = `你是一个 Draw.io (mxGraph) XML 生成专家。你的任务是根据用户的描述生成标准、合法的 mxGraph XML 代码。
+
+**输出规则：**
+1. 直接输出 XML 代码，**不要使用 markdown 代码块** (不要用 \`\`\`xml)。
+2. XML 必须是 **未压缩 (Uncompressed)** 的格式。
+3. 根节点必须是 \`<mxfile host="Electron" ...><diagram name="Page-1"><mxGraphModel ...> ... </mxGraphModel></diagram></mxfile>\`。
+4. 确保所有标签正确闭合。
+5. 使用标准的 mxGraph 样式（例如 rounded=1;whiteSpace=wrap;html=1;），可以使用不同颜色（fillColor）来美化图表。
+6. 如果用户提到"流程图"，使用标准的流程图形状（矩形、菱形、圆角矩形）。
+7. 确保节点位置（geometry x, y）合理分布，**不要重叠**。可以假设画布宽度为 800px，高度无限。尽量使用从上到下或从左到右的布局。
+
+**示例结构：**
+<mxfile host="Electron" modified="2023..." agent="..." version="...">
+  <diagram id="..." name="Page-1">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="Hello" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="350" y="260" width="120" height="60" as="geometry" />
+        </mxCell>
+        ... 更多节点和连线 ...
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+`;
+
+            let messages = [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: mode === 'create' ? `请根据以下描述生成 Draw.io XML:\n${userPrompt}` : `这是当前的 XML:\n${originalXml}\n\n用户的修改要求是:\n${userPrompt}\n\n请输出修改后的完整 XML。` }
+            ];
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                    body: JSON.stringify({ model, messages, temperature: 0.2 }) // 低温以保证 XML 结构稳定
+                });
+
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                const data = await response.json();
+                let content = data.choices[0].message.content.trim();
+
+                // 清理可能存在的 markdown 标记
+                content = content.replace(/^```xml\s*/i, '').replace(/^```\s*/, '').replace(/```$/, '');
+                
+                // 简单验证
+                if (!content.includes('<mxfile') || !content.includes('</mxfile>')) {
+                    throw new Error('AI 生成的 XML 结构不完整');
+                }
+
+                currentXml = content;
+                renderGraph(currentXml);
+                
+                // 保存版本
+                const summary = userPrompt.length > 20 ? userPrompt.substring(0, 20) + '...' : userPrompt;
+                saveVersion(summary, currentXml);
+                
+                showToast(mode === 'create' ? '图表生成成功！' : '图表已更新！');
+                
+                // 启用操作面板
+                actionPanel.classList.remove('opacity-50', 'pointer-events-none');
+                
+            } catch (error) {
+                console.error(error);
+                showToast('生成失败: ' + error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // === 渲染 Graph ===
+        function renderGraph(xml) {
+            placeholder.style.display = 'none';
+            graphContainer.innerHTML = ''; // 清空
+
+            const div = document.createElement('div');
+            div.className = 'mxgraph';
+            div.style.maxWidth = '100%';
+            div.style.border = '1px solid transparent';
+            div.style.width = '100%';
+
+            const config = {
+                xml: xml,
+                editable: false,
+                highlight: '#ff9a9e',
+                nav: true,
+                resize: true,
+                toolbar: 'pages zoom layers',
+                edit: null
+            };
+            
+            div.setAttribute('data-mxgraph', JSON.stringify(config));
+            graphContainer.appendChild(div);
+
+            try {
+                GraphViewer.processElements();
+                if (typeof GraphViewer.checkAndProcess == 'function') {
+                    GraphViewer.checkAndProcess(); 
+                }
+            } catch (e) {
+                console.error('Render error:', e);
+                showToast('渲染 XML 时出错，可能是 XML 格式不兼容');
+            }
+        }
+
+        // === 版本管理 ===
+        function saveVersion(desc, xml) {
+            const version = {
+                id: Date.now(),
+                xml: xml,
+                desc: desc,
+                time: new Date().toLocaleString()
+            };
+            versionHistory.push(version);
+            currentVersionIndex = versionHistory.length - 1;
+            updateHistoryUI();
+            saveToLocal();
+        }
+
+        function updateHistoryUI() {
+            if (versionHistory.length === 0) {
+                versionList.innerHTML = '<p class="text-gray-400 text-center py-8">暂无历史版本</p>';
+                return;
+            }
+            versionList.innerHTML = versionHistory.map((v, i) => `
+                <div class="version-item ${i === currentVersionIndex ? 'active' : ''}" onclick="loadVersion(${i})">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="font-medium text-gray-800 text-sm truncat flex-1">${v.desc}</span>
+                        <span class="version-badge-tag ml-2">v${i + 1}</span>
+                    </div>
+                    <p class="text-xs text-gray-500">${v.time}</p>
+                </div>
+            `).reverse().join('');
+        }
+
+        function loadVersion(index) {
+            currentVersionIndex = index;
+            const v = versionHistory[index];
+            currentXml = v.xml;
+            renderGraph(currentXml);
+            updateHistoryUI();
+            historyPanel.classList.remove('open');
+            settingsOverlay.classList.remove('open');
+            actionPanel.classList.remove('opacity-50', 'pointer-events-none');
+            showToast(`已恢复版本: v${index + 1}`);
+        }
+        
+        function saveToLocal() {
+            localStorage.setItem('drawio_history', JSON.stringify(versionHistory));
+        }
+
+        function loadFromLocal() {
+            const saved = localStorage.getItem('drawio_history');
+            if (saved) {
+                versionHistory = JSON.parse(saved);
+                updateHistoryUI();
+                // 默认不自动加载最新，等待用户操作，或者为空
+            }
+        }
+
+        // === 交互事件绑定 ===
+        generateBtn.addEventListener('click', () => {
+            const val = promptInput.value.trim();
+            if (!val) { showToast('请先输入描述'); return; }
+            generateDrawioXml(val, 'create');
+        });
+
+        // 聊天修改
+        chatBtn.addEventListener('click', () => {
+            chatModal.classList.add('open');
+            chatInput.focus();
+        });
+        
+        closeChatBtn.addEventListener('click', () => chatModal.classList.remove('open'));
+        
+        sendChatBtn.addEventListener('click', () => {
+            const val = chatInput.value.trim();
+            if (!val) return;
+            
+            // 添加用户消息
+            const div = document.createElement('div');
+            div.className = 'chat-message user';
+            div.textContent = val;
+            chatMessages.appendChild(div);
+            
+            // 调用 API
+            generateDrawioXml(val, 'edit', currentXml).then(() => {
+                 // 添加 AI 响应
+                 const adiv = document.createElement('div');
+                 adiv.className = 'chat-message assistant';
+                 adiv.textContent = '修改已完成！';
+                 chatMessages.appendChild(adiv);
+                 chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+            
+            chatInput.value = '';
+            chatModal.classList.remove('open'); // 自动关闭以便查看结果
+        });
+
+        // 文件加载
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                currentXml = evt.target.result;
+                renderGraph(currentXml);
+                saveVersion(`加载文件: ${file.name}`, currentXml);
+                actionPanel.classList.remove('opacity-50', 'pointer-events-none');
+            };
+            reader.readAsText(file);
+        });
+
+        // 下载
+        downloadBtn.addEventListener('click', () => {
+             const blob = new Blob([currentXml], { type: 'text/xml' });
+             const url = URL.createObjectURL(blob);
+             const a = document.createElement('a');
+             a.href = url;
+             a.download = `drawio_export_${Date.now()}.drawio`;
+             a.click();
+        });
+
+        // 复制 XML
+        copyXmlBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(currentXml).then(() => showToast('XML 已复制'));
+        });
+
+        // 历史与设置面板
+        historyBtn.addEventListener('click', () => {
+            historyPanel.classList.add('open');
+            settingsOverlay.classList.add('open');
+        });
+        closeHistoryBtn.addEventListener('click', () => {
+            historyPanel.classList.remove('open');
+            settingsOverlay.classList.remove('open');
+        });
+        clearHistoryBtn.addEventListener('click', () => {
+            if(confirm('清空所有历史？')) {
+                versionHistory = [];
+                currentXml = '';
+                versionList.innerHTML = '';
+                saveToLocal();
+                location.reload(); 
+            }
+        });
+
+        settingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.add('open');
+            settingsOverlay.classList.add('open');
+        });
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.remove('open');
+            settingsOverlay.classList.remove('open');
+        });
+        saveSettingsBtn.addEventListener('click', () => {
+            const key = document.getElementById('apiKey').value;
+            if(key) {
+                saveGlobalDeepSeekKey(key);
+                settingsPanel.classList.remove('open');
+                settingsOverlay.classList.remove('open');
+                showToast('全局 API Key 已保存');
+            } else {
+                showToast('请输入 API Key');
+            }
+        });
+        settingsOverlay.addEventListener('click', () => {
+            historyPanel.classList.remove('open');
+            settingsPanel.classList.remove('open');
+            settingsOverlay.classList.remove('open');
+        });
+
+        // 初始化
+        promptInput.addEventListener('input', (e) => {
+            document.getElementById('charCount').textContent = `${e.target.value.length}/500`;
+        });
+        
+        loadFromLocal();
+        
+        // 自动填入 Key，并给予提示
+        const globalKey = getGlobalDeepSeekKey();
+        if (globalKey) {
+            document.getElementById('apiKey').value = globalKey;
+            // 可以在界面上加个小点或者提示 key 已加载
+            console.log('Global API Key loaded');
+        }
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_drawio_agent.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

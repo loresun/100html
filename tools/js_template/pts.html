@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pts.js 创意编程</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/pts/dist/pts.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fafafa; color: #18181b; overflow: hidden; }
+    #pts-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+    .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px); border: 1px solid rgba(0,0,0,0.05); }
+    .overlay { position: relative; z-index: 10; pointer-events: none; }
+    .overlay * { pointer-events: auto; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="w-full h-screen">
+
+  <div id="pts-container"></div>
+
+  <div class="overlay w-full h-full flex flex-col justify-between p-6 md:p-12">
+    
+    <header class="flex justify-between items-start">
+      <div class="glass px-6 py-4 rounded-2xl shadow-sm border border-zinc-200">
+        <h1 class="text-3xl font-bold text-zinc-900">✨ Pts.js</h1>
+        <p class="text-zinc-500 mt-1 text-lg">像搭积木一样组合点、线、面</p>
+      </div>
+      <a href="index.html" class="px-5 py-2.5 glass text-zinc-800 rounded-lg hover:bg-white transition font-medium shadow-sm">← 返回</a>
+    </header>
+
+    <footer class="flex justify-center">
+       <div class="glass px-6 py-3 rounded-full text-sm text-zinc-500 shadow-sm">
+         移动鼠标以互动 | 点击以改变模式
+       </div>
+    </footer>
+    
+  </div>
+
+<script>
+  // Pts.js Logic
+  Pts.namespace(window);
+
+  const space = new CanvasSpace("#pts-container").setup({bgcolor: "#fafafa", resize: true, retina: true});
+  const form = space.getForm();
+
+  let pts = [];
+  let colors = ["#f87171", "#fbbf24", "#34d399", "#60a5fa", "#a78bfa", "#f472b6"]; // Tailwind colors
+
+  space.add({
+    start: (bound) => {
+      // Create random points
+      pts = Create.distributeRandom(space.innerBound, 50);
+    },
+
+    animate: (time, ftime) => {
+      // 1. Interactive point (Mouse)
+      let pointer = space.pointer;
+      
+      // 2. Sort points by distance to pointer to create wave effect logic or interaction
+      pts.sort((a,b) => a.$subtract(pointer).magnitudeSq() - b.$subtract(pointer).magnitudeSq());
+      
+      // 3. Draw connecting lines based on proximity
+      // We'll draw lines from the pointer to closest points
+      let closest = pts.slice(0, 10);
+      
+      // Draw lines
+      closest.forEach((p, i) => {
+         form.strokeOnly(colors[i % colors.length], 2).line([pointer, p]);
+         form.fillOnly(colors[i % colors.length]).point(p, 5, "circle");
+      });
+      
+      // Draw other points subtly
+      pts.slice(10).forEach(p => {
+        form.fillOnly("#e4e4e7").point(p, 3, "circle");
+      });
+      
+      // Pointer ring
+      form.strokeOnly("#18181b", 2).circle([pointer, 20]);
+    },
+
+    resize: () => {
+       pts = Create.distributeRandom(space.innerBound, 50);
+    }
+  });
+
+  space.bindMouse().bindTouch().play();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

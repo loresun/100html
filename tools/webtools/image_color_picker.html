@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片取色与调色板 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <!-- Color Thief for extracting palette -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.2/color-thief.umd.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .cursor-crosshair { cursor: crosshair; }
+        .grid-bg { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-rose-50 min-h-screen font-sans text-slate-800" x-data="pickerApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-rose-100 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-rose-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-rose-600 to-pink-600">
+                🎨 图片取色与调色板
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-64px)] min-h-[600px]">
+
+        <!-- Sidebar -->
+        <div class="lg:col-span-3 space-y-6 flex flex-col h-full overflow-y-auto custom-scrollbar">
+            
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-rose-100 flex-none">
+                <label class="flex justify-center items-center w-full h-32 px-4 transition bg-white border-2 border-slate-300 border-dashed rounded-xl appearance-none cursor-pointer hover:border-rose-400 focus:outline-none">
+                    <span class="flex flex-col items-center space-y-2">
+                        <i class="fa-solid fa-cloud-arrow-up w-8 h-8 text-slate-400"></i>
+                        <span class="font-medium text-slate-600 text-sm">点击上传图片</span>
+                    </span>
+                    <input type="file" name="file_upload" class="hidden" accept="image/*" @change="loadImage($event)">
+                </label>
+            </div>
+
+            <!-- Current Color Info -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-rose-100 flex-none" x-show="currentColor">
+                <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-eye-dropper w-4 h-4 text-rose-500"></i>
+                    当前取色
+                </h3>
+                <div class="flex items-center gap-4 mb-4">
+                     <div class="w-16 h-16 rounded-xl border border-slate-100 shadow-inner" :style="`background-color: ${currentColor}`"></div>
+                     <div class="space-y-1">
+                         <div class="text-xs text-slate-400 font-bold uppercase">HEX</div>
+                         <div class="font-mono text-lg font-bold text-slate-800" x-text="currentColor"></div>
+                     </div>
+                </div>
+                 <div class="space-y-2 font-mono text-xs">
+                    <div class="flex justify-between items-center bg-slate-50 p-2 rounded">
+                        <span class="text-slate-500">RGB</span>
+                        <span class="font-bold text-slate-700" x-text="currentRgb"></span>
+                    </div>
+                </div>
+                <button @click="copy(currentColor)" class="mt-4 w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition-colors">
+                    复制 HEX
+                </button>
+            </div>
+            
+            <!-- Extracted Palette -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-rose-100 flex-1" x-show="palette.length > 0">
+                <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-palette w-4 h-4 text-rose-500"></i>
+                    主色调提取
+                </h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <template x-for="color in palette">
+                        <div @click="pickColor(color)" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer group">
+                             <div class="w-8 h-8 rounded-full shadow-sm border border-black/5" :style="`background-color: ${color}`"></div>
+                             <span class="text-xs font-mono text-slate-500 group-hover:text-rose-600" x-text="color"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Main Canvas Area -->
+        <div class="lg:col-span-9 bg-slate-100 rounded-3xl border border-rose-100 overflow-hidden relative grid-bg flex items-center justify-center">
+             <div x-show="!imageSrc" class="text-slate-400 flex flex-col items-center">
+                 <i class="fa-regular fa-image w-16 h-16 mb-4 opacity-20"></i>
+                 <span>请上传图片开始取色</span>
+             </div>
+             
+             <!-- Wrapper for canvas centering -->
+             <div class="relative shadow-2xl rounded-lg overflow-hidden max-w-full max-h-full" x-show="imageSrc">
+                 <canvas id="canvas" class="block cursor-crosshair max-w-full max-h-[80vh]"></canvas>
+                 
+                 <!-- Magnifier (Optional enhancement, kept simple for now) -->
+                 <div x-show="isHovering" class="absolute pointer-events-none w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden z-10"
+                      :style="`top: ${hoverY - 48}px; left: ${hoverX - 48}px; background-color: ${hoverColor}`">
+                      <!-- Could render zoomed canvas here -->
+                 </div>
+             </div>
+        </div>
+
+    </main>
+
+    <script>
+        function pickerApp() {
+            return {
+                imageSrc: null,
+                currentColor: '#ffffff',
+                currentRgb: 'rgb(255, 255, 255)',
+                palette: [],
+                colorThief: new ColorThief(),
+                
+                isHovering: false,
+                hoverX: 0,
+                hoverY: 0,
+                hoverColor: '',
+
+                init() {
+                    // icons removed
+                },
+
+                loadImage(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.imageSrc = e.target.result;
+                        this.initCanvas(this.imageSrc);
+                    };
+                    reader.readAsDataURL(file);
+                },
+                
+                initCanvas(src) {
+                    const canvas = document.getElementById('canvas');
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    
+                    img.onload = () => {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        
+                        // Extract Palette
+                        try {
+                            const colors = this.colorThief.getPalette(img, 8);
+                            this.palette = colors.map(c => this.rgbToHex(c[0], c[1], c[2]));
+                        } catch(e) {
+                            console.error("Color Thief error", e);
+                        }
+
+                        // Event Listeners for Picking
+                        canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e, ctx));
+                        canvas.addEventListener('click', (e) => this.handleClick(e, ctx));
+                        canvas.addEventListener('mouseleave', () => this.isHovering = false);
+                    };
+                    
+                    img.src = src;
+                },
+                
+                handleMouseMove(e, ctx) {
+                    this.isHovering = true;
+                    const rect = e.target.getBoundingClientRect();
+                    // Calculate scale ratio
+                    const scaleX = e.target.width / rect.width;
+                    const scaleY = e.target.height / rect.height;
+                    
+                    // Canvas coordinates
+                    const x = (e.clientX - rect.left) * scaleX;
+                    const y = (e.clientY - rect.top) * scaleY;
+                    
+                    // Display coordinates (relative to displayed element)
+                    this.hoverX = e.clientX - rect.left;
+                    this.hoverY = e.clientY - rect.top;
+                    
+                    try {
+                        const pixel = ctx.getImageData(x, y, 1, 1).data;
+                        this.hoverColor = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+                    } catch(err) {
+                        // pass
+                    }
+                },
+                
+                handleClick(e, ctx) {
+                     const rect = e.target.getBoundingClientRect();
+                    const scaleX = e.target.width / rect.width;
+                    const scaleY = e.target.height / rect.height;
+                    
+                    const x = (e.clientX - rect.left) * scaleX;
+                    const y = (e.clientY - rect.top) * scaleY;
+                    
+                    const pixel = ctx.getImageData(x, y, 1, 1).data;
+                    this.setColor(pixel[0], pixel[1], pixel[2]);
+                },
+                
+                setColor(r, g, b) {
+                    this.currentRgb = `rgb(${r}, ${g}, ${b})`;
+                    this.currentColor = this.rgbToHex(r, g, b);
+                },
+                
+                pickColor(hex) {
+                    this.currentColor = hex;
+                    // convert hex to rgb for display
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    this.currentRgb = `rgb(${r}, ${g}, ${b})`;
+                },
+                
+                rgbToHex(r, g, b) {
+                    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+                },
+
+                copy(text) {
+                    if(!text) return;
+                    navigator.clipboard.writeText(text).then(() => {
+                        // Toast?
+                         alert('已复制: ' + text);
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_image_color_picker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

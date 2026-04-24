@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天吃什么 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+        @keyframes bounce-slow {
+            0%, 100% { transform: translateY(-5%); }
+            50% { transform: translateY(5%); }
+        }
+        .food-emoji {
+            animation: bounce-slow 2s infinite ease-in-out;
+        }
+        .slot-machine-text {
+            display: inline-block;
+            transition: transform 0.1s;
+        }
+        .spinning {
+            animation: spin 0.1s infinite linear;
+        }
+        @keyframes spin {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-20px); opacity: 0; }
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-amber-50 min-h-screen font-sans" x-data="mealApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-amber-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-amber-100/50 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-amber-600">
+                    🍔 今天吃什么
+                </h1>
+            </div>
+            <button @click="showMenu = true" class="p-2 text-amber-600 hover:bg-amber-100 rounded-lg">
+                <i class="fa-solid fa-list"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 py-8 pb-24 text-center">
+        
+        <!-- Main Stage -->
+        <div class="mt-10 mb-12">
+            <div class="text-xs font-bold tracking-widest text-amber-500 uppercase mb-4">Random Meal Generator</div>
+            
+            <div class="bg-white rounded-3xl p-10 shadow-xl border border-amber-100 relative overflow-hidden min-h-[300px] flex flex-col items-center justify-center">
+                <!-- Decoration -->
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400"></div>
+                
+                <div x-show="!result" class="space-y-6">
+                    <div class="text-6xl food-emoji">🤔</div>
+                    <h2 class="text-2xl font-bold text-slate-800">不知道吃什么？</h2>
+                    <p class="text-slate-500">点击下方按钮，拯救选择困难症</p>
+                </div>
+
+                <div x-show="result" class="space-y-6 relative z-10" x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100">
+                    <div class="text-6xl" x-text="result.icon"></div>
+                    <div>
+                        <h2 class="text-3xl font-black text-slate-800 mb-2" x-text="result.name"></h2>
+                        <span class="inline-block px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold" x-text="result.tag || '美味'"></span>
+                    </div>
+                </div>
+
+                <!-- Confetti placeholder or simple particles could go here -->
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="space-y-4 max-w-xs mx-auto">
+            <button @click="spin()" 
+                    :disabled="isSpinning"
+                    class="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-orange-500/30 transform active:scale-95 transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-dice text-lg" :class="isSpinning ? 'fa-spin' : ''"></i>
+                <span x-text="isSpinning ? '正在选择...' : '帮我选一个'"></span>
+            </button>
+
+            <!-- Filters -->
+            <div class="flex justify-center gap-2 flex-wrap">
+                <template x-for="tag in availableTags" :key="tag">
+                    <button @click="toggleTag(tag)" 
+                            class="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
+                            :class="selectedTags.includes(tag) ? 'bg-amber-100 border-amber-200 text-amber-700' : 'bg-white border-slate-200 text-slate-500 hover:border-amber-200'">
+                        <span x-text="tag"></span>
+                    </button>
+                </template>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Menu Management Modal -->
+    <div x-show="showMenu" x-cloak class="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center sm:p-4">
+        <div class="bg-white w-full max-w-md h-[80vh] sm:h-auto sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col" @click.away="showMenu = false">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-800">菜单管理</h3>
+                <button @click="showMenu = false" class="p-2 text-slate-400 hover:bg-slate-100 rounded-full">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                <!-- Add New -->
+                <div class="flex gap-2">
+                    <input type="text" x-model="newItem" @keydown.enter="addItem()" placeholder="输入菜名..." class="flex-1 px-4 py-2 rounded-xl border border-slate-200 outline-none focus:border-amber-500">
+                    <button @click="addItem()" class="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium">添加</button>
+                </div>
+
+                <!-- List -->
+                <div class="space-y-2">
+                    <template x-for="item in foods" :key="item.id">
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl" x-text="item.icon"></span>
+                                <span class="font-medium text-slate-700" x-text="item.name"></span>
+                            </div>
+                            <button @click="deleteItem(item.id)" class="text-slate-300 hover:text-rose-500 p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </template>
+                    <div x-show="foods.length === 0" class="text-center py-8 text-slate-400 text-sm">
+                        菜单是空的，快添加一些吧！<br>
+                        (或者点击重置恢复默认菜单)
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-between items-center">
+                <span class="text-xs text-slate-500">共 <span x-text="foods.length"></span> 道菜</span>
+                <button @click="resetDefaults()" class="text-xs text-indigo-600 font-medium hover:underline">恢复默认菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function mealApp() {
+            return {
+                showMenu: false,
+                isSpinning: false,
+                result: null,
+                newItem: '',
+                selectedTags: [],
+                
+                foods: [],
+                
+                defaultFoods: [
+                    { id: 1, name: '红烧肉', icon: '🥩', tag: '中餐' },
+                    { id: 2, name: '披萨', icon: '🍕', tag: '西餐' },
+                    { id: 3, name: '寿司', icon: '🍣', tag: '日料' },
+                    { id: 4, name: '火锅', icon: '🥘', tag: '聚餐' },
+                    { id: 5, name: '汉堡', icon: '🍔', tag: '快餐' },
+                    { id: 6, name: '沙拉', icon: '🥗', tag: '轻食' },
+                    { id: 7, name: '炸鸡', icon: '🍗', tag: '罪恶' },
+                    { id: 8, name: '拉面', icon: '🍜', tag: '日料' },
+                    { id: 9, name: '麻辣烫', icon: '🥙', tag: '小吃' },
+                    { id: 10, name: '水饺', icon: '🥟', tag: '中餐' }
+                ],
+
+                init() {
+                    const saved = localStorage.getItem('webtools_meals');
+                    if (saved) {
+                        this.foods = JSON.parse(saved);
+                    } else {
+                        this.foods = [...this.defaultFoods];
+                    }
+
+                    this.$watch('foods', () => {
+                        localStorage.setItem('webtools_meals', JSON.stringify(this.foods));
+                    });
+
+                    // init
+                },
+
+                get availableTags() {
+                    const tags = new Set(this.foods.map(f => f.tag).filter(Boolean));
+                    return Array.from(tags);
+                },
+
+                toggleTag(tag) {
+                    if (this.selectedTags.includes(tag)) {
+                        this.selectedTags = this.selectedTags.filter(t => t !== tag);
+                    } else {
+                        this.selectedTags.push(tag);
+                    }
+                },
+
+                spin() {
+                    if (this.foods.length === 0) return;
+                    
+                    this.isSpinning = true;
+                    this.result = null;
+
+                    // Filter pool
+                    let pool = this.foods;
+                    if (this.selectedTags.length > 0) {
+                        pool = pool.filter(f => this.selectedTags.includes(f.tag));
+                    }
+
+                    if (pool.length === 0) {
+                        alert('没有符合条件的选项');
+                        this.isSpinning = false;
+                        return;
+                    }
+
+                    // Sound effect (optional, maybe skip for simplicity)
+
+                    // Animation simulation
+                    let count = 0;
+                    const maxCount = 20;
+                    const interval = setInterval(() => {
+                        this.result = pool[Math.floor(Math.random() * pool.length)];
+                        count++;
+                        if (count > maxCount) {
+                            clearInterval(interval);
+                            this.isSpinning = false;
+                            // Final pick
+                            this.result = pool[Math.floor(Math.random() * pool.length)];
+                        }
+                    }, 50 + (count * 10)); // Slow down
+                },
+
+                addItem() {
+                    if (!this.newItem.trim()) return;
+                    
+                    // Simple auto-icon guess logic (very basic)
+                    let icon = '🍲';
+                    if (this.newItem.includes('肉')) icon = '🥩';
+                    if (this.newItem.includes('面')) icon = '🍜';
+                    if (this.newItem.includes('饭')) icon = '🍚';
+                    if (this.newItem.includes('鸡')) icon = '🍗';
+                    
+                    this.foods.push({
+                        id: Date.now(),
+                        name: this.newItem.trim(),
+                        icon: icon,
+                        tag: '自定义'
+                    });
+                    this.newItem = '';
+                },
+
+                deleteItem(id) {
+                    this.foods = this.foods.filter(f => f.id !== id);
+                },
+
+                resetDefaults() {
+                    if (confirm('确定恢复默认菜单吗？现有数据将丢失。')) {
+                        this.foods = [...this.defaultFoods];
+                    }
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_meal_decider.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

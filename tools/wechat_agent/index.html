@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号 Agent 工作台 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Agent 核心模块 -->
+    <script src="engine.js"></script>
+    <script src="skills.js"></script>
+    <script src="pipelines.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 30%, #a7f3d0 60%, #6ee7b7 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            min-height: 100vh;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 3px; }
+
+        /* 步骤连线动画 */
+        @keyframes flowLine {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        .step-flow-line {
+            height: 2px;
+            background: linear-gradient(90deg, #d1d5db, #10b981, #d1d5db);
+            background-size: 200% 100%;
+        }
+        .step-flow-line.active {
+            animation: flowLine 1.5s linear infinite;
+        }
+
+        /* 步骤节点状态 */
+        .step-node { transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+        .step-node.pending { background: #f1f5f9; border-color: #cbd5e1; color: #94a3b8; }
+        .step-node.running { background: #ecfdf5; border-color: #10b981; color: #059669; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2); }
+        .step-node.completed { background: #10b981; border-color: #059669; color: white; }
+        .step-node.error { background: #fef2f2; border-color: #ef4444; color: #dc2626; }
+        .step-node.checkpoint { background: #fffbeb; border-color: #f59e0b; color: #d97706; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2); }
+
+        /* 流式文字光标 */
+        @keyframes blink { 50% { opacity: 0; } }
+        .cursor-blink::after {
+            content: '▍'; animation: blink 1s step-end infinite;
+            color: currentColor; opacity: 0.7;
+        }
+
+        /* 脉冲动画 */
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .pulse-ring { animation: pulse-ring 2s ease infinite; }
+
+        /* 淡入动画 */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in-up { animation: fadeInUp 0.5s ease forwards; }
+
+        /* Markdown 样式 */
+        .prose-agent p { margin: 0.5rem 0; line-height: 1.8; }
+        .prose-agent ul, .prose-agent ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+        .prose-agent li { margin: 0.25rem 0; }
+        .prose-agent strong { font-weight: 700; color: #065f46; }
+        .prose-agent h1, .prose-agent h2, .prose-agent h3 {
+            font-weight: 700; margin: 1rem 0 0.5rem; color: #064e3b;
+        }
+        .prose-agent h1 { font-size: 1.25rem; }
+        .prose-agent h2 { font-size: 1.125rem; }
+        .prose-agent h3 { font-size: 1rem; }
+        .prose-agent blockquote {
+            border-left: 3px solid #10b981; padding-left: 1rem;
+            margin: 0.75rem 0; color: #6b7280; font-style: italic;
+        }
+        .prose-agent code {
+            background: #f1f5f9; padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem; font-size: 0.875rem;
+        }
+
+        /* 技能卡片悬浮效果 */
+        .skill-card {
+            transition: all 0.3s ease;
+        }
+        .skill-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+<div x-data="agentWorkbench()" x-init="init()" class="min-h-screen flex flex-col">
+
+    <!-- ==================== 顶部导航 ==================== -->
+    <nav class="bg-white/85 backdrop-blur-md sticky top-0 z-50 border-b border-emerald-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3 cursor-pointer hover:opacity-85 transition"
+                 onclick="location.href='../../index.html'">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+                    <i data-lucide="bot" class="text-white w-5 h-5"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-lg text-slate-900">公众号 Agent</span>
+                    <span class="text-xs text-emerald-600 ml-1">v1.0</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- 当前模型标识 -->
+                <span class="text-xs px-2 py-1 rounded-full"
+                      :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'">
+                    <span x-text="apiConfig.model === 'deepseek-v4-pro' ? '🧠 V4 Pro 推理' : '⚡ V4 Flash 对话'"></span>
+                </span>
+                <button @click="showSettings = true"
+                        class="p-2 rounded-lg hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 transition">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== 主内容区 ==================== -->
+    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+
+        <!-- ===== 视图一：管道选择（初始状态） ===== -->
+        <template x-if="currentView === 'select'">
+            <div class="fade-in-up">
+                <!-- 标题区 -->
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-slate-900 mb-2">微信公众号 Agent 工作台</h1>
+                    <p class="text-slate-500 max-w-xl mx-auto">
+                        选择一条预设管道，或自由组合 Skills 来编排你的内容生产流水线。
+                        Agent 会自动串联每个步骤，上一步的输出作为下一步的输入。
+                    </p>
+                </div>
+
+                <!-- 管道卡片网格 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+                    <template x-for="p in pipelines" :key="p.id">
+                        <div @click="selectPipeline(p)"
+                             class="skill-card bg-white rounded-2xl p-5 border-2 border-slate-200 hover:border-emerald-400 cursor-pointer">
+                            <div class="flex items-start gap-3 mb-3">
+                                <span class="text-3xl" x-text="p.icon"></span>
+                                <div class="flex-1">
+                                    <h3 class="font-bold text-lg text-slate-900" x-text="p.name"></h3>
+                                    <span class="text-xs text-slate-400" x-text="'预计 ' + p.estimatedTime"></span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-slate-600 mb-3" x-text="p.description"></p>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="s in p.steps" :key="s.id">
+                                    <span class="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full"
+                                          x-text="s.label"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- 技能全览区 -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-800 mb-1">🧩 全部 Skills 一览</h2>
+                    <p class="text-sm text-slate-500 mb-4">17 个专业技能覆盖内容创作全流程，也可单独使用</p>
+                    <template x-for="phase in skillPhases" :key="phase.id">
+                        <div class="mb-5">
+                            <h3 class="text-sm font-semibold text-slate-500 mb-2">
+                                <span x-text="phase.icon + ' ' + phase.label + '阶段'"></span>
+                            </h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                <template x-for="skill in getSkillsByPhase(phase.id)" :key="skill.id">
+                                    <div @click="runSingleSkill(skill)"
+                                         class="skill-card bg-white rounded-xl p-3 border border-slate-200 hover:border-emerald-300 cursor-pointer text-center">
+                                        <span class="text-2xl block mb-1" x-text="skill.icon"></span>
+                                        <span class="text-xs font-medium text-slate-700" x-text="skill.name"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <!-- ===== 视图二：管道执行（运行中/完成） ===== -->
+        <template x-if="currentView === 'execute'">
+            <div class="fade-in-up">
+                <!-- 顶栏：管道名 + 操作 -->
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <button @click="backToSelect()" class="p-2 rounded-lg hover:bg-white/60 transition">
+                            <i data-lucide="arrow-left" class="w-5 h-5 text-slate-500"></i>
+                        </button>
+                        <span class="text-2xl" x-text="activePipeline?.icon"></span>
+                        <h2 class="text-xl font-bold text-slate-900" x-text="activePipeline?.name"></h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button x-show="isRunning" @click="abortPipeline()"
+                                class="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium transition">
+                            <i data-lucide="square" class="w-4 h-4 inline -mt-0.5"></i> 中止
+                        </button>
+                        <button x-show="!isRunning && hasOutput" @click="exportAll()"
+                                class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-sm font-medium transition">
+                            <i data-lucide="download" class="w-4 h-4 inline -mt-0.5"></i> 导出全部
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- 左栏：输入 + 步骤进度 -->
+                    <div class="lg:col-span-4 space-y-4">
+
+                        <!-- 输入面板（未开始时显示） -->
+                        <div x-show="!pipelineStarted" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-800 mb-3">📝 初始输入</h3>
+                            <div class="space-y-3">
+                                <template x-for="field in activePipeline?.inputFields || []" :key="field.key">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-600 mb-1">
+                                            <span x-text="field.label"></span>
+                                            <span x-show="field.required" class="text-red-400">*</span>
+                                        </label>
+                                        <template x-if="field.type === 'number'">
+                                            <input type="number" x-model="userInput[field.key]"
+                                                   :placeholder="field.placeholder"
+                                                   class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none" />
+                                        </template>
+                                        <template x-if="field.type !== 'number' && field.multiline">
+                                            <textarea x-model="userInput[field.key]"
+                                                      :placeholder="field.placeholder"
+                                                      rows="4"
+                                                      class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none resize-y"></textarea>
+                                        </template>
+                                        <template x-if="field.type !== 'number' && !field.multiline">
+                                            <input type="text" x-model="userInput[field.key]"
+                                                   :placeholder="field.placeholder"
+                                                   class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none" />
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                            <button @click="startPipeline()"
+                                    :disabled="!canStart"
+                                    class="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                                🚀 启动 Agent
+                            </button>
+                        </div>
+
+                        <!-- 步骤进度面板 -->
+                        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-800 mb-3">📊 执行进度</h3>
+                            <div class="space-y-1">
+                                <template x-for="(step, idx) in pipelineSteps" :key="step.id">
+                                    <div>
+                                        <div @click="viewStep(idx)"
+                                             class="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all"
+                                             :class="activeStepView === idx ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-slate-50'">
+                                            <!-- 状态图标 -->
+                                            <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold step-node"
+                                                 :class="stepStates[idx]">
+                                                <template x-if="stepStates[idx] === 'completed'">
+                                                    <i data-lucide="check" class="w-4 h-4"></i>
+                                                </template>
+                                                <template x-if="stepStates[idx] === 'running'">
+                                                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                                </template>
+                                                <template x-if="stepStates[idx] === 'checkpoint'">
+                                                    <i data-lucide="pause" class="w-4 h-4"></i>
+                                                </template>
+                                                <template x-if="stepStates[idx] === 'error'">
+                                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                                </template>
+                                                <template x-if="stepStates[idx] === 'pending'">
+                                                    <span x-text="idx + 1"></span>
+                                                </template>
+                                            </div>
+                                            <!-- 标签 -->
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-sm font-medium text-slate-800 truncate" x-text="step.label"></div>
+                                                <div class="text-xs text-slate-400 truncate" x-text="step.description"></div>
+                                            </div>
+                                        </div>
+                                        <!-- 步骤间连线 -->
+                                        <div x-show="idx < pipelineSteps.length - 1" class="ml-6 h-4 flex items-center">
+                                            <div class="w-0.5 h-full rounded step-flow-line"
+                                                 :class="{ 'active': stepStates[idx] === 'running' }"></div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右栏：输出内容面板 -->
+                    <div class="lg:col-span-8">
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[500px] flex flex-col">
+                            <!-- 步骤标题栏 -->
+                            <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg" x-text="pipelineSteps[activeStepView]?.label || '等待输入'"></span>
+                                    <span class="text-xs px-2 py-0.5 rounded-full"
+                                          :class="{
+                                              'bg-slate-100 text-slate-500': stepStates[activeStepView] === 'pending',
+                                              'bg-emerald-100 text-emerald-700': stepStates[activeStepView] === 'running',
+                                              'bg-green-100 text-green-700': stepStates[activeStepView] === 'completed',
+                                              'bg-amber-100 text-amber-700': stepStates[activeStepView] === 'checkpoint',
+                                              'bg-red-100 text-red-700': stepStates[activeStepView] === 'error',
+                                          }"
+                                          x-text="getStatusText(stepStates[activeStepView])">
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button x-show="stepOutputs[activeStepView]"
+                                            @click="copyStepOutput(activeStepView)"
+                                            class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
+                                            title="复制">
+                                        <i data-lucide="copy" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 输出内容 -->
+                            <div class="flex-1 p-5 overflow-y-auto max-h-[70vh]">
+                                <!-- 空状态 -->
+                                <template x-if="!stepOutputs[activeStepView] && stepStates[activeStepView] === 'pending'">
+                                    <div class="flex flex-col items-center justify-center h-full text-slate-300 py-20">
+                                        <i data-lucide="bot" class="w-16 h-16 mb-4 opacity-50"></i>
+                                        <p class="text-lg" x-text="pipelineStarted ? '等待执行...' : '填写输入后启动 Agent'"></p>
+                                    </div>
+                                </template>
+
+                                <!-- 正在生成（流式） -->
+                                <template x-if="stepStates[activeStepView] === 'running'">
+                                    <div class="prose-agent">
+                                        <div x-html="renderMarkdown(streamingText)" class="cursor-blink"></div>
+                                    </div>
+                                </template>
+
+                                <!-- 检查点（等待用户确认） -->
+                                <template x-if="stepStates[activeStepView] === 'checkpoint'">
+                                    <div>
+                                        <div class="prose-agent mb-4" x-html="renderMarkdown(stepOutputs[activeStepView] || '')"></div>
+                                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                            <p class="text-sm text-amber-800 font-medium mb-3">
+                                                ⏸️ Agent 已暂停，请确认此步骤的输出。你可以直接继续，或修改后再继续。
+                                            </p>
+                                            <div class="mb-3">
+                                                <textarea x-model="checkpointEdit"
+                                                          rows="3"
+                                                          class="w-full rounded-lg border border-amber-200 px-3 py-2 text-sm focus:border-emerald-400 outline-none resize-none"
+                                                          placeholder="（可选）在这里修改或补充内容，留空则使用 AI 生成的版本"></textarea>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button @click="resumeFromCheckpoint(false)"
+                                                        class="flex-1 py-2 rounded-lg bg-emerald-500 text-white font-medium text-sm hover:bg-emerald-600 transition">
+                                                    ✅ 确认，继续执行
+                                                </button>
+                                                <button @click="resumeFromCheckpoint(true)"
+                                                        class="flex-1 py-2 rounded-lg bg-amber-500 text-white font-medium text-sm hover:bg-amber-600 transition">
+                                                    ✏️ 使用修改版继续
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- 已完成 -->
+                                <template x-if="stepStates[activeStepView] === 'completed' && stepOutputs[activeStepView]">
+                                    <div>
+                                        <!-- 推理过程折叠 -->
+                                        <template x-if="stepReasonings[activeStepView]">
+                                            <details class="mb-4">
+                                                <summary class="cursor-pointer text-xs font-medium text-slate-400 hover:text-slate-600 transition">
+                                                    🧠 深度思考过程（点击展开）
+                                                </summary>
+                                                <div class="mt-2 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                                    <span x-text="stepReasonings[activeStepView]"></span>
+                                                </div>
+                                            </details>
+                                        </template>
+                                        <div class="prose-agent" x-html="renderMarkdown(stepOutputs[activeStepView])"></div>
+                                    </div>
+                                </template>
+
+                                <!-- 错误状态 -->
+                                <template x-if="stepStates[activeStepView] === 'error'">
+                                    <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                                        <i data-lucide="alert-circle" class="w-10 h-10 text-red-400 mx-auto mb-2"></i>
+                                        <p class="text-sm text-red-700" x-text="stepErrors[activeStepView] || '执行出错'"></p>
+                                        <button @click="retryStep(activeStepView)"
+                                                class="mt-3 px-4 py-1.5 rounded-lg bg-red-100 text-red-700 text-sm hover:bg-red-200 transition">
+                                            🔄 重试此步骤
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- ===== 视图三：单技能模式 ===== -->
+        <template x-if="currentView === 'single_skill'">
+            <div class="fade-in-up max-w-3xl mx-auto">
+                <div class="flex items-center gap-3 mb-6">
+                    <button @click="backToSelect()" class="p-2 rounded-lg hover:bg-white/60 transition">
+                        <i data-lucide="arrow-left" class="w-5 h-5 text-slate-500"></i>
+                    </button>
+                    <span class="text-3xl" x-text="activeSkill?.icon"></span>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900" x-text="activeSkill?.name"></h2>
+                        <p class="text-sm text-slate-500" x-text="activeSkill?.description"></p>
+                    </div>
+                </div>
+
+                <!-- 输入 -->
+                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-4">
+                    <div class="space-y-3">
+                        <template x-for="field in activeSkill?.inputFields || []" :key="field.key">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1" x-text="field.label"></label>
+                                <template x-if="field.type === 'number'">
+                                    <input type="number" x-model="singleSkillInput[field.key]"
+                                           :placeholder="field.placeholder"
+                                           class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 outline-none" />
+                                </template>
+                                <template x-if="field.type !== 'number' && field.multiline">
+                                    <textarea x-model="singleSkillInput[field.key]"
+                                              :placeholder="field.placeholder"
+                                              rows="5"
+                                              class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 outline-none resize-y"></textarea>
+                                </template>
+                                <template x-if="field.type !== 'number' && !field.multiline">
+                                    <input type="text" x-model="singleSkillInput[field.key]"
+                                           :placeholder="field.placeholder"
+                                           class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 outline-none" />
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <button @click="executeSingleSkill()"
+                            :disabled="isSingleRunning"
+                            class="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-sm hover:shadow-lg disabled:opacity-50 transition-all">
+                        <span x-show="!isSingleRunning">⚡ 执行</span>
+                        <span x-show="isSingleRunning" class="flex items-center justify-center gap-2">
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 生成中...
+                        </span>
+                    </button>
+                </div>
+
+                <!-- 输出 -->
+                <div x-show="singleSkillOutput" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-slate-800">生成结果</h3>
+                        <button @click="copySingleOutput()" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="prose-agent" x-html="renderMarkdown(singleSkillOutput)"></div>
+                </div>
+            </div>
+        </template>
+    </main>
+
+    <!-- ==================== Toast 通知 ==================== -->
+    <div x-show="toast.show" x-transition
+         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-xl shadow-xl text-sm font-medium"
+         :class="toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-800 text-white'">
+        <span x-text="toast.msg"></span>
+    </div>
+
+    <!-- ==================== API 设置弹窗 ==================== -->
+    <div x-show="showSettings" x-transition class="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4">
+        <div @click.stop class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">⚙️ API 配置</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                    <input type="password" x-model="apiConfig.deepseek"
+                           class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-400 outline-none"
+                           placeholder="sk-..." />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                    <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-400 outline-none">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">API 地址（可选）</label>
+                    <input type="text" x-model="apiConfig.baseUrl"
+                           class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-400 outline-none"
+                           placeholder="https://api.deepseek.com" />
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button @click="showSettings = false"
+                        class="px-4 py-2 rounded-lg hover:bg-slate-100 text-slate-600 text-sm">
+                    取消
+                </button>
+                <button @click="saveConfig()"
+                        class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    /**
+     * 微信公众号 Agent 工作台 - Alpine.js 应用
+     * 
+     * 架构说明：
+     *   - currentView: 'select' | 'execute' | 'single_skill' 三种视图切换
+     *   - AgentEngine 实例负责所有 API 调用和管道编排
+     *   - 通过 EventTarget 事件系统驱动 UI 更新
+     */
+    function agentWorkbench() {
+        return {
+            // ===== 状态管理 =====
+            currentView: 'select',  // select | execute | single_skill
+            showSettings: false,
+
+            // API 配置
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash',
+                baseUrl: 'https://api.deepseek.com',
+            },
+
+            // 管道相关
+            pipelines: [],
+            activePipeline: null,
+            pipelineSteps: [],
+            pipelineStarted: false,
+            isRunning: false,
+            hasOutput: false,
+            userInput: {},
+
+            // 步骤状态追踪
+            stepStates: [],        // 每步的状态: pending | running | completed | error | checkpoint
+            stepOutputs: [],       // 每步的输出文本
+            stepReasonings: [],    // 每步的推理过程
+            stepErrors: [],        // 每步的错误信息
+            activeStepView: 0,     // 当前查看的步骤索引
+            streamingText: '',     // 流式输出的实时文本
+
+            // 检查点
+            checkpointEdit: '',
+            checkpointResolve: null, // Promise resolve 函数
+
+            // 单技能模式
+            activeSkill: null,
+            singleSkillInput: {},
+            singleSkillOutput: '',
+            isSingleRunning: false,
+
+            // 技能数据
+            skillPhases: [],
+            allSkills: {},
+
+            // Toast
+            toast: { show: false, msg: '', type: 'info' },
+
+            // Agent 引擎实例
+            engine: null,
+
+            // ===== 初始化 =====
+            init() {
+                this.loadConfig();
+                this.loadRegistries();
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /** 加载 API 配置 */
+            loadConfig() {
+                const saved = localStorage.getItem('global_llm_config');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    this.apiConfig = { ...this.apiConfig, ...parsed };
+                }
+            },
+
+            /** 保存 API 配置（合并策略） */
+            saveConfig() {
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                localStorage.setItem('global_llm_config', JSON.stringify({
+                    ...current, ...this.apiConfig
+                }));
+                this.showSettings = false;
+                this.showToast('配置已保存');
+            },
+
+            /** 加载技能和管道注册表 */
+            loadRegistries() {
+                this.allSkills = window.SkillRegistry || {};
+                this.skillPhases = this.allSkills._phases || [];
+                this.pipelines = (window.PipelineRegistry?._list?.() || []);
+            },
+
+            /** 获取某阶段的技能列表 */
+            getSkillsByPhase(phaseId) {
+                return (this.allSkills._list?.() || []).filter(s => s.phase === phaseId);
+            },
+
+            // ===== 管道流程 =====
+
+            /** 选择管道 */
+            selectPipeline(pipeline) {
+                this.activePipeline = pipeline;
+                this.pipelineSteps = pipeline.steps;
+                this.userInput = {};
+                this.stepStates = pipeline.steps.map(() => 'pending');
+                this.stepOutputs = pipeline.steps.map(() => '');
+                this.stepReasonings = pipeline.steps.map(() => '');
+                this.stepErrors = pipeline.steps.map(() => '');
+                this.activeStepView = 0;
+                this.pipelineStarted = false;
+                this.hasOutput = false;
+                this.currentView = 'execute';
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /** 检查是否可以启动 */
+            get canStart() {
+                if (!this.activePipeline) return false;
+                const required = (this.activePipeline.inputFields || []).filter(f => f.required);
+                return required.every(f => this.userInput[f.key]?.trim());
+            },
+
+            /** 启动管道 */
+            async startPipeline() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    this.showToast('请先配置 API Key', 'error');
+                    return;
+                }
+
+                this.pipelineStarted = true;
+                this.isRunning = true;
+                this.engine = new AgentEngine(this.apiConfig);
+                this._bindEngineEvents();
+
+                try {
+                    await this._runPipelineManually();
+                } catch (err) {
+                    console.error('[Agent] 管道执行异常:', err);
+                    this.showToast('执行异常: ' + err.message, 'error');
+                } finally {
+                    this.isRunning = false;
+                    this.hasOutput = this.stepOutputs.some(o => o);
+                }
+            },
+
+            /**
+             * 手动编排管道执行（支持 checkpoint 暂停）
+             * 不直接使用 engine.runPipeline()，而是逐步执行以支持 UI 交互
+             */
+            async _runPipelineManually() {
+                const pipeline = this.activePipeline;
+                const engine = this.engine;
+                engine.context = {
+                    input: { ...this.userInput },
+                    steps: {},
+                    globals: { ...pipeline.globals },
+                };
+
+                for (let i = 0; i < pipeline.steps.length; i++) {
+                    if (engine.aborted) break;
+
+                    const stepDef = pipeline.steps[i];
+                    const skill = this.allSkills[stepDef.skillId];
+                    if (!skill) {
+                        this.stepStates[i] = 'error';
+                        this.stepErrors[i] = `未找到技能: ${stepDef.skillId}`;
+                        continue;
+                    }
+
+                    // 解析输入
+                    const skillInput = engine._resolveInputMapping(stepDef.inputMapping || {});
+
+                    // 更新 UI 状态
+                    this.stepStates[i] = 'running';
+                    this.activeStepView = i;
+                    this.streamingText = '';
+                    this.$nextTick(() => lucide.createIcons());
+
+                    try {
+                        const result = await engine.executeSkill(skill, skillInput, {
+                            onStream: (delta, full) => {
+                                this.streamingText = full;
+                            },
+                        });
+
+                        // 存入引擎上下文
+                        engine.context.steps[stepDef.id || stepDef.skillId] = {
+                            output: result.parsed || result.raw || '',
+                            raw: result.raw || '',
+                            reasoning: result.reasoning || '',
+                        };
+
+                        this.stepOutputs[i] = result.parsed || result.raw || '';
+                        this.stepReasonings[i] = result.reasoning || '';
+                        this.streamingText = '';
+
+                        // 检查点：暂停等待用户确认
+                        if (stepDef.checkpoint) {
+                            this.stepStates[i] = 'checkpoint';
+                            this.$nextTick(() => lucide.createIcons());
+                            await this._waitForCheckpoint(i);
+                        } else {
+                            this.stepStates[i] = 'completed';
+                        }
+
+                    } catch (err) {
+                        if (engine.aborted) break;
+                        this.stepStates[i] = 'error';
+                        this.stepErrors[i] = err.message;
+                        this.streamingText = '';
+                        // 出错不中断，继续下一步
+                    }
+
+                    this.$nextTick(() => lucide.createIcons());
+                }
+
+                this.showToast('🎉 Agent 执行完成！');
+            },
+
+            /** 等待用户在检查点确认 */
+            _waitForCheckpoint(stepIdx) {
+                return new Promise(resolve => {
+                    this.checkpointResolve = resolve;
+                    this.checkpointEdit = '';
+                });
+            },
+
+            /** 从检查点恢复执行 */
+            resumeFromCheckpoint(useEdit) {
+                if (useEdit && this.checkpointEdit.trim()) {
+                    const idx = this.activeStepView;
+                    this.stepOutputs[idx] = this.checkpointEdit.trim();
+                    const stepDef = this.pipelineSteps[idx];
+                    this.engine.context.steps[stepDef.id || stepDef.skillId].output = this.checkpointEdit.trim();
+                }
+                this.stepStates[this.activeStepView] = 'completed';
+                this.checkpointEdit = '';
+                if (this.checkpointResolve) {
+                    this.checkpointResolve();
+                    this.checkpointResolve = null;
+                }
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /** 中止管道 */
+            abortPipeline() {
+                if (this.engine) this.engine.abort();
+                this.isRunning = false;
+                this.showToast('已中止执行');
+            },
+
+            /** 查看某一步的输出 */
+            viewStep(idx) {
+                this.activeStepView = idx;
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /** 重试某步 */
+            async retryStep(idx) {
+                if (!this.engine || this.isRunning) return;
+                const stepDef = this.pipelineSteps[idx];
+                const skill = this.allSkills[stepDef.skillId];
+                if (!skill) return;
+
+                this.isRunning = true;
+                this.stepStates[idx] = 'running';
+                this.streamingText = '';
+                const skillInput = this.engine._resolveInputMapping(stepDef.inputMapping || {});
+
+                try {
+                    const result = await this.engine.executeSkill(skill, skillInput, {
+                        onStream: (delta, full) => { this.streamingText = full; },
+                    });
+                    this.engine.context.steps[stepDef.id || stepDef.skillId] = {
+                        output: result.parsed || result.raw || '',
+                        raw: result.raw || '',
+                        reasoning: result.reasoning || '',
+                    };
+                    this.stepOutputs[idx] = result.parsed || result.raw || '';
+                    this.stepReasonings[idx] = result.reasoning || '';
+                    this.stepStates[idx] = 'completed';
+                    this.streamingText = '';
+                } catch (err) {
+                    this.stepStates[idx] = 'error';
+                    this.stepErrors[idx] = err.message;
+                    this.streamingText = '';
+                }
+                this.isRunning = false;
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            // ===== 单技能模式 =====
+
+            /** 选择单个技能运行 */
+            runSingleSkill(skill) {
+                this.activeSkill = skill;
+                this.singleSkillInput = {};
+                this.singleSkillOutput = '';
+                this.currentView = 'single_skill';
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /** 执行单个技能 */
+            async executeSingleSkill() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    this.showToast('请先配置 API Key', 'error');
+                    return;
+                }
+
+                this.isSingleRunning = true;
+                this.singleSkillOutput = '';
+                const engine = new AgentEngine(this.apiConfig);
+
+                try {
+                    const result = await engine.executeSkill(this.activeSkill, this.singleSkillInput, {
+                        onStream: (delta, full) => {
+                            this.singleSkillOutput = full;
+                        },
+                    });
+                    this.singleSkillOutput = result.parsed || result.raw || '';
+                    this.showToast('✅ 生成完成');
+                } catch (err) {
+                    this.showToast('执行出错: ' + err.message, 'error');
+                } finally {
+                    this.isSingleRunning = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            // ===== 导出与复制 =====
+
+            /** 复制某步输出 */
+            async copyStepOutput(idx) {
+                const text = this.stepOutputs[idx];
+                if (!text) return;
+                await this._copyToClipboard(text);
+                this.showToast('已复制到剪贴板');
+            },
+
+            /** 复制单技能输出 */
+            async copySingleOutput() {
+                if (!this.singleSkillOutput) return;
+                await this._copyToClipboard(this.singleSkillOutput);
+                this.showToast('已复制到剪贴板');
+            },
+
+            /** 导出所有步骤输出 */
+            exportAll() {
+                const parts = [];
+                this.pipelineSteps.forEach((step, idx) => {
+                    if (this.stepOutputs[idx]) {
+                        parts.push(`${'='.repeat(20)} ${step.label} ${'='.repeat(20)}\n\n${this.stepOutputs[idx]}\n`);
+                    }
+                });
+                const content = parts.join('\n\n');
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `公众号Agent_${this.activePipeline?.name || 'output'}_${new Date().toLocaleDateString()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showToast('已导出文件');
+            },
+
+            // ===== 辅助方法 =====
+
+            backToSelect() {
+                if (this.isRunning) {
+                    if (!confirm('正在执行中，确定要返回吗？')) return;
+                    this.abortPipeline();
+                }
+                this.currentView = 'select';
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /** 渲染 Markdown 到 HTML */
+            renderMarkdown(text) {
+                if (!text) return '';
+                try {
+                    return marked.parse(text);
+                } catch {
+                    return text.replace(/\n/g, '<br>');
+                }
+            },
+
+            /** 获取状态文本 */
+            getStatusText(state) {
+                const map = {
+                    pending: '等待中',
+                    running: '执行中...',
+                    completed: '已完成',
+                    error: '出错',
+                    checkpoint: '等待确认',
+                };
+                return map[state] || state;
+            },
+
+            /** 复制到剪贴板 */
+            async _copyToClipboard(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                } catch {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+            },
+
+            /** 绑定引擎事件（备用，手动编排模式下不需要） */
+            _bindEngineEvents() {
+                // 保留接口，后续可扩展
+            },
+
+            /** 显示 Toast */
+            showToast(msg, type = 'info') {
+                this.toast = { show: true, msg, type };
+                setTimeout(() => { this.toast.show = false; }, 2500);
+            },
+        };
+    }
+</script>
+
+</body>
+</html>

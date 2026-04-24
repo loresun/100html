@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多平台热点看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            backdrop-filter: blur(14px);
+        }
+
+        .card-shadow {
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35);
+        }
+
+        .scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollbar::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.4);
+            border-radius: 999px;
+        }
+
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.6);
+            border-radius: 999px;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, rgba(51, 65, 85, 0.4) 25%, rgba(71, 85, 105, 0.6) 50%, rgba(51, 65, 85, 0.4) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen text-slate-100">
+    <div x-data="hotspotBoard()" x-init="init()" x-effect="setupAutoRefresh()" class="max-w-7xl mx-auto px-4 py-8">
+        <header class="glass rounded-2xl p-6 card-shadow mb-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600">
+                        <i data-lucide="flame" class="h-7 w-7 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold">多平台热点看板</h1>
+                        <p class="text-sm text-slate-300">抖音、B 站、微博热点并排纵向展示</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <button @click="refreshAll" class="px-4 py-2 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 text-sm font-semibold flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+                        刷新全部
+                    </button>
+                    <label class="flex items-center gap-2 text-xs text-slate-300">
+                        <input type="checkbox" x-model="autoRefresh" class="rounded border-slate-600 bg-slate-800">
+                        自动刷新 (15 分钟)
+                    </label>
+                    <button @click="showSettings = true" class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-sm flex items-center gap-2">
+                        <i data-lucide="settings" class="h-4 w-4"></i>
+                        数据源配置
+                    </button>
+                </div>
+            </div>
+            <div class="mt-4 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                ⚠️ <strong>免责声明：</strong>本页面仅展示数据抓取原理演示。实际使用请配置稳定的数据源或自有 API，以确保服务可用性和合规性。
+            </div>
+        </header>
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            <template x-for="platform in platforms" :key="platform.id">
+                <article class="glass rounded-2xl p-5 card-shadow flex flex-col min-h-[520px]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <span :class="platform.badge" class="px-3 py-1 rounded-full text-xs font-semibold" x-text="platform.badgeText"></span>
+                            <div>
+                                <h2 class="text-lg font-semibold" x-text="platform.name"></h2>
+                                <p class="text-xs text-slate-400" x-text="platform.subtitle"></p>
+                            </div>
+                        </div>
+                        <button @click="refreshPlatform(platform.id)" class="text-slate-300 hover:text-white" :title="'刷新' + platform.name">
+                            <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+
+                    <div class="text-xs text-slate-400 mb-3">
+                        <span x-show="platform.loading">加载中...</span>
+                        <span x-show="!platform.loading && platform.error" class="text-amber-400" x-text="platform.error"></span>
+                        <span x-show="!platform.loading && !platform.error">更新：<span x-text="platform.updatedAt || '暂无'">暂无</span></span>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto pr-1 scrollbar">
+                        <template x-if="platform.loading">
+                            <div class="space-y-3">
+                                <template x-for="i in 8" :key="i">
+                                    <div class="h-4 rounded-full skeleton"></div>
+                                </template>
+                            </div>
+                        </template>
+                        <template x-if="!platform.loading && !platform.items.length">
+                            <div class="text-sm text-slate-400 leading-relaxed">
+                                暂无数据。可以在右上角“数据源配置”中填入该平台 API 或热榜地址。
+                            </div>
+                        </template>
+                        <template x-if="!platform.loading && platform.items.length">
+                            <ol class="space-y-3">
+                                <template x-for="(item, index) in platform.items" :key="item.title + index">
+                                    <li class="flex items-start gap-2">
+                                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold"
+                                            :class="index < 3 ? 'bg-amber-500/20 text-amber-300' : 'bg-white/10 text-slate-300'"
+                                            x-text="index + 1"></span>
+                                        <div class="flex-1">
+                                            <a :href="item.url" target="_blank" class="text-sm leading-snug hover:text-cyan-300" x-text="item.title"></a>
+                                            <div class="text-xs text-slate-500 mt-1" x-text="item.hot"></div>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ol>
+                        </template>
+                    </div>
+
+                    <div class="mt-4 text-[11px] text-slate-500">
+                        <span x-show="platform.source">来源：TopHub 热榜页面</span>
+                        <span x-show="!platform.source">来源：示例数据 / 待配置</span>
+                    </div>
+                </article>
+            </template>
+        </section>
+
+        <div x-show="showSettings" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div @click.away="showSettings = false" class="bg-slate-900 text-slate-100 rounded-2xl w-full max-w-2xl p-6 border border-slate-700">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold">数据源配置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-white">
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <template x-for="platform in platforms" :key="platform.id + '-setting'">
+                        <div class="bg-slate-800/70 rounded-xl p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold" x-text="platform.name"></span>
+                                <span class="text-xs text-slate-400">支持 TopHub URL / 自有 API</span>
+                            </div>
+                            <input type="text" x-model="platform.customSource" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                                placeholder="https://r.jina.ai/http://tophub.today/n/... 或你的 API" />
+                            <p class="text-xs text-slate-500 mt-2">留空则使用默认数据源或示例数据。</p>
+                        </div>
+                    </template>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @click="resetSources" class="px-4 py-2 text-sm text-slate-300 hover:text-white">恢复默认</button>
+                    <button @click="saveSources" class="px-5 py-2 bg-cyan-500/90 hover:bg-cyan-500 rounded-lg text-sm font-semibold">保存并刷新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function hotspotBoard() {
+            const defaultPlatforms = [
+                {
+                    id: 'douyin',
+                    name: '抖音',
+                    subtitle: '短视频总榜',
+                    badge: 'bg-black/60 text-white',
+                    badgeText: '热榜',
+                    source: 'https://r.jina.ai/http://tophub.today/n/DpQvNABoNE',
+                    fallback: [
+                        { title: '国风舞蹈挑战合集', url: '#', hot: '示例 · 2135万次播放' },
+                        { title: '城市打卡 10 秒片段', url: '#', hot: '示例 · 1860万次播放' },
+                        { title: '美食厨房 ASMR', url: '#', hot: '示例 · 1224万次播放' },
+                    ]
+                },
+                {
+                    id: 'bilibili',
+                    name: 'B 站',
+                    subtitle: '全站日榜',
+                    badge: 'bg-sky-400/20 text-sky-200',
+                    badgeText: '日榜',
+                    source: 'https://r.jina.ai/http://tophub.today/n/74KvxwokxM',
+                    fallback: [
+                        { title: 'UP 主合唱特别企划', url: '#', hot: '示例 · 189.7万' },
+                        { title: '科普拆解 10 分钟', url: '#', hot: '示例 · 128.4万' },
+                        { title: '游戏名场面剪辑', url: '#', hot: '示例 · 92.1万' },
+                    ]
+                },
+                {
+                    id: 'weibo',
+                    name: '微博',
+                    subtitle: '热搜榜',
+                    badge: 'bg-rose-500/20 text-rose-200',
+                    badgeText: '热搜',
+                    source: 'https://r.jina.ai/http://tophub.today/n/KqndgxeLl9',
+                    fallback: [
+                        { title: '科技新品发布会', url: '#', hot: '示例 · 1769万热度' },
+                        { title: '电影首映礼', url: '#', hot: '示例 · 1051万热度' },
+                        { title: '运动员最新动态', url: '#', hot: '示例 · 826万热度' },
+                    ]
+                }
+            ];
+
+            return {
+                platforms: [],
+                showSettings: false,
+                autoRefresh: true,
+                refreshTimer: null,
+
+                init() {
+                    let stored = {};
+                    try {
+                        stored = JSON.parse(localStorage.getItem('hotspot_sources') || '{}');
+                    } catch (e) {
+                        console.error('Error loading sources:', e);
+                    }
+                    this.platforms = defaultPlatforms.map(platform => ({
+                        ...platform,
+                        customSource: stored[platform.id] || platform.source,
+                        items: [],
+                        loading: true,
+                        error: '',
+                        updatedAt: ''
+                    }));
+                    this.refreshAll();
+                    this.setupAutoRefresh();
+                    lucide.createIcons();
+                },
+
+                setupAutoRefresh() {
+                    if (this.refreshTimer) {
+                        clearInterval(this.refreshTimer);
+                    }
+                    if (this.autoRefresh) {
+                        this.refreshTimer = setInterval(() => this.refreshAll(), 15 * 60 * 1000);
+                    }
+                },
+
+                async refreshAll() {
+                    await Promise.all(this.platforms.map(platform => this.fetchPlatform(platform)));
+                    lucide.createIcons();
+                },
+
+                async refreshPlatform(id) {
+                    const platform = this.platforms.find(item => item.id === id);
+                    if (!platform) return;
+                    await this.fetchPlatform(platform);
+                    lucide.createIcons();
+                },
+
+                async fetchPlatform(platform) {
+                    platform.loading = true;
+                    platform.error = '';
+                    const source = platform.customSource || platform.source;
+                    if (!source) {
+                        platform.items = [...platform.fallback];
+                        platform.loading = false;
+                        platform.updatedAt = this.formatTime(new Date());
+                        platform.error = '未配置数据源，展示示例数据';
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(source);
+                        if (!response.ok) throw new Error('请求失败');
+                        const text = await response.text();
+                        const items = this.parseHotList(text);
+                        platform.items = items.length ? items : platform.fallback;
+                        platform.updatedAt = this.formatTime(new Date());
+                        if (!items.length) {
+                            platform.error = '解析失败，已回退示例数据';
+                        }
+                    } catch (error) {
+                        platform.items = [...platform.fallback];
+                        platform.error = '抓取失败，已回退示例数据';
+                    } finally {
+                        platform.loading = false;
+                    }
+                },
+
+                parseHotList(rawText) {
+                    const lines = rawText.split(/\n+/);
+                    const results = [];
+                    const itemPattern = /^\d+\.\s*(?:!\[.*?\]\([^)]*\))?\s*\[(.+?)\]\((https?:\/\/[^)]+)\)\s*(.*)$/;
+                    const hotPattern = /(\d+(?:\.\d+)?(?:万|亿)?(?:次播放|热度|人气|阅读|浏览|收藏)?)/;
+
+                    lines.forEach(line => {
+                        const itemMatch = line.match(itemPattern);
+                        if (itemMatch) {
+                            const title = itemMatch[1].trim();
+                            const url = itemMatch[2];
+                            const hotText = itemMatch[3].replace(/\[.*?\].*/, '').trim();
+                            results.push({
+                                title,
+                                url,
+                                hot: hotText
+                            });
+                            return;
+                        }
+
+                        const hotMatch = line.match(hotPattern);
+                        if (hotMatch && results.length) {
+                            const last = results[results.length - 1];
+                            if (!last.hot) {
+                                last.hot = hotMatch[1];
+                            }
+                        }
+                    });
+
+                    return results.slice(0, 20).map(item => ({
+                        ...item,
+                        hot: item.hot || '热度待更新'
+                    }));
+                },
+
+                formatTime(date) {
+                    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                },
+
+                saveSources() {
+                    const data = {};
+                    this.platforms.forEach(platform => {
+                        if (platform.customSource) {
+                            data[platform.id] = platform.customSource;
+                        }
+                    });
+                    try {
+                        localStorage.setItem('hotspot_sources', JSON.stringify(data));
+                    } catch (e) {
+                         console.error('Error saving sources:', e);
+                    }
+                    this.showSettings = false;
+                    this.refreshAll();
+                },
+
+                resetSources() {
+                    localStorage.removeItem('hotspot_sources');
+                    this.platforms.forEach(platform => {
+                        platform.customSource = platform.source;
+                    });
+                }
+            };
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/topic_hotspot_dashboard.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

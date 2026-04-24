@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绩效评估报告生成器 - HR智能助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 50%, #d8b4fe 100%);
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen p-4">
+    <div x-data="reviewApp()" x-init="init()" class="max-w-7xl mx-auto">
+        <nav class="glass rounded-2xl shadow-2xl mb-6 p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl">
+                        <i class="fa-solid fa-award text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-2xl text-slate-900">绩效评估报告生成器</h1>
+                        <p class="text-sm text-slate-500">专业、客观、全面的绩效评价</p>
+                    </div>
+                </div>
+                <button @click="showSettings = true" class="px-4 py-2 bg-purple-100 hover:bg-purple-200 rounded-lg">
+                    <i class="fa-solid fa-gear text-slate-600"></i>
+                </button>
+            </div>
+        </nav>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="space-y-6">
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4">员工信息</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">姓名</label>
+                            <input type="text" x-model="employeeName" class="w-full rounded-lg border p-3">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">岗位</label>
+                            <input type="text" x-model="position" class="w-full rounded-lg border p-3">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">评估周期</label>
+                            <select x-model="period" class="w-full rounded-lg border p-3">
+                                <option value="季度">季度评估</option>
+                                <option value="半年">半年评估</option>
+                                <option value="年度">年度评估</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4">工作成果</h3>
+                    <textarea x-model="achievements" rows="6" placeholder="列举主要项目成果、数据表现..."
+                        class="w-full rounded-lg border p-3"></textarea>
+                </div>
+
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4">评估维度</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" value="工作成果" x-model="dimensions" class="rounded">
+                            工作成果
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" value="能力提升" x-model="dimensions" class="rounded">
+                            能力提升
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" value="团队协作" x-model="dimensions" class="rounded">
+                            团队协作
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" value="创新思维" x-model="dimensions" class="rounded">
+                            创新思维
+                        </label>
+                    </div>
+                </div>
+
+                <button @click="generate()" :disabled="isGenerating"
+                    class="w-full bg-gradient-to-r from-purple-500 to-violet-500 text-white font-bold py-4 rounded-xl disabled:opacity-50">
+                    <span x-text="isGenerating ? '生成中...' : '生成评估报告'"></span>
+                </button>
+            </div>
+
+            <div class="glass rounded-2xl shadow-xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-xl">评估报告</h3>
+                    <button x-show="result" @click="downloadReport()"
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <i class="fa-solid fa-download mr-2"></i>下载
+                    </button>
+                </div>
+                <div x-show="!result && !isGenerating"
+                    class="flex flex-col items-center justify-center py-20 text-slate-400">
+                    <i class="fa-solid fa-file-invoice text-6xl mb-4 opacity-50"></i>
+                    <p>填写信息后生成报告</p>
+                </div>
+                <div x-show="isGenerating" class="flex justify-center py-20">
+                    <i class="fa-solid fa-spinner fa-spin text-4xl text-purple-500"></i>
+                </div>
+                <div x-show="result" class="prose max-w-none" x-html="marked.parse(result || '')"></div>
+            </div>
+        </div>
+
+        <div x-show="showSettings" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" x-cloak>
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-xl font-bold mb-6">DeepSeek配置</h3>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">API Key</label>
+                    <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                        class="w-full rounded-lg border p-3">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-6 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig()" class="bg-purple-600 text-white px-6 py-2 rounded-lg">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function reviewApp() {
+            return {
+                showSettings: false,
+                isGenerating: false,
+                employeeName: '',
+                position: '',
+                period: '年度',
+                achievements: '',
+                dimensions: ['工作成果', '能力提升', '团队协作'],
+                result: '',
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+
+                init() {
+                    this.loadConfig();
+                },
+
+                loadConfig() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                },
+
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                },
+
+                async generate() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.isGenerating = true;
+                    this.result = '';
+
+                    const prompt = `请生成一份专业的绩效评估报告：
+
+**员工信息**：
+- 姓名：${this.employeeName}
+- 岗位：${this.position}
+- 评估周期：${this.period}
+
+**工作成果**：
+${this.achievements}
+
+**评估维度**：
+${this.dimensions.join('、')}
+
+请按以下结构输出（Markdown格式）：
+
+# ${this.period}绩效评估报告
+
+## 一、工作成果总结
+（突出亮点，量化成绩）
+
+## 二、优势与亮点
+（每个维度展开）
+
+## 三、待提升方向
+（委婉表达，建设性建议）
+
+## 四、下期目标建议
+（SMART原则）
+
+## 五、综合评价
+（总体评价和建议）`;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: this.apiConfig.model,
+                                messages: [{ role: 'user', content: prompt }],
+                                stream: true
+                            })
+                        });
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value);
+                            const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
+
+                            for (const line of lines) {
+                                const data = line.replace('data: ', '');
+                                if (data === '[DONE]') continue;
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed.choices[0].delta.content;
+                                    if (content) this.result += content;
+                                } catch (e) { }
+                            }
+                        }
+                    } catch (error) {
+                        alert('生成失败: ' + error.message);
+                    } finally {
+                        this.isGenerating = false;
+                    }
+                },
+
+                downloadReport() {
+                    const blob = new Blob([this.result], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${this.employeeName}_${this.period}绩效评估报告.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            }
+        }
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_performance_review_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

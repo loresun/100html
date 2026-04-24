@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 错误代码与调试指南 | AI 基础知识</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #fef2f2 0%, #fff1f2 50%, #ffffb8 100%);
+            /* Slightly warmer background to indicate caution/errors */
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+        }
+
+        .code-block {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .status-badge {
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-weight: 700;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <div id="app" class="flex-grow flex flex-col">
+        <!-- Header -->
+        <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                    <div
+                        class="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-rose-200">
+                        <i class="fa-solid fa-triangle-exclamation text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl text-slate-900 tracking-tight">API 错误代码与调试指南</h1>
+                        <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">AI 基础知识</p>
+                    </div>
+                </div>
+                <a href="../../index.html"
+                    class="text-slate-500 hover:text-rose-600 transition flex items-center gap-1 text-sm">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    返回首页
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow py-8 px-4">
+            <div class="max-w-5xl mx-auto space-y-8">
+
+                <!-- Intro Section -->
+                <div class="glass-card rounded-2xl p-6 md:p-8">
+                    <div class="flex items-start gap-4">
+                        <div class="p-3 bg-rose-100 rounded-lg text-rose-600 shrink-0">
+                            <i class="fa-solid fa-circle-question text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-900 mb-2">为什么会报错？别慌！</h2>
+                            <p class="text-slate-600 leading-relaxed">
+                                对接 API 就像是在和一台非常"死板"的机器打电话。如果你的发音稍微不标准，或者说的话它听不懂，它就会直接挂断，并丢给你一个
+                                <strong class="text-rose-600">错误代码（Status Code）</strong>。<br><br>
+                                这些代码其实是线索。只要看懂了这些数字，你就知道问题出在哪里了。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4xx Errors: Client Side -->
+                <div>
+                    <h3 class="flex items-center gap-2 text-lg font-bold text-slate-800 mb-4 px-2">
+                        <span class="w-2 h-6 bg-amber-500 rounded-full"></span>
+                        4xx 开头：即使是你的锅，也能修
+                        <span class="text-sm font-normal text-slate-500 ml-2">（客户端错误）</span>
+                    </h3>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <!-- 400 Bad Request -->
+                        <div class="glass-card rounded-xl p-5 border-l-4 border-amber-400">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="status-badge bg-amber-100 text-amber-700 px-2 py-1 rounded text-sm">400 Bad
+                                    Request</span>
+                                <i class="fa-solid fa-file-circle-exclamation text-amber-400 text-xl"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 mb-2">请求格式错误</h4>
+                            <p class="text-slate-600 text-sm mb-3">
+                                <strong>从人话翻译：</strong>"如果你填的表单乱七八糟，我看不懂。"
+                            </p>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs text-slate-500">
+                                <strong>常见原因：</strong>JSON 格式写错了（少个逗号、引号）、缺了必填项、参数类型不对（要数字给了文字）。
+                            </div>
+                        </div>
+
+                        <!-- 401 Unauthorized -->
+                        <div class="glass-card rounded-xl p-5 border-l-4 border-amber-500">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="status-badge bg-amber-100 text-amber-700 px-2 py-1 rounded text-sm">401
+                                    Unauthorized</span>
+                                <i class="fa-solid fa-shield-halved text-amber-500 text-xl"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 mb-2">未授权 / 没登录</h4>
+                            <p class="text-slate-600 text-sm mb-3">
+                                <strong>从人话翻译：</strong>"你是谁？我不认识你，没带工牌不让进。"
+                            </p>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs text-slate-500">
+                                <strong>常见原因：</strong>API Key 忘了填、填错了、或者过期了。
+                            </div>
+                        </div>
+
+                        <!-- 403 Forbidden -->
+                        <div class="glass-card rounded-xl p-5 border-l-4 border-orange-500">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="status-badge bg-orange-100 text-orange-700 px-2 py-1 rounded text-sm">403
+                                    Forbidden</span>
+                                <i class="fa-solid fa-lock text-orange-500 text-xl"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 mb-2">禁止访问</h4>
+                            <p class="text-slate-600 text-sm mb-3">
+                                <strong>从人话翻译：</strong>"我知道你是谁，但你没资格进这个房间。"
+                            </p>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs text-slate-500">
+                                <strong>常见原因：</strong>账号余额不足、权限不够、IP 地址被封禁。
+                            </div>
+                        </div>
+
+                        <!-- 404 Not Found -->
+                        <div class="glass-card rounded-xl p-5 border-l-4 border-orange-600">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="status-badge bg-orange-100 text-orange-700 px-2 py-1 rounded text-sm">404
+                                    Not Found</span>
+                                <i class="fa-solid fa-map-location-dot text-orange-600 text-xl"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 mb-2">找不到资源</h4>
+                            <p class="text-slate-600 text-sm mb-3">
+                                <strong>从人话翻译：</strong>"你给的地址是空的，这里没人住。"
+                            </p>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs text-slate-500">
+                                <strong>常见原因：</strong>API 网址（URL）写错了、请求还是 v1 版本但服务已经升级到 v3 了。
+                            </div>
+                        </div>
+
+                        <!-- 429 Too Many Requests -->
+                        <div class="glass-card rounded-xl p-5 border-l-4 border-red-400">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="status-badge bg-red-100 text-red-700 px-2 py-1 rounded text-sm">429 Too
+                                    Many Requests</span>
+                                <i class="fa-solid fa-clock text-red-400 text-xl"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 mb-2">请求太频繁</h4>
+                            <p class="text-slate-600 text-sm mb-3">
+                                <strong>从人话翻译：</strong>"你说话太快了，我反应不过来，歇会儿再说。"
+                            </p>
+                            <div class="bg-slate-50 p-3 rounded-lg text-xs text-slate-500">
+                                <strong>常见原因：</strong>短时间内发了太多请求，触碰了频率限制（Rate Limit）。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5xx Errors: Server Side -->
+                <div>
+                    <h3 class="flex items-center gap-2 text-lg font-bold text-slate-800 mb-4 px-2">
+                        <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                        5xx 开头：服务器的锅，你先歇会儿
+                        <span class="text-sm font-normal text-slate-500 ml-2">（服务端错误）</span>
+                    </h3>
+
+                    <div class="glass-card rounded-xl p-6 border-l-4 border-red-600 relative overflow-hidden">
+                        <!-- Decorative background icon -->
+                        <i
+                            class="fa-solid fa-server absolute -right-4 -bottom-4 text-red-50 opacity-50 pointer-events-none text-[128px]"></i>
+
+                        <div class="grid md:grid-cols-2 gap-8 relative z-10">
+                            <div>
+                                <div class="flex items-center gap-3 mb-3">
+                                    <span class="status-badge bg-red-600 text-white px-3 py-1 rounded text-sm">500
+                                        Internal Server Error</span>
+                                </div>
+                                <h4 class="font-bold text-slate-800 text-lg mb-2">服务器内部错误</h4>
+                                <p class="text-slate-600 mb-4">
+                                    <strong>从人话翻译：</strong>"服务器崩了 / 厨师把菜炒糊了。"
+                                </p>
+                                <p class="text-sm text-slate-500">
+                                    这不是你的问题。通常是因为服务商的代码出 Bug 了，或者数据库挂了。
+                                </p>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span
+                                            class="status-badge bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">502
+                                            Bad Gateway</span>
+                                        <span
+                                            class="status-badge bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">504
+                                            Gateway Timeout</span>
+                                    </div>
+                                    <h4 class="font-bold text-slate-800 text-sm">网关错误 / 超时</h4>
+                                    <p class="text-sm text-slate-500 mt-1">
+                                        <strong>从人话翻译：</strong>"线路繁忙 / 客服电话打不通。"
+                                    </p>
+                                    <p class="text-xs text-slate-400 mt-1">
+                                        中间的代理服务器连接不上后面的主服务器，或者主服务器处理太慢超时了。
+                                    </p>
+                                </div>
+                                <div class="bg-red-50 border border-red-100 rounded-lg p-3">
+                                    <p class="text-red-800 text-sm font-medium flex items-center gap-2">
+                                        <i class="fa-regular fa-lightbulb"></i>
+                                        遇到 5xx 怎么办？
+                                    </p>
+                                    <p class="text-red-600 text-xs mt-1">
+                                        别急着改代码。等几分钟再试，或者去服务商的官网看有没有公告说系统维护。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JSON Errors -->
+                <div>
+                    <h3 class="flex items-center gap-2 text-lg font-bold text-slate-800 mb-4 px-2">
+                        <span class="w-2 h-6 bg-purple-500 rounded-full"></span>
+                        JSON 解析错误：信寄到了，但字我不认识
+                    </h3>
+
+                    <div class="glass-card rounded-xl p-6">
+                        <p class="text-slate-600 mb-6">
+                            有时候 HTTP 状态码是 200（代表成功），但你还是拿不到数据。这通常是因为返回的内容不是标准的 JSON 格式，导致程序<strong
+                                class="text-purple-600">解析失败</strong>。
+                        </p>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Case 1: Bad Format -->
+                            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                                <h4 class="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <i class="fa-solid fa-circle-xmark text-red-500"></i>
+                                    情况 1：格式不完整
+                                </h4>
+                                <pre class="bg-slate-900 text-slate-300 p-3 rounded text-xs overflow-x-auto mb-2"><code>{
+  "message": "Hello World"
+  <!-- 缺少右大括号 --></code></pre>
+                                <p class="text-xs text-slate-500">
+                                    就像一句话没说完，程序不知道在哪里结束，所以报错。
+                                </p>
+                            </div>
+
+                            <!-- Case 2: Not JSON at all -->
+                            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                                <h4 class="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <i class="fa-solid fa-circle-xmark text-red-500"></i>
+                                    情况 2：返回了 HTML 网页
+                                </h4>
+                                <pre class="bg-slate-900 text-slate-300 p-3 rounded text-xs overflow-x-auto mb-2"><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;...&lt;/html&gt;</code></pre>
+                                <p class="text-xs text-slate-500">
+                                    你以为会收到数据，结果服务器因为报错直接给你返回了一个"错误页面"。尝试用 JSON 解析器去读网页代码，当然会报错。
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 p-4 bg-purple-50 rounded-lg flex gap-3 text-sm text-purple-800">
+                            <i class="fa-solid fa-stethoscope shrink-0 mt-0.5 text-xl"></i>
+                            <div>
+                                <strong>调试小技巧：</strong><br>
+                                如果遇到 `Unexpected token < in JSON at position 0` 这种错误，通常意味着你收到的不是 JSON，而是一个以 `<` 开头的 HTML
+                                    页面。 <a href="json_intro.html" class="underline hover:text-purple-600 ml-1">复习一下 JSON
+                                    格式 ></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform Documentation Links -->
+                <div>
+                    <h3 class="flex items-center gap-2 text-lg font-bold text-slate-800 mb-4 px-2">
+                        <span class="w-2 h-6 bg-blue-500 rounded-full"></span>
+                        主流大模型平台官方文档
+                        <span class="text-sm font-normal text-slate-500 ml-2">（遇到问题时可直接跳转查看官方说明）</span>
+                    </h3>
+
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <!-- SiliconFlow -->
+                        <a href="https://docs.siliconflow.cn/" target="_blank" rel="noopener noreferrer"
+                           class="glass-card rounded-xl p-5 border-l-4 border-blue-500 hover:shadow-lg hover:shadow-blue-200 transition group block no-underline">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fa-solid fa-wave-square text-blue-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 group-hover:text-blue-600 transition">硅基流动</h4>
+                                    <p class="text-xs text-slate-500">SiliconFlow</p>
+                                </div>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-3">
+                                国产优质大模型推理平台，提供高性价比的 API 服务
+                            </p>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-regular fa-file-lines"></i>
+                                    <a href="https://docs.siliconflow.cn/api-reference/chat Completions"
+                                       class="text-blue-600 hover:underline" target="_blank">API 文档</a>
+                                </div>
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <a href="https://docs.siliconflow.cn/api-reference/error-code"
+                                       class="text-blue-600 hover:underline" target="_blank">错误代码说明</a>
+                                </div>
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-solid fa-bolt"></i>
+                                    <a href="https://docs.siliconflow.cn/api-reference/rate-limit"
+                                       class="text-blue-600 hover:underline" target="_blank">速率限制说明</a>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- 阿里云 -->
+                        <a href="https://help.aliyun.com/zh/dashscope/" target="_blank" rel="noopener noreferrer"
+                           class="glass-card rounded-xl p-5 border-l-4 border-orange-500 hover:shadow-lg hover:shadow-orange-200 transition group block no-underline">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <i class="fa-solid fa-cloud text-orange-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 group-hover:text-orange-600 transition">阿里云</h4>
+                                    <p class="text-xs text-slate-500">DashScope / 通义千问</p>
+                                </div>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-3">
+                                阿里云通义千问大模型服务，企业级 AI 能力平台
+                            </p>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-regular fa-file-lines"></i>
+                                    <a href="https://help.aliyun.com/zh/dashscope/developer-reference/quick-start/"
+                                       class="text-orange-600 hover:underline" target="_blank">快速开始</a>
+                                </div>
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <a href="https://help.aliyun.com/zh/dashscope/developer-reference/error-handling/"
+                                       class="text-orange-600 hover:underline" target="_blank">错误处理指南</a>
+                                </div>
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                    <a href="https://help.aliyun.com/zh/dashscope/developer-reference/authentication/"
+                                       class="text-orange-600 hover:underline" target="_blank">认证与鉴权</a>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- 火山引擎 -->
+                        <a href="https://www.volcengine.com/docs/6791/1307895" target="_blank" rel="noopener noreferrer"
+                           class="glass-card rounded-xl p-5 border-l-4 border-red-500 hover:shadow-lg hover:shadow-red-200 transition group block no-underline">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <i class="fa-solid fa-fire text-red-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 group-hover:text-red-600 transition">火山引擎</h4>
+                                    <p class="text-xs text-slate-500">Volcengine / 豆包大模型</p>
+                                </div>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-3">
+                                字节跳动旗下火山引擎大模型服务平台
+                            </p>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-regular fa-file-lines"></i>
+                                    <a href="https://www.volcengine.com/docs/6791/1307895"
+                                       class="text-red-600 hover:underline" target="_blank">API 文档</a>
+                                </div>
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <a href="https://www.volcengine.com/docs/6791/1307972"
+                                       class="text-red-600 hover:underline" target="_blank">错误码说明</a>
+                                </div>
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-solid fa-bolt"></i>
+                                    <a href="https://www.volcengine.com/docs/6791/1307899"
+                                       class="text-red-600 hover:underline" target="_blank">调用限制</a>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="mt-4 p-4 bg-blue-50 rounded-lg flex gap-3 text-sm text-blue-800">
+                        <i class="fa-solid fa-circle-info shrink-0 mt-0.5 text-xl"></i>
+                        <div>
+                            <strong>💡 小贴士：</strong><br>
+                            不同平台的错误代码和限制可能有所不同。当遇到问题时，建议直接查看对应平台的官方文档，获取最准确的解决方案。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Navigation -->
+                <div class="flex justify-between items-center pt-8 border-t border-slate-200">
+                    <a href="api_intro.html"
+                        class="flex items-center gap-2 text-slate-500 hover:text-rose-600 transition group">
+                        <div
+                            class="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-rose-100 flex items-center justify-center transition">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </div>
+                        <span class="text-sm font-medium">上一篇：API 调用详解</span>
+                    </a>
+
+                    <a href="../../index.html"
+                        class="flex items-center gap-2 text-slate-500 hover:text-rose-600 transition group">
+                        <span class="text-sm font-medium">返回目录</span>
+                        <div
+                            class="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-rose-100 flex items-center justify-center transition">
+                            <i class="fa-solid fa-house"></i>
+                        </div>
+                    </a>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="py-6 text-center text-slate-400 text-sm border-t border-slate-200/60 bg-white/50">
+            <p>AI 基础知识系列 · 让 AI 技术更易懂</p>
+        </footer>
+
+    </div>
+
+    <script>
+        const { createApp, onMounted } = Vue;
+
+        createApp({
+            setup() {
+
+
+                onMounted(() => {
+                    hljs.highlightAll();
+                });
+
+                return {
+                };
+            }
+        }).mount('#app');
+    </script>
+
+    <!-- HELP-WIDGET-START -->
+    <script src="../../help/help-widget-v2.js"></script>
+    <!-- HELP-WIDGET-END -->
+</body>
+
+</html>

@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics：站点统计 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>武侠仙侠人设生成器 - AI 内容创作工坊</title>
+
+    <!-- 古风标题字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+
+        /* 页面基底：墨灰石板渐变，古风意境 */
+        body {
+            font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+            min-height: 100vh;
+            background:
+                radial-gradient(ellipse 120% 80% at 50% -20%, rgba(71, 85, 105, 0.35), transparent 55%),
+                linear-gradient(165deg, #1e293b 0%, #334155 28%, #475569 55%, #334155 82%, #1e293b 100%);
+            color: #e2e8f0;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.45); border-radius: 4px; }
+
+        /* ---------- 飘落花瓣/树叶（纯 CSS 多层动画） ---------- */
+        .petals-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 1;
+        }
+        .petal {
+            position: absolute;
+            width: 10px;
+            height: 14px;
+            border-radius: 50% 0 50% 0;
+            opacity: 0.45;
+            animation: petal-fall linear infinite;
+        }
+        @keyframes petal-fall {
+            0% {
+                transform: translateY(-12vh) translateX(0) rotate(0deg);
+                opacity: 0;
+            }
+            8% { opacity: 0.55; }
+            100% {
+                transform: translateY(110vh) translateX(28px) rotate(720deg);
+                opacity: 0.15;
+            }
+        }
+
+        /* ---------- 水墨晕染装饰（径向渐变模拟） ---------- */
+        .ink-wash::before {
+            content: '';
+            position: absolute;
+            inset: -20%;
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(30, 41, 59, 0.5) 0%, transparent 45%),
+                radial-gradient(ellipse at 85% 70%, rgba(15, 23, 42, 0.55) 0%, transparent 40%),
+                radial-gradient(ellipse at 50% 100%, rgba(51, 65, 85, 0.35) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ---------- 古卷轴容器 ---------- */
+        .scroll-shell {
+            position: relative;
+            z-index: 2;
+            background: linear-gradient(180deg, rgba(241, 245, 249, 0.97) 0%, rgba(226, 232, 240, 0.98) 45%, rgba(203, 213, 225, 0.96) 100%);
+            border-radius: 4px;
+            box-shadow:
+                inset 0 0 0 1px rgba(148, 163, 184, 0.5),
+                0 25px 50px -12px rgba(0, 0, 0, 0.45),
+                0 0 0 3px rgba(51, 65, 85, 0.35);
+        }
+        .scroll-shell::before,
+        .scroll-shell::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 14px;
+            background: linear-gradient(90deg, #475569, #64748b, #475569);
+            border-radius: 2px;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.35);
+        }
+        .scroll-shell::before { left: -6px; }
+        .scroll-shell::after { right: -6px; }
+
+        /* ---------- 江湖名号：特大字 + 金色光效 ---------- */
+        .hero-title {
+            font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
+            font-size: clamp(2.25rem, 7vw, 3.75rem);
+            line-height: 1.15;
+            color: #0f172a;
+            text-align: center;
+            margin: 0 0 1.25rem;
+            text-shadow:
+                0 0 20px rgba(251, 191, 36, 0.55),
+                0 0 40px rgba(245, 158, 11, 0.35),
+                0 2px 0 rgba(15, 23, 42, 0.15);
+            letter-spacing: 0.08em;
+        }
+
+        /* ---------- 人设正文 Markdown 排版 ---------- */
+        .wuxia-prose {
+            color: #1e293b;
+            font-size: 0.95rem;
+            line-height: 1.85;
+        }
+        .wuxia-prose h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 1.75rem 0 0.65rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 2px solid rgba(71, 85, 105, 0.35);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .wuxia-prose h2::before {
+            content: '◆';
+            color: #b45309;
+            font-size: 0.85rem;
+        }
+        .wuxia-prose p { margin: 0.5rem 0 0.85rem; text-align: justify; }
+        .wuxia-prose strong { color: #92400e; font-weight: 700; }
+
+        /* ---------- 武功秘籍式技能卡片（三级标题块） ---------- */
+        .wuxia-prose h3 {
+            margin: 1rem 0 0.35rem;
+            padding: 0.65rem 1rem 0.55rem;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fef3c7;
+            background:
+                linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(51, 65, 85, 0.92) 50%, rgba(30, 41, 59, 0.95) 100%);
+            border: 1px solid rgba(180, 83, 9, 0.55);
+            border-radius: 6px;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                0 4px 14px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .wuxia-prose h3::after {
+            content: '秘籍';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.65rem;
+            letter-spacing: 0.2em;
+            color: rgba(251, 191, 36, 0.65);
+            font-weight: 600;
+        }
+        /* 技能标题后的第一段为描述 */
+        .wuxia-prose h3 + p {
+            margin-top: 0.35rem;
+            padding: 0.75rem 1rem;
+            background: rgba(248, 250, 252, 0.95);
+            border: 1px dashed rgba(100, 116, 139, 0.45);
+            border-radius: 0 0 6px 6px;
+            font-size: 0.9rem;
+            color: #334155;
+        }
+
+        /* 流式输出光标 */
+        @keyframes blink-cursor {
+            50% { opacity: 0; }
+        }
+        .streaming-cursor::after {
+            content: '▍';
+            animation: blink-cursor 1s step-end infinite;
+            color: #b45309;
+            margin-left: 2px;
+        }
+
+        /* 问答大卡片选项悬停 */
+        .choice-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .choice-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+        }
+        .choice-card.selected {
+            border-color: rgba(251, 191, 36, 0.85) !important;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35), 0 12px 28px rgba(0, 0, 0, 0.18);
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(51, 65, 85, 0.9));
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="antialiased">
+    <div x-data="wuxiaCharacterApp()" x-init="init()" x-cloak class="relative z-[2] min-h-screen flex flex-col ink-wash">
+        <!-- 飘落装饰层须在 x-data 内，Alpine 才能驱动 x-for -->
+        <div class="petals-layer" aria-hidden="true">
+            <template x-for="i in petalIndices" :key="i">
+                <div class="petal"
+                    :style="'left:' + ((i * 7.7 + 3) % 96) + '%; animation-duration:' + (10 + (i % 5)) + 's; animation-delay:' + (i * 0.7) + 's; background:' + (i % 2 ? 'linear-gradient(135deg,#94a3b8,#64748b)' : 'linear-gradient(135deg,#fca5a5,#be123c)')">
+                </div>
+            </template>
+        </div>
+
+        <!-- 顶部导航：左侧返回 ../../index.html -->
+        <nav class="sticky top-0 z-50 border-b border-slate-600/50 bg-slate-900/75 backdrop-blur-md">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer hover:opacity-90 transition group"
+                    onclick="location.href='../../index.html'">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-700/90 to-slate-800 flex items-center justify-center shadow-lg border border-amber-600/40">
+                        <i data-lucide="swords" class="text-amber-100 w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg text-slate-100 tracking-tight">武侠仙侠人设生成器</span>
+                        <span class="hidden sm:block text-xs text-slate-400">问卷定命 · AI 铸卷</span>
+                    </div>
+                </div>
+                <button type="button" @click="showSettings = true"
+                    class="text-slate-400 hover:text-amber-200 flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg hover:bg-slate-800/80 transition border border-transparent hover:border-slate-600">
+                    <i data-lucide="settings" class="h-4 w-4"></i>
+                    <span class="hidden sm:inline">设置</span>
+                </button>
+            </div>
+        </nav>
+
+        <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-8 sm:py-10 pb-24">
+
+            <!-- ========== 问答阶段 ========== -->
+            <section x-show="phase === 'quiz'" x-transition.opacity.duration.300ms class="space-y-8">
+
+                <header class="text-center space-y-2">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-slate-100" style="font-family:'Ma Shan Zheng','Noto Serif SC',serif; letter-spacing:0.12em;">
+                        天命问卷
+                    </h1>
+                    <p class="text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
+                        如实作答，AI 将为你谱写一卷江湖档案——名号、门派、武学、宿命与一段出场小故事。
+                    </p>
+                    <!-- 步骤指示 -->
+                    <div class="flex justify-center gap-2 pt-2">
+                        <template x-for="(label, idx) in stepLabels" :key="idx">
+                            <div class="flex items-center gap-1">
+                                <span :class="currentStep === idx ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/40' : (currentStep > idx ? 'bg-slate-600 text-slate-200' : 'bg-slate-800 text-slate-500')"
+                                    class="w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center border border-slate-600/80"
+                                    x-text="idx + 1"></span>
+                                <span class="hidden md:inline text-xs text-slate-500 max-w-[4.5rem]" x-text="label"></span>
+                            </div>
+                        </template>
+                    </div>
+                </header>
+
+                <!-- 步骤 0：世界观 -->
+                <div x-show="currentStep === 0" class="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 shadow-xl">
+                    <h2 class="text-lg font-bold text-amber-100 mb-4 flex items-center gap-2">
+                        <i data-lucide="globe" class="w-5 h-5 text-amber-400"></i>
+                        你所向往的世界是？
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <template x-for="opt in options.world" :key="opt">
+                            <button type="button" @click="answers.world = opt"
+                                :class="answers.world === opt ? 'selected' : ''"
+                                class="choice-card text-left p-4 rounded-xl border-2 border-slate-600 bg-slate-900/50 text-slate-200">
+                                <span class="font-semibold text-amber-200/90" x-text="opt"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 步骤 1：性格 -->
+                <div x-show="currentStep === 1" class="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 shadow-xl">
+                    <h2 class="text-lg font-bold text-amber-100 mb-4 flex items-center gap-2">
+                        <i data-lucide="user-circle" class="w-5 h-5 text-amber-400"></i>
+                        你的性格最像？
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <template x-for="opt in options.personality" :key="opt">
+                            <button type="button" @click="answers.personality = opt"
+                                :class="answers.personality === opt ? 'selected' : ''"
+                                class="choice-card text-left p-4 rounded-xl border-2 border-slate-600 bg-slate-900/50 text-slate-200">
+                                <span class="font-semibold" x-text="opt"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 步骤 2：看重 -->
+                <div x-show="currentStep === 2" class="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 shadow-xl">
+                    <h2 class="text-lg font-bold text-amber-100 mb-4 flex items-center gap-2">
+                        <i data-lucide="heart" class="w-5 h-5 text-amber-400"></i>
+                        行走江湖，你最看重？
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <template x-for="opt in options.value" :key="opt">
+                            <button type="button" @click="answers.coreValue = opt"
+                                :class="answers.coreValue === opt ? 'selected' : ''"
+                                class="choice-card text-left p-4 rounded-xl border-2 border-slate-600 bg-slate-900/50 text-slate-200">
+                                <span class="font-semibold" x-text="opt"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 步骤 3：遇强敌 -->
+                <div x-show="currentStep === 3" class="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 shadow-xl">
+                    <h2 class="text-lg font-bold text-amber-100 mb-4 flex items-center gap-2">
+                        <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i>
+                        若遇不可力敌之强敌，你会？
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <template x-for="opt in options.enemy" :key="opt">
+                            <button type="button" @click="answers.enemyTactic = opt"
+                                :class="answers.enemyTactic === opt ? 'selected' : ''"
+                                class="choice-card text-left p-4 rounded-xl border-2 border-slate-600 bg-slate-900/50 text-slate-200">
+                                <span class="font-semibold" x-text="opt"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 步骤 4：姓氏 + 命运揭晓 -->
+                <div x-show="currentStep === 4" class="bg-slate-800/60 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 shadow-xl space-y-5">
+                    <h2 class="text-lg font-bold text-amber-100 flex items-center gap-2">
+                        <i data-lucide="signature" class="w-5 h-5 text-amber-400"></i>
+                        你的真实姓（将融入角色姓名）
+                    </h2>
+                    <input type="text" x-model="answers.surname" maxlength="4" placeholder="例如：李、欧阳、司马"
+                        class="w-full rounded-xl border-2 border-slate-600 bg-slate-900/70 text-slate-100 placeholder-slate-500 px-4 py-3 outline-none focus:border-amber-600/70 focus:ring-2 focus:ring-amber-900/50" />
+                    <p class="text-xs text-slate-500">可填单姓或复姓，AI 会合理融入本名、表字或江湖称呼。</p>
+
+                    <button type="button" @click="revealFate()"
+                        :disabled="isGenerating"
+                        class="w-full py-4 rounded-xl font-bold text-slate-900 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 shadow-lg shadow-amber-900/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        命运揭晓
+                    </button>
+                </div>
+
+                <!-- 问答底部：上一步 / 下一步 -->
+                <div class="flex flex-wrap justify-between gap-3 pt-2" x-show="currentStep < 4">
+                    <button type="button" x-show="currentStep > 0" @click="prevStep()"
+                        class="px-5 py-2.5 rounded-xl border border-slate-500 text-slate-300 hover:bg-slate-800/80 text-sm font-medium transition flex items-center gap-2">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i> 上一步
+                    </button>
+                    <button type="button" x-show="currentStep < 4" @click="nextStep()"
+                        class="ml-auto px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm font-bold transition flex items-center gap-2 border border-slate-500">
+                        下一步 <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ========== 结果阶段：古卷轴人设卡 ========== -->
+            <section x-show="phase === 'result'" x-transition.opacity.duration.400ms class="space-y-6">
+
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2" style="font-family:'Ma Shan Zheng',serif; letter-spacing:0.15em;">
+                        <i data-lucide="scroll-text" class="w-6 h-6 text-amber-400"></i>
+                        江湖档案
+                    </h2>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" @click="downloadCard()" x-show="resultMarkdown && !isGenerating"
+                            class="text-sm px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 border border-slate-500 text-slate-200 flex items-center gap-2 transition">
+                            <i data-lucide="download" class="w-4 h-4"></i> 下载文本
+                        </button>
+                        <button type="button" @click="shareCopy()" x-show="resultMarkdown && !isGenerating"
+                            class="text-sm px-4 py-2 rounded-xl bg-amber-700/80 hover:bg-amber-600 border border-amber-500/50 text-amber-50 flex items-center gap-2 transition">
+                            <i data-lucide="share-2" class="w-4 h-4"></i> 复制分享
+                        </button>
+                        <button type="button" @click="reincarnate()"
+                            class="text-sm px-4 py-2 rounded-xl border border-slate-500 text-slate-300 hover:bg-slate-800/90 flex items-center gap-2 transition">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新投胎
+                        </button>
+                    </div>
+                </div>
+
+                <!-- V4 Pro 推理过程（可折叠） -->
+                <details x-show="reasoningBuffer" class="bg-slate-900/70 rounded-xl border border-slate-600 p-4 text-sm">
+                    <summary class="cursor-pointer font-semibold text-slate-300 flex items-center gap-2">
+                        <i data-lucide="brain" class="w-4 h-4 text-amber-500"></i>
+                        模型思考过程（V4 Pro 可见，点击展开）
+                    </summary>
+                    <pre class="mt-3 whitespace-pre-wrap text-slate-400 text-xs max-h-48 overflow-y-auto leading-relaxed" x-text="reasoningBuffer"></pre>
+                </details>
+
+                <!-- 卷轴卡片 -->
+                <div class="scroll-shell px-5 sm:px-10 py-8 sm:py-12 relative">
+                    <!-- 加载中 -->
+                    <div x-show="isGenerating && !resultMarkdown" class="flex flex-col items-center justify-center py-20 text-slate-600">
+                        <i data-lucide="loader-2" class="w-12 h-12 animate-spin text-amber-700 mb-4"></i>
+                        <p class="text-sm font-medium">正在挥毫泼墨，请稍候…</p>
+                    </div>
+
+                    <!-- 流式 / 完成内容：先抽一级标题为名号展示 -->
+                    <template x-if="resultMarkdown">
+                        <div>
+                            <h1 class="hero-title" x-text="extractHeroTitle()"></h1>
+                            <div class="wuxia-prose prose prose-slate max-w-none"
+                                :class="{ 'streaming-cursor': isGenerating }"
+                                x-html="renderedBodyHtml()"></div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </main>
+
+        <!-- ========== API 设置弹窗 ========== -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 bg-black/65 z-[100] flex items-center justify-center p-4"
+            @keydown.escape.window="showSettings = false">
+            <div class="bg-slate-100 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-300"
+                @click.outside="showSettings = false">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">API 配置</h3>
+                    <button type="button" @click="showSettings = false" class="text-slate-500 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-200">
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-200">取消</button>
+                    <button type="button" @click="saveConfig()" class="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-amber-50 px-5 py-3 rounded-xl shadow-2xl text-sm font-medium border border-slate-600">
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 武侠/仙侠人设生成器 — Alpine.js 主应用
+         * 功能：问卷收集 → DeepSeek 流式生成 Markdown 人设卷轴 → 下载 / 复制分享 / 重新投胎
+         */
+        function wuxiaCharacterApp() {
+            return {
+                /** 当前界面阶段：quiz 问答 | result 结果卷轴 */
+                phase: 'quiz',
+                /** 问答步序号 0–4 */
+                currentStep: 0,
+                stepLabels: ['世界观', '性格', '所重', '对敌', '姓氏'],
+
+                /** 飘落动画用的序号数组（Alpine x-for 需要可迭代对象，不能写 `in 12`） */
+                petalIndices: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+
+                /** 用户选择与会话答案 */
+                answers: {
+                    world: '',
+                    personality: '',
+                    coreValue: '',
+                    enemyTactic: '',
+                    surname: ''
+                },
+
+                /** 各题选项（中文） */
+                options: {
+                    world: ['武侠', '仙侠', '玄幻', '修真'],
+                    personality: ['正义热血', '冷酷孤傲', '诡计多端', '逍遥洒脱'],
+                    value: ['义气', '爱情', '权力', '自由', '真相'],
+                    enemy: ['正面硬刚', '智取', '逃跑再战', '结交化敌为友']
+                },
+
+                isGenerating: false,
+                resultMarkdown: '',
+                reasoningBuffer: '',
+
+                showSettings: false,
+                toast: { show: false, message: '' },
+
+                /** API 配置（与项目统一的 global_llm_config 字段对齐） */
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                init() {
+                    this.loadConfig();
+                    if (typeof marked !== 'undefined') {
+                        marked.setOptions({ breaks: true });
+                    }
+                    this.$watch('resultMarkdown', () => this.$nextTick(() => lucide.createIcons()));
+                    this.$watch('phase', () => this.$nextTick(() => lucide.createIcons()));
+                    this.$nextTick(() => lucide.createIcons());
+                },
+
+                /** 从 localStorage 合并读取，禁止假设字段齐全 */
+                loadConfig() {
+                    try {
+                        const raw = localStorage.getItem('global_llm_config');
+                        if (!raw) return;
+                        const parsed = JSON.parse(raw);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    } catch (e) { /* 忽略损坏配置 */ }
+                },
+
+                /**
+                 * 保存 API 配置：合并写入 global_llm_config，绝不整表覆盖
+                 * 仅写回本工具关心的字段，保留 tavily 等其他键
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存');
+                },
+
+                showToast(msg) {
+                    this.toast.message = msg;
+                    this.toast.show = true;
+                    clearTimeout(this._toastTimer);
+                    this._toastTimer = setTimeout(() => { this.toast.show = false; }, 2600);
+                },
+
+                /** 校验当前步是否已选，用于「下一步」 */
+                validateStep() {
+                    switch (this.currentStep) {
+                        case 0: return !!this.answers.world;
+                        case 1: return !!this.answers.personality;
+                        case 2: return !!this.answers.coreValue;
+                        case 3: return !!this.answers.enemyTactic;
+                        default: return true;
+                    }
+                },
+
+                nextStep() {
+                    if (!this.validateStep()) {
+                        this.showToast('请先选择一项');
+                        return;
+                    }
+                    if (this.currentStep < 4) this.currentStep += 1;
+                    this.$nextTick(() => lucide.createIcons());
+                },
+
+                prevStep() {
+                    if (this.currentStep > 0) this.currentStep -= 1;
+                    this.$nextTick(() => lucide.createIcons());
+                },
+
+                /**
+                 * 点击「命运揭晓」：校验姓氏与 Key，切换结果页并流式拉取人设
+                 */
+                async revealFate() {
+                    const sn = (this.answers.surname || '').trim();
+                    if (!sn) {
+                        this.showToast('请填写姓氏');
+                        return;
+                    }
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 DeepSeek API Key');
+                        return;
+                    }
+
+                    this.phase = 'result';
+                    this.resultMarkdown = '';
+                    this.reasoningBuffer = '';
+                    this.isGenerating = true;
+                    this.$nextTick(() => lucide.createIcons());
+
+                    const userBlock = this.buildUserPromptBlock();
+                    const systemPrompt = this.buildSystemPrompt();
+
+                    try {
+                        await this.streamDeepSeek(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userBlock }
+                            ],
+                            (chunk) => { this.resultMarkdown += chunk; }
+                        );
+                    } catch (e) {
+                        console.error(e);
+                        this.resultMarkdown = '## 生成失败\n\n' + (e.message || String(e)) + '\n\n请检查网络与 API Key 后重试。';
+                        this.showToast('生成失败，请重试');
+                    } finally {
+                        this.isGenerating = false;
+                        this.$nextTick(() => lucide.createIcons());
+                    }
+                },
+
+                /** 组装用户侧结构化输入，供模型严格遵循 */
+                buildUserPromptBlock() {
+                    return [
+                        '【问卷结果】',
+                        '- 世界观类型：' + this.answers.world,
+                        '- 性格倾向：' + this.answers.personality,
+                        '- 最看重：' + this.answers.coreValue,
+                        '- 遇强敌策略：' + this.answers.enemyTactic,
+                        '- 用户姓氏（须融入角色姓名）：' + (this.answers.surname || '').trim(),
+                        '',
+                        '请严格按系统说明的 Markdown 结构输出全文，使用中文。'
+                    ].join('\n');
+                },
+
+                /**
+                 * 系统提示：规定输出结构，便于前端解析名号与卷轴样式
+                 * 要求一级标题仅为江湖名号；武功下三个三级标题技能块
+                 */
+                buildSystemPrompt() {
+                    return [
+                        '你是一位资深武侠、仙侠与玄幻修真小说设定师，擅长创作立体人物与武学体系。',
+                        '根据用户的问卷答案，生成一份完整、有画面感、无违和感的「江湖人设卷轴」。',
+                        '',
+                        '输出要求（必须严格遵守 Markdown，不要输出代码围栏）：',
+                        '1. 第一行起使用一级标题「# 」，后面只写霸气的江湖名号（建议四字内，不要其它字）。',
+                        '2. 第二段开始用二级标题组织各节，顺序如下：',
+                        '## 本名与姓氏渊源',
+                        '## 门派/势力',
+                        '## 武功/法术体系',
+                        '在「武功/法术体系」下，必须恰好三个技能；每个技能先用一行三级标题「### 技能全称」，下一行起用一段中文描述机制与气势（不要编号列表）。',
+                        '## 兵器/法宝',
+                        '## 性格特点',
+                        '## 外貌描述',
+                        '## 命运线（前世今生、宿命纠葛，可发挥想象但与问卷一致）',
+                        '## 出场小故事',
+                        '3. 「出场小故事」一节正文约 200 字（180–220 字即可），有场景与动作。',
+                        '4. 名号要霸气；门派/势力要与所选世界观（武侠/仙侠/玄幻/修真）匹配。',
+                        '5. 语言风格文雅凝练，避免现代网络梗，避免 OOC 的现代物品。',
+                        '6. 不要重复输出问卷原文；不要自我介绍你是 AI。'
+                    ].join('\n');
+                },
+
+                /**
+                 * DeepSeek Chat Completions 流式请求
+                 * @param {Array<{role:string,content:string}>} messages
+                 * @param {(chunk: string) => void} onToken 正文增量回调
+                 */
+                async streamDeepSeek(messages, onToken) {
+                    this.reasoningBuffer = '';
+                    const body = {
+                        model: this.apiConfig.model,
+                        messages,
+                        stream: true,
+                        temperature: 0.82
+                    };
+
+                    const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!res.ok) {
+                        const t = await res.text();
+                        throw new Error('API 错误 (' + res.status + '): ' + t);
+                    }
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices[0].delta;
+                                if (delta.reasoning_content) {
+                                    this.reasoningBuffer += delta.reasoning_content;
+                                }
+                                if (delta.content) {
+                                    onToken(delta.content);
+                                }
+                            } catch (err) { /* 忽略坏行 */ }
+                        }
+                    }
+                },
+
+                /**
+                 * 从 Markdown 中提取首个 # 标题作为卷首大字名号
+                 * @returns {string}
+                 */
+                extractHeroTitle() {
+                    const m = (this.resultMarkdown || '').match(/^#\s+(.+)$/m);
+                    return m ? m[1].trim() : '江湖无名';
+                },
+
+                /**
+                 * 渲染除首行一级标题外的正文为 HTML（避免名号重复）
+                 * @returns {string}
+                 */
+                renderedBodyHtml() {
+                    let md = this.resultMarkdown || '';
+                    md = md.replace(/^#\s+.+\n+/, '');
+                    if (!md.trim()) return '<p class="text-slate-500 text-center py-8">正在接墨…</p>';
+                    try {
+                        return marked.parse(md);
+                    } catch (e) {
+                        return '<pre class="text-red-800 text-sm">' + md + '</pre>';
+                    }
+                },
+
+                /** 去除 Markdown 标记，用于下载与分享纯文本 */
+                stripMarkdown(s) {
+                    if (!s) return '';
+                    return s
+                        .replace(/```[\s\S]*?```/g, '')
+                        .replace(/`([^`]+)`/g, '$1')
+                        .replace(/\*\*([^*]+)\*\*/g, '$1')
+                        .replace(/\*([^*]+)\*/g, '$1')
+                        .replace(/^#+\s+/gm, '')
+                        .replace(/^\s*[-*]\s+/gm, '• ')
+                        .trim();
+                },
+
+                /** 下载 .txt 人设卡 */
+                downloadCard() {
+                    const title = this.extractHeroTitle();
+                    const plain = this.stripMarkdown(this.resultMarkdown || '');
+                    const blob = new Blob(['江湖人设：' + title + '\n\n' + plain], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '江湖人设_' + title.replace(/[\\/:*?"<>|]/g, '_') + '.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showToast('已开始下载');
+                },
+
+                /** 复制到剪贴板，便于粘贴到微博/小红书等 */
+                async shareCopy() {
+                    const title = this.extractHeroTitle();
+                    const body = this.stripMarkdown(this.resultMarkdown || '');
+                    const text = '【' + title + '】\n\n' + body + '\n\n—— 由武侠仙侠人设生成器生成';
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        this.showToast('已复制，可粘贴到社交媒体');
+                    } catch (e) {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        this.showToast('已复制到剪贴板');
+                    }
+                },
+
+                /**
+                 * 重新投胎：清空结果与问卷，回到第一步
+                 */
+                reincarnate() {
+                    this.phase = 'quiz';
+                    this.currentStep = 0;
+                    this.answers = {
+                        world: '',
+                        personality: '',
+                        coreValue: '',
+                        enemyTactic: '',
+                        surname: ''
+                    };
+                    this.resultMarkdown = '';
+                    this.reasoningBuffer = '';
+                    this.isGenerating = false;
+                    this.showToast('已重置，请重新作答');
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

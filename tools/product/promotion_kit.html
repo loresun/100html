@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>促销活动文案套装 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* 基础样式 - 采用电商促销红黄色调 */
+        body {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 30%, #fef9c3 70%, #fef3c7 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        /* 活动类型卡片 */
+        .event-card { transition: all 0.3s ease; }
+        .event-card.active {
+            border-color: #dc2626;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+        }
+
+        /* 阶段标签 */
+        .stage-tab { transition: all 0.2s ease; }
+        .stage-tab.active {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+        }
+
+        /* 渠道标签 */
+        .channel-tag { transition: all 0.2s ease; }
+        .channel-tag.active {
+            background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* 文案卡片 */
+        .copy-card { transition: all 0.3s ease; }
+        .copy-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px -10px rgba(220, 38, 38, 0.3);
+        }
+
+        /* 价格标签样式 */
+        .price-tag {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            clip-path: polygon(0 0, 100% 0, 95% 50%, 100% 100%, 0 100%);
+        }
+
+        /* 加载动画 */
+        @keyframes sale-bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .sale-bounce { animation: sale-bounce 0.6s ease-in-out infinite; }
+
+        /* 版本标记 */
+        .version-badge { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <!--
+        促销活动文案套装 - Alpine.js 应用
+        功能：
+        1. 支持多种活动类型
+        2. 生成预热期/爆发期/收尾期三阶段文案
+        3. 每阶段每渠道生成 3 个版本
+        4. 支持多渠道输出
+    -->
+    <div x-data="promotionKitApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-red-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <i data-lucide="percent" class="text-red-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">促销活动文案套装</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-red-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：输入面板 -->
+            <div class="w-full lg:w-2/5 bg-white/70 backdrop-blur-sm border-r border-red-200 p-5 overflow-y-auto space-y-5">
+
+                <!-- 活动类型选择 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i data-lucide="calendar" class="w-4 h-4 text-red-600"></i>
+                        活动类型 <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <template x-for="event in eventTypes" :key="event.value">
+                            <div @click="input.eventType = event.value"
+                                :class="['event-card p-3 rounded-xl border cursor-pointer text-center', input.eventType === event.value ? 'active' : 'border-red-200 bg-white hover:border-red-300']">
+                                <span class="text-2xl block mb-1" x-text="event.icon"></span>
+                                <span class="text-xs font-medium text-slate-700" x-text="event.label"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 产品信息 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i data-lucide="package" class="w-4 h-4 text-red-600"></i>
+                        产品名称 <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" x-model="input.productName" placeholder="例如：智能保温杯、护肤套装"
+                        class="w-full bg-white border border-red-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
+                </div>
+
+                <!-- 价格信息 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i data-lucide="tag" class="w-4 h-4 text-red-600"></i>
+                        价格信息
+                    </label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-1">原价</span>
+                            <input type="text" x-model="input.originalPrice" placeholder="¥299"
+                                class="w-full bg-white border border-red-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-1">促销价</span>
+                            <input type="text" x-model="input.salePrice" placeholder="¥199"
+                                class="w-full bg-white border border-red-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-1">优惠力度</span>
+                            <input type="text" x-model="input.discount" placeholder="立省100元"
+                                class="w-full bg-white border border-red-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-red-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 核心卖点 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i data-lucide="star" class="w-4 h-4 text-red-600"></i>
+                        核心卖点 (可选)
+                    </label>
+                    <textarea x-model="input.sellingPoints" rows="2"
+                        placeholder="例如：304不锈钢、12小时保温、送礼首选"
+                        class="w-full bg-white border border-red-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition resize-none"></textarea>
+                </div>
+
+                <!-- 输出渠道选择 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i data-lucide="share-2" class="w-4 h-4 text-red-600"></i>
+                        输出渠道
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="channel in channels" :key="channel.value">
+                            <button @click="toggleChannel(channel.value)"
+                                :class="['channel-tag px-3 py-1.5 text-xs font-medium rounded-full border transition', input.selectedChannels.includes(channel.value) ? 'active' : 'bg-white border-yellow-300 text-slate-600']"
+                                x-text="channel.icon + ' ' + channel.label">
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 额外要求 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-red-600"></i>
+                        额外要求 (可选)
+                    </label>
+                    <textarea x-model="input.extraRequirements" rows="2"
+                        placeholder="例如：突出紧迫感、强调限量..."
+                        class="w-full bg-white border border-red-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition resize-none"></textarea>
+                </div>
+
+                <!-- 生成按钮 -->
+                <button @click="generateCopy" :disabled="isGenerating || !input.productName || !input.eventType"
+                    class="w-full bg-gradient-to-r from-red-600 to-yellow-500 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                    <template x-if="isGenerating">
+                        <i data-lucide="loader-2" class="animate-spin w-5 h-5"></i>
+                    </template>
+                    <template x-if="!isGenerating">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    </template>
+                    <span x-text="isGenerating ? '正在生成中...' : '🔥 生成促销文案套装'"></span>
+                </button>
+
+            </div>
+
+            <!-- 右侧：结果展示区 -->
+            <div class="flex-grow bg-gradient-to-br from-red-50/50 to-yellow-50/50 p-6 overflow-y-auto">
+
+                <!-- 空状态 -->
+                <div x-show="Object.keys(result).length === 0 && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400">
+                    <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                        <i data-lucide="percent" class="w-12 h-12 text-red-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-600 mb-2">促销活动文案套装</h3>
+                    <p class="text-center max-w-md">
+                        一键生成完整促销文案，覆盖活动全周期<br>
+                        <span class="text-red-600 font-medium">预热期 · 爆发期 · 收尾期 × 多渠道</span>
+                    </p>
+                </div>
+
+                <!-- 加载状态 -->
+                <div x-show="isGenerating && Object.keys(result).length === 0" class="h-full flex flex-col items-center justify-center">
+                    <div class="text-6xl sale-bounce">🛒</div>
+                    <p class="mt-6 text-slate-600 font-medium">AI 正在生成促销文案套装...</p>
+                    <p class="text-sm text-slate-400 mt-2">为每个阶段生成多版本文案</p>
+                </div>
+
+                <!-- 结果展示 -->
+                <div x-show="Object.keys(result).length > 0" class="max-w-4xl mx-auto space-y-6">
+
+                    <!-- 活动信息摘要 -->
+                    <div class="bg-gradient-to-r from-red-600 to-yellow-500 rounded-2xl p-6 text-white animate-fade-in">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-2xl font-bold" x-text="getEventTypeLabel()"></h2>
+                                <p class="opacity-90 mt-1" x-text="input.productName"></p>
+                            </div>
+                            <div class="text-right">
+                                <div class="price-tag px-4 py-2 text-white font-bold">
+                                    <span class="line-through text-sm opacity-70" x-text="input.originalPrice"></span>
+                                    <span class="text-2xl ml-2" x-text="input.salePrice"></span>
+                                </div>
+                                <p class="text-yellow-200 text-sm mt-1" x-text="input.discount"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 阶段切换标签 -->
+                    <div class="flex gap-2 bg-white rounded-xl p-1.5 shadow-sm">
+                        <template x-for="stage in stages" :key="stage.value">
+                            <button @click="currentStage = stage.value"
+                                :class="['stage-tab flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2', currentStage === stage.value ? 'active' : 'text-slate-600 hover:bg-slate-100']">
+                                <span class="text-lg" x-text="stage.icon"></span>
+                                <span x-text="stage.label"></span>
+                            </button>
+                        </template>
+                    </div>
+
+                    <!-- 当前阶段文案 -->
+                    <div x-show="result[currentStage]" class="space-y-4">
+                        <!-- 渠道筛选 -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex gap-2">
+                                <button @click="filterChannel = 'all'"
+                                    :class="['px-3 py-1 text-xs rounded-full transition', filterChannel === 'all' ? 'bg-red-600 text-white' : 'bg-white text-slate-600 border border-slate-200']">
+                                    全部
+                                </button>
+                                <template x-for="ch in input.selectedChannels" :key="ch">
+                                    <button @click="filterChannel = ch"
+                                        :class="['px-3 py-1 text-xs rounded-full transition', filterChannel === ch ? 'bg-red-600 text-white' : 'bg-white text-slate-600 border border-slate-200']"
+                                        x-text="getChannelLabel(ch)">
+                                    </button>
+                                </template>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="copyCurrentStage"
+                                    class="flex items-center gap-1 px-3 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-red-50 transition">
+                                    <i data-lucide="copy" class="w-3 h-3"></i>
+                                    复制当前阶段
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 文案列表 -->
+                        <div class="space-y-4">
+                            <template x-for="(copies, channel) in result[currentStage]" :key="channel">
+                                <div x-show="filterChannel === 'all' || filterChannel === channel" class="space-y-3">
+                                    <!-- 渠道标题 -->
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg" x-text="getChannelIcon(channel)"></span>
+                                        <span class="font-bold text-slate-700" x-text="getChannelLabel(channel)"></span>
+                                        <span class="text-xs text-slate-500" x-text="copies.length + ' 个版本'"></span>
+                                    </div>
+
+                                    <!-- 版本列表 -->
+                                    <div class="grid gap-3">
+                                        <template x-for="(copy, idx) in copies" :key="idx">
+                                            <div class="copy-card bg-white rounded-xl border border-red-100 p-4">
+                                                <div class="flex items-start justify-between gap-3">
+                                                    <div class="flex-grow">
+                                                        <div class="flex items-center gap-2 mb-2">
+                                                            <span class="version-badge text-white text-xs font-bold px-2 py-0.5 rounded"
+                                                                x-text="'版本 ' + (idx + 1)"></span>
+                                                        </div>
+                                                        <p class="text-slate-700 leading-relaxed whitespace-pre-wrap" x-text="copy"></p>
+                                                    </div>
+                                                    <button @click="copySingle(copy)"
+                                                        class="flex-shrink-0 p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                                                        <i data-lucide="copy" class="w-4 h-4"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 导出按钮 -->
+                    <div class="flex justify-center pt-4">
+                        <button @click="exportAll"
+                            class="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-red-600 to-yellow-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            导出完整文案套装
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in" @click.outside="showSettings = false">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-red-500 outline-none"
+                            placeholder="sk-...">
+                        <p class="text-xs text-slate-500 mt-1">Key 将保存到本地，所有工具共享使用</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in z-[200]">
+            <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+            <span class="text-sm" x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * 促销活动文案套装 - Alpine.js 应用
+         * 功能：生成多阶段、多渠道的促销活动文案
+         */
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('promotionKitApp', () => ({
+                // ==================== 状态管理 ====================
+                showSettings: false,
+                apiConfig: { deepseek: '' },
+
+                // 活动类型
+                eventTypes: [
+                    { value: 'double11', label: '双11', icon: '🛍️' },
+                    { value: '618', label: '618', icon: '🎉' },
+                    { value: 'anniversary', label: '周年庆', icon: '🎂' },
+                    { value: 'clearance', label: '清仓甩卖', icon: '🏷️' },
+                    { value: 'newlaunch', label: '新品首发', icon: '🆕' },
+                    { value: 'holiday', label: '节日特惠', icon: '🎊' }
+                ],
+
+                // 活动阶段
+                stages: [
+                    { value: 'warmup', label: '预热期', icon: '🔥' },
+                    { value: 'peak', label: '爆发期', icon: '💥' },
+                    { value: 'ending', label: '收尾期', icon: '⏰' }
+                ],
+
+                // 渠道选项
+                channels: [
+                    { value: 'moments', label: '朋友圈', icon: '💬' },
+                    { value: 'group', label: '社群', icon: '👥' },
+                    { value: 'sms', label: '短信', icon: '📱' },
+                    { value: 'wechat', label: '公众号', icon: '📢' }
+                ],
+
+                // 用户输入
+                input: {
+                    eventType: 'double11',
+                    productName: '',
+                    originalPrice: '',
+                    salePrice: '',
+                    discount: '',
+                    sellingPoints: '',
+                    selectedChannels: ['moments', 'group', 'sms'],
+                    extraRequirements: ''
+                },
+
+                currentStage: 'warmup',
+                filterChannel: 'all',
+                isGenerating: false,
+                result: {},
+                toast: { show: false, message: '', icon: 'check' },
+
+                // ==================== 生命周期 ====================
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                    }
+                    this.refreshIcons();
+                },
+
+                // ==================== 方法 ====================
+                refreshIcons() {
+                    setTimeout(() => {
+                        try { lucide.createIcons(); } catch (e) { /* 忽略 */ }
+                    }, 50);
+                },
+
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'check');
+                },
+
+                toggleChannel(value) {
+                    const idx = this.input.selectedChannels.indexOf(value);
+                    if (idx > -1) {
+                        this.input.selectedChannels.splice(idx, 1);
+                    } else {
+                        this.input.selectedChannels.push(value);
+                    }
+                },
+
+                getEventTypeLabel() {
+                    return this.eventTypes.find(e => e.value === this.input.eventType)?.label || '';
+                },
+
+                getChannelLabel(value) {
+                    return this.channels.find(c => c.value === value)?.label || value;
+                },
+
+                getChannelIcon(value) {
+                    return this.channels.find(c => c.value === value)?.icon || '📄';
+                },
+
+                async generateCopy() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    this.isGenerating = true;
+                    this.result = {};
+
+                    try {
+                        const eventLabel = this.getEventTypeLabel();
+                        const channelLabels = this.input.selectedChannels.map(c => this.getChannelLabel(c)).join('、');
+
+                        const systemPrompt = `你是一位顶级电商运营专家，精通促销活动文案的撰写。请严格按照 JSON 格式输出。`;
+
+                        const userPrompt = `请为以下促销活动生成完整的文案套装：
+
+## 活动信息
+- **活动类型**：${eventLabel}
+- **产品名称**：${this.input.productName}
+- **原价**：${this.input.originalPrice || '未设置'}
+- **促销价**：${this.input.salePrice || '未设置'}
+- **优惠力度**：${this.input.discount || '未设置'}
+- **核心卖点**：${this.input.sellingPoints || '无'}
+${this.input.extraRequirements ? `- **额外要求**：${this.input.extraRequirements}` : ''}
+
+## 输出要求
+1. 分三个阶段：预热期(warmup)、爆发期(peak)、收尾期(ending)
+2. 每个阶段为以下渠道各生成 3 个差异化版本：${channelLabels}
+3. 渠道字数要求：
+   - 朋友圈(moments)：100-150字
+   - 社群(group)：150-200字
+   - 短信(sms)：60字以内
+   - 公众号(wechat)：200-300字
+
+## 输出格式
+{
+  "warmup": {
+    ${this.input.selectedChannels.map(c => `"${c}": ["版本1", "版本2", "版本3"]`).join(',\n    ')}
+  },
+  "peak": {
+    ${this.input.selectedChannels.map(c => `"${c}": ["版本1", "版本2", "版本3"]`).join(',\n    ')}
+  },
+  "ending": {
+    ${this.input.selectedChannels.map(c => `"${c}": ["版本1", "版本2", "版本3"]`).join(',\n    ')}
+  }
+}`;
+
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: 'deepseek-v4-flash',
+                                messages: [
+                                    { role: 'system', content: systemPrompt },
+                                    { role: 'user', content: userPrompt }
+                                ],
+                                response_format: { type: 'json_object' },
+                                stream: false
+                            })
+                        });
+
+                        if (!response.ok) throw new Error(`API 请求失败: ${response.status}`);
+
+                        const data = await response.json();
+                        const content = data.choices?.[0]?.message?.content;
+
+                        if (content) {
+                            this.result = JSON.parse(content);
+                            this.currentStage = 'warmup';
+                            this.filterChannel = 'all';
+                            this.showToast('文案套装生成成功！', 'check-circle');
+                        }
+
+                    } catch (error) {
+                        console.error('[Promotion Kit] 生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                copySingle(text) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        this.showToast('已复制', 'copy');
+                    });
+                },
+
+                copyCurrentStage() {
+                    if (!this.result[this.currentStage]) return;
+
+                    const stageLabel = this.stages.find(s => s.value === this.currentStage)?.label;
+                    let text = `【${this.getEventTypeLabel()} - ${stageLabel}】\n\n`;
+
+                    for (const [channel, copies] of Object.entries(this.result[this.currentStage])) {
+                        if (this.filterChannel !== 'all' && this.filterChannel !== channel) continue;
+                        text += `## ${this.getChannelLabel(channel)}\n\n`;
+                        copies.forEach((copy, idx) => {
+                            text += `### 版本${idx + 1}\n${copy}\n\n`;
+                        });
+                    }
+
+                    navigator.clipboard.writeText(text).then(() => {
+                        this.showToast('已复制当前阶段文案', 'copy');
+                    });
+                },
+
+                exportAll() {
+                    let content = `# ${this.getEventTypeLabel()} - ${this.input.productName} 促销文案套装\n\n`;
+                    content += `生成时间: ${new Date().toLocaleString()}\n\n`;
+                    content += `## 活动信息\n`;
+                    content += `- 原价: ${this.input.originalPrice || '未设置'}\n`;
+                    content += `- 促销价: ${this.input.salePrice || '未设置'}\n`;
+                    content += `- 优惠力度: ${this.input.discount || '未设置'}\n\n---\n\n`;
+
+                    for (const stage of this.stages) {
+                        if (!this.result[stage.value]) continue;
+                        content += `# ${stage.icon} ${stage.label}\n\n`;
+
+                        for (const [channel, copies] of Object.entries(this.result[stage.value])) {
+                            content += `## ${this.getChannelIcon(channel)} ${this.getChannelLabel(channel)}\n\n`;
+                            copies.forEach((copy, idx) => {
+                                content += `### 版本 ${idx + 1}\n\n${copy}\n\n`;
+                            });
+                        }
+                        content += `---\n\n`;
+                    }
+
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `促销文案_${this.getEventTypeLabel()}_${this.input.productName}_${new Date().toISOString().slice(0, 10)}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    this.showToast('已导出完整套装', 'download');
+                }
+            }));
+        });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/product_promotion_kit.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

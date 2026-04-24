@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leaflet 地图</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #ecfeff; color: #164e63; }
+    .glass { background: white; border: 1px solid #cffafe; box-shadow: 0 4px 6px -1px rgba(8, 145, 178, 0.05); }
+    #map { height: 500px; width: 100%; z-index: 10; border-radius: 0.75rem; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold text-cyan-900">🗺️ Leaflet</h1>
+    <p class="text-cyan-800/60 mt-2 text-lg">领先的移动端友好交互式地图库</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-cyan-200 text-cyan-800 rounded-lg hover:bg-cyan-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+  <!-- 侧边栏 -->
+  <div class="glass p-6 rounded-2xl h-fit lg:col-span-1 space-y-6">
+    <div>
+      <h3 class="font-bold text-cyan-900 mb-2">地图控制</h3>
+      <button onclick="flyToLondon()" class="w-full mb-2 px-4 py-2 bg-cyan-100 text-cyan-800 rounded hover:bg-cyan-200 text-sm font-bold text-left">🇬🇧 飞往伦敦</button>
+      <button onclick="flyToTokyo()" class="w-full mb-2 px-4 py-2 bg-cyan-100 text-cyan-800 rounded hover:bg-cyan-200 text-sm font-bold text-left">🇯🇵 飞往东京</button>
+      <button onclick="flyToNY()" class="w-full mb-2 px-4 py-2 bg-cyan-100 text-cyan-800 rounded hover:bg-cyan-200 text-sm font-bold text-left">🇺🇸 飞往纽约</button>
+    </div>
+
+    <div>
+      <h3 class="font-bold text-cyan-900 mb-2">标记操作</h3>
+      <button onclick="addRandomMarker()" class="w-full px-4 py-2 border border-cyan-300 text-cyan-700 rounded hover:bg-cyan-50 text-sm font-bold">
+        📍 添加随机标记
+      </button>
+      <button onclick="clearMarkers()" class="w-full mt-2 px-4 py-2 text-red-500 text-sm hover:underline">
+        清除所有标记
+      </button>
+    </div>
+
+    <div class="text-xs text-cyan-500 bg-cyan-50 p-3 rounded">
+      使用 OpenStreetMap 免费图源。无需 API Key。
+    </div>
+  </div>
+
+  <!-- 地图容器 -->
+  <div class="lg:col-span-3 bg-white p-2 rounded-2xl shadow-lg border border-cyan-100">
+    <div id="map"></div>
+  </div>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // 初始化地图
+  const map = L.map('map').setView([51.505, -0.09], 13);
+  const markers = [];
+
+  // 添加图层 (OpenStreetMap)
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+
+  // 添加初始标记
+  const marker = L.marker([51.5, -0.09]).addTo(map)
+      .bindPopup('<b>你好!</b><br>我是伦敦的标记点。')
+      .openPopup();
+  markers.push(marker);
+
+  // 添加圆圈
+  const circle = L.circle([51.508, -0.11], {
+      color: 'red',
+      fillColor: '#f03',
+      fillOpacity: 0.5,
+      radius: 500
+  }).addTo(map);
+
+  // 点击地图添加弹窗
+  const popup = L.popup();
+  function onMapClick(e) {
+      popup
+          .setLatLng(e.latlng)
+          .setContent("你点击了坐标: " + e.latlng.toString())
+          .openOn(map);
+  }
+  map.on('click', onMapClick);
+
+  // 控制函数
+  function flyToLondon() {
+    map.flyTo([51.505, -0.09], 13);
+  }
+  function flyToTokyo() {
+    map.flyTo([35.6762, 139.6503], 13);
+  }
+  function flyToNY() {
+    map.flyTo([40.7128, -74.0060], 13);
+  }
+
+  function addRandomMarker() {
+    const center = map.getCenter();
+    // 随机偏移
+    const lat = center.lat + (Math.random() - 0.5) * 0.05;
+    const lng = center.lng + (Math.random() - 0.5) * 0.05;
+    
+    const m = L.marker([lat, lng]).addTo(map);
+    m.bindPopup("我是随机标记！").openPopup();
+    markers.push(m);
+  }
+
+  function clearMarkers() {
+    markers.forEach(m => map.removeLayer(m));
+    markers.length = 0;
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

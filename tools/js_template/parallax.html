@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parallax.js 视差引擎</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0f172a; min-height: 100vh; overflow: hidden; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+    .scene-container { position: relative; height: 100vh; overflow: hidden; }
+    .layer { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    /* 粒子样式 */
+    .particle { border-radius: 50%; position: absolute; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="text-white">
+
+<header class="fixed top-0 left-0 w-full z-50 p-6 flex justify-between items-center bg-gradient-to-b from-slate-900/80 to-transparent">
+  <div>
+    <h1 class="text-3xl font-bold">🌌 Parallax.js</h1>
+    <p class="text-white/60 mt-1">对智能设备方向感应做出反应的视差引擎</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20 pointer-events-auto">← 返回</a>
+</header>
+
+<main id="scene" class="scene-container">
+  <!-- 背景层 (深度 0.1) -->
+  <div class="layer" data-depth="0.1">
+    <div class="absolute inset-0 bg-[url('https://source.unsplash.com/random/1920x1080/?galaxy')] bg-cover opacity-30 scale-110"></div>
+  </div>
+
+  <!-- 星星层 (深度 0.2) -->
+  <div class="layer" data-depth="0.2">
+    <div id="stars-1" class="w-full h-full"></div>
+  </div>
+
+  <!-- 远景星星 (深度 0.3) -->
+  <div class="layer" data-depth="0.3">
+    <div id="stars-2" class="w-full h-full"></div>
+  </div>
+
+  <!-- 几何图形层 (深度 0.5) -->
+  <div class="layer" data-depth="0.5">
+    <div class="absolute top-[20%] left-[20%] w-32 h-32 border-4 border-purple-500/30 rounded-full"></div>
+    <div class="absolute bottom-[20%] right-[20%] w-48 h-48 border-4 border-blue-500/30 rotate-45"></div>
+  </div>
+
+  <!-- 主标语 (深度 0.6) -->
+  <div class="layer" data-depth="0.6">
+    <div class="text-center">
+      <h2 class="text-6xl md:text-8xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-300 to-blue-500 mb-4">Depth</h2>
+      <p class="text-xl md:text-2xl text-white/50 tracking-widest">PERCEPTION</p>
+    </div>
+  </div>
+
+  <!-- 浮动文字 (深度 0.8) -->
+  <div class="layer" data-depth="0.8">
+    <div class="absolute top-[30%] right-[15%] text-9xl text-white/5 font-bold">3D</div>
+    <div class="absolute bottom-[25%] left-[15%] text-8xl text-white/5 font-bold">UI</div>
+  </div>
+
+  <!-- 前景元素 (深度 1.0) -->
+  <div class="layer" data-depth="1.0">
+    <div class="absolute bottom-12 left-1/2 -translate-x-1/2 pointer-events-auto glass px-8 py-4 rounded-full flex gap-6 text-sm">
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-white/50 mb-1">X 轴</span>
+        <span id="coord-x" class="font-mono text-cyan-300">0.00</span>
+      </div>
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-white/50 mb-1">Y 轴</span>
+        <span id="coord-y" class="font-mono text-cyan-300">0.00</span>
+      </div>
+      <div class="border-l border-white/10 mx-2"></div>
+      <div class="flex items-center gap-2">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="toggle-limit" checked onchange="updateConfig()" class="w-4 h-4">
+          <span>限制范围</span>
+        </label>
+      </div>
+      <div class="flex items-center gap-2">
+         <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="toggle-invert" onchange="updateConfig()" class="w-4 h-4">
+          <span>反向</span>
+        </label>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="fixed bottom-6 right-6 z-50 pointer-events-auto">
+  <div class="glass p-4 rounded-xl max-w-xs text-xs text-white/60">
+    <p class="mb-2"><strong class="text-white">交互方式:</strong></p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li>桌面端：移动鼠标</li>
+      <li>移动端：倾斜设备 (陀螺仪)</li>
+    </ul>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/parallax/3.1.0/parallax.min.js"></script>
+<script>
+// 初始化视差
+const scene = document.getElementById('scene');
+let parallaxInstance = new Parallax(scene, {
+  relativeInput: true,
+  hoverOnly: true,
+  limitX: 50,
+  limitY: 50
+});
+
+// 生成随机星星背景
+function createStars(containerId, count, color, sizeRange) {
+  const container = document.getElementById(containerId);
+  for (let i = 0; i < count; i++) {
+    const star = document.createElement('div');
+    const size = Math.random() * (sizeRange[1] - sizeRange[0]) + sizeRange[0];
+    const top = Math.random() * 100;
+    const left = Math.random() * 100;
+    
+    star.style.cssText = `
+      position: absolute;
+      width: ${size}px;
+      height: ${size}px;
+      background: ${color};
+      top: ${top}%;
+      left: ${left}%;
+      border-radius: 50%;
+      opacity: ${Math.random() * 0.7 + 0.3};
+      box-shadow: 0 0 ${size * 2}px ${color};
+    `;
+    container.appendChild(star);
+  }
+}
+
+createStars('stars-1', 50, '#fff', [1, 3]);
+createStars('stars-2', 30, '#818cf8', [2, 4]);
+
+// 更新坐标显示
+scene.addEventListener('mousemove', (e) => {
+  // Parallax.js 没有直接暴露实时计算的坐标，这里简单模拟鼠标位置相对于中心的比例
+  const x = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+  const y = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+  document.getElementById('coord-x').textContent = x.toFixed(2);
+  document.getElementById('coord-y').textContent = y.toFixed(2);
+});
+
+// 更新配置
+function updateConfig() {
+  const limit = document.getElementById('toggle-limit').checked;
+  const invert = document.getElementById('toggle-invert').checked;
+  
+  parallaxInstance.limitX = limit ? 50 : false;
+  parallaxInstance.limitY = limit ? 50 : false;
+  parallaxInstance.invertX = invert;
+  parallaxInstance.invertY = invert;
+}
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账单日历 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800" x-data="billApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900">
+                    🧾 账单日历
+                </h1>
+            </div>
+            
+            <button @click="showModal = true" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 text-sm font-medium">
+                <i class="fa-solid fa-plus w-4 h-4"></i>
+                <span class="hidden sm:inline">记一笔</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Status Cards -->
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-rose-50 p-5 rounded-2xl border border-rose-100 flex flex-col justify-center">
+                <div class="text-xs text-rose-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-exclamation w-3 h-3"></i> 待支付
+                </div>
+                <div class="text-2xl font-bold text-rose-600">
+                    <span class="text-sm">¥</span>
+                    <span x-text="unpaidTotal.toFixed(2)"></span>
+                </div>
+            </div>
+            <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 flex flex-col justify-center">
+                <div class="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-check w-3 h-3"></i> 本月已付
+                </div>
+                <div class="text-2xl font-bold text-emerald-700">
+                    <span class="text-sm">¥</span>
+                    <span x-text="paidTotal.toFixed(2)"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-4 border-b border-slate-200 mb-6">
+            <button @click="tab = 'unpaid'" class="pb-2 font-bold transition-colors border-b-2" :class="tab === 'unpaid' ? 'text-slate-800 border-slate-800' : 'text-slate-400 border-transparent hover:text-slate-600'">
+                待支付
+                <span class="ml-1 px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 text-xs" x-text="unpaidBills.length" x-show="unpaidBills.length > 0"></span>
+            </button>
+            <button @click="tab = 'history'" class="pb-2 font-bold transition-colors border-b-2" :class="tab === 'history' ? 'text-slate-800 border-slate-800' : 'text-slate-400 border-transparent hover:text-slate-600'">
+                历史记录
+            </button>
+        </div>
+
+        <!-- Bill List -->
+        <div class="space-y-4">
+            
+            <!-- Unpaid View -->
+            <div x-show="tab === 'unpaid'" class="space-y-4">
+                <template x-for="bill in unpaidBills" :key="bill.id">
+                    <div class="bg-white rounded-2xl p-5 border shadow-sm flex items-center justify-between group transition-all hover:shadow-md"
+                         :class="isOverdue(bill.date) ? 'border-rose-200 ring-1 ring-rose-100' : 'border-slate-100'">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-sm"
+                                 :class="isOverdue(bill.date) ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'">
+                                <i :class="getIcon(bill.category)" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800 text-lg" x-text="bill.name"></div>
+                                <div class="text-xs mt-0.5 flex items-center gap-2">
+                                    <span :class="isOverdue(bill.date) ? 'text-rose-500 font-bold' : 'text-slate-400'"
+                                          x-text="formatDate(bill.date)"></span>
+                                    <span x-show="isOverdue(bill.date)" class="bg-rose-100 text-rose-600 px-1.5 rounded text-[10px]">已逾期</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-4">
+                            <span class="font-bold text-lg text-slate-800" x-text="'¥' + bill.amount"></span>
+                            <button @click="markPaid(bill.id)" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors shadow-lg shadow-slate-900/10">
+                                支付
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="unpaidBills.length === 0" class="text-center py-20 text-slate-400">
+                    <i class="fa-solid fa-check-double w-12 h-12 mx-auto mb-4 text-emerald-400"></i>
+                    <p>暂无待付账单，一身轻松！</p>
+                </div>
+            </div>
+
+            <!-- History View -->
+            <div x-show="tab === 'history'" class="space-y-4">
+                <template x-for="bill in historyBills" :key="bill.id">
+                    <div class="bg-white rounded-2xl p-4 border border-slate-100 flex items-center justify-between opacity-75 hover:opacity-100 transition-opacity">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
+                                <i class="fa-solid fa-check w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-700 decoration-slate-300" x-text="bill.name"></div>
+                                <div class="text-xs text-slate-400">
+                                    <span x-text="formatDate(bill.date)"></span> 支付
+                                </div>
+                            </div>
+                        </div>
+                        <div class="font-bold text-emerald-600" x-text="'¥' + bill.amount"></div>
+                         <button @click="deleteBill(bill.id)" class="text-slate-200 hover:text-rose-400 p-2">
+                            <i class="fa-solid fa-trash-can w-4 h-4"></i>
+                        </button>
+                    </div>
+                </template>
+                 <div x-show="historyBills.length === 0" class="text-center py-20 text-slate-400">
+                    <p>暂无历史记录</p>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Add Modal -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.away="showModal = false">
+            <h3 class="text-lg font-bold text-slate-900 mb-4">添加账单</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">账单名称</label>
+                    <input type="text" x-model="form.name" class="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-emerald-500" placeholder="房租 / 信用卡 / 电费">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">分类</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <template x-for="cat in categories" :key="cat.id">
+                            <button @click="form.category = cat.id"
+                                    class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1"
+                                    :class="form.category === cat.id ? 'bg-slate-800 text-white border-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'">
+                                <i :class="cat.icon" class="w-3 h-3"></i>
+                                <span x-text="cat.name"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                <div>
+                     <label class="block text-xs font-medium text-slate-500 mb-1">金额</label>
+                     <input type="number" step="0.01" x-model="form.amount" class="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                     <label class="block text-xs font-medium text-slate-500 mb-1">到期日</label>
+                     <input type="date" x-model="form.date" class="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-emerald-500">
+                </div>
+                <label class="flex items-center gap-2 p-3 rounded-xl border border-dashed border-slate-300 hover:bg-slate-50 cursor-pointer">
+                    <input type="checkbox" x-model="form.repeat" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500">
+                    <div class="text-sm text-slate-600">
+                        <span class="font-bold">按月重复</span>
+                        <div class="text-xs text-slate-400">支付后自动生成下月账单</div>
+                    </div>
+                </label>
+            </div>
+            
+            <div class="mt-8 flex gap-3">
+                <button @click="showModal = false" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-medium hover:bg-slate-200">取消</button>
+                <button @click="addBill()" 
+                        :disabled="!form.name || !form.amount"
+                        class="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:shadow-none transition-all">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function billApp() {
+            return {
+                showModal: false,
+                tab: 'unpaid',
+                bills: [],
+                
+                categories: [
+                    { id: 'home', name: '房租/房贷', icon: 'fa-solid fa-house' },
+                    { id: 'utility', name: '水电煤', icon: 'fa-solid fa-bolt' },
+                    { id: 'credit', name: '信用卡', icon: 'fa-solid fa-credit-card' },
+                    { id: 'net', name: '网络话费', icon: 'fa-solid fa-wifi' },
+                    { id: 'other', name: '其他', icon: 'fa-solid fa-file-invoice' }
+                ],
+                
+                form: {
+                    name: '',
+                    amount: '',
+                    date: new Date().toISOString().split('T')[0],
+                    category: 'other',
+                    repeat: false
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_bills');
+                    if (saved) {
+                        this.bills = JSON.parse(saved);
+                    } else {
+                        // Demo
+                        this.bills = [
+                            { id: 1, name: '信用卡还款', amount: 3500, date: new Date().toISOString().split('T')[0], category: 'credit', status: 'unpaid', repeat: true }
+                        ];
+                    }
+
+                    this.$watch('bills', () => {
+                        localStorage.setItem('webtools_bills', JSON.stringify(this.bills));
+                    });
+                    
+
+                },
+
+                addBill() {
+                    this.bills.push({
+                        id: Date.now(),
+                        name: this.form.name,
+                        amount: parseFloat(this.form.amount),
+                        date: this.form.date,
+                        category: this.form.category,
+                        repeat: this.form.repeat,
+                        status: 'unpaid'
+                    });
+                    this.form = { name: '', amount: '', date: new Date().toISOString().split('T')[0], category: 'other', repeat: false };
+                    this.showModal = false;
+
+                },
+
+                deleteBill(id) {
+                    if(confirm('删除此记录？')) {
+                        this.bills = this.bills.filter(b => b.id !== id);
+                    }
+                },
+                
+                markPaid(id) {
+                    const bill = this.bills.find(b => b.id === id);
+                    if (bill) {
+                        bill.status = 'paid';
+                        
+                        // Handle Repeat
+                        if (bill.repeat) {
+                            if (confirm('这是一笔重复账单，是否自动生成下个月的待付账单？')) {
+                                const nextDate = new Date(bill.date);
+                                nextDate.setMonth(nextDate.getMonth() + 1);
+                                
+                                this.bills.push({
+                                    id: Date.now(),
+                                    name: bill.name,
+                                    amount: bill.amount,
+                                    date: nextDate.toISOString().split('T')[0],
+                                    category: bill.category,
+                                    repeat: true,
+                                    status: 'unpaid'
+                                });
+                            }
+                        }
+                    }
+                },
+
+                get unpaidBills() {
+                    return this.bills.filter(b => b.status === 'unpaid').sort((a,b) => new Date(a.date) - new Date(b.date));
+                },
+
+                get historyBills() {
+                    return this.bills.filter(b => b.status === 'paid').sort((a,b) => new Date(b.date) - new Date(a.date));
+                },
+                
+                get unpaidTotal() {
+                    return this.unpaidBills.reduce((acc, b) => acc + b.amount, 0);
+                },
+                
+                get paidTotal() {
+                    // Only current month paid
+                    const now = new Date();
+                    return this.bills
+                        .filter(b => {
+                            if (b.status !== 'paid') return false;
+                            const d = new Date(b.date);
+                            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                        })
+                        .reduce((acc, b) => acc + b.amount, 0);
+                },
+
+                isOverdue(dateStr) {
+                    const today = new Date().toISOString().split('T')[0];
+                    return dateStr < today;
+                },
+
+                formatDate(str) {
+                    const d = new Date(str);
+                    return `${d.getMonth()+1}月${d.getDate()}日`;
+                },
+                
+                getIcon(catId) {
+                    const c = this.categories.find(x => x.id === catId);
+                    return c ? c.icon : 'fa-solid fa-file-invoice';
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_bill_tracker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

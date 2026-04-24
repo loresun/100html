@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flexbox 布局演练 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .flex-item { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-indigo-50 min-h-screen font-sans text-slate-800" x-data="flexApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-indigo-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-indigo-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
+                📦 Flexbox 布局演练
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-64px)] min-h-[600px]">
+
+        <!-- Sidebar Controls -->
+        <div class="lg:col-span-4 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+            
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-indigo-100">
+                <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group w-4 h-4 text-indigo-500"></i>
+                    容器属性 (Container)
+                </h3>
+                
+                <div class="space-y-4">
+                    <!-- Direction -->
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 block mb-1">Flex Direction</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <template x-for="opt in ['row', 'row-reverse', 'column', 'column-reverse']">
+                                <button @click="config.direction = opt" 
+                                    :class="config.direction === opt ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                                    class="py-1.5 px-3 rounded text-xs font-mono transition-colors" x-text="opt">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Justify Content -->
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 block mb-1">Justify Content (Main Axis)</label>
+                        <select x-model="config.justify" class="w-full p-2 rounded border border-slate-200 text-sm font-mono outline-none focus:border-indigo-500 bg-white">
+                            <option value="flex-start">flex-start</option>
+                            <option value="flex-end">flex-end</option>
+                            <option value="center">center</option>
+                            <option value="space-between">space-between</option>
+                            <option value="space-around">space-around</option>
+                            <option value="space-evenly">space-evenly</option>
+                        </select>
+                    </div>
+
+                    <!-- Align Items -->
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 block mb-1">Align Items (Cross Axis)</label>
+                        <select x-model="config.align" class="w-full p-2 rounded border border-slate-200 text-sm font-mono outline-none focus:border-indigo-500 bg-white">
+                            <option value="flex-start">flex-start</option>
+                            <option value="flex-end">flex-end</option>
+                            <option value="center">center</option>
+                            <option value="stretch">stretch</option>
+                            <option value="baseline">baseline</option>
+                        </select>
+                    </div>
+
+                    <!-- Wrap -->
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 block mb-1">Flex Wrap</label>
+                        <div class="flex gap-2">
+                            <template x-for="opt in ['nowrap', 'wrap', 'wrap-reverse']">
+                                <button @click="config.wrap = opt" 
+                                    :class="config.wrap === opt ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                                    class="flex-1 py-1.5 px-2 rounded text-xs font-mono transition-colors" x-text="opt">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                     <!-- Align Content -->
+                    <div x-show="config.wrap !== 'nowrap'">
+                        <label class="text-xs font-bold text-slate-400 block mb-1">Align Content</label>
+                        <select x-model="config.alignContent" class="w-full p-2 rounded border border-slate-200 text-sm font-mono outline-none focus:border-indigo-500 bg-white">
+                            <option value="flex-start">flex-start</option>
+                            <option value="flex-end">flex-end</option>
+                            <option value="center">center</option>
+                            <option value="space-between">space-between</option>
+                            <option value="space-around">space-around</option>
+                            <option value="stretch">stretch</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-indigo-100">
+                <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-box w-4 h-4 text-indigo-500"></i>
+                    子元素 (Items)
+                </h3>
+                
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="text-sm font-bold text-slate-600">数量: <span x-text="items.length"></span></span>
+                    <button @click="addItem()" class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded text-xs font-bold transition-colors">+ 添加</button>
+                    <button @click="removeItem()" class="px-3 py-1 bg-slate-50 hover:bg-rose-50 text-rose-500 rounded text-xs font-bold transition-colors" :disabled="items.length <= 1">- 移除</button>
+                </div>
+
+                <div class="text-xs text-slate-400">
+                    提示: 点击右侧预览区的方块可以单独设置该元素的 flex 属性。
+                </div>
+            </div>
+            
+             <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-lg font-mono text-xs leading-relaxed overflow-x-auto">
+                 <div class="text-indigo-400 mb-2">// CSS Code</div>
+                 <div>.container {</div>
+                 <div class="pl-4 text-emerald-400">display: flex;</div>
+                 <div class="pl-4">flex-direction: <span class="text-orange-300" x-text="config.direction"></span>;</div>
+                 <div class="pl-4">justify-content: <span class="text-orange-300" x-text="config.justify"></span>;</div>
+                 <div class="pl-4">align-items: <span class="text-orange-300" x-text="config.align"></span>;</div>
+                 <div class="pl-4">flex-wrap: <span class="text-orange-300" x-text="config.wrap"></span>;</div>
+                 <div class="pl-4" x-show="config.wrap !== 'nowrap'">align-content: <span class="text-orange-300" x-text="config.alignContent"></span>;</div>
+                 <div>}</div>
+             </div>
+
+        </div>
+
+        <!-- Preview Area -->
+        <div class="lg:col-span-8 bg-white rounded-3xl shadow-xl shadow-indigo-900/5 border border-indigo-100 flex flex-col relative overflow-hidden">
+             
+             <!-- Playground -->
+            <div class="flex-1 p-8 bg-grid-slate-100 overflow-auto" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;">
+                <div class="w-full h-full min-h-[400px] border-2 border-dashed border-indigo-300 rounded-xl bg-white/50 backdrop-blur-sm transition-all duration-300 flex"
+                     :style="containerStyle">
+                    
+                    <template x-for="(item, index) in items" :key="item.id">
+                        <div class="flex-item p-4 m-2 rounded-xl shadow-lg border border-white/20 cursor-pointer select-none text-white font-bold text-2xl flex items-center justify-center relative group"
+                             :style="itemStyle(item, index)"
+                             @click="activeItemId = item.id">
+                             
+                             <span x-text="index + 1"></span>
+                             
+                             <!-- Edit Overlay -->
+                             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center pointer-events-none" x-show="activeItemId !== item.id">
+                                 <span class="text-xs text-white font-normal uppercase tracking-wider">Edit</span>
+                             </div>
+                             
+                             <!-- Active Indicator -->
+                             <div class="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full text-indigo-600 flex items-center justify-center shadow-sm" x-show="activeItemId === item.id">
+                                 <i class="fa-solid fa-check w-3 h-3"></i>
+                             </div>
+                        </div>
+                    </template>
+
+                </div>
+            </div>
+            
+            <!-- Item Config (Bottom Sheet Style) -->
+            <div class="bg-indigo-900/95 backdrop-blur text-white p-4 transition-transform duration-300"
+                 :class="activeItemId ? 'translate-y-0' : 'translate-y-full absolute bottom-0 w-full'">
+                 
+                 <div class="flex justify-between items-center mb-4">
+                     <h4 class="font-bold flex items-center gap-2">
+                         <span class="w-6 h-6 rounded bg-white text-indigo-900 flex items-center justify-center text-xs" x-text="items.findIndex(i => i.id === activeItemId) + 1"></span>
+                         Item Settings
+                     </h4>
+                     <button @click="activeItemId = null" class="p-1 hover:bg-white/10 rounded-lg">
+                         <i class="fa-solid fa-xmark w-5 h-5"></i>
+                     </button>
+                 </div>
+                 
+                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4" x-data="{ get activeItem() { return items.find(i => i.id === activeItemId) || {} } }">
+                     <div>
+                         <label class="text-[10px] text-indigo-300 uppercase block mb-1">Flex Grow</label>
+                         <input type="number" x-model="activeItem.grow" class="bg-indigo-800 border border-indigo-700 rounded p-1.5 w-full text-sm text-center">
+                     </div>
+                     <div>
+                         <label class="text-[10px] text-indigo-300 uppercase block mb-1">Flex Shrink</label>
+                         <input type="number" x-model="activeItem.shrink" class="bg-indigo-800 border border-indigo-700 rounded p-1.5 w-full text-sm text-center">
+                     </div>
+                     <div>
+                         <label class="text-[10px] text-indigo-300 uppercase block mb-1">Flex Basis</label>
+                         <input type="text" x-model="activeItem.basis" class="bg-indigo-800 border border-indigo-700 rounded p-1.5 w-full text-sm text-center">
+                     </div>
+                     <div>
+                         <label class="text-[10px] text-indigo-300 uppercase block mb-1">Align Self</label>
+                         <select x-model="activeItem.alignSelf" class="bg-indigo-800 border border-indigo-700 rounded p-1.5 w-full text-sm text-center">
+                             <option value="auto">auto</option>
+                             <option value="flex-start">flex-start</option>
+                             <option value="flex-end">flex-end</option>
+                             <option value="center">center</option>
+                             <option value="stretch">stretch</option>
+                         </select>
+                     </div>
+                 </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function flexApp() {
+            return {
+                config: {
+                    direction: 'row',
+                    justify: 'center',
+                    align: 'center',
+                    wrap: 'nowrap',
+                    alignContent: 'stretch'
+                },
+                items: [
+                    { id: 1, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', w: '100px', h: '100px', color: '#6366f1' },
+                    { id: 2, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', w: '120px', h: '120px', color: '#ec4899' },
+                    { id: 3, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', w: '80px', h: '80px', color: '#10b981' }
+                ],
+                activeItemId: null,
+                colors: ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'],
+
+                init() {
+                    // Removed Lucide initialization
+                },
+
+                addItem() {
+                    this.items.push({
+                        id: Date.now(),
+                        grow: 0,
+                        shrink: 1,
+                        basis: 'auto',
+                        alignSelf: 'auto',
+                        w: Math.floor(Math.random() * 60 + 80) + 'px',
+                        h: Math.floor(Math.random() * 60 + 80) + 'px',
+                        color: this.colors[this.items.length % this.colors.length]
+                    });
+                },
+
+                removeItem() {
+                    if (this.items.length > 1) {
+                        if (this.activeItemId === this.items[this.items.length - 1].id) {
+                            this.activeItemId = null;
+                        }
+                        this.items.pop();
+                    }
+                },
+                
+                get containerStyle() {
+                    return `
+                        flex-direction: ${this.config.direction};
+                        justify-content: ${this.config.justify};
+                        align-items: ${this.config.align};
+                        flex-wrap: ${this.config.wrap};
+                        align-content: ${this.config.alignContent};
+                    `;
+                },
+                
+                itemStyle(item, index) {
+                    return `
+                        width: ${item.w};
+                        height: ${item.h};
+                        background-color: ${item.color};
+                        flex-grow: ${item.grow};
+                        flex-shrink: ${item.shrink};
+                        flex-basis: ${item.basis};
+                        align-self: ${item.alignSelf};
+                    `;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_flexbox_playground.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据故事讲述者 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #ecfeff 0%, #cffafe 50%, #f0f9ff 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #0891b2; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #cffafe 25%, #a5f3fc 50%, #cffafe 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .step-dot { transition: all 0.3s ease; }
+        .step-dot.active {
+            background: linear-gradient(135deg, #0891b2, #06b6d4);
+            box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.2);
+            color: white;
+        }
+        .step-dot.completed { background: #22c55e; color: white; }
+        .step-line { transition: background 0.5s ease; }
+        .step-line.active { background: linear-gradient(90deg, #22c55e, #0891b2); }
+        .step-line.completed { background: #22c55e; }
+
+        .insight-card {
+            transition: all 0.3s ease;
+        }
+        .insight-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -8px rgba(8, 145, 178, 0.2);
+        }
+
+        .doc-view h1 { font-size: 1.75rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; }
+        .doc-view h2 { font-size: 1.35rem; font-weight: 700; color: #334155; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid #cffafe; }
+        .doc-view h3 { font-size: 1.1rem; font-weight: 600; color: #475569; margin: 1rem 0 0.5rem; }
+        .doc-view p { margin: 0.5rem 0; line-height: 1.8; color: #475569; }
+        .doc-view ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+        .doc-view li { margin: 0.25rem 0; line-height: 1.7; color: #475569; }
+        .doc-view table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .doc-view th { background: #f0fdfa; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #ccfbf1; }
+        .doc-view td { padding: 0.75rem; border: 1px solid #e2e8f0; }
+        .doc-view strong { color: #1e293b; }
+        .doc-view blockquote { border-left: 3px solid #0891b2; padding-left: 1rem; margin: 1rem 0; color: #64748b; font-style: italic; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="dataStorytellerApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-cyan-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="bar-chart-3" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">数据故事讲述者</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">Data Storyteller</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-cyan-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-cyan-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-cyan-100 py-4">
+            <div class="max-w-4xl mx-auto px-4">
+                <div class="flex items-center justify-between">
+                    <template x-for="(step, index) in steps" :key="index">
+                        <div class="flex items-center" :class="index < steps.length - 1 ? 'flex-1' : ''">
+                            <div class="flex flex-col items-center relative">
+                                <div @click="canGoToStep(index + 1) && goToStep(index + 1)"
+                                    :class="[
+                                        'step-dot w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer',
+                                        currentStep === index + 1 ? 'active' : '',
+                                        currentStep > index + 1 ? 'completed' : 'bg-slate-200 text-slate-500'
+                                    ]">
+                                    <template x-if="currentStep > index + 1">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="currentStep <= index + 1">
+                                        <span x-text="index + 1"></span>
+                                    </template>
+                                </div>
+                                <span class="absolute -bottom-5 whitespace-nowrap text-xs font-medium"
+                                    :class="currentStep >= index + 1 ? 'text-cyan-700' : 'text-slate-400'"
+                                    x-text="step.label"></span>
+                            </div>
+                            <div x-show="index < steps.length - 1"
+                                :class="[
+                                    'step-line flex-1 h-1 mx-3 rounded-full',
+                                    currentStep > index + 1 ? 'completed' : '',
+                                    currentStep === index + 1 ? 'active' : 'bg-slate-200'
+                                ]"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="flex-grow overflow-y-auto pb-8">
+            <div class="max-w-6xl mx-auto px-4 pt-10">
+
+                <!-- ==================== 步骤 1: 数据输入 ==================== -->
+                <div x-show="currentStep === 1" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📊 粘贴你的数据</h2>
+                        <p class="text-slate-500">支持 CSV / TSV 格式的表格数据，AI 将为你挖掘数据背后的故事</p>
+                    </div>
+
+                    <div class="max-w-3xl mx-auto space-y-5">
+                        <!-- 数据输入 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-cyan-100">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="table" class="w-4 h-4 text-cyan-600"></i>
+                                表格数据 <span class="text-red-500">*</span>
+                            </label>
+                            <textarea x-model="input.rawData" rows="10"
+                                placeholder="粘贴 CSV 或 TSV 格式的数据，例如：&#10;&#10;月份,销售额,客户数,转化率&#10;1月,128000,320,4.2%&#10;2月,145000,380,4.8%&#10;3月,132000,350,4.5%&#10;4月,168000,420,5.1%&#10;5月,195000,480,5.6%&#10;6月,210000,520,6.0%"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-mono outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition resize-none leading-relaxed"></textarea>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-slate-400">支持逗号、Tab、分号分隔</span>
+                                <button @click="loadSampleData()"
+                                    class="text-xs text-cyan-600 hover:text-cyan-700 font-medium hover:underline">
+                                    加载示例数据
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <!-- 数据类型 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-cyan-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="tag" class="w-4 h-4 text-cyan-600"></i>
+                                    数据类型 <span class="text-red-500">*</span>
+                                </label>
+                                <select x-model="input.dataType"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition">
+                                    <option value="">请选择数据类型</option>
+                                    <template x-for="dt in dataTypes" :key="dt">
+                                        <option :value="dt" x-text="dt"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <!-- 分析目标 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-cyan-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="target" class="w-4 h-4 text-cyan-600"></i>
+                                    想了解什么（可选）
+                                </label>
+                                <input type="text" x-model="input.question"
+                                    placeholder="如：哪个月表现最好？增长趋势如何？"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition">
+                            </div>
+                        </div>
+
+                        <!-- 开始分析 -->
+                        <button @click="startStep2()"
+                            :disabled="!canProceedStep1 || isGenerating"
+                            class="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                            <template x-if="!isGenerating">
+                                <span class="flex items-center gap-2">
+                                    <i data-lucide="scan-search" class="w-5 h-5"></i>
+                                    开始分析数据
+                                </span>
+                            </template>
+                            <template x-if="isGenerating">
+                                <span class="flex items-center gap-2">
+                                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    分析中...
+                                </span>
+                            </template>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 2: 数据概览 ==================== -->
+                <div x-show="currentStep === 2" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">🔍 数据概览</h2>
+                        <p class="text-slate-500">AI 已识别数据结构并生成初步观察</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-cyan-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-cyan-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-cyan-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在解析数据结构...</p>
+                            <p class="text-sm text-slate-500">AI 正在识别列名、数据类型和初步观察</p>
+                            <div class="mt-4 grid grid-cols-3 gap-3">
+                                <template x-for="i in 6" :key="i">
+                                    <div class="shimmer h-12 rounded-xl"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 数据概览结果 -->
+                    <div x-show="!isGenerating && dataSummary" class="max-w-4xl mx-auto space-y-5">
+                        <!-- 统计概要卡片 -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-cyan-100 text-center">
+                                <div class="w-10 h-10 mx-auto mb-2 bg-cyan-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="rows-3" class="w-5 h-5 text-cyan-600"></i>
+                                </div>
+                                <p class="text-2xl font-bold text-slate-900" x-text="dataSummary.rowCount || '-'"></p>
+                                <p class="text-xs text-slate-500 mt-1">数据行数</p>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-cyan-100 text-center">
+                                <div class="w-10 h-10 mx-auto mb-2 bg-teal-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="columns-3" class="w-5 h-5 text-teal-600"></i>
+                                </div>
+                                <p class="text-2xl font-bold text-slate-900" x-text="dataSummary.columnCount || '-'"></p>
+                                <p class="text-xs text-slate-500 mt-1">字段数量</p>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-cyan-100 text-center">
+                                <div class="w-10 h-10 mx-auto mb-2 bg-sky-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="hash" class="w-5 h-5 text-sky-600"></i>
+                                </div>
+                                <p class="text-2xl font-bold text-slate-900" x-text="dataSummary.numericColumns || '-'"></p>
+                                <p class="text-xs text-slate-500 mt-1">数值字段</p>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-cyan-100 text-center">
+                                <div class="w-10 h-10 mx-auto mb-2 bg-violet-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="text" class="w-5 h-5 text-violet-600"></i>
+                                </div>
+                                <p class="text-2xl font-bold text-slate-900" x-text="dataSummary.textColumns || '-'"></p>
+                                <p class="text-xs text-slate-500 mt-1">文本字段</p>
+                            </div>
+                        </div>
+
+                        <!-- 列详情表 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-cyan-100">
+                            <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-4">
+                                <i data-lucide="list" class="w-4 h-4 text-cyan-600"></i>
+                                字段结构
+                            </h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="bg-cyan-50/50">
+                                            <th class="text-left p-3 rounded-tl-lg font-semibold text-slate-600">列名</th>
+                                            <th class="text-left p-3 font-semibold text-slate-600">数据类型</th>
+                                            <th class="text-left p-3 rounded-tr-lg font-semibold text-slate-600">说明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="(col, i) in (dataSummary.columns || [])" :key="i">
+                                            <tr class="border-t border-slate-100">
+                                                <td class="p-3 font-medium text-slate-800" x-text="col.name"></td>
+                                                <td class="p-3">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                                        :class="col.type === '数值' ? 'bg-cyan-50 text-cyan-700' : col.type === '百分比' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'"
+                                                        x-text="col.type"></span>
+                                                </td>
+                                                <td class="p-3 text-slate-500" x-text="col.description"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 初步观察 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-cyan-100">
+                            <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-4">
+                                <i data-lucide="eye" class="w-4 h-4 text-cyan-600"></i>
+                                初步观察
+                            </h3>
+                            <ul class="space-y-2">
+                                <template x-for="(obs, i) in (dataSummary.observations || [])" :key="i">
+                                    <li class="flex items-start gap-3 text-sm text-slate-600 leading-relaxed">
+                                        <span class="w-6 h-6 flex-shrink-0 bg-cyan-50 rounded-full flex items-center justify-center text-xs font-bold text-cyan-600 mt-0.5" x-text="i + 1"></span>
+                                        <span x-text="obs"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="flex justify-between">
+                            <button @click="goToStep(1)"
+                                class="px-6 py-3 rounded-xl text-slate-600 hover:bg-white hover:shadow-sm transition flex items-center gap-2 text-sm font-medium">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回修改
+                            </button>
+                            <button @click="startStep3()"
+                                class="px-8 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all">
+                                发现趋势 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 3: 趋势发现 ==================== -->
+                <div x-show="currentStep === 3" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📈 趋势发现</h2>
+                        <p class="text-slate-500">AI 正在挖掘数据中的趋势、模式和异常</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating && !insightsText" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-cyan-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-cyan-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-cyan-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在发现趋势与模式...</p>
+                            <p class="text-sm text-slate-500">AI 正在对数据进行深度分析</p>
+                        </div>
+                    </div>
+
+                    <!-- V4 Pro 推理过程 -->
+                    <div x-show="reasoningContent" class="max-w-4xl mx-auto">
+                        <details class="bg-white/60 rounded-2xl border border-cyan-100 overflow-hidden">
+                            <summary class="cursor-pointer text-sm font-medium text-slate-600 p-4 hover:bg-cyan-50/50 transition flex items-center gap-2">
+                                <i data-lucide="brain" class="w-4 h-4 text-cyan-600"></i>
+                                深度思考过程（点击展开）
+                            </summary>
+                            <div class="p-4 pt-0 text-sm text-slate-500 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto" x-text="reasoningContent"></div>
+                        </details>
+                    </div>
+
+                    <!-- 流式输出：洞察内容 -->
+                    <div x-show="insightsText" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-cyan-100">
+                            <div class="doc-view prose max-w-none" x-html="renderMarkdown(insightsText)"></div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div x-show="insightsText && !isGenerating" class="max-w-4xl mx-auto flex justify-between">
+                        <button @click="goToStep(2)"
+                            class="px-6 py-3 rounded-xl text-slate-600 hover:bg-white hover:shadow-sm transition flex items-center gap-2 text-sm font-medium">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回概览
+                        </button>
+                        <button @click="startStep4()"
+                            class="px-8 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all">
+                            生成数据故事 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 4: 数据故事 ==================== -->
+                <div x-show="currentStep === 4" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📖 数据故事</h2>
+                        <p class="text-slate-500">将数据转化为引人入胜的叙事，附带演讲要点</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating && !narrativeText" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-cyan-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-cyan-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-cyan-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在撰写数据故事...</p>
+                            <p class="text-sm text-slate-500">AI 正在构建叙事框架和演讲要点</p>
+                        </div>
+                    </div>
+
+                    <!-- V4 Pro 推理过程 -->
+                    <div x-show="reasoningContent" class="max-w-4xl mx-auto">
+                        <details class="bg-white/60 rounded-2xl border border-cyan-100 overflow-hidden">
+                            <summary class="cursor-pointer text-sm font-medium text-slate-600 p-4 hover:bg-cyan-50/50 transition flex items-center gap-2">
+                                <i data-lucide="brain" class="w-4 h-4 text-cyan-600"></i>
+                                深度思考过程（点击展开）
+                            </summary>
+                            <div class="p-4 pt-0 text-sm text-slate-500 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto" x-text="reasoningContent"></div>
+                        </details>
+                    </div>
+
+                    <!-- 数据故事叙述 -->
+                    <div x-show="narrativeText" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl shadow-sm border border-cyan-100 overflow-hidden">
+                            <div class="bg-gradient-to-r from-cyan-600 to-teal-600 px-6 py-4">
+                                <h3 class="text-white font-bold flex items-center gap-2">
+                                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                                    数据叙事
+                                </h3>
+                            </div>
+                            <div class="p-6 doc-view prose max-w-none" x-html="renderMarkdown(narrativeText)"></div>
+                        </div>
+                    </div>
+
+                    <!-- 演讲要点 -->
+                    <div x-show="talkingPoints" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl shadow-sm border border-cyan-100 overflow-hidden">
+                            <div class="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-4">
+                                <h3 class="text-white font-bold flex items-center gap-2">
+                                    <i data-lucide="presentation" class="w-5 h-5"></i>
+                                    演讲要点
+                                </h3>
+                            </div>
+                            <div class="p-6 doc-view prose max-w-none" x-html="renderMarkdown(talkingPoints)"></div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div x-show="narrativeText && !isGenerating" class="max-w-4xl mx-auto flex justify-between">
+                        <button @click="goToStep(3)"
+                            class="px-6 py-3 rounded-xl text-slate-600 hover:bg-white hover:shadow-sm transition flex items-center gap-2 text-sm font-medium">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回趋势
+                        </button>
+                        <button @click="goToStep(5)"
+                            class="px-8 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all">
+                            查看完整报告 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 5: 导出 ==================== -->
+                <div x-show="currentStep === 5" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📋 完整报告</h2>
+                        <p class="text-slate-500">数据分析全流程报告，可复制或下载</p>
+                    </div>
+
+                    <div class="max-w-4xl mx-auto space-y-5">
+                        <!-- 导出操作栏 -->
+                        <div class="bg-white rounded-2xl p-4 shadow-sm border border-cyan-100 flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2 text-sm text-slate-600">
+                                <i data-lucide="file-text" class="w-4 h-4 text-cyan-600"></i>
+                                <span>数据故事分析报告</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="copyFullReport()"
+                                    class="px-4 py-2 text-sm font-medium text-cyan-700 bg-cyan-50 hover:bg-cyan-100 rounded-lg transition flex items-center gap-1.5">
+                                    <i data-lucide="copy" class="w-4 h-4"></i> 复制
+                                </button>
+                                <button @click="exportMarkdown()"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-lg transition flex items-center gap-1.5">
+                                    <i data-lucide="download" class="w-4 h-4"></i> 下载 Markdown
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 完整报告预览 -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-cyan-100 overflow-hidden">
+                            <div class="p-6 md:p-8 doc-view prose max-w-none" x-html="renderMarkdown(buildFullReport())"></div>
+                        </div>
+
+                        <!-- 返回按钮 -->
+                        <div class="flex justify-between">
+                            <button @click="goToStep(4)"
+                                class="px-6 py-3 rounded-xl text-slate-600 hover:bg-white hover:shadow-sm transition flex items-center gap-2 text-sm font-medium">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回故事
+                            </button>
+                            <button @click="resetAll()"
+                                class="px-6 py-3 rounded-xl text-cyan-600 hover:bg-cyan-50 transition flex items-center gap-2 text-sm font-medium border border-cyan-200">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> 分析新数据
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ==================== 设置弹窗 ==================== -->
+        <div x-show="showSettings" x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-cyan-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                        取消
+                    </button>
+                    <button @click="saveConfig()" class="px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Toast 提示 ==================== -->
+        <div x-show="toast.show" x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="translate-y-4 opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+            x-transition:leave="transition ease-in duration-200 transform"
+            x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-4 opacity-0"
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium">
+            <i :data-lucide="toast.icon" class="w-4 h-4 text-cyan-400"></i>
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('dataStorytellerApp', () => ({
+
+                // ==================== 步骤定义 ====================
+                steps: [
+                    { label: '数据输入' },
+                    { label: '数据概览' },
+                    { label: '趋势发现' },
+                    { label: '数据故事' },
+                    { label: '导出报告' }
+                ],
+                currentStep: 1,
+
+                // ==================== UI 状态 ====================
+                showSettings: false,
+                isGenerating: false,
+                toast: { show: false, message: '', icon: 'check' },
+
+                // ==================== API 配置 ====================
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                // ==================== 用户输入 ====================
+                input: {
+                    rawData: '',
+                    dataType: '',
+                    question: ''
+                },
+
+                dataTypes: ['销售数据', '用户数据', '财务数据', '调研数据', '运营数据', '其他'],
+
+                // ==================== 生成结果 ====================
+                dataSummary: null,
+                insightsText: '',
+                narrativeText: '',
+                talkingPoints: '',
+                reasoningContent: '',
+
+                // ==================== 计算属性 ====================
+                get canProceedStep1() {
+                    return this.input.rawData.trim().length > 10 && this.input.dataType;
+                },
+
+                // ==================== 生命周期 ====================
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                    }
+                    this.refreshIcons();
+                },
+
+                // ==================== 通用方法 ====================
+
+                /** 刷新 Lucide 图标 */
+                refreshIcons() {
+                    setTimeout(() => {
+                        try { lucide.createIcons(); } catch (e) { /* 忽略 */ }
+                    }, 50);
+                },
+
+                /** 显示 Toast 提示 */
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+
+                /** 保存 API 配置（合并策略，不覆盖其他工具的配置） */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'check');
+                },
+
+                /** 渲染 Markdown 为 HTML */
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    try { return marked.parse(text); } catch (e) { return text; }
+                },
+
+                /** 检查是否可以跳转到指定步骤 */
+                canGoToStep(step) {
+                    if (step === 1) return true;
+                    if (step === 2) return this.canProceedStep1;
+                    if (step === 3) return !!this.dataSummary;
+                    if (step === 4) return !!this.insightsText;
+                    if (step === 5) return !!this.narrativeText;
+                    return false;
+                },
+
+                /** 跳转步骤（仅限已完成的步骤） */
+                goToStep(step) {
+                    if (this.isGenerating) return;
+                    this.currentStep = step;
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+                },
+
+                /** 加载示例数据供快速体验 */
+                loadSampleData() {
+                    this.input.rawData = `月份,销售额(万元),订单数,客单价(元),新客占比,退货率
+1月,128,3200,400,35%,3.2%
+2月,95,2400,396,28%,2.8%
+3月,145,3600,403,42%,3.5%
+4月,168,4100,410,38%,2.9%
+5月,195,4800,406,45%,3.1%
+6月,210,5200,404,40%,2.7%
+7月,232,5800,400,48%,3.4%
+8月,248,6100,407,52%,3.0%
+9月,220,5400,407,44%,2.6%
+10月,265,6500,408,50%,2.8%
+11月,310,7800,397,55%,3.8%
+12月,358,8900,402,60%,4.2%`;
+                    this.input.dataType = '销售数据';
+                    this.input.question = '全年销售趋势如何？哪些月份是增长拐点？';
+                    this.showToast('已加载示例数据', 'database');
+                },
+
+                /** 重置所有状态，开始新分析 */
+                resetAll() {
+                    this.currentStep = 1;
+                    this.input = { rawData: '', dataType: '', question: '' };
+                    this.dataSummary = null;
+                    this.insightsText = '';
+                    this.narrativeText = '';
+                    this.talkingPoints = '';
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+                },
+
+                // ==================== API 调用：非流式（JSON） ====================
+
+                /**
+                 * 调用 DeepSeek API（非流式），用于 JSON 结构化输出
+                 * @param {Array} messages - 消息列表
+                 * @returns {string} - 返回的文本内容
+                 */
+                async callAPIJson(messages) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages,
+                            response_format: { type: 'json_object' },
+                            stream: false,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${err}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content || '';
+                },
+
+                // ==================== API 调用：流式 ====================
+
+                /**
+                 * 调用 DeepSeek API（流式），实时渲染生成内容
+                 * @param {Array} messages - 消息列表
+                 * @param {Function} onContent - 内容回调函数
+                 * @param {Function} onReasoning - 推理内容回调函数（V4 Pro 模型）
+                 */
+                async callAPIStream(messages, onContent, onReasoning) {
+                    this.reasoningContent = '';
+
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages,
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${err}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content && onReasoning) {
+                                        onReasoning(delta.reasoning_content);
+                                    }
+
+                                    if (delta.content && onContent) {
+                                        onContent(delta.content);
+                                    }
+                                } catch (e) { /* 忽略解析错误 */ }
+                            }
+                        }
+                    }
+                },
+
+                // ==================== 步骤 2: 数据概览（JSON模式） ====================
+
+                /** 步骤2入口：解析数据结构并生成初步观察 */
+                async startStep2() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    this.currentStep = 2;
+                    this.isGenerating = true;
+                    this.dataSummary = null;
+                    this.refreshIcons();
+
+                    try {
+                        const systemPrompt = `你是一位专业的数据分析师。请分析用户提供的表格数据，识别数据结构并给出初步观察。
+
+要求输出 JSON 格式：
+{
+  "rowCount": 数据行数（不含表头）,
+  "columnCount": 字段数量,
+  "numericColumns": 数值类字段数量,
+  "textColumns": 文本/分类字段数量,
+  "columns": [
+    { "name": "列名", "type": "数值/文本/百分比/日期", "description": "对该列的简要说明" }
+  ],
+  "observations": [
+    "观察1：对数据整体特征的描述",
+    "观察2：数据范围或分布特点",
+    "观察3：初步发现的有趣模式",
+    "观察4：数据质量评估"
+  ]
+}
+
+注意：
+- observations 提供 3-5 条初步观察，用中文
+- 列类型分为：数值、文本、百分比、日期
+- description 用一句话概括列的含义`;
+
+                        const userPrompt = `请分析以下${this.input.dataType}数据的结构：
+
+\`\`\`
+${this.input.rawData}
+\`\`\`
+
+${this.input.question ? '用户特别关注：' + this.input.question : ''}
+
+请输出 JSON 格式的数据概览。`;
+
+                        const result = await this.callAPIJson([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]);
+
+                        const parsed = JSON.parse(result);
+                        this.dataSummary = parsed;
+                        this.showToast('数据结构解析完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[DataStoryteller] 数据解析失败:', error);
+                        this.showToast('解析失败: ' + error.message, 'alert-circle');
+                        this.currentStep = 1;
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 步骤 3: 趋势发现（流式） ====================
+
+                /** 步骤3入口：发现趋势、模式和异常 */
+                async startStep3() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.currentStep = 3;
+                    this.isGenerating = true;
+                    this.insightsText = '';
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+
+                    try {
+                        const columnsInfo = this.dataSummary?.columns?.map(c => `${c.name}(${c.type})`).join('、') || '未知';
+
+                        const systemPrompt = `你是一位顶尖的数据洞察分析师，擅长从数据中发现隐藏的趋势和规律。
+
+请对用户的数据进行深度分析，输出以下内容（Markdown 格式）：
+
+## 📈 上升趋势
+列出数据中明显的增长趋势，用具体数字佐证。
+
+## 📉 下降趋势
+列出数据中的下滑或衰退信号。
+
+## ⚡ 关键拐点
+标注数据中的重要转折点（增速变化、峰谷值等）。
+
+## 🔍 异常值
+发现偏离正常范围的数据点，分析可能原因。
+
+## 🔗 关联模式
+发现不同指标之间的关联关系（正相关、负相关、滞后效应等）。
+
+## 💡 深层洞察
+提供 2-3 条超越表面数据的深层洞察，结合行业常识给出判断。
+
+要求：
+- 每个发现都用具体数据支撑
+- 使用百分比变化、同比/环比等量化指标
+- 中文输出
+- 语言精炼，避免空泛描述`;
+
+                        const summaryInfo = this.dataSummary ? `数据概要：${this.dataSummary.rowCount}行，${this.dataSummary.columnCount}列
+字段：${columnsInfo}
+初步观察：${(this.dataSummary.observations || []).join('；')}` : '';
+
+                        const userPrompt = `请对以下${this.input.dataType}进行深度趋势分析：
+
+\`\`\`
+${this.input.rawData}
+\`\`\`
+
+${summaryInfo}
+
+${this.input.question ? '用户特别关注：' + this.input.question : ''}
+
+请发现所有有价值的趋势、模式和异常。`;
+
+                        await this.callAPIStream(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            (content) => { this.insightsText += content; },
+                            (reasoning) => { this.reasoningContent += reasoning; }
+                        );
+
+                        this.showToast('趋势分析完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[DataStoryteller] 趋势分析失败:', error);
+                        this.showToast('分析失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 步骤 4: 数据故事（流式） ====================
+
+                /** 步骤4入口：撰写数据叙事和演讲要点 */
+                async startStep4() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.currentStep = 4;
+                    this.isGenerating = true;
+                    this.narrativeText = '';
+                    this.talkingPoints = '';
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+
+                    try {
+                        const systemPrompt = `你是一位出色的数据故事讲述者，擅长将枯燥的数字转化为引人入胜的叙事。
+
+请完成两个任务：
+
+## 任务一：数据故事（约500字）
+
+写一篇连贯的数据叙事，要求：
+- 用讲故事的方式呈现数据发现
+- 有清晰的开头（设置背景）、中间（发展冲突）、结尾（总结启示）
+- 融入具体数字但不堆砌
+- 用生动的比喻让数据更易理解
+- 指出行动建议
+
+用 "---NARRATIVE---" 标记故事部分的开始。
+
+## 任务二：演讲要点（3-5条）
+
+提炼 3-5 个适合在汇报/演示中使用的核心要点，每条包含：
+- 一句话结论
+- 支撑数据
+- 建议行动
+
+用 "---TALKING_POINTS---" 标记要点部分的开始。
+
+格式示例：
+---NARRATIVE---
+（数据故事内容，Markdown 格式）
+
+---TALKING_POINTS---
+### 要点 1：标题
+- **结论**：...
+- **数据支撑**：...
+- **建议行动**：...
+
+（后续要点...）
+
+中文输出。`;
+
+                        const userPrompt = `请基于以下数据和分析洞察，撰写一篇引人入胜的数据故事和演讲要点：
+
+## 原始数据
+\`\`\`
+${this.input.rawData}
+\`\`\`
+
+## 数据类型
+${this.input.dataType}
+
+## 趋势分析洞察
+${this.insightsText}
+
+${this.input.question ? '## 用户关注点\n' + this.input.question : ''}
+
+请用讲故事的方式让数据"说话"。`;
+
+                        let fullContent = '';
+
+                        await this.callAPIStream(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            (content) => {
+                                fullContent += content;
+                                this._parseNarrativeOutput(fullContent);
+                            },
+                            (reasoning) => { this.reasoningContent += reasoning; }
+                        );
+
+                        this._parseNarrativeOutput(fullContent);
+                        this.showToast('数据故事撰写完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[DataStoryteller] 数据故事生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                /**
+                 * 解析流式输出，将内容拆分为叙事和演讲要点两部分
+                 * 使用 ---NARRATIVE--- 和 ---TALKING_POINTS--- 分隔标记
+                 * @param {string} fullText - 完整的流式输出文本
+                 */
+                _parseNarrativeOutput(fullText) {
+                    const narrativeMarker = '---NARRATIVE---';
+                    const tpMarker = '---TALKING_POINTS---';
+
+                    let narrativePart = fullText;
+                    let tpPart = '';
+
+                    const tpIndex = fullText.indexOf(tpMarker);
+                    const narIndex = fullText.indexOf(narrativeMarker);
+
+                    if (narIndex !== -1) {
+                        narrativePart = fullText.substring(narIndex + narrativeMarker.length);
+                    }
+
+                    if (tpIndex !== -1) {
+                        if (narIndex !== -1 && narIndex < tpIndex) {
+                            narrativePart = fullText.substring(narIndex + narrativeMarker.length, tpIndex);
+                        } else if (narIndex === -1) {
+                            narrativePart = fullText.substring(0, tpIndex);
+                        }
+                        tpPart = fullText.substring(tpIndex + tpMarker.length);
+                    }
+
+                    this.narrativeText = narrativePart.trim();
+                    this.talkingPoints = tpPart.trim();
+                },
+
+                // ==================== 步骤 5: 导出 ====================
+
+                /**
+                 * 构建完整报告的 Markdown 内容
+                 * @returns {string} Markdown 格式的完整报告
+                 */
+                buildFullReport() {
+                    let doc = `# 数据故事分析报告\n\n`;
+                    doc += `- **数据类型**：${this.input.dataType}\n`;
+                    doc += `- **生成时间**：${new Date().toLocaleString('zh-CN')}\n`;
+                    if (this.input.question) {
+                        doc += `- **分析目标**：${this.input.question}\n`;
+                    }
+                    doc += `\n---\n\n`;
+
+                    if (this.dataSummary) {
+                        doc += `## 一、数据概览\n\n`;
+                        doc += `- 数据行数：${this.dataSummary.rowCount}\n`;
+                        doc += `- 字段数量：${this.dataSummary.columnCount}\n`;
+                        doc += `- 数值字段：${this.dataSummary.numericColumns}，文本字段：${this.dataSummary.textColumns}\n\n`;
+
+                        if (this.dataSummary.columns?.length) {
+                            doc += `| 列名 | 类型 | 说明 |\n| --- | --- | --- |\n`;
+                            for (const col of this.dataSummary.columns) {
+                                doc += `| ${col.name} | ${col.type} | ${col.description} |\n`;
+                            }
+                            doc += `\n`;
+                        }
+
+                        if (this.dataSummary.observations?.length) {
+                            doc += `**初步观察：**\n\n`;
+                            for (const obs of this.dataSummary.observations) {
+                                doc += `- ${obs}\n`;
+                            }
+                            doc += `\n`;
+                        }
+
+                        doc += `---\n\n`;
+                    }
+
+                    if (this.insightsText) {
+                        doc += `## 二、趋势发现\n\n${this.insightsText}\n\n---\n\n`;
+                    }
+
+                    if (this.narrativeText) {
+                        doc += `## 三、数据故事\n\n${this.narrativeText}\n\n---\n\n`;
+                    }
+
+                    if (this.talkingPoints) {
+                        doc += `## 四、演讲要点\n\n${this.talkingPoints}\n`;
+                    }
+
+                    return doc;
+                },
+
+                /** 导出为 Markdown 文件 */
+                exportMarkdown() {
+                    const content = this.buildFullReport();
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `数据故事_${this.input.dataType || '分析'}_${new Date().toISOString().slice(0, 10)}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    this.showToast('已导出 Markdown 文件', 'download');
+                },
+
+                /** 复制完整报告到剪贴板 */
+                async copyFullReport() {
+                    try {
+                        await navigator.clipboard.writeText(this.buildFullReport());
+                        this.showToast('已复制到剪贴板', 'copy');
+                    } catch (err) {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = this.buildFullReport();
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        this.showToast('已复制到剪贴板', 'copy');
+                    }
+                }
+            }));
+        });
+    </script>
+
+</body>
+
+</html>

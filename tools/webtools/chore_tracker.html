@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家务清单 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-indigo-50 min-h-screen font-sans" x-data="choreApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-indigo-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-indigo-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-blue-500">
+                    🧹 家务清单
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <div class="flex flex-col items-end mr-2">
+                    <span class="text-xs font-bold text-indigo-500 uppercase">整洁度</span>
+                    <span class="text-lg font-bold text-slate-800 leading-none" x-text="score + '%'"></span>
+                </div>
+                <div class="w-12 h-12 relative flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90">
+                        <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" fill="transparent" class="text-indigo-100" />
+                        <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" fill="transparent" class="text-indigo-500 transition-all duration-1000"
+                                :stroke-dasharray="126"
+                                :stroke-dashoffset="126 - (126 * score) / 100" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Areas Grid -->
+        <div class="space-y-6">
+            <template x-for="area in areas" :key="area.id">
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center cursor-pointer" @click="area.collapsed = !area.collapsed">
+                        <div class="flex items-center gap-2 font-bold text-slate-700">
+                            <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-slate-200 text-indigo-500">
+                                <i :class="area.icon" class="w-4 h-4"></i>
+                            </div>
+                            <span x-text="area.name"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="h-2 w-20 bg-slate-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-indigo-500 transition-all rounded-full" :style="`width: ${getAreaProgress(area)}%`"></div>
+                            </div>
+                            <i class="fa-solid fa-chevron-down w-4 h-4 text-slate-400 transition-transform" :class="area.collapsed ? '-rotate-90' : ''"></i>
+                        </div>
+                    </div>
+
+                    <div x-show="!area.collapsed" class="p-2 space-y-1">
+                        <template x-for="chore in area.chores" :key="chore.id">
+                            <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50/50 group transition-colors">
+                                <button @click="toggleChore(area.id, chore.id)" 
+                                        class="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all"
+                                        :class="isDone(chore) ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 bg-white hover:border-indigo-400'">
+                                    <i class="fa-solid fa-check w-3.5 h-3.5 text-white" x-show="isDone(chore)"></i>
+                                </button>
+                                
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-medium text-slate-700" :class="isDone(chore) ? 'text-slate-400 line-through' : ''" x-text="chore.name"></span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium" x-text="getFreqLabel(chore.freq)"></span>
+                                    </div>
+                                    <div class="text-xs text-slate-400 mt-0.5">
+                                        <span x-show="chore.lastDone">上次: <span x-text="formatDate(chore.lastDone)"></span></span>
+                                        <span x-show="!chore.lastDone">从未打扫</span>
+                                    </div>
+                                </div>
+                                
+                                <button @click="deleteChore(area.id, chore.id)" class="text-slate-300 hover:text-rose-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="fa-solid fa-trash-can w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </template>
+                        
+                        <!-- Add Chore Input -->
+                        <div class="p-2 pt-1 border-t border-slate-50 mt-1 flex gap-2">
+                             <input type="text" 
+                                    placeholder="添加家务..." 
+                                    class="flex-1 bg-slate-50 border-none rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                                    @keydown.enter="addChore(area.id, $event)">
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <button @click="addArea" class="w-full py-4 mt-6 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-medium hover:border-indigo-400 hover:text-indigo-500 hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-circle-plus w-5 h-5"></i>
+            添加新区域
+        </button>
+
+    </main>
+
+    <script>
+        function choreApp() {
+            return {
+                areas: [],
+                
+                defaultData: [
+                    {
+                        id: 'kitchen', name: '厨房', icon: 'fa-solid fa-utensils', collapsed: false,
+                        chores: [
+                            { id: 1, name: '洗碗', freq: 'daily', lastDone: null },
+                            { id: 2, name: '擦灶台', freq: 'daily', lastDone: null },
+                            { id: 3, name: '倒垃圾', freq: 'daily', lastDone: null }
+                        ]
+                    },
+                    {
+                        id: 'living', name: '客厅', icon: 'fa-solid fa-couch', collapsed: false,
+                        chores: [
+                            { id: 4, name: '拖地', freq: 'weekly', lastDone: null },
+                            { id: 5, name: '整理茶几', freq: 'daily', lastDone: null }
+                        ]
+                    },
+                    {
+                        id: 'bathroom', name: '卫生间', icon: 'fa-solid fa-droplet', collapsed: false,
+                        chores: [
+                            { id: 6, name: '刷马桶', freq: 'weekly', lastDone: null },
+                            { id: 7, name: '清理洗手台', freq: 'daily', lastDone: null }
+                        ]
+                    }
+                ],
+
+                init() {
+                    const saved = localStorage.getItem('webtools_chores');
+                    if (saved) {
+                        this.areas = JSON.parse(saved);
+                    } else {
+                        this.areas = this.defaultData;
+                    }
+
+                    this.$watch('areas', () => {
+                        localStorage.setItem('webtools_chores', JSON.stringify(this.areas));
+                    }, { deep: true });
+                    
+
+                },
+
+                addArea() {
+                    const name = prompt('区域名称 (如: 卧室):');
+                    if(name) {
+                        this.areas.push({
+                            id: Date.now(),
+                            name: name,
+                            icon: 'fa-solid fa-house',
+                            collapsed: false,
+                            chores: []
+                        });
+                    }
+                },
+
+                addChore(areaId, e) {
+                    const val = e.target.value.trim();
+                    if (!val) return;
+                    
+                    const area = this.areas.find(a => a.id === areaId);
+                    if(area) {
+                        area.chores.push({
+                            id: Date.now(),
+                            name: val,
+                            freq: 'daily', // Default
+                            lastDone: null
+                        });
+                        e.target.value = '';
+
+                    }
+                },
+                
+                deleteChore(areaId, choreId) {
+                    const area = this.areas.find(a => a.id === areaId);
+                    if(area) {
+                        area.chores = area.chores.filter(c => c.id !== choreId);
+                    }
+                },
+
+                toggleChore(areaId, choreId) {
+                    const area = this.areas.find(a => a.id === areaId);
+                    const chore = area.chores.find(c => c.id === choreId);
+                    if(chore) {
+                        if (this.isDone(chore)) {
+                            // Undo? For simplicity, we just toggle "lastDone" to null if it was today.
+                            // If it was yesterday, toggling means "doing it again today".
+                            // Let's logic: if done today -> undo. If not done today -> do.
+                            chore.lastDone = null; // Simple undo
+                        } else {
+                            chore.lastDone = new Date().toISOString();
+                        }
+                    }
+                },
+
+                isDone(chore) {
+                    if (!chore.lastDone) return false;
+                    const last = new Date(chore.lastDone);
+                    const today = new Date();
+                    
+                    // Same day check
+                    return last.toDateString() === today.toDateString();
+                },
+                
+                getFreqLabel(freq) {
+                    return freq === 'daily' ? '每日' : '每周';
+                },
+
+                formatDate(iso) {
+                    const d = new Date(iso);
+                    const today = new Date();
+                    if (d.toDateString() === today.toDateString()) return '今天';
+                    return `${d.getMonth()+1}/${d.getDate()}`;
+                },
+                
+                getAreaProgress(area) {
+                    if (!area.chores.length) return 0;
+                    const done = area.chores.filter(c => this.isDone(c)).length;
+                    return (done / area.chores.length) * 100;
+                },
+
+                get score() {
+                    let total = 0;
+                    let done = 0;
+                    this.areas.forEach(a => {
+                        total += a.chores.length;
+                        done += a.chores.filter(c => this.isDone(c)).length;
+                    });
+                    if (total === 0) return 0;
+                    return Math.round((done / total) * 100);
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_chore_tracker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

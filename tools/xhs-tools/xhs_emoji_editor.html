@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书 Emoji 编辑器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Lucide Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --xhs-red: #ff2442;
+            --xhs-bg: #fbfbfb;
+        }
+
+        body {
+            background-color: var(--xhs-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ff2442;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 6px rgba(255, 36, 66, 0.4);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+
+        .emoji-btn {
+            transition: all 0.2s;
+        }
+
+        .emoji-btn:hover {
+            transform: scale(1.2);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Top Navigation -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-regular fa-face-smile text-[#ff2442] h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">小红书 Emoji 编辑器</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-[#ff2442]': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-[#ff2442]': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-[#ff2442] transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i> API 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Layout -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- Left: Input & Controls -->
+            <div class="w-full md:w-2/5 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-xl">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+
+                    <!-- Input Content -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-bold text-slate-700">原始文案</label>
+                            <span class="text-xs text-slate-400">{{ input.content.length }} 字</span>
+                        </div>
+                        <textarea v-model="input.content" rows="6" placeholder="在此粘贴需要添加 Emoji 的文案..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-red-500 focus:outline-none transition resize-none text-sm leading-relaxed"></textarea>
+                    </div>
+
+                    <!-- Editing Mode -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">编辑模式 (可多选)</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button v-for="m in modes" :key="m.id" @click="toggleMode(m.id)"
+                                :class="selectedModes.includes(m.id) ? 'bg-red-50 border-red-200 text-[#ff2442]' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'"
+                                class="border rounded-lg p-3 text-left transition flex flex-col gap-1 relative">
+                                <div class="flex justify-between items-center w-full">
+                                    <span class="text-sm font-bold">{{ m.name }}</span>
+                                    <i class="fa-solid fa-check w-3 h-3"></i>
+                                </div>
+                                <span class="text-[10px] opacity-80">{{ m.desc }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Density Slider -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-bold text-slate-700">Emoji 浓度</label>
+                            <span class="text-xs font-medium text-[#ff2442]">{{ densityLabels[density] }}</span>
+                        </div>
+                        <div class="px-1">
+                            <input type="range" v-model="density" min="1" max="3" step="1" class="w-full">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                <span>点缀 (Lite)</span>
+                                <span>适中 (Medium)</span>
+                                <span>爆表 (Heavy)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Theme Selection -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">氛围风格</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="t in themes" :key="t.id" @click="theme = t.id"
+                                :class="theme === t.id ? 'bg-[#ff2442] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="px-3 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1">
+                                <span>{{ t.icon }}</span>
+                                <span>{{ t.name }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Insert (Manual) -->
+                    <div class="space-y-2 pt-4 border-t border-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 uppercase">常用 Emoji (点击复制)</label>
+                        <div class="flex flex-wrap gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <button v-for="emoji in commonEmojis" :key="emoji" @click="copyEmoji(emoji)"
+                                class="emoji-btn text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-white hover:shadow-sm">
+                                {{ emoji }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button @click="startEditing" :disabled="isGenerating || !input.content"
+                        class="w-full bg-[#ff2442] text-white font-bold py-3.5 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner animate-spin w-5 h-5"></i>
+                        <span v-else>✨ 一键添加 Emoji</span>
+                    </button>
+
+                    <div class="text-xs text-center text-slate-400">
+                        {{ statusText }}
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Right: Output Area -->
+            <div class="flex-grow bg-[#fbfbfb] p-4 md:p-8 overflow-y-auto h-full relative">
+
+                <!-- Empty State -->
+                <div v-if="!result.content && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                    <i class="fa-regular fa-face-smile w-24 h-24 mb-4 stroke-1"></i>
+                    <p class="text-lg">选择模式与风格，让文案生动起来</p>
+                </div>
+
+                <!-- Result Card -->
+                <div v-else class="max-w-3xl mx-auto">
+                    <div class="flex justify-between items-end mb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">编辑结果</h2>
+                        <div class="flex gap-2">
+                            <button v-if="result.content" @click="copyContent"
+                                class="bg-white border border-slate-200 text-slate-600 hover:text-[#ff2442] px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-copy w-4 h-4"></i> 复制
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Reasoning Box (V4 Pro) -->
+                    <div v-if="result.reasoning"
+                        class="mb-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <details class="group">
+                            <summary
+                                class="flex items-center justify-between p-3 cursor-pointer bg-slate-50 hover:bg-slate-100 transition text-xs font-bold text-slate-600 select-none">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-brain w-4 h-4 text-violet-500"></i>
+                                    <span>AI 深度思考过程</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-down w-4 h-4 transition-transform group-open:rotate-180"></i>
+                            </summary>
+                            <div
+                                class="p-4 bg-slate-50 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-200 max-h-60 overflow-y-auto leading-relaxed">
+                                {{ result.reasoning }}
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div
+                        class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px] flex flex-col">
+                        <!-- Header with Tags -->
+                        <div class="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap gap-2">
+                            <span
+                                class="px-2 py-1 bg-red-50 text-[#ff2442] text-xs font-bold rounded-md border border-red-100">
+                                {{ getModeNames() }}
+                            </span>
+                            <span
+                                class="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-md border border-blue-100">
+                                {{ getThemeName(theme) }}
+                            </span>
+                            <span
+                                class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-md border border-slate-200">
+                                浓度: {{ densityLabels[density] }}
+                            </span>
+                        </div>
+
+                        <!-- Content Body -->
+                        <div class="p-6 md:p-8 flex-grow">
+                            <div v-if="result.content"
+                                class="prose prose-slate max-w-none whitespace-pre-wrap leading-relaxed text-lg"
+                                v-html="renderMarkdown(result.content)"></div>
+
+                            <div v-else class="flex flex-col items-center justify-center h-48 text-slate-400">
+                                <i class="fa-solid fa-spinner w-8 h-8 animate-spin mb-2 text-[#ff2442]"></i>
+                                <span class="text-sm animate-pulse">正在挑选最合适的表情...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- API Settings Modal -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-red-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Key 会存储在本地，与其他应用共享。</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-[#ff2442] text-white px-4 py-2 rounded-lg hover:bg-red-600">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick, computed } = Vue;
+
+        const MODES = [
+            { id: 'smart', name: '智能镶嵌', desc: '在句首、句尾或重点处自然添加' },
+            { id: 'append', name: '关键词追加', desc: '在名词/动词/形容词后追加 Emoji' },
+            { id: 'replace', name: '关键词替换', desc: '将部分词汇直接替换为 Emoji' },
+            { id: 'decorate', name: '排版装饰', desc: '增加分割线、列表符号等装饰' }
+        ];
+
+        const THEMES = [
+            { id: 'girlie', name: '少女心', icon: '🎀', emojis: '🎀✨🌸💗🧸🍰🦄' },
+            { id: 'cool', name: '酷飒', icon: '😎', emojis: '😎🔥⚡️💣🚀💯🆙' },
+            { id: 'knowledge', name: '干货', icon: '📚', emojis: '📚💡✅📌📝🔍📖' },
+            { id: 'life', name: '生活', icon: '🌿', emojis: '🌿☕️📷☀️☁️🥑🧘‍♀️' },
+            { id: 'drama', name: '抓马', icon: '😱', emojis: '😱😭‼️🆘💥💅👄' },
+            { id: 'office', name: '职场', icon: '💼', emojis: '💼💻🤝📈📊💰🗓️' }
+        ];
+
+        const COMMON_EMOJIS = [
+            '✨', '🔥', '‼️', '✅', '❌', '💡', '📌', '📍',
+            '🌸', '🎀', '💗', '😭', '😎', '🤔', '👀', '👇',
+            '💰', '📚', '📝', '💻', '🌿', '☕️', '📷', '✈️'
+        ];
+
+        createApp({
+            setup() {
+
+
+                // State
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+                const statusText = ref('准备就绪');
+
+                const input = reactive({
+                    content: ''
+                });
+
+                const selectedModes = ref(['smart']); // Changed to array
+                const density = ref(2); // 1, 2, 3
+                const theme = ref('girlie');
+
+                const modes = MODES;
+                const themes = THEMES;
+                const commonEmojis = COMMON_EMOJIS;
+                const densityLabels = { 1: '点缀 (Lite)', 2: '适中 (Medium)', 3: '爆表 (Heavy)' };
+
+                const result = reactive({
+                    content: '',
+                    reasoning: ''
+                });
+
+                // Init
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                    }
+                });
+
+                // Helpers
+                const getModeNames = () => {
+                    return selectedModes.value.map(id => {
+                        const m = modes.find(m => m.id === id);
+                        return m ? m.name : id;
+                    }).join(' + ');
+                };
+                const getThemeName = (id) => themes.find(t => t.id === id)?.name || id;
+
+                const renderMarkdown = (text) => {
+                    if (!text) return '';
+                    return marked.parse(text);
+                };
+
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                const copyEmoji = (emoji) => {
+                    navigator.clipboard.writeText(emoji).then(() => {
+                        // Optional: visual feedback
+                    });
+                };
+
+                const toggleMode = (id) => {
+                    if (selectedModes.value.includes(id)) {
+                        // Prevent deselecting the last one
+                        if (selectedModes.value.length > 1) {
+                            selectedModes.value = selectedModes.value.filter(m => m !== id);
+                        }
+                    } else {
+                        selectedModes.value.push(id);
+                    }
+                };
+
+                // Core Logic
+                const startEditing = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!input.content) return;
+
+                    isGenerating.value = true;
+                    statusText.value = '正在添加 Emoji...';
+                    result.content = '';
+                    result.reasoning = '';
+
+                    const selectedTheme = themes.find(t => t.id === theme.value);
+
+                    // Construct mode descriptions
+                    const modeDescriptions = selectedModes.value.map(id => {
+                        const m = modes.find(mode => mode.id === id);
+                        return `- ${m.name}: ${m.desc}`;
+                    }).join('\n');
+
+                    let densityDesc = "";
+                    if (density.value == 1) densityDesc = "少量点缀，仅在最关键处添加，保持清爽。";
+                    if (density.value == 2) densityDesc = "适中浓度，每段话有2-3个Emoji，符合一般小红书风格。";
+                    if (density.value == 3) densityDesc = "高浓度，几乎每句话都有Emoji，视觉冲击力强，甚至可以用来代替标点。";
+
+                    let prompt = `你是一个小红书 Emoji 编辑大师。请根据以下要求，对用户提供的文案进行 Emoji 编辑。
+
+【原始文案】：
+${input.content}
+
+【编辑模式】(多选混合执行)：
+${modeDescriptions}
+
+【Emoji 风格】：${selectedTheme.name} (常用: ${selectedTheme.emojis})
+【Emoji 浓度】：${densityDesc}
+
+【具体执行要求】：
+1. 保持原文内容和语气不变（除非【关键词替换】模式要求替换）。
+2. 重点使用指定的【Emoji 风格】中的表情，但也可以搭配通用的表情。
+3. 综合运用所有选中的编辑模式。例如，既要在句首句尾镶嵌，也要在关键词后追加。
+4. 如果选中【排版装饰】，请务必增加分割线或列表符号。
+
+请直接输出编辑后的文案，不要包含任何解释性文字。`;
+
+                    try {
+                        await callDeepSeek(prompt, true,
+                            (chunk) => {
+                                result.content += chunk;
+                            },
+                            (reasoningChunk) => {
+                                result.reasoning += reasoningChunk;
+                            }
+                        );
+                        statusText.value = '编辑完成';
+                    } catch (e) {
+                        console.error(e);
+                        statusText.value = '生成出错: ' + e.message;
+                        result.content += `\n\n[出错: ${e.message}]`;
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const callDeepSeek = async (prompt, stream = false, onChunk = null, onReasoning = null) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 为空");
+
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: model.value,
+                            messages: [
+                                { "role": "system", "content": "You are a creative social media editor specialized in emoji usage." },
+                                { "role": "user", "content": prompt }
+                            ],
+                            stream: stream
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    if (!stream) {
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+
+                                    // Reasoning
+                                    const reasoning = json.choices[0].delta.reasoning_content;
+                                    if (reasoning && onReasoning) onReasoning(reasoning);
+
+                                    // Content
+                                    const content = json.choices[0].delta.content || "";
+                                    if (onChunk) onChunk(content);
+                                } catch (e) {
+                                    console.error("Stream parse error", e);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                const copyContent = () => {
+                    navigator.clipboard.writeText(result.content).then(() => alert('已复制'));
+                };
+
+                return {
+
+                    showSettings, apiConfig, saveConfig, model,
+                    input, selectedModes, density, theme,
+                    modes, themes, commonEmojis, densityLabels,
+                    result, isGenerating, statusText,
+                    startEditing, getModeNames, getThemeName, renderMarkdown, copyContent, copyEmoji, toggleMode
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/editor_xhs_emoji_editor.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

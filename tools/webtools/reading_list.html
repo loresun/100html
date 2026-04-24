@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阅读书单管理 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans" x-data="readingApp()" x-init="init()">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-800">📚 阅读书单管理</h1>
+            </div>
+            <button @click="showAddModal = true" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i>
+                添加书籍
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">想读</div>
+                <div class="text-2xl font-bold text-amber-600" x-text="stats.wantToRead">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">在读</div>
+                <div class="text-2xl font-bold text-blue-600" x-text="stats.reading">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">已读</div>
+                <div class="text-2xl font-bold text-emerald-600" x-text="stats.finished">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">总页数</div>
+                <div class="text-2xl font-bold text-slate-800" x-text="stats.totalPages.toLocaleString()">0</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+            <div class="flex border-b border-slate-200">
+                <button 
+                    @click="activeTab = 'wantToRead'"
+                    :class="activeTab === 'wantToRead' ? 'border-b-2 border-amber-500 text-amber-600' : 'text-slate-600 hover:text-slate-800'"
+                    class="flex-1 px-4 py-3 font-medium transition-colors"
+                >
+                    想读 (<span x-text="stats.wantToRead">0</span>)
+                </button>
+                <button 
+                    @click="activeTab = 'reading'"
+                    :class="activeTab === 'reading' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-slate-600 hover:text-slate-800'"
+                    class="flex-1 px-4 py-3 font-medium transition-colors"
+                >
+                    在读 (<span x-text="stats.reading">0</span>)
+                </button>
+                <button 
+                    @click="activeTab = 'finished'"
+                    :class="activeTab === 'finished' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-slate-600 hover:text-slate-800'"
+                    class="flex-1 px-4 py-3 font-medium transition-colors"
+                >
+                    已读 (<span x-text="stats.finished">0</span>)
+                </button>
+            </div>
+
+            <!-- Books List -->
+            <div class="p-6">
+                <div class="space-y-4">
+                    <template x-for="book in filteredBooks" :key="book.id">
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md transition-shadow">
+                            <div class="flex gap-4">
+                                <!-- Book Cover Placeholder -->
+                                <div class="w-20 h-28 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
+                                    <span x-text="book.title.substring(0, 2)">书</span>
+                                </div>
+
+                                <!-- Book Info -->
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-lg font-bold text-slate-800 mb-1 truncate" x-text="book.title">书名</h3>
+                                    <p class="text-sm text-slate-600 mb-2" x-text="book.author">作者</p>
+                                    
+                                    <!-- Progress for Reading -->
+                                    <template x-if="book.status === 'reading'">
+                                        <div class="mb-3">
+                                            <div class="flex justify-between text-xs text-slate-500 mb-1">
+                                                <span>阅读进度</span>
+                                                <span x-text="book.currentPage + ' / ' + book.totalPages + ' 页'"></span>
+                                            </div>
+                                            <div class="w-full bg-slate-200 rounded-full h-2">
+                                                <div 
+                                                    class="bg-blue-500 h-2 rounded-full transition-all"
+                                                    :style="'width: ' + getProgress(book) + '%'"
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- Rating for Finished -->
+                                    <template x-if="book.status === 'finished' && book.rating">
+                                        <div class="flex items-center gap-1 mb-2">
+                                            <template x-for="i in 5" :key="i">
+                                                <i 
+                                                    :class="i <= book.rating ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-slate-300'"
+                                                ></i>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    <!-- Actions -->
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-if="book.status === 'wantToRead'">
+                                            <button @click="updateStatus(book, 'reading')" class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">
+                                                开始阅读
+                                            </button>
+                                        </template>
+                                        <template x-if="book.status === 'reading'">
+                                            <>
+                                                <button @click="showProgressModal(book)" class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">
+                                                    更新进度
+                                                </button>
+                                                <button @click="updateStatus(book, 'finished')" class="text-xs px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition-colors">
+                                                    标记完成
+                                                </button>
+                                            </>
+                                        </template>
+                                        <template x-if="book.status === 'finished'">
+                                            <button @click="showRatingModal(book)" class="text-xs px-3 py-1 bg-amber-100 text-amber-700 rounded-full hover:bg-amber-200 transition-colors">
+                                                评分
+                                            </button>
+                                        </template>
+                                        <button @click="deleteBook(book.id)" class="text-xs px-3 py-1 bg-rose-100 text-rose-700 rounded-full hover:bg-rose-200 transition-colors">
+                                            删除
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div x-show="filteredBooks.length === 0" class="text-center py-12 text-slate-400">
+                    <i class="fa-solid fa-book-open text-slate-200 text-5xl mb-3"></i>
+                    <p>这个分类还没有书籍</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Book Modal -->
+    <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showAddModal = false">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">添加书籍</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">书名</label>
+                    <input 
+                        type="text" 
+                        x-model="newBook.title"
+                        placeholder="输入书名"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">作者</label>
+                    <input 
+                        type="text" 
+                        x-model="newBook.author"
+                        placeholder="作者姓名"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">总页数</label>
+                    <input 
+                        type="number" 
+                        x-model.number="newBook.totalPages"
+                        placeholder="300"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">状态</label>
+                    <select 
+                        x-model="newBook.status"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    >
+                        <option value="wantToRead">想读</option>
+                        <option value="reading">在读</option>
+                        <option value="finished">已读</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button @click="showAddModal = false" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors">
+                    取消
+                </button>
+                <button @click="addBook()" class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                    添加
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Modal -->
+    <div x-show="progressModal.show" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="progressModal.show = false">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">更新阅读进度</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">当前页数</label>
+                    <input 
+                        type="number" 
+                        x-model.number="progressModal.currentPage"
+                        :max="progressModal.totalPages"
+                        class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                    <p class="text-xs text-slate-500 mt-1">总共 <span x-text="progressModal.totalPages"></span> 页</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button @click="progressModal.show = false" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors">
+                    取消
+                </button>
+                <button @click="saveProgress()" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rating Modal -->
+    <div x-show="ratingModal.show" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="ratingModal.show = false">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">给这本书评分</h3>
+            
+            <div class="flex justify-center gap-2 my-8">
+                <template x-for="i in 5" :key="i">
+                    <button 
+                        @click="ratingModal.rating = i"
+                        class="transition-transform hover:scale-110"
+                    >
+                        <i 
+                            :class="i <= ratingModal.rating ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star text-slate-300'"
+                            class="text-4xl"
+                        ></i>
+                    </button>
+                </template>
+            </div>
+
+            <div class="flex gap-3">
+                <button @click="ratingModal.show = false" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors">
+                    取消
+                </button>
+                <button @click="saveRating()" class="flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function readingApp() {
+            return {
+                books: [],
+                activeTab: 'wantToRead',
+                showAddModal: false,
+                progressModal: { show: false, bookId: null, currentPage: 0, totalPages: 0 },
+                ratingModal: { show: false, bookId: null, rating: 0 },
+                newBook: {
+                    title: '',
+                    author: '',
+                    totalPages: 300,
+                    status: 'wantToRead'
+                },
+
+                init() {
+                    const saved = localStorage.getItem('webtools_reading');
+                    if (saved) {
+                        this.books = JSON.parse(saved);
+                    }
+                    this.$watch('books', () => {
+                        localStorage.setItem('webtools_reading', JSON.stringify(this.books));
+                        localStorage.setItem('webtools_reading', JSON.stringify(this.books));
+                    });
+
+                },
+
+                addBook() {
+                    if (!this.newBook.title) {
+                        alert('请输入书名');
+                        return;
+                    }
+
+                    this.books.push({
+                        id: Date.now(),
+                        title: this.newBook.title,
+                        author: this.newBook.author || '未知作者',
+                        totalPages: this.newBook.totalPages || 300,
+                        currentPage: 0,
+                        status: this.newBook.status,
+                        rating: 0,
+                        createdAt: new Date().toISOString()
+                    });
+
+                    this.newBook = { title: '', author: '', totalPages: 300, status: 'wantToRead' };
+                    this.showAddModal = false;
+                },
+
+                deleteBook(id) {
+                    if (confirm('确定要删除这本书吗？')) {
+                        this.books = this.books.filter(b => b.id !== id);
+                    }
+                },
+
+                updateStatus(book, newStatus) {
+                    book.status = newStatus;
+                    if (newStatus === 'reading') {
+                        book.startedAt = new Date().toISOString();
+                    } else if (newStatus === 'finished') {
+                        book.finishedAt = new Date().toISOString();
+                        book.currentPage = book.totalPages;
+                    }
+                },
+
+                showProgressModal(book) {
+                    this.progressModal = {
+                        show: true,
+                        bookId: book.id,
+                        currentPage: book.currentPage,
+                        totalPages: book.totalPages
+                    };
+                },
+
+                saveProgress() {
+                    const book = this.books.find(b => b.id === this.progressModal.bookId);
+                    if (book) {
+                        book.currentPage = this.progressModal.currentPage;
+                    }
+                    this.progressModal.show = false;
+                },
+
+                showRatingModal(book) {
+                    this.ratingModal = {
+                        show: true,
+                        bookId: book.id,
+                        rating: book.rating || 0
+                    };
+                },
+
+                saveRating() {
+                    const book = this.books.find(b => b.id === this.ratingModal.bookId);
+                    if (book) {
+                        book.rating = this.ratingModal.rating;
+                    }
+                    this.ratingModal.show = false;
+                },
+
+                getProgress(book) {
+                    if (!book.totalPages) return 0;
+                    return Math.round((book.currentPage / book.totalPages) * 100);
+                },
+
+                get filteredBooks() {
+                    return this.books.filter(b => b.status === this.activeTab);
+                },
+
+                get stats() {
+                    return {
+                        wantToRead: this.books.filter(b => b.status === 'wantToRead').length,
+                        reading: this.books.filter(b => b.status === 'reading').length,
+                        finished: this.books.filter(b => b.status === 'finished').length,
+                        totalPages: this.books.filter(b => b.status === 'finished').reduce((sum, b) => sum + b.totalPages, 0)
+                    };
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_reading_list.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

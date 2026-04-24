@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics：仅在 HTTP/HTTPS 协议下加载，避免 file:// 安全源冲突 -->
+    <script>
+        if (location.protocol !== 'file:') {
+            var s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X';
+            document.head.appendChild(s);
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            gtag('js', new Date());
+            gtag('config', 'G-M09H8GY78X');
+        }
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 取名大师 - 宝宝·品牌·宠物·角色起名</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+
+        /* 翡翠绿主渐变 + 祥云纹理叠加 */
+        body {
+            background:
+                radial-gradient(ellipse 120% 80% at 50% -20%, rgba(167, 243, 208, 0.55) 0%, transparent 50%),
+                linear-gradient(160deg, #ecfdf5 0%, #a7f3d0 45%, #34d399 100%);
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 祥云装饰层（低对比度 SVG 平铺） */
+        .cloud-pattern {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60' viewBox='0 0 120 60'%3E%3Cpath fill='%23059669' fill-opacity='0.06' d='M25 38c-6 0-11-5-11-11s5-11 11-11h4c2-7 8-12 16-12s14 5 16 12h8c5 0 9 4 9 9s-4 9-9 9H25zm55-5c-4 0-7-3-7-7s3-7 7-7h3c1-4 5-7 10-7s9 3 10 7h5c3 0 5 2 5 5s-2 5-5 5H80z'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #059669; border-radius: 3px; opacity: 0.6; }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .name-card-enter { animation: cardIn 0.45s ease-out forwards; }
+
+        /* 角花装饰（伪元素简化版） */
+        .corner-ornament::before,
+        .corner-ornament::after {
+            content: '◆';
+            position: absolute;
+            font-size: 10px;
+            color: rgba(5, 150, 105, 0.35);
+        }
+        .corner-ornament::before { top: 8px; left: 10px; }
+        .corner-ornament::after { bottom: 8px; right: 10px; transform: rotate(45deg); }
+
+        .prose-name h2 { font-size: 1rem; font-weight: 700; color: #065f46; margin: 0.5rem 0; }
+        .prose-name p { margin: 0.35rem 0; line-height: 1.7; color: #334155; font-size: 0.9rem; }
+        .prose-name ul { padding-left: 1.1rem; margin: 0.35rem 0; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800 antialiased cloud-pattern">
+    <div x-data="nameMasterApp()" x-init="init()" x-cloak class="min-h-screen flex flex-col pb-20">
+
+        <!-- 顶部导航：左侧返回项目首页 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-emerald-200/70 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i data-lucide="sparkles" class="text-emerald-600 h-6 w-6"></i>
+                    <span class="font-bold text-xl text-slate-900 tracking-tight">AI 取名大师</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="showFavPanel = !showFavPanel"
+                        class="sm:hidden flex items-center gap-1 px-3 py-2 rounded-xl text-sm text-emerald-800 bg-white/90 border border-emerald-200">
+                        <i data-lucide="heart" class="w-4 h-4"></i>
+                        收藏
+                        <span class="text-xs opacity-70" x-text="'(' + favorites.length + ')'"></span>
+                    </button>
+                    <button type="button" @click="showSettings = true"
+                        class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 transition">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">设置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 flex flex-col lg:flex-row gap-6 flex-1">
+
+            <!-- 左侧：表单区 -->
+            <aside class="w-full lg:w-[380px] flex-shrink-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
+                <div class="bg-white/90 backdrop-blur rounded-2xl border border-emerald-100 shadow-lg shadow-emerald-900/5 p-5 corner-ornament relative overflow-hidden">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+                        <i data-lucide="pen-line" class="w-5 h-5 text-emerald-600"></i>
+                        取名类型
+                    </h2>
+
+                    <!-- 类型选择：六种场景 -->
+                    <div class="grid grid-cols-2 gap-2 mb-5">
+                        <template x-for="opt in nameTypes" :key="opt.value">
+                            <button type="button"
+                                @click="nameType = opt.value"
+                                class="rounded-xl px-3 py-2.5 text-sm font-medium border-2 transition text-left"
+                                :class="nameType === opt.value
+                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+                                    : 'border-slate-100 bg-slate-50/80 text-slate-600 hover:border-emerald-200'">
+                                <span x-text="opt.label"></span>
+                            </button>
+                        </template>
+                    </div>
+
+                    <!-- 宝宝取名字段 -->
+                    <div x-show="nameType === 'baby'" class="space-y-3" x-transition>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">姓氏</label>
+                            <input type="text" x-model="forms.baby.surname" placeholder="如：李"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">性别</label>
+                            <select x-model="forms.baby.gender"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="男">男宝</option>
+                                <option value="女">女宝</option>
+                                <option value="待定">性别待定 / 中性</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">期望寓意</label>
+                            <textarea x-model="forms.baby.wish" rows="2" placeholder="如：聪慧、健康、志向远大…"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">忌用字（可选）</label>
+                            <input type="text" x-model="forms.baby.avoid" placeholder="多个字用顿号分隔"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">出生日期（可选）</label>
+                            <input type="date" x-model="forms.baby.birthDate"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    <!-- 品牌命名 -->
+                    <div x-show="nameType === 'brand'" class="space-y-3" x-transition>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">行业 / 品类</label>
+                            <input type="text" x-model="forms.brand.industry" placeholder="如：新式茶饮、SaaS、母婴"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">核心价值 / 卖点</label>
+                            <textarea x-model="forms.brand.core" rows="2" placeholder="品牌想传达的关键词"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">目标用户</label>
+                            <input type="text" x-model="forms.brand.audience" placeholder="如：Z 世代白领"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">风格偏好</label>
+                            <input type="text" x-model="forms.brand.style" placeholder="如：极简国际化、国潮、科技感"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    <!-- 宠物取名 -->
+                    <div x-show="nameType === 'pet'" class="space-y-3" x-transition>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">品种 / 种类</label>
+                            <input type="text" x-model="forms.pet.breed" placeholder="如：柯基、英短、鹦鹉"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">性格特点</label>
+                            <textarea x-model="forms.pet.personality" rows="2" placeholder="活泼、胆小、粘人…"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">外观特征</label>
+                            <textarea x-model="forms.pet.looks" rows="2" placeholder="毛色、体型、花纹等"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 小说角色 -->
+                    <div x-show="nameType === 'character'" class="space-y-3" x-transition>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">世界观类型</label>
+                            <select x-model="forms.character.world"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="武侠">武侠</option>
+                                <option value="仙侠">仙侠</option>
+                                <option value="现代">现代都市</option>
+                                <option value="科幻">科幻</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">性格</label>
+                            <textarea x-model="forms.character.personality" rows="2" placeholder="人物性格关键词"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">身份 / 职业</label>
+                            <input type="text" x-model="forms.character.role" placeholder="如：镖师、散修、研究员"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    <!-- 网名昵称 -->
+                    <div x-show="nameType === 'nickname'" class="space-y-3" x-transition>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">使用场景</label>
+                            <input type="text" x-model="forms.nickname.scene" placeholder="游戏 ID、社交平台、论坛…"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">偏好气质</label>
+                            <input type="text" x-model="forms.nickname.vibe" placeholder="可爱 / 高冷 / 沙雕 / 文艺…"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">字数或格式要求（可选）</label>
+                            <input type="text" x-model="forms.nickname.format" placeholder="如：2-4 字、可含英文"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    <!-- 英文名 -->
+                    <div x-show="nameType === 'english'" class="space-y-3" x-transition>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">使用场景</label>
+                            <input type="text" x-model="forms.english.scene" placeholder="留学、外企、品牌英文名…"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">中文名或拼音（可选）</label>
+                            <input type="text" x-model="forms.english.cnHint" placeholder="便于谐音或寓意关联"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">风格</label>
+                            <input type="text" x-model="forms.english.style" placeholder="经典 / 现代 / 小众…"
+                                class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    <button type="button" @click="startGenerate(false)"
+                        :disabled="isLoading"
+                        class="mt-5 w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-55"
+                        :class="isLoading ? 'bg-slate-400' : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'">
+                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin" x-show="isLoading"></i>
+                        <i data-lucide="wand-2" class="w-5 h-5" x-show="!isLoading"></i>
+                        <span x-text="isLoading ? '正在构思佳名…' : '开始取名'"></span>
+                    </button>
+
+                    <p x-show="errorMsg" class="mt-3 text-sm text-red-600" x-text="errorMsg"></p>
+                </div>
+
+                <!-- 流式过程：推理与原始缓冲（V4 Pro 时可见思考） -->
+                <div x-show="isLoading && (reasoningBuffer || streamPreview)" class="bg-white/85 rounded-2xl border border-emerald-100 p-4 text-sm">
+                    <details x-show="reasoningBuffer" class="mb-2">
+                        <summary class="cursor-pointer text-emerald-800 font-medium">深度思考过程（可折叠）</summary>
+                        <pre class="mt-2 p-2 bg-slate-50 rounded-lg text-xs text-slate-600 max-h-32 overflow-y-auto whitespace-pre-wrap" x-text="reasoningBuffer"></pre>
+                    </details>
+                    <p class="text-slate-500 text-xs" x-show="streamPreview && !reasoningBuffer">正在接收 AI 回复…</p>
+                </div>
+            </aside>
+
+            <!-- 中间：结果卡片 -->
+            <main class="flex-1 min-w-0 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3" x-show="names.length > 0">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="w-5 h-5 text-emerald-600"></i>
+                        候选名字
+                        <span class="text-sm font-normal text-slate-500" x-text="'（' + names.length + ' 个）'"></span>
+                    </h2>
+                    <button type="button" @click="startGenerate(true)"
+                        :disabled="isLoading"
+                        class="px-4 py-2 rounded-xl border-2 border-emerald-400 text-emerald-800 font-medium hover:bg-emerald-50 disabled:opacity-50 flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        不满意，再来一组
+                    </button>
+                </div>
+
+                <div x-show="names.length === 0 && !isLoading" class="text-center py-16 px-6 rounded-2xl bg-white/50 border border-dashed border-emerald-200">
+                    <i data-lucide="flower-2" class="w-14 h-14 mx-auto text-emerald-300 mb-4"></i>
+                    <p class="text-slate-600">选择类型并填写信息后，点击「开始取名」</p>
+                    <p class="text-sm text-slate-400 mt-2">将生成 5–8 个带寓意与文化解读的候选名</p>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-1 xl:grid-cols-2">
+                    <template x-for="(item, idx) in names" :key="item.id">
+                        <article
+                            class="name-card-enter rounded-2xl border-2 shadow-xl overflow-hidden relative"
+                            :style="'animation-delay:' + (idx * 0.06) + 's'"
+                            :class="cardToneClass(item)">
+
+                            <div class="p-5 sm:p-6 cursor-pointer" @click="toggleExpand(item.id)">
+                                <div class="flex justify-between items-start gap-3">
+                                    <div class="min-w-0 flex-1">
+                                        <!-- 大号名字展示 -->
+                                        <h3 class="text-3xl sm:text-4xl font-bold tracking-wide text-slate-900 font-serif mb-1 break-all"
+                                            x-text="item.name"></h3>
+                                        <p class="text-emerald-700/90 text-lg font-medium" x-text="item.pinyin"></p>
+                                    </div>
+                                    <!-- 星级评分 -->
+                                    <div class="flex items-center gap-0.5 flex-shrink-0" :title="'适合度 ' + item.score + '/5'">
+                                        <template x-for="s in 5" :key="s">
+                                            <i :data-lucide="s <= item.score ? 'star' : 'star'"
+                                                class="w-5 h-5"
+                                                :class="s <= item.score ? 'text-amber-400 fill-amber-400' : 'text-slate-300'"></i>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <p class="mt-4 text-slate-700 leading-relaxed text-sm line-clamp-3" x-text="item.meaning"></p>
+                                <p class="mt-2 text-xs text-slate-500 flex items-start gap-1">
+                                    <i data-lucide="book-open" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0"></i>
+                                    <span class="line-clamp-2" x-text="item.culturalSource"></span>
+                                </p>
+
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <button type="button" @click.stop="toggleFavorite(item)"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border transition"
+                                        :class="isFav(item.id) ? 'bg-rose-50 border-rose-300 text-rose-700' : 'bg-white/80 border-emerald-200 text-emerald-800 hover:bg-emerald-50'">
+                                        <i :data-lucide="isFav(item.id) ? 'heart' : 'heart'" class="w-4 h-4"
+                                            :class="isFav(item.id) ? 'fill-rose-500 text-rose-500' : ''"></i>
+                                        <span x-text="isFav(item.id) ? '已收藏' : '收藏'"></span>
+                                    </button>
+                                    <span class="inline-flex items-center gap-1 text-xs text-slate-500 px-2 py-1">
+                                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform"
+                                            :class="expandedId === item.id ? 'rotate-180' : ''"></i>
+                                        点击卡片展开详解
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- 展开：详细解读（Markdown） -->
+                            <div x-show="expandedId === item.id" x-transition
+                                class="border-t border-white/40 bg-white/40 px-5 sm:px-6 pb-5">
+                                <div class="prose-name pt-4" x-html="renderMd(item.detailMarkdown || item.meaning)"></div>
+                            </div>
+                        </article>
+                    </template>
+                </div>
+            </main>
+
+            <!-- 右侧：收藏夹侧边栏（桌面常显 lg:block；小屏默认隐藏，点「收藏」展开） -->
+            <aside class="w-full lg:w-72 flex-shrink-0"
+                :class="showFavPanel ? 'block' : 'hidden lg:block'">
+                <div class="lg:sticky lg:top-24 bg-white/90 backdrop-blur rounded-2xl border border-emerald-100 shadow-lg p-4 max-h-[70vh] lg:max-h-[calc(100vh-8rem)] flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="heart" class="w-5 h-5 text-rose-500"></i>
+                            我的收藏
+                        </h3>
+                        <button type="button" x-show="favorites.length" @click="clearFavorites()"
+                            class="text-xs text-red-600 hover:underline">清空</button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto space-y-2 pr-1">
+                        <template x-if="favorites.length === 0">
+                            <p class="text-sm text-slate-400 py-6 text-center">暂无收藏，点击卡片上的「收藏」即可保存</p>
+                        </template>
+                        <template x-for="f in favorites" :key="f.id">
+                            <div class="rounded-xl border border-rose-100 bg-rose-50/50 p-3 group">
+                                <div class="font-bold text-slate-900" x-text="f.name"></div>
+                                <p class="text-xs text-emerald-800 mt-0.5" x-text="f.pinyin"></p>
+                                <p class="text-xs text-slate-500 mt-1 line-clamp-2" x-text="f.meaning"></p>
+                                <div class="flex justify-between items-center mt-2">
+                                    <span class="text-[10px] text-slate-400" x-text="f.typeLabel"></span>
+                                    <button type="button" @click="removeFavorite(f.id)" class="text-xs text-red-500 hover:underline">移除</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/45"
+            @keydown.escape.window="showSettings = false">
+            <div @click.away="showSettings = false"
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-emerald-100">
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="key-round" class="w-5 h-5 text-emerald-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false"
+                        class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100">取消</button>
+                    <button type="button" @click="saveConfig()"
+                        class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl shadow-lg text-white text-sm font-medium"
+            :class="toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-700'"
+            x-text="toast.msg"></div>
+    </div>
+
+    <script>
+        /**
+         * AI 取名大师 — Alpine 根组件
+         * 功能：多场景表单、DeepSeek 流式生成、JSON 解析为名字卡片、收藏本地持久化
+         */
+        function nameMasterApp() {
+            const FAV_KEY = 'name_master_favorites';
+
+            return {
+                nameType: 'baby',
+                /** 六种取名类型配置（value 与表单分支对应） */
+                nameTypes: [
+                    { value: 'baby', label: '宝宝取名' },
+                    { value: 'brand', label: '品牌命名' },
+                    { value: 'pet', label: '宠物取名' },
+                    { value: 'character', label: '小说角色' },
+                    { value: 'nickname', label: '网名昵称' },
+                    { value: 'english', label: '英文名' }
+                ],
+
+                forms: {
+                    baby: { surname: '', gender: '男', wish: '', avoid: '', birthDate: '' },
+                    brand: { industry: '', core: '', audience: '', style: '' },
+                    pet: { breed: '', personality: '', looks: '' },
+                    character: { world: '武侠', personality: '', role: '' },
+                    nickname: { scene: '', vibe: '', format: '' },
+                    english: { scene: '', cnHint: '', style: '' }
+                },
+
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+                showSettings: false,
+                showFavPanel: false,
+                isLoading: false,
+                errorMsg: '',
+                toast: { show: false, msg: '', type: 'info' },
+
+                /** 当前批次的候选名（解析自 AI JSON） */
+                names: [],
+                /** 上一批名字，用于「再来一组」时要求避开重复 */
+                lastBatchNames: [],
+                expandedId: null,
+
+                streamRaw: '',
+                reasoningBuffer: '',
+                streamPreview: false,
+
+                /** 收藏列表：{ id, name, pinyin, meaning, typeLabel, ts } */
+                favorites: [],
+
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        } catch (e) { /* 忽略损坏配置 */ }
+                    }
+                    this.loadFavorites();
+                    this.$watch('names', () => {
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    });
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /**
+                 * 根据类型与性别返回卡片色调类名（宝宝：粉/蓝；其余：翡翠中性）
+                 * @param {{ babyGender?: string }} item — 解析时可为宝宝项注入 gender
+                 */
+                cardToneClass(item) {
+                    if (this.nameType === 'baby') {
+                        const g = item.babyGender || this.forms.baby.gender;
+                        if (g === '女') {
+                            return 'border-pink-200 bg-gradient-to-br from-pink-50 via-white to-rose-50/90';
+                        }
+                        if (g === '男') {
+                            return 'border-sky-200 bg-gradient-to-br from-sky-50 via-white to-blue-50/90';
+                        }
+                    }
+                    return 'border-emerald-200/80 bg-gradient-to-br from-white via-emerald-50/40 to-teal-50/50';
+                },
+
+                toggleExpand(id) {
+                    this.expandedId = this.expandedId === id ? null : id;
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                renderMd(text) {
+                    if (!text) return '';
+                    try { return marked.parse(String(text)); }
+                    catch { return String(text).replace(/\n/g, '<br>'); }
+                },
+
+                showToast(msg, type = 'info') {
+                    this.toast = { show: true, msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2600);
+                },
+
+                /**
+                 * 合并写入 global_llm_config，避免覆盖其他工具字段（如 tavily）
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'success');
+                },
+
+                loadFavorites() {
+                    try {
+                        const raw = localStorage.getItem(FAV_KEY);
+                        this.favorites = raw ? JSON.parse(raw) : [];
+                        if (!Array.isArray(this.favorites)) this.favorites = [];
+                    } catch {
+                        this.favorites = [];
+                    }
+                },
+
+                persistFavorites() {
+                    localStorage.setItem(FAV_KEY, JSON.stringify(this.favorites));
+                },
+
+                isFav(id) {
+                    return this.favorites.some(f => f.id === id);
+                },
+
+                /**
+                 * 切换收藏：同一名字 id 重复点击则移除
+                 */
+                toggleFavorite(item) {
+                    const id = item.id;
+                    const i = this.favorites.findIndex(f => f.id === id);
+                    if (i >= 0) {
+                        this.favorites.splice(i, 1);
+                        this.showToast('已取消收藏');
+                    } else {
+                        const typeLabel = this.nameTypes.find(t => t.value === this.nameType)?.label || '';
+                        this.favorites.unshift({
+                            id,
+                            name: item.name,
+                            pinyin: item.pinyin,
+                            meaning: item.meaning,
+                            typeLabel,
+                            ts: Date.now()
+                        });
+                        this.showToast('已加入收藏', 'success');
+                    }
+                    this.persistFavorites();
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                removeFavorite(id) {
+                    this.favorites = this.favorites.filter(f => f.id !== id);
+                    this.persistFavorites();
+                },
+
+                clearFavorites() {
+                    if (!confirm('确定清空所有收藏？')) return;
+                    this.favorites = [];
+                    this.persistFavorites();
+                    this.showToast('收藏已清空');
+                },
+
+                /**
+                 * 组装用户侧需求描述，供注入 user 消息
+                 */
+                buildUserContext() {
+                    const t = this.nameType;
+                    if (t === 'baby') {
+                        const f = this.forms.baby;
+                        return [
+                            '【宝宝取名】',
+                            `姓氏：${f.surname || '（未填，可自由推荐全名）'}`,
+                            `性别：${f.gender}`,
+                            `期望寓意：${f.wish || '未特别指定，请综合吉祥寓意'}`,
+                            `忌用字：${f.avoid || '无'}`,
+                            f.birthDate ? `出生日期：${f.birthDate}（可做五行或季节意象参考，非迷信断言）` : '出生日期：未提供'
+                        ].join('\n');
+                    }
+                    if (t === 'brand') {
+                        const f = this.forms.brand;
+                        return ['【品牌命名】', `行业：${f.industry}`, `核心价值：${f.core}`, `目标用户：${f.audience}`, `风格：${f.style}`].join('\n');
+                    }
+                    if (t === 'pet') {
+                        const f = this.forms.pet;
+                        return ['【宠物取名】', `品种：${f.breed}`, `性格：${f.personality}`, `外观：${f.looks}`].join('\n');
+                    }
+                    if (t === 'character') {
+                        const f = this.forms.character;
+                        return ['【小说角色名】', `类型：${f.world}`, `性格：${f.personality}`, `身份：${f.role}`].join('\n');
+                    }
+                    if (t === 'nickname') {
+                        const f = this.forms.nickname;
+                        return ['【网名昵称】', `场景：${f.scene}`, `气质：${f.vibe}`, `格式要求：${f.format || '无'}`].join('\n');
+                    }
+                    const f = this.forms.english;
+                    return ['【英文名】', `场景：${f.scene}`, `中文关联：${f.cnHint || '无'}`, `风格：${f.style}`].join('\n');
+                },
+
+                getTypeLabel() {
+                    return this.nameTypes.find(x => x.value === this.nameType)?.label || '';
+                },
+
+                /**
+                 * 系统提示：强制输出单一 JSON 代码块，便于流结束后解析
+                 */
+                getSystemPrompt() {
+                    return `你是「AI 取名大师」，精通中文姓名学常识、诗词典故、品牌命名与跨文化英文名设计。输出必须为中文说明外的**唯一**机器可读块：一个 \`\`\`json 代码块，且全文不要有第二个代码块。
+
+JSON 结构严格如下：
+{
+  "names": [
+    {
+      "name": "名字或品牌名（字符串）",
+      "pinyin": "读音：汉语用拼音分词，英文名片用 IPA 或常见读法说明",
+      "meaning": "寓意解读：2-4 句，清晰有文采",
+      "culturalSource": "文化来源：诗词出处、字义源流、五行意象（客观描述，避免迷信断言）、或品牌联想等",
+      "score": 1到5的整数（适合度）,
+      "detailMarkdown": "展开用：更长的分段 Markdown，可含小标题、列表，补充音形义、使用场景建议"
+    }
+  ]
+}
+
+规则：
+- names 数组长度必须在 5 到 8 之间。
+- 每个 score 为 1-5 的整数。
+- 宝宝取名若用户给了姓氏，名字部分需可与姓氏搭配（可在 meaning 中说明全名）。
+- 「再来一组」时须避开用户给出的已有名字列表。
+- 不要输出 JSON 以外的第二个 \`\`\` 代码块。`;
+                },
+
+                /**
+                 * 开始生成；regenerate=true 表示不满意换一批，附带避重列表
+                 * @param {boolean} regenerate
+                 */
+                async startGenerate(regenerate) {
+                    this.errorMsg = '';
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 DeepSeek API Key', 'error');
+                        return;
+                    }
+
+                    let avoidLine = '';
+                    if (regenerate && this.lastBatchNames.length) {
+                        avoidLine = `\n【请勿重复以下已有候选】\n${this.lastBatchNames.join('、')}\n请生成完全不同的一批。`;
+                    }
+
+                    const userBlock = `${this.buildUserContext()}\n\n【取名类型标签】${this.getTypeLabel()}${avoidLine}\n\n请根据以上信息生成 5-8 个候选，严格输出 \`\`\`json 代码块。`;
+
+                    this.isLoading = true;
+                    this.streamRaw = '';
+                    this.reasoningBuffer = '';
+                    this.streamPreview = true;
+                    this.expandedId = null;
+                    if (!regenerate) {
+                        this.names = [];
+                        this.lastBatchNames = [];
+                    }
+
+                    const messages = [
+                        { role: 'system', content: this.getSystemPrompt() },
+                        { role: 'user', content: userBlock }
+                    ];
+
+                    try {
+                        await this.streamApi(messages, (content, reasoning) => {
+                            if (reasoning) this.reasoningBuffer += reasoning;
+                            if (content) this.streamRaw += content;
+                        });
+
+                        const data = this.extractJsonObject(this.streamRaw);
+                        if (!data || !Array.isArray(data.names) || data.names.length < 1) {
+                            throw new Error('未能解析名字列表，请重试或更换模型');
+                        }
+
+                        const babyG = this.nameType === 'baby' ? this.forms.baby.gender : null;
+                        const parsed = data.names.slice(0, 12).map((n, i) => ({
+                            id: 'nm-' + Date.now() + '-' + i,
+                            name: String(n.name || '').trim(),
+                            pinyin: String(n.pinyin || '').trim(),
+                            meaning: String(n.meaning || '').trim(),
+                            culturalSource: String(n.culturalSource || '').trim(),
+                            score: Math.min(5, Math.max(1, parseInt(n.score, 10) || 3)),
+                            detailMarkdown: String(n.detailMarkdown || '').trim(),
+                            babyGender: babyG
+                        })).filter(x => x.name);
+
+                        if (parsed.length < 3) {
+                            throw new Error('有效名字过少，请重试');
+                        }
+
+                        this.lastBatchNames = parsed.map(p => p.name);
+                        this.names = parsed;
+                        this.showToast('取名完成', 'success');
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = e.message || '生成失败';
+                        this.showToast(this.errorMsg, 'error');
+                    } finally {
+                        this.isLoading = false;
+                        this.streamPreview = false;
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    }
+                },
+
+                /**
+                 * DeepSeek Chat Completions 流式请求
+                 * @param {Array<{role:string,content:string}>} messages
+                 * @param {(c:string, r:string) => void} onDelta
+                 */
+                async streamApi(messages, onDelta) {
+                    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages,
+                            stream: true,
+                            temperature: 0.82
+                        })
+                    });
+
+                    if (!resp.ok) {
+                        const errData = await resp.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || 'API 错误 ' + resp.status);
+                    }
+
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const raw = line.slice(6).trim();
+                            if (raw === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(raw);
+                                const delta = parsed.choices[0]?.delta || {};
+                                const r = delta.reasoning_content || '';
+                                const c = delta.content || '';
+                                if (r || c) onDelta(c, r);
+                            } catch (e) { /* 忽略损坏行 */ }
+                        }
+                    }
+                },
+
+                /** 从完整回复中提取 ```json ... ``` */
+                extractJsonObject(full) {
+                    const m = full.match(/```(?:json)?\s*([\s\S]*?)```/i);
+                    if (!m) return null;
+                    try { return JSON.parse(m[1].trim()); }
+                    catch (e) {
+                        console.warn('JSON 解析失败', e);
+                        return null;
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

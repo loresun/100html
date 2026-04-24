@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>热点追踪与选题推荐 - 内容运营神器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fcd34d 100%); }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        
+        /* Markdown 渲染样式增强 */
+        .prose h2 {
+            color: #b45309;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-top: 1.5em;
+            margin-bottom: 0.75em;
+            border-bottom: 2px solid #fcd34d;
+            padding-bottom: 0.5em;
+        }
+        .prose h3 {
+            color: #92400e;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 1.25em;
+            margin-bottom: 0.5em;
+        }
+        .prose h4 {
+            color: #78350f;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+        .prose ul, .prose ol {
+            margin: 0.75em 0;
+            padding-left: 1.5em;
+        }
+        .prose li {
+            margin: 0.4em 0;
+            line-height: 1.6;
+        }
+        .prose p {
+            margin: 0.6em 0;
+            line-height: 1.7;
+        }
+        .prose strong {
+            color: #b45309;
+            font-weight: 600;
+        }
+        .prose em {
+            color: #78350f;
+        }
+        .prose blockquote {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border-left: 4px solid #f59e0b;
+            padding: 0.75em 1em;
+            margin: 1em 0;
+            border-radius: 0 0.5em 0.5em 0;
+            color: #78350f;
+        }
+        .prose hr {
+            border-color: #fcd34d;
+            margin: 1.5em 0;
+        }
+        .prose code {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25em;
+            font-size: 0.875em;
+        }
+        .prose pre {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 1em;
+            border-radius: 0.5em;
+            overflow-x: auto;
+        }
+        .prose pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        /* 选题卡片样式 */
+        .topic-card {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 1px solid #fcd34d;
+            border-radius: 0.75em;
+            padding: 1em;
+            margin: 1em 0;
+        }
+        .topic-card h3 {
+            color: #b45309;
+            margin-top: 0;
+        }
+        .star-rating {
+            color: #f59e0b;
+            letter-spacing: 2px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen p-4">
+    <div x-data="trendingApp()" x-init="init()" class="max-w-7xl mx-auto">
+        <nav class="glass rounded-2xl shadow-2xl mb-6 p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl">
+                        <i data-lucide="trending-up" class="text-white h-6 w-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-2xl text-slate-900">热点追踪与选题推荐</h1>
+                        <p class="text-sm text-slate-500">AI智能分析 · 蹭热点神器</p>
+                    </div>
+                </div>
+                <button @click="showSettings = true" class="flex items-center gap-2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 rounded-lg">
+                    <i data-lucide="settings" class="h-4 w-4"></i>
+                    <span class="text-sm font-medium">配置</span>
+                </button>
+            </div>
+        </nav>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4">品牌/行业信息</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">品牌名称</label>
+                            <input type="text" x-model="brandName" placeholder="例如：某某咖啡" class="w-full rounded-lg border p-3">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">所属行业</label>
+                            <input type="text" x-model="industry" placeholder="例如：餐饮、美妆、教育" class="w-full rounded-lg border p-3">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">目标平台</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" value="小红书" x-model="platforms" class="rounded">
+                                    小红书
+                                </label>
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" value="抖音" x-model="platforms" class="rounded">
+                                    抖音
+                                </label>
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" value="公众号" x-model="platforms" class="rounded">
+                                    公众号
+                                </label>
+                                <label class="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" value="微博" x-model="platforms" class="rounded">
+                                    微博
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4">热点关键词</h3>
+                    <textarea x-model="hotKeywords" rows="4" placeholder="输入近期热点关键词，每行一个..." class="w-full rounded-lg border p-3 text-sm"></textarea>
+                    <p class="text-xs text-slate-500 mt-2">提示：可输入微博热搜、百度热榜的关键词</p>
+                </div>
+
+                <button @click="generateTopics()" :disabled="isGenerating" class="w-full bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-bold py-4 rounded-xl disabled:opacity-50">
+                    <span x-text="isGenerating ? '分析中...' : '生成选题建议'"></span>
+                </button>
+            </div>
+
+            <div class="lg:col-span-2 glass rounded-2xl shadow-xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-xl">选题建议</h3>
+                    <div x-show="result" class="flex items-center gap-2">
+                        <button @click="copyResult()" class="flex items-center gap-1 px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 rounded-lg">
+                            <i data-lucide="copy" class="h-4 w-4"></i>
+                            复制
+                        </button>
+                        <button @click="exportResult()" class="flex items-center gap-1 px-3 py-1.5 text-sm bg-yellow-100 hover:bg-yellow-200 rounded-lg">
+                            <i data-lucide="download" class="h-4 w-4"></i>
+                            导出
+                        </button>
+                    </div>
+                </div>
+                <div x-show="!result && !isGenerating" class="flex flex-col items-center justify-center py-20 text-slate-400">
+                    <i data-lucide="lightbulb" class="h-20 w-20 mb-4 opacity-50"></i>
+                    <p>填写品牌信息和热点关键词</p>
+                </div>
+                <div x-show="isGenerating" class="flex justify-center py-20">
+                    <i data-lucide="loader-2" class="h-12 w-12 animate-spin text-yellow-500"></i>
+                </div>
+                <div x-show="result" class="prose prose-yellow max-w-none" x-html="enhancedMarkdown(markedParse(result))"></div>
+            </div>
+        </div>
+
+        <div x-show="showSettings" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-xl font-bold mb-6">DeepSeek配置</h3>
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..." class="w-full rounded-lg border p-3">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">模型</label>
+                        <select x-model="apiConfig.model" class="w-full rounded-lg border p-3">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-6 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig()" class="bg-yellow-600 text-white px-6 py-2 rounded-lg">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 配置 marked.js (v15+ 使用 extensions API)
+        marked.use({
+            breaks: true,
+            gfm: true,
+            renderer: {
+                tablecell(token) {
+                    const align = token.align ? ` style="text-align: ${token.align}"` : '';
+                    const header = token.header ? ' class="font-semibold"' : '';
+                    return `<td${header}${align}>${token.text}</td>`;
+                },
+                tablerow(token) {
+                    return `<tr>${token.text}</tr>\n`;
+                },
+                table(token) {
+                    const header = token.header.map(h => `<th>${h.text}</th>`).join('');
+                    const rows = token.rows.map(row => 
+                        `<tr>${row.map(cell => `<td>${cell.text}</td>`).join('')}</tr>`
+                    ).join('\n');
+                    return `<div class="table-wrapper overflow-x-auto"><table class="min-w-full border-collapse">${header ? `<thead><tr>${header}</tr></thead>` : ''}<tbody>${rows}</tbody></table></div>`;
+                }
+            }
+        });
+
+        function trendingApp() {
+            return {
+                showSettings: false,
+                isGenerating: false,
+                brandName: '',
+                industry: '',
+                platforms: [],
+                hotKeywords: '',
+                result: '',
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+
+                init() {
+                    this.loadConfig();
+                    lucide.createIcons();
+                },
+
+                loadConfig() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                },
+
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                },
+
+                // Markdown 渲染函数
+                markedParse(text) {
+                    if (!text) return '';
+                    return window.marked ? window.marked.parse(text) : text;
+                },
+
+                // 增强 markdown 渲染：处理选题卡片和评分
+                enhancedMarkdown(text) {
+                    if (!text) return '';
+                    
+                    // 处理选题卡片包装
+                    text = text.replace(
+                        /###\s*选题\d+[：:]\s*(.+?)\n/g,
+                        (match, title) => {
+                            return `</div><div class="topic-card"><h3>${title}</h3>`;
+                        }
+                    );
+
+                    // 处理传播潜力评分 (⭐⭐⭐⭐⭐ 格式)
+                    text = text.replace(
+                        /传播潜力[：:]\s*(⭐{1,5})/g,
+                        '<span class="star-rating">$1</span>'
+                    );
+
+                    // 处理数字评分 (⭐⭐⭐⭐⭐ 或 4/5 或 80分 等)
+                    text = text.replace(
+                        /传播潜力[：:]\s*(\d{1,2})\s*分?\s*(\/\s*\d)?/g,
+                        (match, score) => {
+                            const stars = '⭐'.repeat(Math.round(parseInt(score) / 20));
+                            return `<span class="star-rating">${stars}</span> <span style="color: #b45309; font-weight: 600;">(${score}分)</span>`;
+                        }
+                    );
+
+                    // 处理关键标签高亮
+                    text = text.replace(
+                        /\*\*(热点关联|切入角度|内容大纲|传播潜力|预估)\*\*[：:]/g,
+                        '<strong>$1：</strong>'
+                    );
+
+                    return text;
+                },
+
+                async copyResult() {
+                    if (!this.result) return;
+                    try {
+                        await navigator.clipboard.writeText(this.result);
+                        alert('已复制到剪贴板');
+                    } catch (e) {
+                        alert('复制失败，请手动复制');
+                    }
+                },
+
+                exportResult() {
+                    if (!this.result) return;
+                    const blob = new Blob([this.result], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `选题建议_${new Date().toLocaleDateString()}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                },
+
+                async generateTopics() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.isGenerating = true;
+                    this.result = '';
+
+                    const prompt = `你是一个专业的新媒体运营专家。请根据以下信息，生成5-10个适合的选题建议：
+
+**品牌信息**：
+- 品牌名称：${this.brandName || '未提供'}
+- 所属行业：${this.industry || '未提供'}
+- 目标平台：${this.platforms.join('、') || '未提供'}
+
+**近期热点关键词**：
+${this.hotKeywords || '未提供'}
+
+请生成选题时：
+1. 结合热点关键词和品牌调性
+2. 给出具体的标题建议
+3. 说明蹭热点的切入角度
+4. 预估传播潜力
+
+输出格式（Markdown）：
+## 选题建议
+
+### 选题1：[标题]
+- **热点关联**：...
+- **切入角度**：...
+- **内容大纲**：...
+- **传播潜力**：⭐⭐⭐⭐⭐
+
+...`;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: this.apiConfig.model,
+                                messages: [{ role: 'user', content: prompt }],
+                                stream: true
+                            })
+                        });
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value);
+                            const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
+
+                            for (const line of lines) {
+                                const data = line.replace('data: ', '');
+                                if (data === '[DONE]') continue;
+                                
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed.choices[0].delta.content;
+                                    if (content) this.result += content;
+                                } catch (e) {}
+                            }
+                        }
+                    } catch (error) {
+                        alert('生成失败: ' + error.message);
+                    } finally {
+                        this.isGenerating = false;
+                    }
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/topic_trending_topic_tracker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

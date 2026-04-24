@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新人培训/工作交接助手 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #f8fafc 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #10b981;
+            border-radius: 999px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            backdrop-filter: blur(12px);
+        }
+
+        .mode-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.15);
+        }
+
+        .mode-card.selected {
+            border-color: #10b981;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+        }
+
+        .learning-path-item {
+            border-left: 3px solid #10b981;
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);
+        }
+
+        .thinking-section {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #f59e0b;
+        }
+
+        @keyframes pulse-light {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .pulse-animation {
+            animation: pulse-light 2s ease-in-out infinite;
+        }
+
+        /* Markdown 渲染样式优化 */
+        .prose h2 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #14532d;
+            border-bottom: 1px solid #bbf7d0;
+            padding-bottom: 0.5rem;
+        }
+
+        .prose h3 {
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #15803d;
+        }
+
+        .prose p {
+            margin-bottom: 0.75rem;
+            line-height: 1.7;
+        }
+
+        .prose ul, .prose ol {
+            margin-top: 0.5rem;
+            margin-bottom: 0.75rem;
+            padding-left: 1.25rem;
+        }
+
+        .prose li {
+            margin-bottom: 0.375rem;
+            line-height: 1.6;
+        }
+
+        .prose hr {
+            margin: 1rem 0;
+            border-color: #bbf7d0;
+        }
+
+        .prose strong {
+            color: #15803d;
+            font-weight: 600;
+        }
+
+        .prose table {
+            width: 100%;
+            border-collapse: my-4;
+        }
+
+        .prose th {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            padding: 0.5rem 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .prose td {
+            border: 1px solid #bbf7d0;
+            padding: 0.5rem 1rem;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- 导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-green-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-graduation-cap text-green-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl">新人培训/工作交接助手</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg border border-green-200">
+                            <i class="fa-solid fa-brain h-4 w-4 text-green-600"></i>
+                            <span class="text-sm font-medium text-green-700">{{ apiConfig.model === 'deepseek-v4-pro' ? 'V4 Pro 深度拆解' : 'V4 Flash 快速生成' }}</span>
+                        </div>
+                        <button @click="showSettings = true" class="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition">
+                            <i class="fa-solid fa-gear h-4 w-4 text-slate-600"></i>
+                            <span class="text-sm font-medium text-slate-700">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid lg:grid-cols-[1fr,1.3fr] gap-6">
+                <!-- 左侧：输入区 -->
+                <section class="space-y-6">
+                    <!-- 模式选择 -->
+                    <div class="card rounded-2xl p-6">
+                        <h2 class="text-lg font-semibold text-slate-900 mb-4">选择使用模式</h2>
+                        <div class="grid md:grid-cols-3 gap-3">
+                            <div
+                                @click="mode = 'new-topic'"
+                                :class="{ 'selected': mode === 'new-topic' }"
+                                class="mode-card border-2 rounded-xl p-4"
+                            >
+                                <div class="text-center">
+                                    <div class="inline-block p-3 bg-green-50 rounded-lg mb-2">
+                                        <i class="fa-solid fa-wand-magic-sparkles h-6 w-6 text-green-600"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-sm text-slate-900 mb-1">从零设计</h3>
+                                    <p class="text-xs text-slate-500">输入主题，自动拆解</p>
+                                </div>
+                            </div>
+                            <div
+                                @click="mode = 'convert-doc'"
+                                :class="{ 'selected': mode === 'convert-doc' }"
+                                class="mode-card border-2 rounded-xl p-4"
+                            >
+                                <div class="text-center">
+                                    <div class="inline-block p-3 bg-green-50 rounded-lg mb-2">
+                                        <i class="fa-solid fa-file-import h-6 w-6 text-green-600"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-sm text-slate-900 mb-1">文档转化</h3>
+                                    <p class="text-xs text-slate-500">老文档变新人友好</p>
+                                </div>
+                            </div>
+                            <div
+                                @click="mode = 'handover'"
+                                :class="{ 'selected': mode === 'handover' }"
+                                class="mode-card border-2 rounded-xl p-4"
+                            >
+                                <div class="text-center">
+                                    <div class="inline-block p-3 bg-green-50 rounded-lg mb-2">
+                                        <i class="fa-solid fa-users h-6 w-6 text-green-600"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-sm text-slate-900 mb-1">工作交接</h3>
+                                    <p class="text-xs text-slate-500">完整交接方案</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 从零设计模式 -->
+                    <div v-if="mode === 'new-topic'" class="card rounded-2xl p-6 space-y-4">
+                        <h2 class="text-lg font-semibold text-slate-900">从零设计培训方案</h2>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">培训主题</label>
+                            <input
+                                v-model="form.topic"
+                                type="text"
+                                placeholder="例如：Python 编程基础、产品经理工作方法、客服话术技巧"
+                                class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none"
+                            >
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-sm font-medium text-slate-700 mb-2 block">新人现有水平</label>
+                                <select v-model="form.level" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none">
+                                    <option value="zero">零基础小白</option>
+                                    <option value="beginner">初级（有基本了解）</option>
+                                    <option value="intermediate">中级（有实践经验）</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-slate-700 mb-2 block">预计学习周期</label>
+                                <select v-model="form.duration" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none">
+                                    <option value="1">1 周速成</option>
+                                    <option value="2">2 周系统学习</option>
+                                    <option value="4">4 周深度掌握</option>
+                                    <option value="8">8 周进阶精通</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">学习目标</label>
+                            <textarea
+                                v-model="form.objective"
+                                rows="3"
+                                placeholder="描述学习完成后，新人应该能够做什么"
+                                class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none resize-none"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 文档转化模式 -->
+                    <div v-if="mode === 'convert-doc'" class="card rounded-2xl p-6 space-y-4">
+                        <h2 class="text-lg font-semibold text-slate-900">老文档转新人友好版</h2>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">原文档内容</label>
+                            <textarea
+                                v-model="form.originalDoc"
+                                rows="10"
+                                placeholder="粘贴现有的技术文档、工作手册或培训材料..."
+                                class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none resize-none font-mono text-sm"
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">目标读者水平</label>
+                            <select v-model="form.targetLevel" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none">
+                                <option value="zero">完全没接触过的新人</option>
+                                <option value="beginner">有基础但经验不足</option>
+                                <option value="general">普通员工</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">转化要求（多选）</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.addExamples" class="rounded">
+                                    <span class="text-sm text-slate-700">增加具体示例和案例</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.simplifyLanguage" class="rounded">
+                                    <span class="text-sm text-slate-700">简化专业术语，增加解释</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.addVisuals" class="rounded">
+                                    <span class="text-sm text-slate-700">增加图表/流程图建议</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.addExercises" class="rounded">
+                                    <span class="text-sm text-slate-700">增加练习题和自测</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 工作交接模式 -->
+                    <div v-if="mode === 'handover'" class="card rounded-2xl p-6 space-y-4">
+                        <h2 class="text-lg font-semibold text-slate-900">工作交接方案</h2>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">岗位名称</label>
+                            <input
+                                v-model="form.position"
+                                type="text"
+                                placeholder="例如：客户成功专员、前端开发工程师"
+                                class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none"
+                            >
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">工作职责</label>
+                            <textarea
+                                v-model="form.responsibilities"
+                                rows="4"
+                                placeholder="列出主要工作职责，例如：
+- 处理客户咨询和投诉
+- 维护客户关系
+- 定期回访重点客户
+- 整理客户反馈报告"
+                                class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none resize-none"
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">进行中的项目</label>
+                            <textarea
+                                v-model="form.ongoingProjects"
+                                rows="3"
+                                placeholder="列出当前负责的项目和进展情况"
+                                class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none resize-none"
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">关键联系人</label>
+                            <input
+                                v-model="form.keyContacts"
+                                type="text"
+                                placeholder="例如：上级、同事、客户、供应商"
+                                class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none"
+                            >
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-medium text-slate-700 mb-2 block">交接周期</label>
+                            <select v-model="form.handoverPeriod" class="w-full rounded-lg border border-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-green-400 outline-none">
+                                <option value="3">3 天快速交接</option>
+                                <option value="7">1 周标准交接</option>
+                                <option value="14">2 周详细交接</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 通用高级选项 -->
+                    <div class="card rounded-2xl p-6">
+                        <details class="border border-slate-200 rounded-lg">
+                            <summary class="px-4 py-3 cursor-pointer font-medium text-sm text-slate-700 hover:bg-slate-50">
+                                高级选项
+                            </summary>
+                            <div class="px-4 py-3 space-y-3 border-t border-slate-200">
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.includeLearningPath" class="rounded">
+                                    <span class="text-sm text-slate-700">生成阶梯式学习路径</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.includeCheckpoints" class="rounded">
+                                    <span class="text-sm text-slate-700">设置学习检查点/里程碑</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.includeResources" class="rounded">
+                                    <span class="text-sm text-slate-700">推荐学习资源和工具</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="form.includeMentoring" class="rounded">
+                                    <span class="text-sm text-slate-700">设计导师带教计划</span>
+                                </label>
+                            </div>
+                        </details>
+
+                        <!-- 生成按钮 -->
+                        <button
+                            @click="generateTraining"
+                            :disabled="isLoading || !canGenerate"
+                            class="w-full mt-4 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white py-3 rounded-xl font-medium transition flex items-center justify-center gap-2"
+                        >
+                            <i v-if="isLoading" class="fa-solid fa-spinner fa-spin h-5 w-5"></i>
+                            <i v-else class="fa-solid fa-wand-magic-sparkles h-5 w-5"></i>
+                            <span>{{ isLoading ? '正在生成...' : '生成培训方案' }}</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 右侧：结果区 -->
+                <section class="card rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-slate-900">生成结果</h2>
+                        <div v-if="result" class="flex items-center gap-2">
+                            <button @click="copyResult" class="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-copy h-4 w-4"></i>
+                                <span>复制</span>
+                            </button>
+                            <button @click="exportResult" class="px-3 py-1.5 text-sm bg-green-600 text-white hover:bg-green-700 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-download h-4 w-4"></i>
+                                <span>导出</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- V4 Pro 思考过程 -->
+                    <details v-if="reasoningContent" class="thinking-section rounded-lg p-4">
+                        <summary class="cursor-pointer font-medium text-amber-900 flex items-center gap-2">
+                            <i class="fa-solid fa-brain h-4 w-4"></i>
+                            <span>V4 Pro 深度拆解思路（点击展开）</span>
+                        </summary>
+                        <div class="mt-3 text-sm text-amber-900 whitespace-pre-wrap font-mono bg-white/50 p-3 rounded">{{ reasoningContent }}</div>
+                    </details>
+
+                    <!-- 加载状态 -->
+                    <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 space-y-4">
+                        <i class="fa-solid fa-graduation-cap h-16 w-16 text-green-400 pulse-animation"></i>
+                        <p class="text-slate-500 text-sm">AI 正在设计新人友好的学习方案...</p>
+                        <p class="text-amber-600 text-xs mt-2 bg-amber-50 px-3 py-1.5 rounded-lg">
+                            <i class="fa-solid fa-clock mr-1"></i>
+                            由于培训内容较长，生成需要较长时间，请耐心等待
+                        </p>
+                    </div>
+
+                    <!-- 空状态 -->
+                    <div v-else-if="!result" class="flex flex-col items-center justify-center py-12 text-slate-400">
+                        <i class="fa-solid fa-book-open h-16 w-16 mb-4 opacity-50"></i>
+                        <p class="text-sm">选择模式并填写信息后点击生成</p>
+                    </div>
+
+                    <!-- 培训方案结果展示 -->
+                    <div v-else class="space-y-4">
+                        <!-- 显示模式切换 -->
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <span class="text-xs text-slate-500">
+                                <i class="fa-solid fa-info-circle mr-1"></i>
+                                培训内容较长，渲染/显示需要一定时间
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <button
+                                    @click="displayMode = 'rendered'"
+                                    :class="displayMode === 'rendered' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-slate-50 text-slate-600 border-slate-200'"
+                                    class="px-3 py-1 text-xs border rounded-lg transition flex items-center gap-1">
+                                    <i class="fa-solid fa-eye h-3 w-3"></i>
+                                    <span>渲染视图</span>
+                                </button>
+                                <button
+                                    @click="displayMode = 'text'"
+                                    :class="displayMode === 'text' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-slate-50 text-slate-600 border-slate-200'"
+                                    class="px-3 py-1 text-xs border rounded-lg transition flex items-center gap-1">
+                                    <i class="fa-solid fa-file-text h-3 w-3"></i>
+                                    <span>原文文本</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 渲染模式 -->
+                        <div v-if="displayMode === 'rendered'" v-html="markedParse(result)" class="prose prose-slate max-w-none"></div>
+
+                        <!-- 原文文本模式 -->
+                        <div v-else class="prose prose-slate max-w-none">
+                            <pre class="whitespace-pre-wrap text-sm text-slate-700 font-mono bg-slate-50 p-4 rounded-lg">{{ result }}</pre>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- API 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gear h-5 w-5 text-green-600"></i>
+                    <span>API 配置</span>
+                </h3>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            DeepSeek API Key
+                            <a href="https://platform.deepseek.com/api_keys" target="_blank" class="text-xs text-green-600 ml-2">(获取 Key)</a>
+                        </label>
+                        <input
+                            type="password"
+                            v-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-3"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">模型选择</label>
+                        <select v-model="apiConfig.model" class="w-full rounded-lg border-slate-300 border p-3 bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">💡 推荐使用 V4 Pro 模型进行深度学习路径拆解</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false" class="px-4 py-2 hover:bg-slate-100 rounded-lg transition">
+                        取消
+                    </button>
+                    <button @click="saveConfig" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // API 配置
+                const apiConfig = ref({
+                    deepseek: '',
+                    model: 'deepseek-v4-pro'
+                });
+
+                // UI 状态
+                const showSettings = ref(false);
+                const isLoading = ref(false);
+                const mode = ref('new-topic'); // new-topic, convert-doc, handover
+                const displayMode = ref('rendered');
+
+                // 表单数据
+                const form = ref({
+                    // 从零设计
+                    topic: '',
+                    level: 'zero',
+                    duration: '2',
+                    objective: '',
+                    // 文档转化
+                    originalDoc: '',
+                    targetLevel: 'zero',
+                    addExamples: true,
+                    simplifyLanguage: true,
+                    addVisuals: true,
+                    addExercises: true,
+                    // 工作交接
+                    position: '',
+                    responsibilities: '',
+                    ongoingProjects: '',
+                    keyContacts: '',
+                    handoverPeriod: '7',
+                    // 通用高级选项
+                    includeLearningPath: true,
+                    includeCheckpoints: true,
+                    includeResources: true,
+                    includeMentoring: true
+                });
+
+                // 结果
+                const result = ref('');
+                const reasoningContent = ref('');
+
+                // 计算属性
+                const canGenerate = computed(() => {
+                    if (!apiConfig.value.deepseek) return false;
+
+                    if (mode.value === 'new-topic') {
+                        return !!form.value.topic && !!form.value.objective;
+                    } else if (mode.value === 'convert-doc') {
+                        return !!form.value.originalDoc;
+                    } else if (mode.value === 'handover') {
+                        return !!form.value.position && !!form.value.responsibilities;
+                    }
+                    return false;
+                });
+
+                // 加载配置
+                onMounted(() => {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            apiConfig.value = {
+                                ...parsed,
+                                deepseek: parsed.deepseek || parsed.apiKey || parsed.deepseek_key || '',
+                                model: parsed.model || 'deepseek-v4-pro'
+                            };
+                        } catch (e) {
+                            console.error('Failed to parse settings:', e);
+                        }
+                    }
+                });
+
+                // 保存配置
+                function saveConfig() {
+                    const configToSave = {
+                        ...apiConfig.value,
+                        apiKey: apiConfig.value.deepseek, // Standardize
+                        deepseek: apiConfig.value.deepseek,
+                        model: apiConfig.value.model
+                    };
+                    localStorage.setItem('global_llm_config', JSON.stringify(configToSave));
+                    showSettings.value = false;
+                    alert('配置已保存');
+                }
+
+                // 生成培训方案
+                async function generateTraining() {
+                    if (!canGenerate.value) {
+                        if (!apiConfig.value.deepseek) {
+                            showSettings.value = true;
+                            return;
+                        }
+                        alert('请填写必要信息');
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    result.value = '';
+                    reasoningContent.value = '';
+
+                    try {
+                        const systemPrompt = buildSystemPrompt();
+                        const userPrompt = buildUserPrompt();
+
+                        await callDeepSeek([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]);
+
+                    } catch (error) {
+                        console.error('生成失败:', error);
+                        alert('生成失败：' + error.message);
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                // 构建系统提示词
+                function buildSystemPrompt() {
+                    let basePrompt = `你是一个专业的企业培训师和知识传授专家。
+
+你的任务是将复杂的知识或工作内容，转化为新人容易理解和掌握的学习方案。
+
+# 核心原则
+
+1. **认知负荷管理**：
+   - 避免一次性传授过多信息
+   - 从简单到复杂，循序渐进
+   - 使用类比和比喻降低理解门槛
+
+2. **成人学习特点**：
+   - 强调实用性和即时应用
+   - 提供充足的实践机会
+   - 及时反馈和调整
+
+3. **多样化学习方式**：
+   - 理论讲解（知道是什么）
+   - 案例分析（看别人怎么做）
+   - 实践练习（自己试着做）
+   - 总结复盘（反思和改进）
+
+4. **新人友好**：
+   - 专业术语必须解释
+   - 提供具体示例而非抽象概念
+   - 设置清晰的里程碑
+   - 预判常见困惑点
+
+`;
+
+                    if (mode.value === 'new-topic') {
+                        basePrompt += `\n# 当前任务：从零设计培训方案
+
+请设计一套完整的培训方案，包括：
+1. **学习路径拆解**：将知识点按难度和逻辑顺序拆解成多个阶段
+2. **多样化学习方式**：为每个阶段设计不同的学习活动
+3. **检查点设置**：设置学习检查点，确保掌握程度
+4. **资源推荐**：提供学习资源和工具
+5. **实践项目**：设计小项目巩固知识
+
+# 输出格式（Markdown）
+
+\`\`\`markdown
+# 🎓 ${form.value.topic} - 新人培训方案
+
+**目标学员水平**：${getLevelLabel()}
+**学习周期**：${form.value.duration} 周
+**生成日期**：${new Date().toLocaleDateString('zh-CN')}
+
+---
+
+## 📊 学习目标
+
+完成本培训后，你将能够：
+${form.value.objective}
+
+---
+
+## 🗺️ 学习路径全景图
+
+\`\`\`mermaid
+graph TD
+    A[第一周：基础入门] --> B[第二周：核心技能]
+    B --> C[第三周：实战演练]
+    C --> D[第四周：进阶提升]
+\`\`\`
+
+---
+
+## 📅 分阶段学习计划
+
+### 第 1 周：基础入门
+
+**本周目标**：[具体目标]
+
+**学习内容**：
+1. **知识点 1**：[名称]
+   - 📖 理论讲解：[简明扼要的解释]
+   - 🎯 为什么重要：[说明意义]
+   - 📝 学习方式：[视频/文档/实践]
+   - ⏱️ 预计时间：X 小时
+
+2. **知识点 2**：[名称]
+   ...
+
+**本周实践任务**：
+- [ ] 任务 1：[具体可执行的任务]
+- [ ] 任务 2：[具体可执行的任务]
+
+**自测题**：
+1. [问题1]
+2. [问题2]
+
+**导师检查点**：
+- [ ] 能够解释 [核心概念]
+- [ ] 能够独立完成 [基础任务]
+
+**常见困惑答疑**：
+- **Q：[新人常问问题]**
+  A：[清晰回答]
+
+---
+
+### 第 2 周：核心技能
+...
+
+---
+
+## 🎯 学习检查点与里程碑
+
+| 时间节点 | 里程碑 | 验收标准 | 导师指导重点 |
+|---------|--------|---------|-------------|
+| 第 1 周末 | [里程碑名称] | [具体标准] | [指导重点] |
+| 第 2 周末 | ... | ... | ... |
+
+---
+
+## 📚 学习资源推荐
+
+### 入门必读
+- [资源1]：[链接] - [简介]
+- [资源2]：[链接] - [简介]
+
+### 进阶阅读
+- [资源3]：[链接] - [简介]
+
+### 实用工具
+- [工具1]：[简介和用途]
+- [工具2]：[简介和用途]
+
+---
+
+## 🤝 导师带教计划
+
+### 第 1 周
+- **周一**：导师讲解 [核心概念]，演示 [操作流程]
+- **周三**：新人独立操作，导师在旁指导
+- **周五**：复盘本周学习，答疑解惑
+
+### 第 2 周
+...
+
+---
+
+## 💡 学习建议
+
+### 给新人的建议
+1. [建议1]
+2. [建议2]
+
+### 给导师的建议
+1. [建议1]
+2. [建议2]
+
+---
+
+## 🎓 毕业项目
+
+**项目名称**：[项目名称]
+
+**项目要求**：
+1. [要求1]
+2. [要求2]
+
+**评分标准**：
+- 完成度（40%）
+- 代码/方案质量（30%）
+- 文档完整性（20%）
+- 创新性（10%）
+
+**项目示例**：
+[提供一个参考示例]
+\`\`\`
+`;
+
+                    } else if (mode.value === 'convert-doc') {
+                        basePrompt += `\n# 当前任务：文档转化（老文档变新人友好）
+
+请将原文档转化为新人友好版本，要求：
+1. **简化语言**：专业术语必须解释，使用通俗易懂的表达
+2. **增加示例**：抽象概念配具体案例
+3. **结构重组**：按学习顺序而非逻辑顺序组织
+4. **视觉辅助**：建议添加图表、流程图、表格
+5. **互动元素**：增加自测题、练习题
+
+转化要求：
+${form.value.simplifyLanguage ? '✅ 简化专业术语' : ''}
+${form.value.addExamples ? '✅ 增加具体示例' : ''}
+${form.value.addVisuals ? '✅ 增加图表建议' : ''}
+${form.value.addExercises ? '✅ 增加练习题' : ''}
+
+# 输出格式
+
+\`\`\`markdown
+# 📖 [文档标题] - 新人友好版
+
+**原文档特点**：专业、详细
+**新版特点**：通俗、实用、易上手
+**适合人群**：${getTargetLevelLabel()}
+**转化日期**：${new Date().toLocaleDateString('zh-CN')}
+
+---
+
+## 🎯 阅读指南
+
+**如何使用这份文档**：
+1. [使用建议1]
+2. [使用建议2]
+
+**预计阅读时间**：X 小时
+
+---
+
+## 📚 基础概念扫盲
+
+### 什么是 [核心概念1]？
+**通俗解释**：[用类比和比喻]
+
+**专业定义**：[原文档的定义]
+
+**为什么重要**：[说明意义]
+
+**举个例子**：
+[具体的、生活化的例子]
+
+---
+
+## 🔧 核心内容（重新组织）
+
+### 第一部分：[从最基础的开始]
+...
+
+---
+
+## 💡 实践练习
+
+### 练习 1：[练习名称]
+**目标**：巩固 [知识点]
+
+**题目**：[具体题目]
+
+**参考答案**：[答案和解析]
+
+---
+
+## ❓ 新人常见困惑
+
+### Q1：[常见问题]
+A：[详细回答]
+
+---
+
+## 📊 可视化辅助
+
+### [流程图/表格建议]
+[建议在此处添加图表，并说明图表内容]
+
+\`\`\`mermaid
+[如果适用，生成 Mermaid 图表]
+\`\`\`
+
+---
+
+## 🎓 自测题
+
+1. [问题1]
+2. [问题2]
+
+**答案**：
+1. [答案1]
+2. [答案2]
+\`\`\`
+`;
+
+                    } else if (mode.value === 'handover') {
+                        basePrompt += `\n# 当前任务：工作交接方案
+
+请设计完整的工作交接方案，包括：
+1. **交接时间表**：分阶段交接计划
+2. **知识清单**：必须传授的知识和技能
+3. **文档清单**：需要交接的文档和资料
+4. **人脉交接**：关键联系人介绍
+5. **常见问题**：工作中的常见问题和解决方案
+6. **观察期**：新人上手后的跟踪计划
+
+# 输出格式
+
+\`\`\`markdown
+# 🤝 ${form.value.position} - 工作交接方案
+
+**交接人**：[待填写]
+**接手人**：[待填写]
+**交接周期**：${form.value.handoverPeriod} 天
+**生成日期**：${new Date().toLocaleDateString('zh-CN')}
+
+---
+
+## 📋 工作概览
+
+### 岗位职责
+${form.value.responsibilities}
+
+### 当前在做的项目
+${form.value.ongoingProjects || '无进行中的项目'}
+
+---
+
+## 🗓️ ${form.value.handoverPeriod} 天交接时间表
+
+### 第 1-2 天：基础了解
+- [ ] 介绍部门组织架构和团队成员
+- [ ] 讲解岗位职责和核心 KPI
+- [ ] 演示日常工作流程
+- [ ] 介绍常用工具和系统
+
+### 第 3-4 天：实际操作
+...
+
+---
+
+## 📚 知识传授清单
+
+### 核心业务知识
+1. **[知识点1]**
+   - 📖 基础概念：[解释]
+   - 🎯 为什么重要：[说明]
+   - 📝 相关文档：[文档位置]
+
+2. **[知识点2]**
+   ...
+
+### 系统操作指南
+...
+
+---
+
+## 🗂️ 文档资料清单
+
+### 必读文档
+- [ ] [文档1]：存放位置 + 简要说明
+- [ ] [文档2]：存放位置 + 简要说明
+
+### 参考文档
+...
+
+### 账号密码清单
+| 系统名称 | 账号 | 密码位置 | 权限说明 |
+|---------|------|---------|---------|
+| [系统1] | [账号] | [位置] | [权限] |
+
+---
+
+## 👥 关键联系人
+
+| 姓名 | 角色 | 联系方式 | 沟通事项 | 注意事项 |
+|------|------|---------|---------|---------|
+| [姓名1] | [角色] | [电话/邮箱] | [负责内容] | [沟通技巧] |
+
+---
+
+## ❓ 常见问题与解决方案
+
+### 场景 1：[常见问题]
+**问题描述**：[详细描述]
+
+**解决步骤**：
+1. [步骤1]
+2. [步骤2]
+
+**注意事项**：[特别提醒]
+
+---
+
+## 🎯 第一周任务清单
+
+**独立完成**：
+- [ ] 任务 1
+- [ ] 任务 2
+
+**在指导下完成**：
+- [ ] 任务 3
+- [ ] 任务 4
+
+---
+
+## 📊 交接检查表
+
+### 第 ${Math.floor(parseInt(form.value.handoverPeriod) / 3)} 天检查
+- [ ] 是否熟悉基本流程
+- [ ] 是否能独立登录所有系统
+- [ ] 是否理解核心职责
+
+### 第 ${Math.floor(parseInt(form.value.handoverPeriod) * 2 / 3)} 天检查
+...
+
+### 第 ${form.value.handoverPeriod} 天（交接完成）
+- [ ] 能否独立处理日常工作
+- [ ] 是否清楚所有关键联系人
+- [ ] 是否知道遇到问题找谁
+
+---
+
+## 🔄 后续支持计划
+
+### 交接后第 1 周
+- 每天 30 分钟沟通时间
+- 随时可以询问问题
+
+### 交接后第 2-4 周
+- 每周 1 次复盘会议
+- 解答疑问，分享经验
+
+---
+
+## 💡 给新人的建议
+
+1. [建议1]
+2. [建议2]
+
+## 💡 给交接人的建议
+
+1. [建议1]
+2. [建议2]
+\`\`\`
+`;
+                    }
+
+                    return basePrompt;
+                }
+
+                // 构建用户提示词
+                function buildUserPrompt() {
+                    if (mode.value === 'new-topic') {
+                        return `请为我设计新人培训方案。
+
+**培训主题**：${form.value.topic}
+**新人现有水平**：${getLevelLabel()}
+**学习周期**：${form.value.duration} 周
+**学习目标**：${form.value.objective}
+
+**要求**：
+- 将知识点拆解为 ${form.value.duration} 周的学习路径
+- 每周设计不同的学习方式（理论、案例、实践、复盘）
+${form.value.includeLearningPath ? '- 生成清晰的学习路径图' : ''}
+${form.value.includeCheckpoints ? '- 设置每周的学习检查点' : ''}
+${form.value.includeResources ? '- 推荐学习资源和工具' : ''}
+${form.value.includeMentoring ? '- 设计导师带教计划' : ''}
+- 提供自测题和实践项目
+- 预判新人的常见困惑并提前解答
+`;
+                    } else if (mode.value === 'convert-doc') {
+                        return `请将以下文档转化为新人友好版本。
+
+**原文档内容**：
+${form.value.originalDoc}
+
+**目标读者**：${getTargetLevelLabel()}
+
+**转化要求**：
+${form.value.simplifyLanguage ? '- 简化专业术语，增加解释' : ''}
+${form.value.addExamples ? '- 为抽象概念增加具体示例' : ''}
+${form.value.addVisuals ? '- 建议添加图表、流程图、表格' : ''}
+${form.value.addExercises ? '- 增加练习题和自测' : ''}
+- 重新组织结构，按学习顺序而非逻辑顺序
+- 预判新人的理解困难点并重点解释
+`;
+                    } else if (mode.value === 'handover') {
+                        return `请为我设计工作交接方案。
+
+**岗位名称**：${form.value.position}
+**工作职责**：
+${form.value.responsibilities}
+
+${form.value.ongoingProjects ? `**进行中的项目**：
+${form.value.ongoingProjects}` : ''}
+
+${form.value.keyContacts ? `**关键联系人**：${form.value.keyContacts}` : ''}
+
+**交接周期**：${form.value.handoverPeriod} 天
+
+**要求**：
+- 设计详细的 ${form.value.handoverPeriod} 天交接时间表
+- 列出所有需要传授的知识和技能
+- 整理文档资料清单
+- 介绍关键联系人和沟通技巧
+- 提供常见问题和解决方案
+${form.value.includeCheckpoints ? '- 设置交接检查点' : ''}
+- 制定后续支持计划
+`;
+                    }
+                }
+
+                function getLevelLabel() {
+                    const labels = {
+                        'zero': '零基础小白',
+                        'beginner': '初级（有基本了解）',
+                        'intermediate': '中级（有实践经验）'
+                    };
+                    return labels[form.value.level] || form.value.level;
+                }
+
+                function getTargetLevelLabel() {
+                    const labels = {
+                        'zero': '完全没接触过的新人',
+                        'beginner': '有基础但经验不足',
+                        'general': '普通员工'
+                    };
+                    return labels[form.value.targetLevel] || form.value.targetLevel;
+                }
+
+                // 调用 DeepSeek API
+                async function callDeepSeek(messages) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: apiConfig.value.model,
+                            messages: messages,
+                            stream: true,
+                            temperature: 0.6
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API 错误: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content) {
+                                        reasoningContent.value += delta.reasoning_content;
+                                    }
+
+                                    if (delta.content) {
+                                        result.value += delta.content;
+                                    }
+                                } catch (e) {
+                                    console.error('解析错误:', e);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 复制结果
+                async function copyResult() {
+                    let content = '';
+                    if (reasoningContent.value) {
+                        content += '=== V4 Pro 深度拆解思路 ===\n\n';
+                        content += reasoningContent.value + '\n\n';
+                    }
+                    content += result.value;
+
+                    try {
+                        await navigator.clipboard.writeText(content);
+                        alert('已复制到剪贴板');
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                    }
+                }
+
+                // 导出结果
+                function exportResult() {
+                    let content = result.value;
+                    if (reasoningContent.value) {
+                        content = `# V4 Pro 深度拆解思路\n\n${reasoningContent.value}\n\n---\n\n` + content;
+                    }
+
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const modeLabels = {
+                        'new-topic': '新人培训方案',
+                        'convert-doc': '文档转化',
+                        'handover': '工作交接'
+                    };
+                    a.download = `${modeLabels[mode.value]}_${Date.now()}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+
+                // Markdown 渲染函数（启用换行支持）
+                const markedParse = (text) => {
+                    if (!window.marked) return text;
+                    return window.marked.parse(text, {
+                        breaks: true,
+                        gfm: true
+                    });
+                };
+
+                return {
+                    apiConfig,
+                    showSettings,
+                    isLoading,
+                    mode,
+                    form,
+                    result,
+                    reasoningContent,
+                    canGenerate,
+                    displayMode,
+                    saveConfig,
+                    generateTraining,
+                    copyResult,
+                    exportResult,
+                    markedParse
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_onboarding_training_assistant.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

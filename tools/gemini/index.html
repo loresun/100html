@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gemini 应用案例</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Internal:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+    
+    /* Search Bar Input */
+    .search-input {
+      background: white;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s;
+    }
+    .search-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+    
+    /* Category Badges in Card */
+    .badge { font-size: 0.65rem; padding: 2px 8px; border-radius: 99px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge-basic { background: #e0f2fe; color: #0284c7; }
+    .badge-chat { background: #fae8ff; color: #a21caf; }
+    .badge-reasoning { background: #dcfce7; color: #15803d; }
+    .badge-tools { background: #ffedd5; color: #c2410c; }
+    .badge-fun { background: #f1f5f9; color: #475569; }
+
+    /* Card Hover */
+    .card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid transparent; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border-color: #cbd5e1; z-index: 10; }
+    
+    /* Modern Scrollbar for Filter Tags */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Custom Filter Button Styles */
+    .filter-btn { transition: all 0.2s; }
+    .filter-btn.active { background: #0f172a; color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transform: scale(1.05); }
+    .filter-btn:not(.active):hover { background: #f1f5f9; color: #0f172a; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header Section -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <!-- Logo & Title -->
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-200">AI</div>
+          <div>
+            <h1 class="text-xl font-bold text-slate-800 leading-tight">Gemini Web App</h1>
+            <p class="text-xs text-slate-500 font-medium"><span id="total-count">0</span> Examples Included</p>
+          </div>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
+          <!-- Search -->
+          <div class="relative w-full md:w-64">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </span>
+            <input type="text" id="search" placeholder="Search examples..." class="search-input pl-10 pr-4 py-2 w-full rounded-lg text-sm text-slate-700 placeholder:text-slate-400 outline-none">
+          </div>
+          
+          <!-- Filters -->
+          <div class="flex gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto pb-1 md:pb-0" id="filters">
+            <button class="filter-btn active px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap border border-transparent" data-cat="all">All</button>
+            <button class="filter-btn px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap border border-slate-100 text-slate-500" data-cat="basic">Basic Demo</button>
+            <button class="filter-btn px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap border border-slate-100 text-slate-500" data-cat="chat">Chat UI</button>
+            <button class="filter-btn px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap border border-slate-100 text-slate-500" data-cat="reasoning">Reasoning</button>
+            <button class="filter-btn px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap border border-slate-100 text-slate-500" data-cat="tools">Tool Use</button>
+            <button class="filter-btn px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap border border-slate-100 text-slate-500" data-cat="fun">Fun & Creative</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-6 py-10 flex-1 w-full space-y-12" id="gallery-container">
+    
+    <!-- Basic Section -->
+    <section id="sec-basic" class="group-section">
+      <div class="mb-6 border-b border-slate-200 pb-4">
+        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <span class="text-blue-600">🔹</span> Basic Demos
+        </h2>
+        <p class="text-slate-500 text-sm mt-1">基础功能演示，如 API 调用、简单的文本生成。</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 card-grid"></div>
+    </section>
+
+    <!-- Chat Section -->
+    <section id="sec-chat" class="group-section">
+      <div class="mb-6 border-b border-slate-200 pb-4">
+        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <span class="text-purple-600">💬</span> Chat UI
+        </h2>
+        <p class="text-slate-500 text-sm mt-1">各种对话界面设计与交互实现。</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 card-grid"></div>
+    </section>
+
+    <!-- Reasoning Section -->
+    <section id="sec-reasoning" class="group-section">
+      <div class="mb-6 border-b border-slate-200 pb-4">
+        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <span class="text-emerald-600">🧠</span> Reasoning
+        </h2>
+        <p class="text-slate-500 text-sm mt-1">展示模型推理能力、思维链（CoT）的可视化。</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 card-grid"></div>
+    </section>
+
+    <!-- Tools Section -->
+    <section id="sec-tools" class="group-section">
+      <div class="mb-6 border-b border-slate-200 pb-4">
+        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <span class="text-orange-600">🛠️</span> Tool Use
+        </h2>
+        <p class="text-slate-500 text-sm mt-1">Function Calling、插件调用与外部 API 集成。</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 card-grid"></div>
+    </section>
+
+    <!-- Fun Section -->
+    <section id="sec-fun" class="group-section">
+      <div class="mb-6 border-b border-slate-200 pb-4">
+        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <span class="text-slate-600">✨</span> Fun & Creative
+        </h2>
+        <p class="text-slate-500 text-sm mt-1">基于 Gemini 的趣味应用与创意实验。</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 card-grid"></div>
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 mt-12 py-10">
+    <div class="max-w-7xl mx-auto px-6 text-center">
+      <p class="text-slate-500 text-sm mb-2">Powered by Gemini & Google DeepMind.</p>
+      <div class="text-slate-400 text-xs">
+        &copy; 2026 Gemini Web App Gallery.
+      </div>
+    </div>
+  </footer>
+
+<script>
+  // === Data Source ===
+  const tools = [
+    // Basic
+    {id:'hello_gemini', t:'Hello Gemini', d:'本地最简单的 Gemini API 调用示例，展示基础文本生成', c:'basic', url:'hello_gemini.html'},
+    {id:'stream_response', t:'Streaming Text', d:'流式响应演示，像打字机一样实时输出内容', c:'basic', url:'#'},
+    
+    // Chat
+    {id:'google_ai_studio', t:'Google AI Studio', d:'Google 官方的原型设计与 Prompt 调试工具', c:'chat', url:'https://aistudio.google.com/'},
+    {id:'gemini_advanced', t:'Gemini Advanced', d:'Google 最强的官方网页版聊天助手', c:'chat', url:'https://gemini.google.com/'},
+    
+    // Reasoning
+    {id:'cot_viz', t:'CoT Visualization', d:'思维链（Chain of Thought）可视化，展示 AI 思考过程', c:'reasoning', url:'#'},
+    
+    // Tools
+    {id:'weather_bot', t:'Weather Bot', d:'通过 Function Calling 查询天气的助手', c:'tools', url:'#'},
+    
+    // Fun
+    {id:'story_generator', t:'Story Generator', d:'互动式故事生成器', c:'fun', url:'#'},
+  ];
+
+  function getBadgeColor(cat) {
+    if(cat==='basic') return 'badge-basic';
+    if(cat==='chat') return 'badge-chat';
+    if(cat==='reasoning') return 'badge-reasoning';
+    if(cat==='tools') return 'badge-tools';
+    return 'badge-fun';
+  }
+
+  function renderCard(gridId, items) {
+    const grid = document.querySelector(`#sec-${gridId} .card-grid`);
+    if (!grid) return; // Safety check
+    
+    grid.innerHTML = '';
+    
+    if(items.length === 0) {
+      document.getElementById(`sec-${gridId}`).style.display = 'none';
+      return;
+    }
+    document.getElementById(`sec-${gridId}`).style.display = 'block';
+
+    items.forEach(t => {
+      const el = document.createElement('a');
+      const isExternal = t.url && t.url.startsWith('http');
+      el.href = t.url || '#';
+      if (isExternal) {
+        el.target = "_blank";
+        el.rel = "noopener noreferrer";
+      }
+      
+      el.className = "card bg-white p-5 rounded-xl border border-slate-100 flex flex-col h-full block group no-underline relative";
+      
+      // External Icon Indicator
+      const externalIcon = isExternal ? 
+        `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 absolute top-5 right-5 opacity-50 group-hover:opacity-100 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>` 
+        : '';
+
+      el.innerHTML = `
+        <div class="flex justify-between items-start mb-3 pr-6">
+          <h3 class="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition truncate w-full">${t.t}</h3>
+        </div>
+        ${externalIcon}
+        <div class="mb-3">
+             <span class="badge ${getBadgeColor(t.c)}">${t.c}</span>
+        </div>
+        <p class="text-sm text-slate-500 line-clamp-2 leading-relaxed">${t.d}</p>
+      `;
+      grid.appendChild(el);
+    });
+  }
+
+  function filterAll() {
+    const search = document.getElementById('search').value.toLowerCase();
+    const activeBtn = document.querySelector('.filter-btn.active');
+    const catFilter = activeBtn ? activeBtn.dataset.cat : 'all';
+
+    const categories = ['basic', 'chat', 'reasoning', 'tools', 'fun'];
+    
+    categories.forEach(cat => {
+      // 1. Filter by category tab
+      if (catFilter !== 'all' && catFilter !== cat) {
+        document.getElementById(`sec-${cat}`).style.display = 'none';
+        return;
+      }
+      
+      // 2. Filter by search text
+      const items = tools.filter(t => t.c === cat && (t.t.toLowerCase().includes(search) || t.d.toLowerCase().includes(search) || t.id.includes(search)));
+      
+      renderCard(cat, items);
+    });
+  }
+
+  // Bind Events
+  document.getElementById('search').addEventListener('input', filterAll);
+  
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      filterAll();
+    });
+  });
+
+  // Init
+  document.getElementById('total-count').innerText = tools.length;
+  filterAll();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

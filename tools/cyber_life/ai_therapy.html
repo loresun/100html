@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AI 心理树洞 · 你的私人疗愈空间</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+
+    /**
+     * 沉浸式基底：深蓝夜空 → 暖紫黎明渐变
+     * 营造「安全、私密、被包裹」的视觉心理暗示
+     */
+    body.therapy-app {
+      font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+      min-height: 100dvh;
+      color: #e8e4f5;
+      overflow-x: hidden;
+      transition: background 2.8s ease-in-out;
+    }
+
+    .therapy-bg-base {
+      background:
+        radial-gradient(ellipse 120% 90% at 50% -30%, rgba(167, 139, 250, 0.35) 0%, transparent 50%),
+        radial-gradient(ellipse 80% 60% at 100% 60%, rgba(99, 102, 241, 0.22) 0%, transparent 45%),
+        radial-gradient(ellipse 70% 50% at 0% 80%, rgba(56, 189, 248, 0.12) 0%, transparent 40%),
+        linear-gradient(165deg, #0c1228 0%, #151a3a 28%, #1e1b4b 55%, #312e81 78%, #4c1d6b 100%);
+    }
+
+    /* 呼吸练习：吸气偏暖、呼气偏冷（由 Alpine 动态切换 class） */
+    body.therapy-app.breath-warm {
+      background:
+        radial-gradient(ellipse 100% 80% at 50% 20%, rgba(251, 191, 36, 0.18) 0%, transparent 50%),
+        radial-gradient(ellipse 90% 70% at 80% 70%, rgba(244, 114, 182, 0.15) 0%, transparent 45%),
+        linear-gradient(165deg, #1e1b4b 0%, #312e81 40%, #5b21b6 75%, #7c3aed 100%) !important;
+    }
+    body.therapy-app.breath-cool {
+      background:
+        radial-gradient(ellipse 100% 80% at 50% 80%, rgba(34, 211, 238, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 80% 60% at 20% 30%, rgba(59, 130, 246, 0.2) 0%, transparent 45%),
+        linear-gradient(165deg, #0f172a 0%, #0c1228 45%, #172554 80%, #1e1b4b 100%) !important;
+    }
+
+    /* 正念主题背景覆盖 */
+    body.therapy-app.theme-forest {
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 100%, rgba(34, 197, 94, 0.2) 0%, transparent 55%),
+        linear-gradient(168deg, #052e16 0%, #14532d 45%, #166534 100%) !important;
+    }
+    body.therapy-app.theme-beach {
+      background:
+        radial-gradient(ellipse 100% 60% at 50% 0%, rgba(125, 211, 252, 0.25) 0%, transparent 50%),
+        linear-gradient(168deg, #0c4a6e 0%, #1e3a5f 50%, #312e81 100%) !important;
+    }
+    body.therapy-app.theme-starry {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.08) 0%, transparent 3%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.06) 0%, transparent 2%),
+        radial-gradient(ellipse 100% 80% at 50% 100%, rgba(139, 92, 246, 0.35) 0%, transparent 50%),
+        linear-gradient(168deg, #0f0720 0%, #1e1b4b 55%, #312e81 100%) !important;
+    }
+
+    /* 萤火虫光点：缓慢漂浮 */
+    .fireflies {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .firefly {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255, 250, 220, 0.55);
+      box-shadow: 0 0 10px 2px rgba(196, 181, 253, 0.6);
+      animation: float-drift 18s ease-in-out infinite;
+      opacity: 0.35;
+    }
+    @keyframes float-drift {
+      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.25; }
+      25% { transform: translate(30px, -40px) scale(1.2); opacity: 0.55; }
+      50% { transform: translate(-20px, -80px) scale(0.9); opacity: 0.4; }
+      75% { transform: translate(50px, -30px) scale(1.1); opacity: 0.5; }
+    }
+
+    /* 顶栏玻璃态 */
+    .glass-top {
+      background: rgba(15, 23, 42, 0.35);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(196, 181, 253, 0.12);
+    }
+
+    /* 内容卡片：圆润 + 柔和阴影 */
+    .card-soft {
+      background: rgba(30, 27, 75, 0.45);
+      border: 1px solid rgba(167, 139, 250, 0.2);
+      border-radius: 1.25rem;
+      box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* 输入框聚焦：温柔光晕 */
+    .input-glow:focus {
+      outline: none;
+      border-color: rgba(196, 181, 253, 0.55);
+      box-shadow:
+        0 0 0 3px rgba(139, 92, 246, 0.25),
+        0 0 28px rgba(167, 139, 250, 0.15);
+    }
+
+    /* Tab 内容淡入淡出 */
+    .tab-fade-enter-active, .tab-fade-leave-active {
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .tab-fade-enter-from, .tab-fade-leave-to {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    /* 呼吸圆环：呼吸感缩放 */
+    @keyframes breath-pulse {
+      0%, 100% { transform: scale(0.85); }
+      50% { transform: scale(1.08); }
+    }
+    .breath-ring-outer {
+      transition: transform 0.1s linear;
+    }
+
+    /* 底部导航安全区 */
+    .safe-bottom {
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 12px));
+    }
+
+    /* Markdown 正文区 */
+    .prose-therapy {
+      line-height: 1.8;
+      font-size: 0.95rem;
+      color: #e0d8f5;
+    }
+    .prose-therapy p { margin: 0.6rem 0; }
+    .prose-therapy strong { color: #f0abfc; font-weight: 600; }
+    .prose-therapy ul { list-style: disc; padding-left: 1.25rem; margin: 0.5rem 0; }
+
+    .scroll-therapy::-webkit-scrollbar { width: 5px; }
+    .scroll-therapy::-webkit-scrollbar-thumb {
+      background: rgba(167, 139, 250, 0.35);
+      border-radius: 4px;
+    }
+
+    /* 心情 emoji 选中态 */
+    .mood-pick.active {
+      ring: 2px;
+      box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.6), 0 8px 24px rgba(0, 0, 0, 0.3);
+      transform: scale(1.08);
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body
+  class="therapy-app therapy-bg-base min-h-screen flex flex-col relative"
+  :class="{
+    'breath-warm': breathBodyClass === 'warm',
+    'breath-cool': breathBodyClass === 'cool',
+    'theme-forest': activeTab === 'mindful' && mindfulTheme === 'forest',
+    'theme-beach': activeTab === 'mindful' && mindfulTheme === 'beach',
+    'theme-starry': activeTab === 'mindful' && mindfulTheme === 'starry'
+  }"
+  x-data="therapyApp()"
+  x-init="init()"
+>
+
+  <!-- 萤火虫氛围层：x-for 需数组，使用 fireflyIndices -->
+  <div class="fireflies" aria-hidden="true">
+    <template x-for="i in fireflyIndices" :key="i">
+      <span
+        class="firefly"
+        :style="`left:${(i * 47) % 96}%; top:${(i * 23) % 88}%; animation-delay:${i * 0.7}s`"
+      ></span>
+    </template>
+  </div>
+
+  <div class="relative z-10 flex flex-col min-h-screen min-h-[100dvh]" x-cloak>
+
+    <!-- 极简顶栏：返回 + 设置 -->
+    <header class="glass-top sticky top-0 z-50 shrink-0">
+      <div class="flex items-center justify-between px-3 py-2.5 max-w-lg mx-auto w-full">
+        <a
+          href="../../index.html"
+          class="flex items-center gap-1 text-violet-200/90 hover:text-white text-sm px-2 py-1.5 rounded-xl hover:bg-white/5 transition duration-300"
+        >
+          <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          <span>返回</span>
+        </a>
+        <h1 class="text-sm font-medium text-violet-100/80 tracking-wide">心理树洞</h1>
+        <button
+          type="button"
+          class="p-2 rounded-xl text-violet-200/90 hover:bg-white/10 transition"
+          @click="showSettings = true"
+          aria-label="设置"
+        >
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 主内容区（为底部导航留出空间） -->
+    <main class="flex-1 overflow-y-auto scroll-therapy px-4 pt-2 pb-28 max-w-lg mx-auto w-full">
+
+      <!-- ========== Tab 1：心情日记 ========== -->
+      <div x-show="activeTab === 'diary'" x-transition class="space-y-4">
+        <p class="text-xs text-violet-300/70 text-center leading-relaxed px-2">
+          写下今天的心情，树洞会温柔地回应你。记录仅保存在本机。
+        </p>
+
+        <div class="card-soft p-4 space-y-4">
+          <div>
+            <label class="block text-xs text-violet-300/80 mb-2">此刻心情</label>
+            <div class="flex flex-wrap gap-2 justify-center">
+              <template x-for="m in moodEmojis" :key="m.e">
+                <button
+                  type="button"
+                  @click="selectedMood = m.e"
+                  class="mood-pick text-3xl w-12 h-12 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition duration-300"
+                  :class="{ 'active': selectedMood === m.e }"
+                  x-text="m.e"
+                ></button>
+              </template>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-violet-300/80 mb-2">心情分数 <span x-text="moodScore"></span> / 10</label>
+            <input type="range" min="1" max="10" x-model.number="moodScore"
+              class="w-full accent-fuchsia-400 h-2 rounded-full bg-white/10" />
+          </div>
+
+          <div>
+            <label class="block text-xs text-violet-300/80 mb-2">想说的话</label>
+            <textarea
+              x-model="diaryText"
+              rows="4"
+              placeholder="可以是琐事、委屈、小确幸……随便写写"
+              class="input-glow w-full rounded-2xl border border-white/15 bg-black/25 px-3 py-2.5 text-sm text-violet-50 placeholder-violet-400/40 resize-none transition duration-300"
+            ></textarea>
+          </div>
+
+          <button
+            type="button"
+            @click="submitMoodDiary()"
+            :disabled="diaryStreaming || !diaryText.trim()"
+            class="w-full py-3.5 rounded-2xl font-medium text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 disabled:opacity-45 disabled:cursor-not-allowed shadow-lg shadow-violet-900/40 transition duration-300"
+          >
+            <span x-show="!diaryStreaming">让树洞回应我</span>
+            <span x-show="diaryStreaming" class="flex items-center justify-center gap-2">
+              <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              正在倾听…
+            </span>
+          </button>
+        </div>
+
+        <!-- AI 回应 -->
+        <div class="card-soft p-4 min-h-[120px]" x-show="diaryAiReply || diaryStreaming || diaryReasoning.length">
+          <h3 class="text-xs font-semibold text-fuchsia-300/90 mb-2 flex items-center gap-1">
+            <i data-lucide="heart" class="w-3.5 h-3.5"></i> 树洞的回应
+          </h3>
+          <div class="prose-therapy" x-html="renderMd(diaryAiReply)"></div>
+          <details class="mt-3 rounded-xl bg-black/20 border border-white/10 p-3" x-show="diaryReasoning.length > 0">
+            <summary class="text-xs text-violet-400 cursor-pointer select-none">🧠 深度思考过程（V4 Pro 模型，可选看）</summary>
+            <div class="mt-2 text-xs text-violet-300/80 whitespace-pre-wrap leading-relaxed" x-text="diaryReasoning"></div>
+          </details>
+        </div>
+
+        <!-- 7 日心情折线图 -->
+        <div class="card-soft p-4">
+          <h3 class="text-sm font-semibold text-violet-200 mb-3">最近 7 天心情走势</h3>
+          <canvas id="mood-chart-canvas" width="340" height="160" class="w-full max-w-full rounded-xl bg-black/20"></canvas>
+          <p class="text-[10px] text-violet-400/60 mt-2 text-center">横轴为日期，纵轴为当日平均分（无记录则略过）</p>
+        </div>
+
+        <!-- 历史记录 -->
+        <div class="card-soft p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-violet-200">日记记录</h3>
+            <button type="button" class="text-xs text-violet-400 hover:text-violet-200" @click="clearMoodHistory()" x-show="moodHistory.length">清空</button>
+          </div>
+          <template x-if="!moodHistory.length">
+            <p class="text-sm text-violet-400/60 text-center py-6">还没有记录，写第一条吧</p>
+          </template>
+          <ul class="space-y-3 max-h-64 overflow-y-auto scroll-therapy">
+            <template x-for="item in moodHistory" :key="item.id">
+              <li class="rounded-xl bg-black/20 border border-white/5 p-3 text-sm">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <span class="text-xl" x-text="item.emoji"></span>
+                  <span class="text-xs text-violet-400" x-text="formatDate(item.ts)"></span>
+                  <span class="text-xs text-fuchsia-300" x-text="'分 ' + item.score"></span>
+                </div>
+                <p class="text-violet-100/90 text-xs leading-relaxed" x-text="item.text"></p>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ========== Tab 2：呼吸练习 ========== -->
+      <div x-show="activeTab === 'breathe'" x-transition class="space-y-4">
+        <p class="text-xs text-violet-300/70 text-center">跟随圆环与文字，让呼吸慢下来。</p>
+
+        <div class="flex gap-2 justify-center flex-wrap">
+          <template x-for="mode in breathModes" :key="mode.id">
+            <button
+              type="button"
+              @click="setBreathMode(mode.id)"
+              class="px-3 py-1.5 rounded-full text-xs border transition duration-300"
+              :class="breathMode === mode.id
+                ? 'bg-violet-500/40 border-violet-400 text-white'
+                : 'bg-white/5 border-white/15 text-violet-300/80'"
+              x-text="mode.label"
+            ></button>
+          </template>
+        </div>
+
+        <div class="flex flex-col items-center justify-center py-6">
+          <!-- 呼吸圆 -->
+          <div class="relative w-56 h-56 flex items-center justify-center">
+            <div
+              class="absolute inset-0 rounded-full bg-gradient-to-br from-fuchsia-500/30 to-cyan-500/20 breath-ring-outer"
+              :style="`transform: scale(${breathCircleScale})`"
+            ></div>
+            <div
+              class="relative w-44 h-44 rounded-full border-2 border-violet-300/40 flex items-center justify-center bg-black/20 backdrop-blur-sm"
+              :style="`transform: scale(${breathCircleScale * 0.92})`"
+            >
+              <span class="text-lg text-violet-100 font-medium text-center px-4" x-text="breathHint"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-center space-y-2">
+          <p class="text-2xl font-mono text-fuchsia-200 tabular-nums" x-text="breathSessionFormatted"></p>
+          <p class="text-xs text-violet-400">本次练习时长</p>
+        </div>
+
+        <div class="flex justify-center gap-3">
+          <button
+            type="button"
+            @click="toggleBreath()"
+            class="px-8 py-3 rounded-2xl font-medium text-white bg-cyan-600/70 hover:bg-cyan-500/80 border border-cyan-400/30 transition"
+            x-text="breathRunning ? '暂停' : '开始'"
+          ></button>
+          <button
+            type="button"
+            @click="resetBreathSession()"
+            class="px-5 py-3 rounded-2xl text-violet-200 border border-white/20 hover:bg-white/5 transition"
+          >
+            重置计时
+          </button>
+        </div>
+      </div>
+
+      <!-- ========== Tab 3：思维重构 CBT ========== -->
+      <div x-show="activeTab === 'cbt'" x-transition class="space-y-4">
+        <p class="text-xs text-violet-300/70 text-center leading-relaxed">
+          认知行为视角：看见想法，不等于事实。AI 会温柔协助你梳理，不作评判。
+        </p>
+
+        <div class="card-soft p-4 space-y-3">
+          <div>
+            <label class="text-xs text-violet-300/80">发生了什么事？</label>
+            <textarea x-model="cbtEvent" rows="2" placeholder="客观描述一下情境"
+              class="input-glow mt-1 w-full rounded-xl border border-white/15 bg-black/25 px-3 py-2 text-sm resize-none transition"></textarea>
+          </div>
+          <div>
+            <label class="text-xs text-violet-300/80">你的自动想法是什么？</label>
+            <textarea x-model="cbtThought" rows="2" placeholder="脑中一闪而过的句子"
+              class="input-glow mt-1 w-full rounded-xl border border-white/15 bg-black/25 px-3 py-2 text-sm resize-none transition"></textarea>
+          </div>
+          <div>
+            <label class="text-xs text-violet-300/80 mb-1 block">情绪与强度</label>
+            <select x-model="cbtEmotion" class="w-full rounded-xl border border-white/15 bg-black/25 px-3 py-2 text-sm text-violet-100 mb-2">
+              <option value="焦虑">焦虑</option>
+              <option value="难过">难过</option>
+              <option value="愤怒">愤怒</option>
+              <option value="羞耻">羞耻</option>
+              <option value="无力">无力</option>
+              <option value="恐惧">恐惧</option>
+              <option value="烦躁">烦躁</option>
+            </select>
+            <label class="text-[10px] text-violet-400">强度 <span x-text="cbtIntensity"></span> / 100</label>
+            <input type="range" min="0" max="100" x-model.number="cbtIntensity" class="w-full accent-pink-400" />
+          </div>
+
+          <button
+            type="button"
+            @click="runCbtRestructure()"
+            :disabled="cbtStreaming || !cbtEvent.trim() || !cbtThought.trim()"
+            class="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-medium disabled:opacity-45 transition"
+          >
+            <span x-show="!cbtStreaming">重构想法</span>
+            <span x-show="cbtStreaming">分析中…</span>
+          </button>
+        </div>
+
+        <div class="card-soft p-4 min-h-[100px]" x-show="cbtAiReply || cbtStreaming || cbtReasoning.length">
+          <h3 class="text-xs text-indigo-300 mb-2">重构反馈</h3>
+          <div class="prose-therapy" x-html="renderMd(cbtAiReply)"></div>
+          <details class="mt-3 rounded-xl bg-black/20 border border-white/10 p-3" x-show="cbtReasoning.length > 0">
+            <summary class="text-xs text-violet-400 cursor-pointer select-none">🧠 思考过程（V4 Pro）</summary>
+            <div class="mt-2 text-xs text-violet-300/80 whitespace-pre-wrap" x-text="cbtReasoning"></div>
+          </details>
+        </div>
+
+        <div class="card-soft p-4">
+          <h3 class="text-sm font-semibold text-violet-200 mb-2">历史记录</h3>
+          <template x-if="!cbtHistory.length">
+            <p class="text-sm text-violet-400/60 text-center py-4">暂无记录</p>
+          </template>
+          <ul class="space-y-2 max-h-52 overflow-y-auto">
+            <template x-for="h in cbtHistory" :key="h.id">
+              <li class="text-xs rounded-lg bg-black/20 p-2 border border-white/5">
+                <span class="text-violet-400" x-text="formatDate(h.ts)"></span>
+                <p class="text-violet-200/90 mt-1 line-clamp-2" x-text="h.summary"></p>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ========== Tab 4：正念空间 ========== -->
+      <div x-show="activeTab === 'mindful'" x-transition class="space-y-4">
+        <p class="text-xs text-violet-300/70 text-center">选择场景，生成今日引导语，配合计时与低频音，安静待一会儿。</p>
+
+        <div class="flex gap-2 justify-center">
+          <template x-for="t in mindfulThemes" :key="t.id">
+            <button
+              type="button"
+              @click="mindfulTheme = t.id"
+              class="px-3 py-2 rounded-xl text-xs border transition"
+              :class="mindfulTheme === t.id ? 'bg-white/15 border-violet-300 text-white' : 'bg-white/5 border-white/10 text-violet-300'"
+              x-text="t.label"
+            ></button>
+          </template>
+        </div>
+
+        <div class="flex justify-center gap-2">
+          <template x-for="m in mindfulMinutesOptions" :key="m">
+            <button
+              type="button"
+              @click="mindfulDurationMin = m"
+              class="px-3 py-1.5 rounded-full text-xs border transition"
+              :class="mindfulDurationMin === m ? 'bg-emerald-600/50 border-emerald-400' : 'border-white/15 text-violet-300'"
+              x-text="m + ' 分钟'"
+            ></button>
+          </template>
+        </div>
+
+        <button
+          type="button"
+          @click="generateMindfulText()"
+          :disabled="mindfulStreaming"
+          class="w-full py-2.5 rounded-xl bg-white/10 border border-white/15 text-sm hover:bg-white/15 transition disabled:opacity-50"
+        >
+          <span x-show="!mindfulStreaming">生成今日正念引导（流式）</span>
+          <span x-show="mindfulStreaming">正在书写引导…</span>
+        </button>
+
+        <div class="card-soft p-4 min-h-[140px]">
+          <div class="prose-therapy text-sm" x-html="renderMd(mindfulText)"></div>
+          <details class="mt-3 rounded-xl bg-black/20 border border-white/10 p-3" x-show="mindfulReasoning.length > 0">
+            <summary class="text-xs text-violet-400 cursor-pointer select-none">🧠 思考过程（V4 Pro）</summary>
+            <div class="mt-2 text-xs text-violet-300/80 whitespace-pre-wrap" x-text="mindfulReasoning"></div>
+          </details>
+        </div>
+
+        <div class="card-soft p-4 text-center">
+          <p class="text-3xl font-mono text-emerald-200 tabular-nums mb-3" x-text="mindfulTimerDisplay"></p>
+          <div class="flex justify-center gap-2">
+            <button
+              type="button"
+              @click="toggleMindfulTimer()"
+              class="px-6 py-2.5 rounded-xl bg-emerald-700/60 text-white text-sm border border-emerald-500/40"
+              x-text="mindfulTimerRunning ? '暂停计时' : '开始冥想计时'"
+            ></button>
+            <button type="button" @click="resetMindfulTimer()" class="px-4 py-2.5 rounded-xl border border-white/20 text-sm text-violet-200">
+              重置
+            </button>
+          </div>
+          <p class="text-[10px] text-violet-500 mt-3">开始计时时会播放极轻柔的低频音（Web Audio），请注意音量。</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- 底部导航栏：App 风格 -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 glass-top border-t border-violet-500/15 safe-bottom">
+      <div class="max-w-lg mx-auto flex justify-around items-stretch pt-1">
+        <template x-for="tab in tabs" :key="tab.id">
+          <button
+            type="button"
+            @click="switchTab(tab.id)"
+            class="flex-1 flex flex-col items-center py-2 px-1 rounded-t-xl transition duration-300"
+            :class="activeTab === tab.id ? 'text-fuchsia-200 bg-white/5' : 'text-violet-400/70 hover:text-violet-200'"
+          >
+            <span class="text-xl leading-none mb-0.5" x-text="tab.icon"></span>
+            <span class="text-[10px]" x-text="tab.name"></span>
+          </button>
+        </template>
+      </div>
+    </nav>
+
+    <!-- 隐私首次说明 -->
+    <div
+      x-show="showPrivacyModal"
+      class="fixed inset-0 z-[200] flex items-center justify-center p-5 bg-slate-950/85 backdrop-blur-md"
+      x-transition
+    >
+      <div class="card-soft max-w-sm w-full p-6 text-center space-y-4 border-fuchsia-500/30">
+        <i data-lucide="shield-heart" class="w-12 h-12 mx-auto text-fuchsia-300"></i>
+        <h2 class="text-lg font-bold text-violet-100">只属于您的安全空间</h2>
+        <p class="text-sm text-violet-200/85 leading-relaxed">
+          所有数据仅保存在你的浏览器中，不会上传到任何服务器。这里是只属于你的安全空间。
+        </p>
+        <p class="text-xs text-violet-400/80">
+          AI 对话会经由你配置的 DeepSeek API 密钥发送至 DeepSeek 进行处理；日记与表单原文仍仅存本地，除非你主动复制分享。
+        </p>
+        <button
+          type="button"
+          @click="acceptPrivacy()"
+          class="w-full py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium shadow-lg"
+        >
+          我知道了
+        </button>
+      </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div x-show="showSettings" class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+      <div class="card-soft w-full max-w-md p-6 border-violet-400/25">
+        <h3 class="text-lg font-bold text-violet-100 mb-4">API 配置</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-violet-300 mb-1">DeepSeek API Key</label>
+            <input type="password" x-model="apiConfig.deepseek"
+              class="input-glow w-full rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-sm text-violet-50" />
+          </div>
+          <div>
+            <label class="block text-sm text-violet-300 mb-1">模型</label>
+            <select x-model="apiConfig.model" class="w-full rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-sm text-violet-50">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" class="px-4 py-2 rounded-xl text-violet-300 hover:bg-white/5" @click="showSettings = false">取消</button>
+          <button type="button" class="px-4 py-2 rounded-xl bg-violet-600 text-white hover:bg-violet-500" @click="saveConfig()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div
+      x-show="toast.show"
+      x-transition
+      class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[180] px-4 py-2 rounded-xl bg-violet-950/95 text-violet-100 text-sm border border-violet-400/30"
+      x-text="toast.message"
+    ></div>
+  </div>
+
+  <script>
+    /**
+     * Alpine 根组件：AI 心理树洞
+     * 整合心情日记、呼吸、CBT、正念四大模块；DeepSeek 流式；localStorage 持久化
+     */
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('therapyApp', () => ({
+        /** 萤火虫粒子序号（供模板 x-for） */
+        fireflyIndices: Array.from({ length: 18 }, (_, n) => n + 1),
+
+        /** 当前底部 Tab */
+        activeTab: 'diary',
+        tabs: [
+          { id: 'diary', name: '日记', icon: '📝' },
+          { id: 'breathe', name: '呼吸', icon: '🫁' },
+          { id: 'cbt', name: '重构', icon: '🧠' },
+          { id: 'mindful', name: '正念', icon: '🧘' }
+        ],
+
+        showSettings: false,
+        showPrivacyModal: false,
+        toast: { show: false, message: '' },
+
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+
+        /** 心情日记 */
+        moodEmojis: [
+          { e: '😊' }, { e: '😐' }, { e: '😔' }, { e: '😤' }, { e: '😰' }, { e: '😴' }
+        ],
+        selectedMood: '😊',
+        moodScore: 6,
+        diaryText: '',
+        diaryAiReply: '',
+        diaryReasoning: '',
+        diaryStreaming: false,
+        moodHistory: [],
+
+        /** 呼吸 */
+        breathModes: [
+          { id: '4444', label: '4-4-4-4 放松' },
+          { id: '478', label: '4-7-8 助眠' },
+          { id: 'deep', label: '深呼吸 6-6' }
+        ],
+        breathMode: '4444',
+        breathPhase: 'inhale',
+        breathHint: '准备开始',
+        breathCircleScale: 0.88,
+        breathRunning: false,
+        breathSessionSeconds: 0,
+        _breathTimer: null,
+        _breathPhaseDeadline: 0,
+        breathBodyClass: '',
+
+        /** CBT */
+        cbtEvent: '',
+        cbtThought: '',
+        cbtEmotion: '焦虑',
+        cbtIntensity: 50,
+        cbtAiReply: '',
+        cbtReasoning: '',
+        cbtStreaming: false,
+        cbtHistory: [],
+
+        /** 正念 */
+        mindfulThemes: [
+          { id: 'forest', label: '🌲 森林' },
+          { id: 'beach', label: '🌊 海边' },
+          { id: 'starry', label: '✨ 星空' }
+        ],
+        mindfulTheme: 'forest',
+        mindfulMinutesOptions: [5, 10, 15],
+        mindfulDurationMin: 10,
+        mindfulText: '',
+        mindfulReasoning: '',
+        mindfulStreaming: false,
+        mindfulRemainingSec: 0,
+        mindfulTimerRunning: false,
+        _mindfulInterval: null,
+        _audioCtx: null,
+        _oscGain: null,
+
+        /** localStorage 键名（与其他工具隔离） */
+        LS_MOOD: 'ai_therapy_mood_v1',
+        LS_CBT: 'ai_therapy_cbt_v1',
+        LS_PRIVACY: 'ai_therapy_privacy_ok_v1',
+        LS_MINDFUL_CACHE: 'ai_therapy_mindful_cache_v1',
+
+        init() {
+          this.loadConfig();
+          this.loadMoodHistory();
+          this.loadCbtHistory();
+          this.showPrivacyModal = localStorage.getItem(this.LS_PRIVACY) !== '1';
+          this.$watch('activeTab', () => {
+            this.$nextTick(() => {
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+              if (this.activeTab === 'diary') this.drawMoodChart();
+            });
+          });
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            this.drawMoodChart();
+          });
+        },
+
+        /**
+         * 切换 Tab：离开呼吸页时暂停呼吸循环，避免后台计时
+         */
+        switchTab(id) {
+          if (this.activeTab === 'breathe' && id !== 'breathe') {
+            this.pauseBreathInternal();
+          }
+          if (this.activeTab === 'mindful' && id !== 'mindful') {
+            this.stopMindfulAudio();
+          }
+          this.activeTab = id;
+        },
+
+        acceptPrivacy() {
+          localStorage.setItem(this.LS_PRIVACY, '1');
+          this.showPrivacyModal = false;
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /** 合并读取 global_llm_config（绝不覆盖其他工具字段） */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /** 保存 API 配置：合并写入 */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) { console.error(e); }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.toast = { show: true, message: '配置已保存' };
+          setTimeout(() => { this.toast.show = false; }, 2000);
+          this.showSettings = false;
+        },
+
+        loadMoodHistory() {
+          try {
+            const raw = localStorage.getItem(this.LS_MOOD);
+            this.moodHistory = raw ? JSON.parse(raw) : [];
+          } catch (e) {
+            this.moodHistory = [];
+          }
+        },
+
+        saveMoodHistory() {
+          localStorage.setItem(this.LS_MOOD, JSON.stringify(this.moodHistory.slice(0, 200)));
+        },
+
+        loadCbtHistory() {
+          try {
+            const raw = localStorage.getItem(this.LS_CBT);
+            this.cbtHistory = raw ? JSON.parse(raw) : [];
+          } catch (e) {
+            this.cbtHistory = [];
+          }
+        },
+
+        saveCbtHistory() {
+          localStorage.setItem(this.LS_CBT, JSON.stringify(this.cbtHistory.slice(0, 100)));
+        },
+
+        formatDate(ts) {
+          const d = new Date(ts);
+          return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        },
+
+        /**
+         * Markdown 安全渲染
+         * @param {string} md
+         */
+        renderMd(md) {
+          const raw = (md || '').trim();
+          if (!raw) return '';
+          if (typeof marked === 'undefined') return this.escapeHtml(raw);
+          const html = marked.parse(raw, { breaks: true });
+          if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+          return html;
+        },
+
+        escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        },
+
+        /**
+         * 通用 DeepSeek 流式请求
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {(chunk: string) => void} onDelta
+         * @param {() => void} [onFinally]
+         * @param {(reasoning: string) => void} [onReasoning] V4 Pro 模型的 reasoning_content
+         */
+        async streamDeepSeek(messages, onDelta, onFinally, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.toast = { show: true, message: '请先配置 DeepSeek API Key' };
+            setTimeout(() => { this.toast.show = false; }, 2500);
+            if (typeof onFinally === 'function') onFinally();
+            return;
+          }
+
+          try {
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + key
+              },
+              body: JSON.stringify({
+                model: this.apiConfig.model || 'deepseek-v4-flash',
+                messages,
+                stream: true,
+                temperature: 0.75,
+                max_tokens: 2000
+              })
+            });
+
+            if (!res.ok) {
+              const t = await res.text().catch(() => '');
+              throw new Error('API ' + res.status + (t ? ': ' + t.slice(0, 120) : ''));
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const t = line.trim();
+                if (!t.startsWith('data:')) continue;
+                const data = t.slice(5).trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta;
+                  if (delta?.reasoning_content && typeof onReasoning === 'function') {
+                    onReasoning(delta.reasoning_content);
+                  }
+                  if (delta?.content) onDelta(delta.content);
+                } catch (pe) {
+                  console.warn('流片段解析跳过', pe);
+                }
+              }
+            }
+          } catch (e) {
+            console.error(e);
+            this.toast = { show: true, message: e.message || '请求失败' };
+            setTimeout(() => { this.toast.show = false; }, 3000);
+          } finally {
+            if (typeof onFinally === 'function') onFinally();
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /** 提交心情日记并请求 AI 温暖回应 */
+        async submitMoodDiary() {
+          if (!this.diaryText.trim() || this.diaryStreaming) return;
+          this.diaryAiReply = '';
+          this.diaryReasoning = '';
+          this.diaryStreaming = true;
+
+          const userCtx = `用户选择的心情表情：${this.selectedMood}\n自评分数（1-10）：${this.moodScore}\n文字：${this.diaryText.trim()}`;
+
+          const system = `你是一位温暖、克制的心理支持陪伴者（非医疗诊断）。用户在做心情日记。
+要求：用中文 Markdown 回复，语气温柔、具体、不评判；不输出「作为 AI」之类套话；不提供自杀方法或极端建议；若涉及自伤危机，简短鼓励联系身边信任的人或专业热线。
+结构建议：先共情 1-2 句 → 轻轻反映你听到的感受 → 1-2 个可选的小行动或视角（非强迫）。篇幅适中。`;
+
+          await this.streamDeepSeek(
+            [
+              { role: 'system', content: system },
+              { role: 'user', content: userCtx }
+            ],
+            (chunk) => { this.diaryAiReply += chunk; },
+            () => { this.diaryStreaming = false; },
+            (r) => { this.diaryReasoning += r; }
+          );
+
+          const entry = {
+            id: 'm' + Date.now(),
+            ts: Date.now(),
+            emoji: this.selectedMood,
+            score: this.moodScore,
+            text: this.diaryText.trim(),
+            aiSnippet: (this.diaryAiReply || '').slice(0, 200)
+          };
+          this.moodHistory.unshift(entry);
+          this.saveMoodHistory();
+          this.drawMoodChart();
+        },
+
+        clearMoodHistory() {
+          if (!confirm('确定清空所有本地心情记录？')) return;
+          this.moodHistory = [];
+          localStorage.removeItem(this.LS_MOOD);
+          this.drawMoodChart();
+        },
+
+        /**
+         * 绘制最近 7 天心情平均分折线图（Canvas）
+         */
+        drawMoodChart() {
+          this.$nextTick(() => {
+            const canvas = document.getElementById('mood-chart-canvas');
+            if (!canvas || !canvas.getContext) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const days = [];
+            const now = new Date();
+            for (let i = 6; i >= 0; i--) {
+              const d = new Date(now);
+              d.setDate(d.getDate() - i);
+              days.push({
+                key: `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`,
+                label: `${d.getMonth() + 1}/${d.getDate()}`
+              });
+            }
+
+            const byDay = {};
+            for (const item of this.moodHistory) {
+              const d = new Date(item.ts);
+              const k = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+              if (!byDay[k]) byDay[k] = { sum: 0, n: 0 };
+              byDay[k].sum += Number(item.score) || 0;
+              byDay[k].n += 1;
+            }
+
+            const values = days.map((d) => {
+              const v = byDay[d.key];
+              return v ? v.sum / v.n : null;
+            });
+
+            const padL = 36;
+            const padR = 12;
+            const padT = 14;
+            const padB = 28;
+            const chartW = w - padL - padR;
+            const chartH = h - padT - padB;
+
+            ctx.strokeStyle = 'rgba(167, 139, 250, 0.35)';
+            ctx.lineWidth = 1;
+            for (let g = 1; g <= 10; g++) {
+              const y = padT + chartH - (g / 10) * chartH;
+              ctx.beginPath();
+              ctx.moveTo(padL, y);
+              ctx.lineTo(padL + chartW, y);
+              ctx.stroke();
+            }
+
+            ctx.fillStyle = 'rgba(196, 181, 253, 0.5)';
+            ctx.font = '10px system-ui,sans-serif';
+            for (let i = 0; i < days.length; i++) {
+              const x = padL + (i / (days.length - 1 || 1)) * chartW;
+              ctx.fillText(days[i].label, x - 14, h - 8);
+            }
+
+            const pts = [];
+            for (let i = 0; i < values.length; i++) {
+              if (values[i] == null) continue;
+              const x = padL + (i / (days.length - 1 || 1)) * chartW;
+              const y = padT + chartH - (values[i] / 10) * chartH;
+              pts.push({ x, y });
+            }
+
+            if (pts.length >= 2) {
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(244, 114, 182, 0.9)';
+              ctx.lineWidth = 2;
+              ctx.moveTo(pts[0].x, pts[0].y);
+              for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+              ctx.stroke();
+            }
+
+            ctx.fillStyle = 'rgba(250, 232, 255, 0.95)';
+            for (const p of pts) {
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            ctx.fillStyle = 'rgba(167, 139, 250, 0.7)';
+            ctx.fillText('1', 8, h - padB + 4);
+            ctx.fillText('10', 8, padT + 8);
+          });
+        },
+
+        get breathSessionFormatted() {
+          const s = this.breathSessionSeconds;
+          const m = Math.floor(s / 60);
+          const r = s % 60;
+          return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+        },
+
+        /**
+         * 获取当前呼吸模式各阶段时长（秒）
+         * @returns {{inhale:number,hold1:number,exhale:number,hold2:number, labels:string[]}}
+         */
+        getBreathPattern() {
+          if (this.breathMode === '478') {
+            return {
+              inhale: 4, hold1: 7, exhale: 8, hold2: 0,
+              labels: ['吸气…', '轻轻屏住…', '缓缓呼气…', '']
+            };
+          }
+          if (this.breathMode === 'deep') {
+            return {
+              inhale: 6, hold1: 0, exhale: 6, hold2: 0,
+              labels: ['深深吸气…', '', '慢慢呼气…', '']
+            };
+          }
+          return {
+            inhale: 4, hold1: 4, exhale: 4, hold2: 4,
+            labels: ['吸气…', '屏住…', '呼气…', '屏住…']
+          };
+        },
+
+        setBreathMode(id) {
+          this.breathMode = id;
+          if (this.breathRunning) {
+            this.pauseBreathInternal();
+            this.toggleBreath();
+          }
+        },
+
+        toggleBreath() {
+          if (this.breathRunning) {
+            this.pauseBreathInternal();
+          } else {
+            this.startBreathLoop();
+          }
+        },
+
+        pauseBreathInternal() {
+          this.breathRunning = false;
+          if (this._breathTimer) {
+            clearInterval(this._breathTimer);
+            this._breathTimer = null;
+          }
+          this.breathBodyClass = '';
+        },
+
+        resetBreathSession() {
+          this.breathSessionSeconds = 0;
+        },
+
+        /**
+         * 呼吸主循环：按阶段推进 scale 与提示文案
+         */
+        startBreathLoop() {
+          this.breathRunning = true;
+          const pattern = this.getBreathPattern();
+          const phases = [
+            { key: 'inhale', dur: pattern.inhale, label: pattern.labels[0], warm: true },
+            { key: 'hold1', dur: pattern.hold1, label: pattern.labels[1], warm: true },
+            { key: 'exhale', dur: pattern.exhale, label: pattern.labels[2], warm: false },
+            { key: 'hold2', dur: pattern.hold2, label: pattern.labels[3], warm: false }
+          ].filter((p) => p.dur > 0);
+
+          let phaseIndex = 0;
+          let phaseStart = performance.now();
+          let currentDur = phases[0].dur * 1000;
+
+          const tick = () => {
+            if (!this.breathRunning) return;
+            const p = phases[phaseIndex];
+            this.breathHint = p.label || '…';
+            this.breathBodyClass = p.warm ? 'warm' : 'cool';
+
+            const elapsed = performance.now() - phaseStart;
+            const t = Math.min(1, elapsed / currentDur);
+            if (p.key === 'inhale') {
+              this.breathCircleScale = 0.82 + t * 0.28;
+            } else if (p.key === 'hold1' || p.key === 'hold2') {
+              this.breathCircleScale = p.key === 'hold1' ? 1.1 : 0.82;
+            } else {
+              this.breathCircleScale = 1.1 - t * 0.28;
+            }
+
+            if (elapsed >= currentDur) {
+              phaseIndex = (phaseIndex + 1) % phases.length;
+              phaseStart = performance.now();
+              currentDur = phases[phaseIndex].dur * 1000;
+            }
+          };
+
+          if (this._breathTimer) clearInterval(this._breathTimer);
+          this._breathTimer = setInterval(() => {
+            tick();
+            if (this.breathRunning) this.breathSessionSeconds += 0.1;
+          }, 100);
+          tick();
+        },
+
+        /** CBT 思维重构 */
+        async runCbtRestructure() {
+          if (!this.cbtEvent.trim() || !this.cbtThought.trim() || this.cbtStreaming) return;
+          this.cbtAiReply = '';
+          this.cbtReasoning = '';
+          this.cbtStreaming = true;
+
+          const system = `你是受过认知行为治疗（CBT）训练的心理咨询师助手（非诊断）。用中文 Markdown 输出，语气温柔、不评判。
+任务：1）简要复述事件与自动想法；2）列出可能存在的认知歪曲类型（如灾难化、非黑即白、读心术、情绪推理等），每条用温和语言解释；3）提供 2-4 条「替代性思维」或自我对话句式；4）一句自我关怀收尾。
+禁止：羞辱用户、绝对化命令、医疗处方。`;
+
+          const user = `事件：${this.cbtEvent.trim()}\n自动想法：${this.cbtThought.trim()}\n情绪：${this.cbtEmotion}，强度 ${this.cbtIntensity}/100`;
+
+          await this.streamDeepSeek(
+            [{ role: 'system', content: system }, { role: 'user', content: user }],
+            (c) => { this.cbtAiReply += c; },
+            () => { this.cbtStreaming = false; },
+            (r) => { this.cbtReasoning += r; }
+          );
+
+          this.cbtHistory.unshift({
+            id: 'c' + Date.now(),
+            ts: Date.now(),
+            summary: this.cbtThought.trim().slice(0, 80)
+          });
+          this.saveCbtHistory();
+        },
+
+        /** 正念引导：按主题 + 当日日期生成（可缓存同日同主题） */
+        async generateMindfulText() {
+          if (this.mindfulStreaming) return;
+          const today = new Date().toDateString();
+          let cache = {};
+          try {
+            cache = JSON.parse(localStorage.getItem(this.LS_MINDFUL_CACHE) || '{}');
+          } catch (e) { cache = {}; }
+          const ck = `${today}_${this.mindfulTheme}`;
+          if (cache[ck]) {
+            this.mindfulText = cache[ck];
+            return;
+          }
+
+          this.mindfulText = '';
+          this.mindfulReasoning = '';
+          this.mindfulStreaming = true;
+
+          const sceneMap = {
+            forest: '雨后苔藓与远处鸟鸣的温带森林小径',
+            beach: '黄昏时海浪轻拍沙滩、海风温和',
+            starry: '夏夜开阔草地仰望银河与缓慢移动的星空'
+          };
+
+          const system = `你是正念冥想引导者。用中文 Markdown，写一段可供朗读的冥想引导（约 400-700 字）。
+要求：第二人称「你」；节奏慢，多感官描写（视觉、听觉、体感呼吸）；不宗教化；结尾温柔收束。
+场景：${sceneMap[this.mindfulTheme] || sceneMap.forest}`;
+
+          const user = `今天是 ${today}。请生成「${this.mindfulTheme}」主题的正念引导。`;
+
+          await this.streamDeepSeek(
+            [{ role: 'system', content: system }, { role: 'user', content: user }],
+            (c) => { this.mindfulText += c; },
+            () => { this.mindfulStreaming = false; },
+            (r) => { this.mindfulReasoning += r; }
+          );
+
+          cache[ck] = this.mindfulText;
+          try {
+            localStorage.setItem(this.LS_MINDFUL_CACHE, JSON.stringify(cache));
+          } catch (e) {
+            console.warn('正念缓存写入失败（可能超出配额）', e);
+          }
+        },
+
+        get mindfulTimerDisplay() {
+          const total = this.mindfulDurationMin * 60;
+          const left = this.mindfulRemainingSec > 0 ? this.mindfulRemainingSec : total;
+          const m = Math.floor(left / 60);
+          const s = left % 60;
+          return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        },
+
+        toggleMindfulTimer() {
+          if (this.mindfulTimerRunning) {
+            this.mindfulTimerRunning = false;
+            if (this._mindfulInterval) {
+              clearInterval(this._mindfulInterval);
+              this._mindfulInterval = null;
+            }
+            this.stopMindfulAudio();
+          } else {
+            const total = this.mindfulDurationMin * 60;
+            if (this.mindfulRemainingSec <= 0) this.mindfulRemainingSec = total;
+            this.mindfulTimerRunning = true;
+            this.stopMindfulAudio();
+            this.startMindfulAudio();
+            this._mindfulInterval = setInterval(() => {
+              if (this.mindfulRemainingSec <= 0) {
+                clearInterval(this._mindfulInterval);
+                this._mindfulInterval = null;
+                this.mindfulTimerRunning = false;
+                this.stopMindfulAudio();
+                this.toast = { show: true, message: '本次冥想时间结束，辛苦了' };
+                setTimeout(() => { this.toast.show = false; }, 3000);
+                return;
+              }
+              this.mindfulRemainingSec--;
+            }, 1000);
+          }
+        },
+
+        resetMindfulTimer() {
+          this.mindfulTimerRunning = false;
+          if (this._mindfulInterval) {
+            clearInterval(this._mindfulInterval);
+            this._mindfulInterval = null;
+          }
+          this.mindfulRemainingSec = 0;
+          this.stopMindfulAudio();
+        },
+
+        /**
+         * Web Audio：极低音量低频正弦波，营造环境底噪（非音乐）
+         */
+        startMindfulAudio() {
+          try {
+            this.stopMindfulAudio();
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            if (!this._audioCtx) this._audioCtx = new Ctx();
+            const ctx = this._audioCtx;
+            if (ctx.state === 'suspended') ctx.resume();
+
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = 136.1;
+
+            const gain = ctx.createGain();
+            gain.gain.value = 0.018;
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+
+            this._oscGain = { osc, gain };
+          } catch (e) {
+            console.warn('Web Audio 启动失败', e);
+          }
+        },
+
+        stopMindfulAudio() {
+          try {
+            if (this._oscGain) {
+              this._oscGain.osc.stop();
+              this._oscGain.osc.disconnect();
+              this._oscGain.gain.disconnect();
+              this._oscGain = null;
+            }
+          } catch (e) { /* ignore */ }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

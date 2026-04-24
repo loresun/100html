@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Howler.js 3D 音频 (扩展)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #1e293b; color: white; }
+    .speaker { transition: transform 0.1s; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 flex flex-col items-center justify-center min-h-screen">
+
+<header class="text-center mb-12">
+  <h1 class="text-3xl font-bold text-white">Howler.js 3D 空间音频</h1>
+  <p class="text-slate-400 mt-1">移动鼠标控制听者位置，感受声音的方位变化</p>
+  <a href="index.html" class="inline-block mt-4 text-sm text-indigo-400 hover:text-indigo-300">← 返回导航</a>
+</header>
+
+<main class="w-full max-w-lg h-96 border-2 border-slate-600 rounded-full relative flex items-center justify-center" id="room">
+  
+  <!-- Sound Source -->
+  <div class="absolute w-8 h-8 bg-pink-500 rounded-full animate-ping opacity-20"></div>
+  <div class="absolute w-4 h-4 bg-pink-500 rounded-full z-10 shadow-[0_0_20px_rgba(236,72,153,0.8)]"></div>
+  <div class="absolute -top-10 text-pink-400 text-xs font-bold">Sound Source</div>
+
+  <!-- Listener -->
+  <div id="listener" class="w-10 h-10 bg-indigo-500 rounded-full absolute shadow-xl border-2 border-white flex items-center justify-center cursor-none pointer-events-none speaker" style="top: 80%; left: 50%;">
+    🎧
+  </div>
+
+</main>
+
+<div class="mt-8 text-center text-slate-400 text-sm">
+  <button onclick="playMusic()" class="px-6 py-2 bg-indigo-600 rounded-full text-white font-bold hover:bg-indigo-700 transition">▶ 播放空间音频</button>
+  <p class="mt-2">请佩戴耳机以获得最佳体验 (PannerNode)</p>
+</div>
+
+<script>
+  // Simple beep loop or logic
+  // Since we don't have a guaranteed 3D audio file, we simulate with a basic sound or synthesize
+  // Actually Howler relies on files. Let's use a standard remote file.
+  
+  var sound = new Howl({
+    src: ['https://actions.google.com/sounds/v1/science_fiction/human_static_pulse.ogg'],
+    loop: true,
+    volume: 0.5
+  });
+
+  var id;
+  const room = document.getElementById('room');
+  const listener = document.getElementById('listener');
+
+  function playMusic() {
+    if(!sound.playing()){
+      id = sound.play();
+      // Enable 3D
+      sound.pos(0, 0, -0.5, id); // Sound at center
+      updatePos(window.innerWidth/2, window.innerHeight * 0.8); // Initial listener pos
+    }
+  }
+
+  // Update logic
+  function updatePos(x, y) {
+    const rect = room.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // Normalize coordinates relative to center (Sound source)
+    // Scale to -1 to 1 range roughly
+    const relX = (x - centerX) / (rect.width / 2);
+    const relY = (y - centerY) / (rect.height / 2); // In 3D audio, Z usually depth, Y up/down. Top-down view: X=X, Z=Y
+
+    // Update listener position relative to sound
+    // Howler.pos() sets sound source position.
+    // Howler.orientation() sets listener orientation.
+    // But Howler uses global listener.
+    // Let's assume Sound is fixed at 0,0,0. We move the listener relative to it?
+    // Howler Global Helper: Howler.pos(x, y, z) sets global listener position.
+    Howler.pos(relX * 2, 0, relY * 2);
+    
+    // Update visual
+    // Clamp inside circle visually is hard without math, just follow mouse
+    listener.style.transform = `translate(${x - window.innerWidth/2}px, ${y - window.innerHeight/2}px)`; 
+    // Wait, transform translate is relative to element center...
+    // Let's just use fixed positioning for simpler demo logic relative to room container
+    // But mousemove gives clientX/Y.
+    const localX = x - rect.left;
+    const localY = y - rect.top;
+    listener.style.left = localX + 'px';
+    listener.style.top = localY + 'px';
+    listener.style.transform = 'translate(-50%, -50%)';
+  }
+
+  document.addEventListener('mousemove', (e) => {
+    if(sound.playing()) {
+       updatePos(e.clientX, e.clientY);
+    }
+  });
+
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

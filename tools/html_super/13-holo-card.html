@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Holo Card // HTML_SUPER</title>
+    <style>
+        body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; perspective: 1000px; font-family: sans-serif; }
+        .ui { position: absolute; top: 20px; left: 20px; } a { color: #fff; text-decoration: none; border-bottom: 1px solid #fff; }
+
+        .card {
+            width: 320px;
+            height: 480px;
+            background-color: #000;
+            background-image: url('https://images.unsplash.com/photo-1634986666676-ec8fd927c23d?q=80&w=2670&auto=format&fit=crop');
+            background-size: cover;
+            border-radius: 20px;
+            position: relative;
+            transform-style: preserve-3d;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            /* Initial transform */
+            transform: rotateX(0) rotateY(0);
+        }
+
+        /* Holographic Overlay */
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            background: linear-gradient(
+                115deg, 
+                transparent 0%, 
+                rgba(255, 0, 150, 0.5) 30%, 
+                rgba(0, 255, 255, 0.5) 50%, 
+                transparent 80%
+            );
+            mix-blend-mode: color-dodge;
+            opacity: 0; /* Hidden by default, shown by JS logic or Interaction */
+            pointer-events: none;
+            z-index: 2;
+            background-size: 200% 200%;
+            background-position: var(--holopos, 50% 50%);
+        }
+        
+        /* Glare */
+        .card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            background: radial-gradient( circle at var(--pos, 50% 50%), rgba(255,255,255,0.4) 0%, transparent 60% );
+            mix-blend-mode: overlay;
+            z-index: 3;
+        }
+        
+        .card-content {
+            position: absolute;
+            bottom: 30px; left: 20px; right: 20px;
+            color: #fff;
+            z-index: 5;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            transform: translateZ(30px); /* Pop out */
+        }
+        
+        .card-border {
+            position: absolute;
+            inset: 0;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            z-index: 4;
+        }
+
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui"><a href="index.html">← BACK</a></div>
+
+    <div class="card" id="card">
+        <div class="card-border"></div>
+        <div class="card-content">
+            <h2 style="margin:0;">Rare Holo</h2>
+            <p>Interactive 3D Tilt</p>
+        </div>
+    </div>
+
+    <script>
+        const card = document.getElementById('card');
+
+        document.addEventListener('mousemove', (e) => {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Calculate rotation (-25 to 25 deg)
+            // Left (0) -> -25deg, Right (w) -> 25deg
+            const rotateY = ((x / w) - 0.5) * 50; 
+            const rotateX = ((y / h) - 0.5) * -50; 
+            
+            card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            
+            // Update glare position variables
+            const posX = (x / w) * 100 + "%";
+            const posY = (y / h) * 100 + "%";
+            
+            card.style.setProperty('--pos', `${posX} ${posY}`);
+            
+            // Holo gradient moves opposite
+            const holoX = (1 - (x / w)) * 100 + "%";
+            const holoY = (1 - (y / h)) * 100 + "%";
+            card.style.setProperty('--holopos', `${holoX} ${holoY}`);
+            
+            // Show holo on movement
+            const style = document.createElement('style');
+            // We are using ::before, can't style directly via JS easily without vars.
+            // But we can enable opacity via class
+            // Just assume opacity 1 for now if moving
+             // Actually, the mix-blend-mode makes it invisible on black unless light hits it.
+             // We'll trust the gradient.
+        });
+        
+        // Enable holo opacity dynamically
+        const sheet = document.styleSheets[0];
+        sheet.insertRule('.card:hover::before { opacity: 1; transition: opacity 0.2s; }', sheet.cssRules.length);
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

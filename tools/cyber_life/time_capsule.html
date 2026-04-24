@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>时间胶囊 · 写给未来的自己</title>
+
+  <!-- 手写风格标题字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <style>
+    /**
+     * 时间胶囊 App：沉浸式复古信箱
+     * 主色：深棕、暖黄、牛皮纸
+     */
+    [x-cloak] { display: none !important; }
+
+    .font-hand {
+      font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
+    }
+
+    .font-serif-sc {
+      font-family: 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
+    }
+
+    /* ========== 全屏基底：深棕 + 暖光晕 ========== */
+    body.tc-app {
+      min-height: 100vh;
+      min-height: 100dvh;
+      color: #f5e6c8;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse 90% 60% at 50% -15%, rgba(212, 165, 116, 0.18) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 30%, rgba(139, 90, 43, 0.25) 0%, transparent 50%),
+        radial-gradient(ellipse 45% 35% at 0% 70%, rgba(92, 64, 42, 0.35) 0%, transparent 45%),
+        linear-gradient(165deg, #1a120b 0%, #2d1f14 40%, #1e1510 100%);
+    }
+
+    /* 漂浮装饰：齿轮与沙漏轮廓（纯 CSS） */
+    .tc-deco {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .tc-gear {
+      position: absolute;
+      border: 2px solid rgba(212, 165, 116, 0.08);
+      border-radius: 50%;
+      animation: tc-float-gear 28s ease-in-out infinite;
+    }
+    .tc-gear::before {
+      content: '';
+      position: absolute;
+      inset: 18%;
+      border: 1px dashed rgba(212, 165, 116, 0.12);
+      border-radius: 50%;
+    }
+    .tc-gear.g1 { width: 120px; height: 120px; left: 8%; top: 12%; animation-delay: 0s; }
+    .tc-gear.g2 { width: 80px; height: 80px; right: 12%; top: 22%; animation-delay: -7s; opacity: 0.7; }
+    .tc-gear.g3 { width: 60px; height: 60px; left: 20%; bottom: 18%; animation-delay: -14s; opacity: 0.5; }
+    @keyframes tc-float-gear {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(180deg); }
+    }
+    .tc-hourglass {
+      position: absolute;
+      width: 24px;
+      height: 36px;
+      border: 2px solid rgba(212, 165, 116, 0.1);
+      border-radius: 4px;
+      opacity: 0.35;
+      animation: tc-drift 22s linear infinite;
+    }
+    .tc-hourglass::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0;
+      height: 0;
+      transform: translate(-50%, -50%);
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 10px solid rgba(212, 165, 116, 0.15);
+    }
+    .tc-hourglass.h1 { right: 25%; top: 40%; animation-delay: 0s; }
+    .tc-hourglass.h2 { left: 35%; top: 55%; animation-delay: -11s; }
+    @keyframes tc-drift {
+      0% { transform: translate(0, 0) rotate(-5deg); }
+      25% { transform: translate(-15px, 12px) rotate(3deg); }
+      50% { transform: translate(8px, -8px) rotate(-2deg); }
+      75% { transform: translate(-10px, 6px) rotate(4deg); }
+      100% { transform: translate(0, 0) rotate(-5deg); }
+    }
+
+    /* ========== 牛皮纸信纸：纹理 + 暗角 + 横线 ========== */
+    .tc-paper {
+      position: relative;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.03) 0%, transparent 6%, transparent 94%, rgba(0,0,0,0.04) 100%),
+        repeating-linear-gradient(
+          transparent,
+          transparent 27px,
+          rgba(139, 90, 43, 0.12) 27px,
+          rgba(139, 90, 43, 0.12) 28px
+        ),
+        linear-gradient(180deg, #e8d4b8 0%, #dcc9a8 50%, #d4bf9e 100%);
+      box-shadow:
+        inset 0 0 80px rgba(62, 39, 24, 0.15),
+        0 12px 40px rgba(0, 0, 0, 0.45),
+        0 2px 0 rgba(255, 255, 255, 0.08) inset;
+      border-radius: 4px;
+      border: 1px solid rgba(92, 64, 42, 0.35);
+    }
+    .tc-paper::after {
+      /* 暗角 vignette */
+      content: '';
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      border-radius: 4px;
+      box-shadow: inset 0 0 60px rgba(45, 31, 20, 0.25);
+    }
+
+    .tc-paper-textarea {
+      background: transparent;
+      border: none;
+      resize: vertical;
+      min-height: 220px;
+      line-height: 28px;
+      padding: 8px 12px 12px 28px;
+      font-size: 1.25rem;
+      color: #3d2918;
+      outline: none;
+    }
+    .tc-paper-textarea::placeholder {
+      color: rgba(61, 41, 24, 0.45);
+    }
+
+    /* 笔尖装饰 */
+    .tc-pen-tip {
+      position: absolute;
+      left: 8px;
+      top: 52px;
+      width: 6px;
+      height: 22px;
+      background: linear-gradient(180deg, #5c4030, #8b5a2b);
+      border-radius: 1px 1px 50% 50%;
+      opacity: 0.55;
+      transform: rotate(-12deg);
+    }
+
+    /* ========== 信封拟物 ========== */
+    .tc-envelope {
+      position: relative;
+      width: 200px;
+      height: 130px;
+      margin: 0 auto;
+      perspective: 800px;
+    }
+    .tc-envelope-body {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(145deg, #c9a87c 0%, #a67c52 45%, #8b6914 100%);
+      border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      border: 1px solid rgba(62, 39, 24, 0.4);
+    }
+    .tc-envelope-flap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 65px;
+      background: linear-gradient(180deg, #d4b896 0%, #b8956a 100%);
+      clip-path: polygon(0 0, 50% 100%, 100% 0);
+      transform-origin: top center;
+      transition: transform 0.6s ease;
+      border-bottom: 1px solid rgba(62, 39, 24, 0.25);
+    }
+    .tc-envelope.open .tc-envelope-flap {
+      transform: rotateX(-160deg);
+    }
+    .tc-address-lines {
+      position: absolute;
+      bottom: 18px;
+      left: 14px;
+      right: 14px;
+      height: 36px;
+      border-top: 1px solid rgba(62, 39, 24, 0.25);
+      background: repeating-linear-gradient(
+        transparent 0,
+        transparent 10px,
+        rgba(62, 39, 24, 0.12) 10px,
+        rgba(62, 39, 24, 0.12) 11px
+      );
+    }
+
+    /* 蜡封 */
+    .tc-wax {
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      width: 52px;
+      height: 52px;
+      margin-left: -26px;
+      margin-top: -26px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #e85d4c, #8b1a1a 70%, #5c1010);
+      box-shadow:
+        0 4px 12px rgba(0,0,0,0.5),
+        inset 0 -3px 8px rgba(0,0,0,0.35),
+        inset 0 2px 4px rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Ma Shan Zheng', serif;
+      font-size: 1.1rem;
+      color: rgba(255, 230, 200, 0.9);
+      z-index: 4;
+    }
+
+    /* ========== 封存动画：信纸折叠 ========== */
+    .tc-seal-stage {
+      perspective: 1200px;
+    }
+    .tc-animate-paper {
+      transform-style: preserve-3d;
+      transition: transform 0.9s cubic-bezier(0.45, 0, 0.2, 1);
+    }
+    .tc-animate-paper.is-folding {
+      transform: rotateX(-78deg) scale(0.72) translateY(24px);
+      opacity: 0.92;
+    }
+    .tc-animate-paper.is-inserting {
+      transform: rotateX(-90deg) scale(0.35, 0.15) translateY(120px);
+      opacity: 0.5;
+    }
+
+    .tc-mini-env-wrap {
+      opacity: 0;
+      transform: scale(0.6) translateY(40px);
+      transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    .tc-mini-env-wrap.show {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    .tc-wax-pop {
+      transform: scale(0);
+      opacity: 0;
+      transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.3s ease;
+    }
+    .tc-wax-pop.stamp {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    /* 信封飘走 + 粒子 */
+    .tc-float-away {
+      animation: tc-env-rise 2.2s ease-in forwards;
+    }
+    @keyframes tc-env-rise {
+      0% { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
+      40% { transform: translateY(-40px) scale(0.95); opacity: 0.95; }
+      100% { transform: translateY(-180vh) scale(0.3); opacity: 0; filter: blur(6px); }
+    }
+    .tc-particle {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: rgba(212, 165, 116, 0.7);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: tc-part-up 2s ease-out forwards;
+    }
+    @keyframes tc-part-up {
+      0% { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--tx), -120px) scale(0.2); }
+    }
+
+    /* 飘落回信信封 */
+    .tc-reply-fall {
+      animation: tc-fall-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes tc-fall-in {
+      0% { transform: translateY(-120vh) rotate(-8deg); opacity: 0; }
+      70% { transform: translateY(8px) rotate(2deg); opacity: 1; }
+      100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    }
+
+    /* 胶囊卡片：金色光效 */
+    .tc-card-glow {
+      box-shadow:
+        0 0 0 1px rgba(212, 165, 116, 0.45),
+        0 0 24px rgba(255, 200, 100, 0.25);
+      animation: tc-glow-pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes tc-glow-pulse {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(212, 165, 116, 0.45), 0 0 20px rgba(255, 200, 100, 0.2); }
+      50% { box-shadow: 0 0 0 1px rgba(255, 220, 150, 0.65), 0 0 32px rgba(255, 210, 120, 0.4); }
+    }
+
+    .tc-glass-nav {
+      background: rgba(45, 31, 20, 0.45);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(212, 165, 116, 0.12);
+    }
+
+    .tc-tab-active {
+      background: linear-gradient(180deg, rgba(212, 165, 116, 0.25), rgba(212, 165, 116, 0.08));
+      border: 1px solid rgba(212, 165, 116, 0.35);
+      color: #fde8c8;
+    }
+    .tc-tab-idle {
+      border: 1px solid transparent;
+      color: rgba(245, 230, 200, 0.55);
+    }
+
+    .tc-prose {
+      line-height: 1.85;
+      font-size: 0.95rem;
+      color: #3d2918;
+    }
+    .tc-prose p { margin: 0.6em 0; }
+    .tc-prose strong { color: #5c3d26; }
+
+    .safe-pb { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="tc-app font-serif-sc" x-data="timeCapsuleApp()" x-init="init()" x-cloak>
+
+  <!-- 背景装饰层 -->
+  <div class="tc-deco" aria-hidden="true">
+    <div class="tc-gear g1"></div>
+    <div class="tc-gear g2"></div>
+    <div class="tc-gear g3"></div>
+    <div class="tc-hourglass h1"></div>
+    <div class="tc-hourglass h2"></div>
+  </div>
+
+  <div class="relative z-10 min-h-screen min-h-[100dvh] flex flex-col">
+
+    <!-- 极简导航：返回首页 + 设置 -->
+    <header class="tc-glass-nav sticky top-0 z-50 shrink-0">
+      <div class="flex items-center justify-between px-3 py-2.5 max-w-lg mx-auto w-full">
+        <a href="../../index.html"
+          class="flex items-center gap-1 text-amber-200/85 hover:text-amber-100 text-sm px-2 py-1.5 rounded-lg hover:bg-white/5 transition">
+          <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          <span>返回</span>
+        </a>
+        <h1 class="text-center font-hand text-xl text-amber-100/95 tracking-widest">时间胶囊</h1>
+        <button type="button"
+          class="p-2 rounded-xl text-amber-200/85 hover:bg-white/10 transition"
+          @click="showSettings = true" title="API 与模型">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Tab：写信 / 胶囊柜 -->
+    <nav class="px-4 pt-2 max-w-lg mx-auto w-full flex gap-2">
+      <button type="button"
+        class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+        :class="mainTab === 'write' ? 'tc-tab-active' : 'tc-tab-idle hover:bg-white/5'"
+        @click="mainTab = 'write'">
+        <span class="inline-flex items-center justify-center gap-1.5">
+          <i data-lucide="pen-line" class="w-4 h-4"></i> 写信
+        </span>
+      </button>
+      <button type="button"
+        class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+        :class="mainTab === 'cabinet' ? 'tc-tab-active' : 'tc-tab-idle hover:bg-white/5'"
+        @click="mainTab = 'cabinet'">
+        <span class="inline-flex items-center justify-center gap-1.5">
+          <i data-lucide="archive" class="w-4 h-4"></i> 胶囊柜
+        </span>
+      </button>
+    </nav>
+
+    <main class="flex-1 px-4 py-4 max-w-lg mx-auto w-full safe-pb">
+
+      <!-- ========== 写信主界面 ========== -->
+      <section x-show="mainTab === 'write'" x-transition.opacity.duration.300ms>
+
+        <!-- 模式切换：未来 / 过去 -->
+        <div class="mb-4 p-3 rounded-2xl bg-black/25 border border-amber-900/30">
+          <p class="text-xs text-amber-200/60 mb-2">通信模式</p>
+          <div class="flex rounded-xl overflow-hidden border border-amber-800/30">
+            <button type="button"
+              class="flex-1 py-2.5 text-sm transition"
+              :class="!pastMode ? 'bg-amber-900/50 text-amber-100' : 'text-amber-200/50 hover:bg-white/5'"
+              @click="pastMode = false">
+              给未来的自己
+            </button>
+            <button type="button"
+              class="flex-1 py-2.5 text-sm transition"
+              :class="pastMode ? 'bg-amber-900/50 text-amber-100' : 'text-amber-200/50 hover:bg-white/5'"
+              @click="pastMode = true">
+              给过去的自己回信
+            </button>
+          </div>
+          <p class="text-[11px] text-amber-200/45 mt-2 leading-relaxed" x-show="!pastMode">
+            写下此刻的心情与愿望；封存后 AI 会以「未来的你」口吻先回一封信。
+          </p>
+          <p class="text-[11px] text-amber-200/45 mt-2 leading-relaxed" x-show="pastMode">
+            描述那时你的处境与心情；AI 会以「现在更成熟的你」写一封回信给那时的自己。
+          </p>
+        </div>
+
+        <!-- 未来模式：时间选择 -->
+        <div class="mb-3" x-show="!pastMode">
+          <label class="block text-sm text-amber-200/80 font-hand text-lg mb-1">亲爱的</label>
+          <select x-model="timeKey"
+            class="w-full rounded-xl bg-black/30 border border-amber-800/40 text-amber-100 py-2.5 px-3 text-sm focus:ring-2 focus:ring-amber-600/50 outline-none">
+            <template x-for="opt in timeOptions" :key="opt.key">
+              <option :value="opt.key" x-text="opt.label + '的我'"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- 牛皮纸信纸 -->
+        <div class="tc-paper relative shadow-2xl mb-4">
+          <div class="tc-pen-tip" aria-hidden="true"></div>
+          <div class="pt-3 px-2 pb-2 relative z-[1]">
+            <p class="font-hand text-2xl text-center text-[#4a3220] mb-1 px-2" x-show="!pastMode">
+              亲爱的 <span class="text-[#7a4a1e]" x-text="currentTimeLabel()"></span> 的我
+            </p>
+            <p class="font-hand text-2xl text-center text-[#4a3220] mb-1 px-2" x-show="pastMode">
+              致 <span class="text-[#7a4a1e]">那时的我</span>
+            </p>
+            <textarea
+              x-model="letterContent"
+              class="tc-paper-textarea w-full font-hand text-xl"
+              :placeholder="pastMode ? '那时我在哪里？在担心什么？想对谁说些什么…' : '把此刻想说的话，慢慢写下来…'"
+              rows="9"
+              :disabled="sealRunning"></textarea>
+            <div class="flex items-center justify-between px-3 pb-3 text-sm text-[#5c4030]/80">
+              <span>此时此刻的你</span>
+              <span class="font-mono text-xs" x-text="todayStr"></span>
+            </div>
+          </div>
+        </div>
+
+        <button type="button"
+          class="w-full py-4 rounded-2xl font-hand text-2xl flex items-center justify-center gap-2
+            bg-gradient-to-b from-amber-800 to-amber-950 text-amber-100 border border-amber-700/50
+            shadow-lg shadow-black/40 hover:from-amber-700 hover:to-amber-900 disabled:opacity-40 disabled:pointer-events-none transition"
+          @click="startSeal()"
+          :disabled="sealRunning || !letterContent.trim()">
+          <i data-lucide="stamp" class="w-6 h-6"></i>
+          封存胶囊
+        </button>
+      </section>
+
+      <!-- ========== 胶囊柜 ========== -->
+      <section x-show="mainTab === 'cabinet'" x-transition.opacity.duration.300ms>
+        <p class="text-sm text-amber-200/55 mb-4 text-center" x-show="capsules.length === 0">
+          还没有胶囊。去「写信」封存第一封吧。
+        </p>
+        <div class="space-y-3">
+          <template x-for="c in sortedCapsules()" :key="c.id">
+            <button type="button"
+              @click="tryOpenCapsule(c)"
+              class="w-full text-left rounded-2xl p-4 border transition flex gap-3 items-start
+                bg-black/25 hover:bg-black/35"
+              :class="canOpenCapsule(c) ? 'tc-card-glow border-amber-500/50' : 'border-amber-900/30 opacity-80'">
+              <div class="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center bg-amber-900/40 border border-amber-800/40">
+                <i :data-lucide="canOpenCapsule(c) ? 'mail-open' : 'lock'" class="w-6 h-6 text-amber-200/90"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs px-2 py-0.5 rounded-lg bg-amber-950/60 text-amber-200/90" x-text="c.mode === 'past' ? '过去回信' : '未来信件'"></span>
+                  <span class="text-xs text-amber-200/50" x-text="'封存 ' + formatDate(c.created_at)"></span>
+                </div>
+                <p class="text-sm text-amber-100/90 mt-1 truncate" x-text="'「' + previewText(c) + '…」'"></p>
+                <p class="text-xs text-amber-200/55 mt-1" x-show="c.mode !== 'past'">
+                  <span x-show="!canOpenCapsule(c)">
+                    <i data-lucide="timer" class="w-3 h-3 inline-block align-middle mr-0.5"></i>
+                    还有 <span x-text="countdownDays(c)"></span> 天可开启阅读原信
+                  </span>
+                  <span x-show="canOpenCapsule(c)" class="text-amber-300/90">已到开启日 · 点击查看原信</span>
+                </p>
+                <p class="text-xs text-amber-200/55 mt-1" x-show="c.mode === 'past'">
+                  可随时重温这封「给过去的回信」
+                </p>
+              </div>
+            </button>
+          </template>
+        </div>
+      </section>
+    </main>
+
+    <!-- ========== 全屏封存动画层 ========== -->
+    <div x-show="sealOverlay"
+      class="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm px-6"
+      x-transition.opacity>
+      <div class="tc-seal-stage w-full max-w-sm">
+        <!-- 动画用信纸（缩略呈现折叠过程） -->
+        <div class="tc-animate-paper tc-paper mb-6 max-h-[140px] overflow-hidden mx-auto"
+          :class="{ 'is-folding': sealPhase === 'folding' || sealPhase === 'inserting' || sealPhase === 'waxing' || sealPhase === 'floating', 'is-inserting': sealPhase === 'inserting' || sealPhase === 'waxing' || sealPhase === 'floating' }">
+          <p class="p-4 text-[#4a3220] text-sm line-clamp-3 font-hand" x-text="letterPreviewShort"></p>
+        </div>
+        <div class="tc-mini-env-wrap mx-auto" :class="{ show: ['waxing', 'floating'].includes(sealPhase) }">
+          <div class="tc-envelope" :class="{ 'tc-float-away': sealPhase === 'floating' }">
+            <div class="tc-envelope-body"></div>
+            <div class="tc-envelope-flap"></div>
+            <div class="tc-address-lines"></div>
+            <div class="tc-wax tc-wax-pop" :class="{ stamp: sealPhase === 'waxing' || sealPhase === 'floating' }">封</div>
+          </div>
+          <!-- 粒子容器 -->
+          <div class="relative h-0 w-full" x-show="sealPhase === 'floating'">
+            <template x-for="(p, i) in particleSlots" :key="'p'+i">
+              <div class="tc-particle" :style="'left:' + p.x + '%; top:40px; --tx:' + p.tx + 'px; animation-delay:' + p.d + 'ms'"></div>
+            </template>
+          </div>
+        </div>
+        <p class="text-center text-amber-200/70 text-sm mt-8 font-hand text-lg" x-text="sealHint"></p>
+      </div>
+    </div>
+
+    <!-- ========== AI 回信：飘落信封 ========== -->
+    <div x-show="replyInvite"
+      class="fixed inset-0 z-[70] flex items-start justify-center pt-[12vh] px-6 pointer-events-none">
+      <div class="pointer-events-auto text-center max-w-sm tc-reply-fall" x-show="replyEnvelopeVisible">
+        <p class="text-amber-100 font-hand text-xl mb-4 drop-shadow-lg" x-text="replyBannerText"></p>
+        <button type="button"
+          class="tc-envelope mx-auto cursor-pointer hover:scale-105 transition-transform"
+          @click="openAiReplyEnvelope()">
+          <div class="tc-envelope-body"></div>
+          <div class="tc-envelope-flap"></div>
+          <div class="tc-address-lines"></div>
+          <div class="tc-wax stamp">启</div>
+        </button>
+        <p class="text-xs text-amber-200/50 mt-4">点击信封拆阅</p>
+      </div>
+    </div>
+
+    <!-- ========== AI 回信阅读（流式信纸） ========== -->
+    <div x-show="replyReaderOpen"
+      class="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
+      @click.self="closeReplyReader()">
+      <div class="tc-paper w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col shadow-2xl" @click.stop>
+        <div class="px-4 py-3 border-b border-amber-900/20 flex items-center justify-between bg-black/10">
+          <span class="font-hand text-xl text-[#4a3220]" x-text="replyReaderTitle"></span>
+          <button type="button" class="p-2 rounded-lg hover:bg-black/10 text-[#5c4030]" @click="closeReplyReader()">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <details x-show="reasoningBuffer && apiConfig.model === 'deepseek-v4-pro'" class="px-4 pt-2 border-b border-amber-900/10">
+          <summary class="text-xs text-[#6b4a30] cursor-pointer">🧠 模型推理过程（点击展开）</summary>
+          <pre class="text-[11px] text-[#5c4030]/80 whitespace-pre-wrap max-h-28 overflow-y-auto mt-1 mb-2" x-text="reasoningBuffer"></pre>
+        </details>
+        <div class="flex-1 overflow-y-auto p-4 tc-prose" id="reply-scroll">
+          <div class="prose prose-sm max-w-none tc-prose" x-html="safeMd(streamBuffer)"></div>
+          <div x-show="isStreaming" class="flex items-center gap-2 text-[#7a5a40] text-sm mt-2">
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+            <span x-text="streamStatusHint"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 胶囊柜：打开原信 ========== -->
+    <div x-show="cabinetReaderOpen"
+      class="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
+      @click.self="cabinetReaderOpen = false">
+      <div class="tc-paper w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col shadow-2xl relative" @click.stop>
+        <div class="relative z-[1] px-4 py-3 border-b border-amber-900/20 flex items-center justify-between">
+          <span class="font-hand text-xl text-[#4a3220]">封存的原信</span>
+          <button type="button" class="p-2 rounded-lg hover:bg-black/10 text-[#5c4030]" @click="cabinetReaderOpen = false">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <!-- 打开信封动画装饰 -->
+        <div class="tc-envelope open scale-[0.35] origin-top mx-auto -mb-2 opacity-90" aria-hidden="true">
+          <div class="tc-envelope-body"></div>
+          <div class="tc-envelope-flap"></div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5 text-[#3d2918] font-hand text-xl leading-relaxed whitespace-pre-wrap" x-text="cabinetReaderContent"></div>
+        <div class="p-4 border-t border-amber-900/15 text-xs text-[#5c4030]/70">
+          封存于 <span x-text="cabinetReaderMeta"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 到期提醒 Toast ========== -->
+    <div x-show="expiryToast"
+      class="fixed bottom-6 left-4 right-4 z-[85] flex justify-center pointer-events-none"
+      x-transition>
+      <div class="pointer-events-auto max-w-md w-full rounded-2xl border border-amber-500/50 bg-gradient-to-br from-amber-950/95 to-stone-950/95 p-4 shadow-2xl tc-card-glow">
+        <div class="flex gap-3 items-start">
+          <i data-lucide="bell-ring" class="w-6 h-6 text-amber-300 shrink-0 mt-0.5"></i>
+          <div>
+            <p class="font-hand text-lg text-amber-100">你有一封来自过去的信！</p>
+            <p class="text-xs text-amber-200/65 mt-1">有胶囊已到开启日，在「胶囊柜」里拆开阅读你曾写下的文字。</p>
+            <button type="button"
+              class="mt-3 text-sm px-4 py-2 rounded-xl bg-amber-800/80 text-amber-50 hover:bg-amber-700 transition"
+              @click="expiryToast = false; mainTab = 'cabinet'">
+              去胶囊柜
+            </button>
+          </div>
+          <button type="button" class="p-1 text-amber-200/50 hover:text-amber-100" @click="expiryToast = false">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== API 设置 ========== -->
+    <div x-show="showSettings"
+      class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      x-transition @click.self="showSettings = false">
+      <div class="bg-[#2a1f18] border border-amber-800/40 rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+        <h3 class="text-lg font-bold text-amber-100 mb-4">API 配置</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-amber-200/80 mb-1">DeepSeek API Key</label>
+            <input type="password" x-model="apiConfig.deepseek"
+              class="w-full rounded-xl bg-black/30 border border-amber-900/50 text-amber-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-600/40" />
+          </div>
+          <div>
+            <label class="block text-sm text-amber-200/80 mb-1">模型</label>
+            <select x-model="apiConfig.model"
+              class="w-full rounded-xl bg-black/30 border border-amber-900/50 text-amber-100 px-3 py-2 text-sm outline-none">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" class="px-4 py-2 rounded-xl text-amber-200/80 hover:bg-white/5" @click="showSettings = false">取消</button>
+          <button type="button" class="px-4 py-2 rounded-xl bg-amber-800 text-amber-50 hover:bg-amber-700" @click="saveConfig()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 错误提示 -->
+    <div x-show="errorMsg"
+      class="fixed top-20 left-4 right-4 z-[95] flex justify-center"
+      x-transition>
+      <div class="rounded-xl bg-red-950/90 border border-red-500/40 text-red-100 text-sm px-4 py-3 max-w-md shadow-lg" x-text="errorMsg"></div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 时间胶囊 Alpine 应用
+     * - 读写 localStorage: time_capsule_letters
+     * - 合并 global_llm_config，禁止整对象覆盖
+     */
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('timeCapsuleApp', () => ({
+        /** 主 Tab：write | cabinet */
+        mainTab: 'write',
+        /** 是否「给过去的自己回信」模式 */
+        pastMode: false,
+        /** 时间档位 key */
+        timeKey: '1y',
+        /** 信件正文 */
+        letterContent: '',
+        /** 今日展示字符串 */
+        todayStr: '',
+        /** 设置弹窗 */
+        showSettings: false,
+        /** API 配置（与项目统一字段） */
+        apiConfig: {
+          deepseek: '',
+          model: 'deepseek-v4-flash'
+        },
+        /** 封存动画是否进行中 */
+        sealRunning: false,
+        sealOverlay: false,
+        /** idle | folding | inserting | waxing | floating | complete */
+        sealPhase: 'idle',
+        sealHint: '',
+        /** 动画层展示的短预览 */
+        letterPreviewShort: '',
+        /** 粒子占位（动画用） */
+        particleSlots: [
+          { x: 20, tx: -10, d: 0 },
+          { x: 45, tx: 5, d: 120 },
+          { x: 70, tx: 12, d: 240 },
+          { x: 35, tx: -8, d: 360 },
+          { x: 55, tx: 3, d: 480 }
+        ],
+        /** 胶囊列表 */
+        capsules: [],
+        /** 当前正在处理 AI 回信的胶囊 id（封存后） */
+        pendingCapsuleId: null,
+        /** 是否显示「收到回信」邀请层 */
+        replyInvite: false,
+        replyEnvelopeVisible: false,
+        /** AI 回信阅读器 */
+        replyReaderOpen: false,
+        replyReaderTitle: '来自未来的回信',
+        /** 飘落信封上的提示文案 */
+        replyBannerText: '叮——你收到了一封来自未来的回信',
+        /** 流式生成时的底部提示 */
+        streamStatusHint: '未来的你正在落笔…',
+        streamBuffer: '',
+        reasoningBuffer: '',
+        isStreaming: false,
+        /** 胶囊柜阅读原信 */
+        cabinetReaderOpen: false,
+        cabinetReaderContent: '',
+        cabinetReaderMeta: '',
+        /** 到期提醒 */
+        expiryToast: false,
+        errorMsg: '',
+        /** 时间选项：label 展示 + 计算 open_at */
+        timeOptions: [
+          { key: '1m', label: '1 个月后' },
+          { key: '6m', label: '半年后' },
+          { key: '1y', label: '1 年后' },
+          { key: '3y', label: '3 年后' },
+          { key: '5y', label: '5 年后' },
+          { key: '10y', label: '10 年后' }
+        ],
+
+        /**
+         * 初始化：读配置、胶囊、日期、到期检测、图标
+         */
+        init() {
+          this.refreshToday();
+          this.loadConfig();
+          this.loadCapsules();
+          this.checkExpiryNotification();
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        refreshToday() {
+          const d = new Date();
+          const w = ['日', '一', '二', '三', '四', '五', '六'];
+          this.todayStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 周${w[d.getDay()]}`;
+        },
+
+        /**
+         * 从 localStorage 合并加载 DeepSeek 配置
+         */
+        loadConfig() {
+          try {
+            const raw = localStorage.getItem('global_llm_config');
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            this.apiConfig = { ...this.apiConfig, ...saved };
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存配置：必须合并写入，避免覆盖其他工具的字段
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            current = {};
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showSettings = false;
+        },
+
+        /**
+         * 加载胶囊列表
+         */
+        loadCapsules() {
+          try {
+            const raw = localStorage.getItem('time_capsule_letters');
+            const arr = raw ? JSON.parse(raw) : [];
+            this.capsules = Array.isArray(arr) ? arr : [];
+          } catch (e) {
+            console.error('读取 time_capsule_letters 失败:', e);
+            this.capsules = [];
+          }
+        },
+
+        /**
+         * 持久化胶囊列表
+         */
+        persistCapsules() {
+          localStorage.setItem('time_capsule_letters', JSON.stringify(this.capsules));
+        },
+
+        /**
+         * 根据 timeKey 计算开启日期 ISO
+         */
+        computeOpenAt() {
+          const now = new Date();
+          const k = this.timeKey;
+          const d = new Date(now);
+          if (k === '1m') d.setMonth(d.getMonth() + 1);
+          else if (k === '6m') d.setMonth(d.getMonth() + 6);
+          else if (k === '1y') d.setFullYear(d.getFullYear() + 1);
+          else if (k === '3y') d.setFullYear(d.getFullYear() + 3);
+          else if (k === '5y') d.setFullYear(d.getFullYear() + 5);
+          else if (k === '10y') d.setFullYear(d.getFullYear() + 10);
+          return d.toISOString();
+        },
+
+        /**
+         * 当前选中的「未来的我」文案（下拉用）
+         */
+        currentTimeLabel() {
+          const o = this.timeOptions.find((x) => x.key === this.timeKey);
+          return o ? o.label : '';
+        },
+
+        /**
+         * 排序胶囊：未到期的在前或按创建时间倒序
+         */
+        sortedCapsules() {
+          return [...this.capsules].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        },
+
+        /**
+         * 预览前三字（用户可见字符）
+         */
+        previewText(c) {
+          const t = (c.content || '').replace(/\s/g, '');
+          return t.slice(0, 3) || '空';
+        },
+
+        /**
+         * 是否已到开启日（可读原信）
+         */
+        canOpenCapsule(c) {
+          if (c.mode === 'past') return true;
+          return new Date(c.open_at) <= new Date();
+        },
+
+        /**
+         * 距离开启剩余天数（向上取整）
+         */
+        countdownDays(c) {
+          const diff = new Date(c.open_at) - new Date();
+          if (diff <= 0) return 0;
+          return Math.ceil(diff / 86400000);
+        },
+
+        formatDate(iso) {
+          const d = new Date(iso);
+          return `${d.getMonth() + 1}/${d.getDate()}`;
+        },
+
+        /**
+         * 应用启动时：若有已到期且未标记已读的胶囊，弹出提醒
+         * 使用 localStorage 记录「已提示过的 id」，避免每次骚扰
+         */
+        checkExpiryNotification() {
+          const key = 'time_capsule_expiry_toast_ids';
+          let shown = {};
+          try {
+            shown = JSON.parse(localStorage.getItem(key) || '{}');
+          } catch (e) {
+            shown = {};
+          }
+          const due = this.capsules.filter(
+            (c) => c.mode !== 'past' && new Date(c.open_at) <= new Date() && !c.is_opened
+          );
+          const fresh = due.filter((c) => !shown[c.id]);
+          if (fresh.length) {
+            this.expiryToast = true;
+            fresh.forEach((c) => { shown[c.id] = true; });
+            localStorage.setItem(key, JSON.stringify(shown));
+          }
+        },
+
+        /**
+         * Web Audio：简单合成「蜡封咚」声
+         */
+        playWaxThud() {
+          try {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            const ctx = new Ctx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(95, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(42, ctx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.35, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.4);
+          } catch (e) {
+            console.warn('音效播放跳过', e);
+          }
+        },
+
+        /**
+         * 开始封存：校验 → 动画序列 → 存盘 → 安排 AI 回信
+         */
+        async startSeal() {
+          const text = (this.letterContent || '').trim();
+          if (!text) {
+            this.flashError('请先写下你想说的话');
+            return;
+          }
+          if (!this.apiConfig.deepseek) {
+            this.showSettings = true;
+            this.flashError('请先配置 DeepSeek API Key');
+            return;
+          }
+
+          this.sealRunning = true;
+          this.sealOverlay = true;
+          this.sealPhase = 'idle';
+          this.letterPreviewShort = text.slice(0, 80) + (text.length > 80 ? '…' : '');
+          this.sealHint = '正在将信纸轻轻折起…';
+
+          const id = 'tc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+          const created_at = new Date().toISOString();
+          const open_at = this.pastMode ? created_at : this.computeOpenAt();
+          /** 封存瞬间锁定的档位，避免用户改下拉后 AI 时间线错位 */
+          const time_key = this.pastMode ? null : this.timeKey;
+          const capsule = {
+            id,
+            content: text,
+            created_at,
+            open_at,
+            ai_reply: '',
+            is_opened: false,
+            mode: this.pastMode ? 'past' : 'future',
+            time_key
+          };
+
+          await this.sleep(400);
+          this.sealPhase = 'folding';
+          await this.sleep(900);
+          this.sealHint = '信纸滑入信封…';
+          this.sealPhase = 'inserting';
+          await this.sleep(700);
+          this.sealPhase = 'waxing';
+          this.sealHint = '盖上蜡封…';
+          this.playWaxThud();
+          await this.sleep(550);
+          this.sealHint = '让它漂向时间之河…';
+          this.sealPhase = 'floating';
+          await this.sleep(2200);
+
+          this.sealPhase = 'complete';
+          this.sealOverlay = false;
+          this.sealRunning = false;
+          this.letterContent = '';
+
+          /** 动画全部结束后再写入本地，符合「封存完成再保存」的产品节奏 */
+          this.capsules.unshift(capsule);
+          this.persistCapsules();
+
+          this.pendingCapsuleId = id;
+          this.replyBannerText = capsule.mode === 'past'
+            ? '叮——你收到了一封来自现在的回信'
+            : '叮——你收到了一封来自未来的回信';
+
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+
+          // 三秒后提示 AI 回信信封
+          setTimeout(() => {
+            if (this.pendingCapsuleId !== id) return;
+            this.replyInvite = true;
+            this.replyEnvelopeVisible = true;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }, 3000);
+        },
+
+        sleep(ms) {
+          return new Promise((r) => setTimeout(r, ms));
+        },
+
+        flashError(msg) {
+          this.errorMsg = msg;
+          setTimeout(() => { this.errorMsg = ''; }, 4200);
+        },
+
+        /**
+         * 用户点击飘落信封：打开阅读器并开始流式生成
+         */
+        async openAiReplyEnvelope() {
+          const id = this.pendingCapsuleId;
+          if (!id) return;
+          this.replyInvite = false;
+          this.replyEnvelopeVisible = false;
+          this.replyReaderOpen = true;
+          const cap0 = this.capsules.find((c) => c.id === id);
+          const isPast = cap0 && cap0.mode === 'past';
+          this.replyReaderTitle = isPast ? '给那时的你' : '来自未来的回信';
+          this.streamStatusHint = isPast ? '现在的你正在落笔…' : '未来的你正在落笔…';
+          this.streamBuffer = '';
+          this.reasoningBuffer = '';
+
+          const cap = this.capsules.find((c) => c.id === id);
+          if (this.loadCachedReplyIfAny(id)) {
+            this.pendingCapsuleId = null;
+          } else {
+            const messages = this.buildAiMessages(cap);
+            await this.streamDeepSeek(messages, {
+              onDone: () => {
+                const idx = this.capsules.findIndex((c) => c.id === id);
+                if (idx >= 0) {
+                  this.capsules[idx].ai_reply = this.streamBuffer;
+                  this.persistCapsules();
+                }
+                this.pendingCapsuleId = null;
+              }
+            });
+          }
+
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 构造 AI 消息：未来模式 vs 过去模式
+         */
+        buildAiMessages(cap) {
+          if (!cap) return [{ role: 'user', content: '（无内容）' }];
+          const isPast = cap.mode === 'past';
+          if (isPast) {
+            return [
+              {
+                role: 'system',
+                content: `你是一位温柔、成熟、略带幽默的「现在的自己」，要给「过去某个时刻的自己」写一封回信。
+要求：用中文；语气温暖真诚；可以承认当时的难，也可以轻轻调侃；给出具体可行的人生建议与鼓励；不要说教腔；适当分段；不要使用 Markdown 标题符号（不要用 #）。`
+              },
+              {
+                role: 'user',
+                content: `以下是我对「那时自己的处境」的描述，请写一封完整的回信（可直接以「亲爱的那时的我」开头）：\n\n${cap.content}`
+              }
+            ];
+          }
+          const tk = cap.time_key || '1y';
+          const horizon = this.timeOptions.find((o) => o.key === tk)?.label || '未来';
+          return [
+            {
+              role: 'system',
+              content: `你扮演「${horizon}之后的那个我」，刚刚读到了过去自己写下的信。
+请用中文写一封回信：温暖、成熟、略带幽默；描述「未来的你」读到这封信时的感受；给出现在（写信时刻）的「我」一些人生建议与鼓励；不要剧透具体未来事件；避免说教；适当分段；不要使用 Markdown 标题符号（不要用 #）。`
+            },
+            {
+              role: 'user',
+              content: `这是过去的我写下的信：\n\n${cap.content}`
+            }
+          ];
+        },
+
+        closeReplyReader() {
+          this.replyReaderOpen = false;
+        },
+
+        /**
+         * 若胶囊已有 AI 回信（例如用户曾关闭页面），点击邀请信封时可直接展示缓存
+         */
+        loadCachedReplyIfAny(id) {
+          const cap = this.capsules.find((c) => c.id === id);
+          if (cap && cap.ai_reply) {
+            this.streamBuffer = cap.ai_reply;
+            return true;
+          }
+          return false;
+        },
+
+        /**
+         * Markdown 安全渲染
+         */
+        safeMd(text) {
+          if (!text) return '';
+          try {
+            const html = marked.parse(text, { breaks: true });
+            return DOMPurify.sanitize(html);
+          } catch (e) {
+            return DOMPurify.sanitize(text);
+          }
+        },
+
+        /**
+         * DeepSeek 流式调用
+         */
+        async streamDeepSeek(messages, hooks) {
+          const key = this.apiConfig.deepseek;
+          if (!key) {
+            this.flashError('缺少 API Key');
+            return;
+          }
+          this.isStreaming = true;
+          try {
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + key
+              },
+              body: JSON.stringify({
+                model: this.apiConfig.model || 'deepseek-v4-flash',
+                messages,
+                stream: true,
+                temperature: 0.75,
+                max_tokens: 2500
+              })
+            });
+            if (!res.ok) {
+              const errText = await res.text().catch(() => '');
+              throw new Error('API 错误 ' + res.status + (errText ? ': ' + errText.slice(0, 120) : ''));
+            }
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += decoder.decode(value, { stream: true });
+              const lines = buf.split('\n');
+              buf = lines.pop() || '';
+              for (const line of lines) {
+                const t = line.trim();
+                if (!t.startsWith('data:')) continue;
+                const data = t.slice(5).trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta;
+                  if (!delta) continue;
+                  if (delta.reasoning_content) this.reasoningBuffer += delta.reasoning_content;
+                  if (delta.content) this.streamBuffer += delta.content;
+                } catch (pe) {
+                  console.warn('流解析跳过', pe);
+                }
+              }
+              this.$nextTick(() => {
+                const el = document.getElementById('reply-scroll');
+                if (el) el.scrollTop = el.scrollHeight;
+              });
+            }
+            if (hooks && typeof hooks.onDone === 'function') hooks.onDone();
+          } catch (e) {
+            console.error(e);
+            this.flashError(e.message || '生成失败');
+          } finally {
+            this.isStreaming = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /**
+         * 胶囊柜：尝试打开（到期才可看原信）
+         */
+        tryOpenCapsule(c) {
+          if (!this.canOpenCapsule(c)) {
+            this.flashError('还未到开启日，再等等那时的你吧。');
+            return;
+          }
+          this.cabinetReaderContent = c.content;
+          this.cabinetReaderMeta = this.formatDate(c.created_at) + ' · ' + (c.mode === 'past' ? '过去回信' : '未来信件');
+          this.cabinetReaderOpen = true;
+          const idx = this.capsules.findIndex((x) => x.id === c.id);
+          if (idx >= 0 && c.mode !== 'past') {
+            this.capsules[idx].is_opened = true;
+            this.persistCapsules();
+          }
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        }
+      }));
+    });
+  </script>
+
+</body>
+
+</html>

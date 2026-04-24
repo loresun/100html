@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>硬件与传感器仪表盘 (Device Dashboard)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Exo 2', sans-serif; background-color: #0b1120; color: #cbd5e1; }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+        }
+        .sensor-value { font-family: monospace; }
+        .gauge-bar-bg { background-color: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden; height: 8px; }
+        .gauge-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+        
+        /* 3D Phone Mockup for Orientation */
+        .scene { perspective: 600px; width: 100px; height: 100px; margin: 0 auto; }
+        .phone {
+            width: 60px; height: 100px;
+            background: rgba(56, 189, 248, 0.2);
+            border: 2px solid #38bdf8;
+            border-radius: 8px;
+            margin: 0 auto;
+            transform-style: preserve-3d;
+            transition: transform 0.1s linear;
+            position: relative;
+        }
+        .phone::before {
+             content: ''; position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
+             width: 15px; height: 4px; background: #38bdf8; border-radius: 2px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen p-6 flex flex-col items-center">
+
+    <header class="w-full max-w-4xl mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">
+                Device Sensor Hub
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">Web Hardware API Demonstration</p>
+        </div>
+        <div id="connection-status" class="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20">
+            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+            Online
+        </div>
+    </header>
+
+    <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Battery Status -->
+        <div class="glass-card p-6">
+            <div class="flex items-center gap-3 mb-4 text-sky-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <h2 class="font-semibold text-white">Power & Battery</h2>
+            </div>
+            <div id="battery-content" class="space-y-4">
+                <div class="flex items-end justify-between">
+                    <span class="text-sm text-slate-400">Level</span>
+                    <span id="bat-level" class="text-2xl font-bold text-white">--%</span>
+                </div>
+                <div class="gauge-bar-bg">
+                    <div id="bat-bar" class="gauge-bar-fill bg-gradient-to-r from-green-400 to-emerald-500" style="width: 0%"></div>
+                </div>
+                <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-700/50">
+                    <span class="text-slate-500">Status</span>
+                    <span id="bat-status" class="text-slate-300">Scanning...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Info -->
+        <div class="glass-card p-6">
+            <div class="flex items-center gap-3 mb-4 text-purple-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path></svg>
+                <h2 class="font-semibold text-white">Network</h2>
+            </div>
+            <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Type</span>
+                    <span id="net-type" class="text-white sensor-value">Unknown</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Downlink (Max)</span>
+                    <span id="net-speed" class="text-white sensor-value">-- Mbps</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Effective RTT</span>
+                    <span id="net-rtt" class="text-white sensor-value">-- ms</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-2">
+                    * Network Info API allows adaptive loading based on connection quality.
+                </div>
+            </div>
+        </div>
+
+        <!-- Haptics / Vibration -->
+        <div class="glass-card p-6">
+            <div class="flex items-center gap-3 mb-4 text-pink-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                <h2 class="font-semibold text-white">Haptics</h2>
+            </div>
+            <div class="space-y-4">
+                <p class="text-sm text-slate-400">Test device vibration feedback (Mobile only).</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="vibrate(50)" class="bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/30 rounded py-2 text-sm transition-colors">
+                        Click (50ms)
+                    </button>
+                    <button onclick="vibrate(200)" class="bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/30 rounded py-2 text-sm transition-colors">
+                        Notif (200ms)
+                    </button>
+                    <button onclick="vibrate([100,50,100])" class="col-span-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/30 rounded py-2 text-sm transition-colors">
+                        Double Pulse Pattern
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cores & Threads -->
+        <div class="glass-card p-6">
+            <div class="flex items-center gap-3 mb-4 text-amber-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+                <h2 class="font-semibold text-white">System</h2>
+            </div>
+            <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Logical Cores</span>
+                    <span id="cpu-cores" class="text-white font-mono text-lg">--</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Platform</span>
+                    <span id="sys-platform" class="text-white font-mono text-xs text-right truncate w-24">Unknown</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Memory (RAM)</span>
+                    <span id="sys-memory" class="text-white font-mono">-- GB</span>
+                </div>
+                <div class="p-2 bg-slate-800/50 rounded text-xs text-slate-400 mt-2">
+                    User Agent: <br>
+                    <span class="text-[10px] break-all opacity-70" id="user-agent">...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orientation (Acc/Gyro) -->
+        <div class="glass-card p-6 md:col-span-2 lg:col-span-1">
+            <div class="flex items-center justify-between mb-4 text-cyan-400">
+                <div class="flex items-center gap-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <h2 class="font-semibold text-white">Orientation</h2>
+                </div>
+                <button onclick="requestOrientationPermission()" class="text-[10px] bg-cyan-900/50 text-cyan-300 px-2 py-1 rounded border border-cyan-700 hover:bg-cyan-800/50">
+                    Enable
+                </button>
+            </div>
+            
+            <div class="flex items-center justify-around h-32">
+                 <div class="space-y-1 text-xs text-slate-400 w-24">
+                     <div class="flex justify-between"><span>Alpha(Z):</span> <span id="val-alpha" class="text-cyan-300 font-mono">0</span></div>
+                     <div class="flex justify-between"><span>Beta(X):</span> <span id="val-beta" class="text-cyan-300 font-mono">0</span></div>
+                     <div class="flex justify-between"><span>Gamma(Y):</span> <span id="val-gamma" class="text-cyan-300 font-mono">0</span></div>
+                 </div>
+                 
+                 <div class="scene">
+                     <div class="phone" id="phone-model"></div>
+                 </div>
+            </div>
+            <p class="text-xs text-center text-slate-600 mt-4">Rotate your device to see effect</p>
+        </div>
+
+    </main>
+    
+    <footer class="mt-12 text-center text-slate-600 text-xs">
+        <p>Note: Some features depend on device hardware and browser permissions.</p>
+    </footer>
+
+    <script>
+        // 1. Battery API
+        async function initBattery() {
+            try {
+                if ('getBattery' in navigator) {
+                    const battery = await navigator.getBattery();
+                    
+                    function updateBattery() {
+                        const level = Math.round(battery.level * 100);
+                        document.getElementById('bat-level').innerText = level + '%';
+                        document.getElementById('bat-bar').style.width = level + '%';
+                        
+                        let statusText = battery.charging ? 'Charging ⚡' : 'Discharging';
+                        if(level === 100 && battery.charging) statusText = 'Fully Charged';
+                        document.getElementById('bat-status').innerText = statusText;
+                    }
+                    
+                    updateBattery();
+                    battery.addEventListener('levelchange', updateBattery);
+                    battery.addEventListener('chargingchange', updateBattery);
+                } else {
+                    document.getElementById('bat-status').innerText = 'API Not Supported';
+                }
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        // 2. Network Info (Navigator.connection)
+        function initNetwork() {
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (conn) {
+                const updateNet = () => {
+                    document.getElementById('net-type').innerText = conn.effectiveType.toUpperCase();
+                    document.getElementById('net-speed').innerText = (conn.downlink || 'Unknown') + ' Mbps';
+                    document.getElementById('net-rtt').innerText = (conn.rtt || 'Unknown') + ' ms';
+                };
+                updateNet();
+                conn.addEventListener('change', updateNet);
+            }
+        }
+
+        // 3. Online/Offline Listeners
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        function updateOnlineStatus() {
+            const el = document.getElementById('connection-status');
+            if (navigator.onLine) {
+                el.innerHTML = '<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Online';
+                el.className = 'flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20';
+            } else {
+                el.innerHTML = '<span class="w-2 h-2 bg-red-500 rounded-full"></span> Offline';
+                el.className = 'flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-400 text-xs font-medium border border-red-500/20';
+            }
+        }
+
+        // 4. Vibration
+        function vibrate(pattern) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(pattern);
+            } else {
+                alert('Vibration API not supported on this device/browser.');
+            }
+        }
+
+        // 5. System Info
+        document.getElementById('cpu-cores').innerText = navigator.hardwareConcurrency || 'N/A';
+        document.getElementById('sys-platform').innerText = navigator.platform;
+        document.getElementById('user-agent').innerText = navigator.userAgent;
+        // Device Memory API (Chrome Only)
+        if ('deviceMemory' in navigator) {
+            document.getElementById('sys-memory').innerText = navigator.deviceMemory + ' GB';
+        }
+
+        // 6. Device Orientation
+        function handleOrientation(event) {
+            const alpha = event.alpha ? event.alpha.toFixed(1) : 0;
+            const beta = event.beta ? event.beta.toFixed(1) : 0;
+            const gamma = event.gamma ? event.gamma.toFixed(1) : 0;
+
+            document.getElementById('val-alpha').innerText = alpha;
+            document.getElementById('val-beta').innerText = beta;
+            document.getElementById('val-gamma').innerText = gamma;
+
+            // Visual Transform
+            // beta is front-to-back (X axis), gamma is left-to-right (Y axis)
+            // Limit rotation for visual sanity
+            const phone = document.getElementById('phone-model');
+            phone.style.transform = `rotateX(${beta}deg) rotateY(${gamma}deg) rotateZ(${0}deg)`;
+        }
+
+        // Permission Request (iOS 13+)
+        function requestOrientationPermission() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        } else {
+                            alert('Permission denied');
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Non-iOS 13+ devices typically don't need permission or support it natively if https
+                window.addEventListener('deviceorientation', handleOrientation);
+                alert('Event listener added. If on mobile, try rotating device.');
+            }
+        }
+
+        // Init
+        initBattery();
+        initNetwork();
+        
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

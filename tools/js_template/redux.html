@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Redux 状态管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #4c1d95 0%, #1e1b4b 100%); min-height: 100vh; }
+    .mono { font-family: monospace; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">🏪 Redux 状态管理</h1>
+    <p class="text-white/60 mt-1">可预测的状态容器 - JavaScript 应用的单一数据源</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-5xl mx-auto space-y-6">
+  <!-- 核心概念 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">💡 Redux 三大原则</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-purple-900/30 p-4 rounded-xl">
+        <div class="text-2xl mb-2">📦</div>
+        <div class="font-bold text-purple-300">单一数据源</div>
+        <div class="text-white/60 text-sm mt-1">应用状态存储在唯一的 Store 中</div>
+      </div>
+      <div class="bg-purple-900/30 p-4 rounded-xl">
+        <div class="text-2xl mb-2">🔒</div>
+        <div class="font-bold text-purple-300">状态只读</div>
+        <div class="text-white/60 text-sm mt-1">只能通过 dispatch Action 改变状态</div>
+      </div>
+      <div class="bg-purple-900/30 p-4 rounded-xl">
+        <div class="text-2xl mb-2">🧮</div>
+        <div class="font-bold text-purple-300">纯函数修改</div>
+        <div class="text-white/60 text-sm mt-1">Reducer 是纯函数，返回新状态</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 计数器演示 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🔢 计数器演示</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="text-center">
+        <div id="counter-display" class="text-7xl font-bold text-purple-400 mb-6">0</div>
+        <div class="flex justify-center gap-3">
+          <button onclick="dispatch({type:'DECREMENT'})" class="px-6 py-3 bg-red-600 rounded-xl text-2xl hover:bg-red-700">−</button>
+          <button onclick="dispatch({type:'INCREMENT'})" class="px-6 py-3 bg-emerald-600 rounded-xl text-2xl hover:bg-emerald-700">+</button>
+          <button onclick="dispatch({type:'ADD', payload:5})" class="px-6 py-3 bg-blue-600 rounded-xl hover:bg-blue-700">+5</button>
+          <button onclick="dispatch({type:'RESET'})" class="px-6 py-3 bg-slate-700 rounded-xl hover:bg-slate-600">重置</button>
+        </div>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-purple-400 text-xs mb-2 font-bold">📜 Action 历史</div>
+        <div id="action-log" class="space-y-1 max-h-[200px] overflow-auto mono text-xs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TODO 应用 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📝 TODO 应用</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-3">
+        <div class="flex gap-2">
+          <input type="text" id="todo-input" placeholder="添加待办事项" class="flex-1 px-4 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+          <button onclick="addTodo()" class="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 font-bold">添加</button>
+        </div>
+        <div id="todo-list" class="space-y-2 max-h-[250px] overflow-auto"></div>
+        <div class="flex gap-2 text-sm">
+          <button onclick="setFilter('ALL')" class="flex-1 px-3 py-2 bg-slate-700 rounded-lg" id="filter-all">全部</button>
+          <button onclick="setFilter('ACTIVE')" class="flex-1 px-3 py-2 bg-slate-700 rounded-lg" id="filter-active">未完成</button>
+          <button onclick="setFilter('COMPLETED')" class="flex-1 px-3 py-2 bg-slate-700 rounded-lg" id="filter-completed">已完成</button>
+        </div>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-purple-400 text-xs mb-2 font-bold">📦 Store 状态</div>
+        <pre id="todo-state" class="text-xs mono text-slate-300 overflow-auto max-h-[280px]"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据流图 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🔄 Redux 数据流</h3>
+    <div class="flex flex-wrap items-center justify-center gap-4 text-center">
+      <div class="p-4 bg-blue-900/40 rounded-xl w-32">
+        <div class="text-2xl mb-1">👆</div>
+        <div class="font-bold">Action</div>
+        <div class="text-xs text-white/50">描述发生了什么</div>
+      </div>
+      <div class="text-3xl text-purple-400">→</div>
+      <div class="p-4 bg-purple-900/40 rounded-xl w-32">
+        <div class="text-2xl mb-1">⚙️</div>
+        <div class="font-bold">Reducer</div>
+        <div class="text-xs text-white/50">计算新状态</div>
+      </div>
+      <div class="text-3xl text-purple-400">→</div>
+      <div class="p-4 bg-emerald-900/40 rounded-xl w-32">
+        <div class="text-2xl mb-1">📦</div>
+        <div class="font-bold">Store</div>
+        <div class="text-xs text-white/50">保存状态</div>
+      </div>
+      <div class="text-3xl text-purple-400">→</div>
+      <div class="p-4 bg-orange-900/40 rounded-xl w-32">
+        <div class="text-2xl mb-1">🖥️</div>
+        <div class="font-bold">View</div>
+        <div class="text-xs text-white/50">渲染界面</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 代码示例 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📝 代码结构</h3>
+    <div class="bg-slate-900/80 p-4 rounded-xl overflow-x-auto">
+      <pre class="text-sm mono text-slate-300">// 1. 定义 Action Types
+const INCREMENT = 'INCREMENT';
+const DECREMENT = 'DECREMENT';
+
+// 2. 创建 Reducer
+function counterReducer(state = { count: 0 }, action) {
+  switch (action.type) {
+    case INCREMENT: return { count: state.count + 1 };
+    case DECREMENT: return { count: state.count - 1 };
+    default: return state;
+  }
+}
+
+// 3. 创建 Store
+const store = Redux.createStore(counterReducer);
+
+// 4. 订阅更新
+store.subscribe(() => console.log(store.getState()));
+
+// 5. 派发 Action
+store.dispatch({ type: 'INCREMENT' });</pre>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/redux@4.2.1/dist/redux.min.js"></script>
+<script>
+const { createStore, combineReducers } = Redux;
+
+// === 计数器 Reducer ===
+function counterReducer(state = { count: 0 }, action) {
+  switch (action.type) {
+    case 'INCREMENT': return { count: state.count + 1 };
+    case 'DECREMENT': return { count: state.count - 1 };
+    case 'ADD': return { count: state.count + (action.payload || 1) };
+    case 'RESET': return { count: 0 };
+    default: return state;
+  }
+}
+
+// === TODO Reducer ===
+let todoId = 0;
+function todosReducer(state = { list: [], filter: 'ALL' }, action) {
+  switch (action.type) {
+    case 'ADD_TODO':
+      return { ...state, list: [...state.list, { id: ++todoId, text: action.text, done: false }] };
+    case 'TOGGLE_TODO':
+      return { ...state, list: state.list.map(t => t.id === action.id ? { ...t, done: !t.done } : t) };
+    case 'DELETE_TODO':
+      return { ...state, list: state.list.filter(t => t.id !== action.id) };
+    case 'SET_FILTER':
+      return { ...state, filter: action.filter };
+    default: return state;
+  }
+}
+
+// 合并 Reducers
+const rootReducer = combineReducers({ counter: counterReducer, todos: todosReducer });
+const store = createStore(rootReducer);
+
+// Action 日志
+let actionLog = [];
+
+// 包装 dispatch
+function dispatch(action) {
+  store.dispatch(action);
+  actionLog.unshift({ action, time: new Date().toLocaleTimeString() });
+  if (actionLog.length > 20) actionLog.pop();
+  updateUI();
+}
+
+// 更新界面
+function updateUI() {
+  const state = store.getState();
+  
+  // 计数器
+  document.getElementById('counter-display').textContent = state.counter.count;
+  document.getElementById('action-log').innerHTML = actionLog.map(l => 
+    `<div class="p-1 bg-slate-800/50 rounded"><span class="text-purple-300">${JSON.stringify(l.action)}</span> <span class="text-white/40">${l.time}</span></div>`
+  ).join('');
+  
+  // TODO 列表
+  const { list, filter } = state.todos;
+  const filtered = list.filter(t => filter === 'ALL' ? true : filter === 'COMPLETED' ? t.done : !t.done);
+  
+  document.getElementById('todo-list').innerHTML = filtered.map(t => `
+    <div class="flex items-center gap-2 p-2 bg-slate-800/50 rounded-lg">
+      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="dispatch({type:'TOGGLE_TODO',id:${t.id}})" class="w-5 h-5">
+      <span class="${t.done ? 'line-through text-white/40' : ''} flex-1">${t.text}</span>
+      <button onclick="dispatch({type:'DELETE_TODO',id:${t.id}})" class="text-red-400 hover:text-red-300">✕</button>
+    </div>
+  `).join('') || '<div class="text-white/40 text-center py-4">暂无待办事项</div>';
+  
+  document.getElementById('todo-state').textContent = JSON.stringify(state.todos, null, 2);
+  
+  // 更新筛选按钮样式
+  ['ALL', 'ACTIVE', 'COMPLETED'].forEach(f => {
+    const btn = document.getElementById(`filter-${f.toLowerCase()}`);
+    btn.className = f === filter 
+      ? 'flex-1 px-3 py-2 bg-purple-600 rounded-lg' 
+      : 'flex-1 px-3 py-2 bg-slate-700 rounded-lg hover:bg-slate-600';
+  });
+}
+
+function addTodo() {
+  const input = document.getElementById('todo-input');
+  const text = input.value.trim();
+  if (!text) return;
+  dispatch({ type: 'ADD_TODO', text });
+  input.value = '';
+}
+
+function setFilter(filter) {
+  dispatch({ type: 'SET_FILTER', filter });
+}
+
+// Enter 键添加
+document.getElementById('todo-input').addEventListener('keypress', e => {
+  if (e.key === 'Enter') addTodo();
+});
+
+// 初始化
+updateUI();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

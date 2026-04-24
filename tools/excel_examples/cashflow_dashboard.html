@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收支流水与现金流看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <header class="bg-white border-b border-slate-200">
+        <div class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+            <div>
+                <p class="text-sm text-emerald-600 font-medium">财务 · 收支审查</p>
+                <h1 class="text-2xl font-bold">收支流水与现金流看板</h1>
+                <p class="text-sm text-slate-500 mt-1">导入收支流水，自动计算净现金流、收入占比与支出结构。</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a class="text-sm text-slate-500 hover:text-slate-900" href="index.html">返回示例库</a>
+                <a class="text-sm text-emerald-600 hover:text-emerald-700" href="demo/cashflow_dashboard_demo.csv">下载 CSV Demo</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">上传流水文件</h2>
+                    <p class="text-sm text-slate-500">字段需包含：日期、分类、项目、金额、付款方式、部门。</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg cursor-pointer hover:bg-emerald-700">
+                        <i class="fa-solid fa-upload w-4 h-4"></i>
+                        上传文件
+                        <input id="fileInput" type="file" accept=".csv,.xlsx" class="hidden">
+                    </label>
+                    <button id="loadDemo" class="px-4 py-2 text-sm font-medium border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50">载入内嵌 Demo 数据</button>
+                    <button id="exportExcel" class="px-4 py-2 text-sm font-medium border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50">导出当前 Excel</button>
+                    <a class="text-sm text-slate-500 hover:text-slate-700" href="demo/cashflow_dashboard_demo.csv">下载 CSV Demo</a>
+                </div>
+            </div>
+            <div id="fileStatus" class="mt-3 text-xs text-slate-500">未选择文件。</div>
+        </section>
+
+        <section class="grid gap-4 md:grid-cols-4" id="statsCards"></section>
+
+        <section class="grid gap-6 lg:grid-cols-5">
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm lg:col-span-3">
+                <h3 class="text-base font-semibold">收入与支出结构</h3>
+                <canvas id="cashflowChart" class="mt-4 h-64"></canvas>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm lg:col-span-2">
+                <h3 class="text-base font-semibold">部门支出占比</h3>
+                <div class="mt-4 space-y-3" id="deptList"></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+
+
+        const demoData = [
+            { '日期': '2025-03-01', '分类': '收入', '项目': '大客户回款', '金额': 86000, '付款方式': '对公转账', '部门': '销售一部' },
+            { '日期': '2025-03-02', '分类': '支出', '项目': '供应商货款', '金额': 42000, '付款方式': '对公转账', '部门': '采购' },
+            { '日期': '2025-03-03', '分类': '支出', '项目': '广告投放', '金额': 8800, '付款方式': '企业信用卡', '部门': '市场' },
+            { '日期': '2025-03-04', '分类': '收入', '项目': '电商订单', '金额': 19500, '付款方式': '线上收款', '部门': '电商' },
+            { '日期': '2025-03-05', '分类': '支出', '项目': '物流费用', '金额': 6500, '付款方式': '对公转账', '部门': '仓储' },
+            { '日期': '2025-03-06', '分类': '支出', '项目': '差旅报销', '金额': 3600, '付款方式': '企业信用卡', '部门': '运营' }
+        ];
+
+        const fileInput = document.getElementById('fileInput');
+        const fileStatus = document.getElementById('fileStatus');
+        const statsCards = document.getElementById('statsCards');
+        const deptList = document.getElementById('deptList');
+        const loadDemo = document.getElementById('loadDemo');
+        const exportExcel = document.getElementById('exportExcel');
+        let chartInstance = null;
+        let currentRows = demoData;
+
+        const parseNumber = (value) => {
+            if (value === null || value === undefined || value === '') return 0;
+            if (typeof value === 'number') return value;
+            return parseFloat(String(value).replace(/,/g, '')) || 0;
+        };
+
+        const normalizeRow = (row) => {
+            return {
+                date: row['日期'] || row['发生日期'],
+                type: row['分类'] || row['收支类型'],
+                item: row['项目'] || row['摘要'],
+                amount: parseNumber(row['金额'] || row['金额(元)']),
+                method: row['付款方式'] || row['支付方式'],
+                dept: row['部门'] || row['归属部门']
+            };
+        };
+
+        const render = (rows) => {
+            currentRows = rows;
+            const normalized = rows.map(normalizeRow).filter((row) => row.date && row.type);
+            if (!normalized.length) return;
+
+            const totalIncome = normalized.filter((row) => row.type === '收入').reduce((sum, row) => sum + row.amount, 0);
+            const totalExpense = normalized.filter((row) => row.type === '支出').reduce((sum, row) => sum + row.amount, 0);
+            const netCash = totalIncome - totalExpense;
+            const expenseRatio = totalIncome ? (totalExpense / totalIncome) : 0;
+
+            statsCards.innerHTML = [
+                { label: '总收入', value: totalIncome, suffix: '¥' },
+                { label: '总支出', value: totalExpense, suffix: '¥' },
+                { label: '净现金流', value: netCash, suffix: '¥' },
+                { label: '支出占比', value: expenseRatio * 100, suffix: '%' }
+            ].map((item) => `
+                <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                    <p class="text-xs text-slate-500">${item.label}</p>
+                    <p class="text-2xl font-semibold mt-2">${item.suffix === '%' ? item.value.toFixed(1) + item.suffix : item.suffix + item.value.toFixed(2)}</p>
+                </div>
+            `).join('');
+
+            const chartData = [totalIncome, totalExpense];
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(document.getElementById('cashflowChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['收入', '支出'],
+                    datasets: [{
+                        data: chartData,
+                        backgroundColor: ['#10b981', '#f97316']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            const deptMap = {};
+            normalized.filter((row) => row.type === '支出').forEach((row) => {
+                deptMap[row.dept] = (deptMap[row.dept] || 0) + row.amount;
+            });
+            deptList.innerHTML = Object.entries(deptMap).map(([dept, value]) => {
+                const ratio = totalExpense ? (value / totalExpense) * 100 : 0;
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700">${dept}</p>
+                            <p class="text-xs text-slate-500">支出 ¥${value.toFixed(2)} · ${ratio.toFixed(1)}%</p>
+                        </div>
+                        <span class="text-xs text-slate-500">${ratio.toFixed(1)}%</span>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        const handleFile = (file) => {
+            if (!file) return;
+            fileStatus.textContent = `已选择文件：${file.name}`;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                render(json);
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        fileInput.addEventListener('change', (event) => handleFile(event.target.files[0]));
+        loadDemo.addEventListener('click', () => {
+            fileStatus.textContent = '已载入内嵌 Demo 数据。';
+            render(demoData);
+        });
+        exportExcel.addEventListener('click', () => {
+            const worksheet = XLSX.utils.json_to_sheet(currentRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '收支流水');
+            XLSX.writeFile(workbook, 'cashflow_dashboard_export.xlsx');
+        });
+
+        render(demoData);
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

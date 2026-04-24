@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Gesture Tarot // HTML_SUPER</title>
+    <style>
+        body { margin: 0; background: #222; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Cinzel', serif; perspective: 1000px; }
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+        
+        .ui { position: absolute; top: 20px; left: 20px; color: #d4af37; z-index: 10; font-family: sans-serif; }
+        a { color: #d4af37; text-decoration: none; border-bottom: 1px solid #d4af37; }
+        #cam-feedback { position: absolute; top: 20px; right: 20px; width: 120px; border: 2px solid #d4af37; opacity: 0.5; border-radius: 10px; transform: scaleX(-1); }
+        
+        .carousel {
+            position: relative;
+            width: 300px;
+            height: 500px;
+            transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 15px;
+            background: #111;
+            border: 2px solid #d4af37;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: #d4af37;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            backface-visibility: hidden; /* Only one side for now */
+            background-image: repeating-linear-gradient(45deg, #1a1a1a 0px, #1a1a1a 10px, #222 10px, #222 20px);
+        }
+        
+        .card-content {
+            text-align: center;
+            background: #000;
+            padding: 20px;
+            border: 1px solid #d4af37;
+        }
+
+        .status-pill {
+            margin-top: 50px;
+            padding: 10px 30px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #d4af37;
+            color: #d4af37;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            transition: 0.2s;
+        }
+        
+        .status-pill.active { background: #d4af37; color: #000; }
+
+        .tutorial {
+            position: absolute; bottom: 50px; color: #888; text-align: center;
+        }
+        
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui"><a href="index.html">← BACK</a></div>
+    
+    <video id="cam-feedback" autoplay playsinline muted></video>
+    
+    <div class="carousel" id="carousel">
+        <!-- Generated Cards JS -->
+    </div>
+    
+    <div class="status-pill" id="status">WAVE HAND TO START</div>
+    <div class="tutorial">SWIPE LEFT / RIGHT to ROTATE<br>SWIPE UP / DOWN to ZOOM</div>
+
+    <script>
+        // Tarot Data
+        const arcana = ["THE FOOL", "THE MAGICIAN", "HIGH PRIESTESS", "THE EMPRESS", "THE EMPEROR", "THE HIEROPHANT", "THE LOVERS", "THE CHARIOT", "STRENGTH", "THE HERMIT"];
+        const carousel = document.getElementById('carousel');
+        const count = arcana.length;
+        const radius = 600; // Carousel size
+        
+        // Build Carousel
+        arcana.forEach((name, i) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const theta = (i / count) * Math.PI * 2;
+            
+            card.innerHTML = `<div class="card-content">
+                <div style="font-size:4rem; margin-bottom:10px;">${['🃏','🌟','🌙','👑','🤴','⛪','💞','🛒','🦁','🕯️'][i]}</div>
+                <div>${name}</div>
+                <div style="font-size:0.5rem; margin-top:5px;">${['Beginning','Power','Intuition','Fertility','Authority','Tradition','Love','Willpower','Courage','Introspection'][i].toUpperCase()}</div>
+            </div>`;
+            
+            // Layout in circle
+            card.style.transform = `rotateY(${theta}rad) translateZ(${radius}px)`;
+            carousel.appendChild(card);
+        });
+
+        // Loop Logic
+        let currentAngle = 0;
+        let targetAngle = 0;
+
+        // Motion Detection logic
+        const video = document.getElementById('cam-feedback');
+        const status = document.getElementById('status');
+        const cCanvas = document.createElement('canvas');
+        cCanvas.width = 64; cCanvas.height = 48;
+        const cCtx = cCanvas.getContext('2d');
+        
+        let prevColSum = null; 
+        
+        // We detect horizontal Swipe Flow
+        // By summing pixel brightness in columns and correlating shift?
+        // Simpler: Divide image into Left and Right zones. 
+        // If Motion LEFT zone > Motion RIGHT zone -> Left? Too noisy.
+        // Let's use simple Center Of Mass X movement (like Theremin) but detecting VELOCITY.
+        
+        let prevX = 0.5;
+        let prevY = 0.5;
+        let swipeVelocityX = 0;
+        let swipeVelocityY = 0;
+        let currentZ = -600; // Initial radius/distance
+        let targetZ = -600;
+
+        navigator.mediaDevices.getUserMedia({video: {width: 320, height: 240}}).then(stream => {
+            video.srcObject = stream;
+            loop();
+        });
+
+        function loop() {
+            cCtx.drawImage(video, 0, 0, 64, 48);
+            const data = cCtx.getImageData(0,0,64,48).data;
+            
+            // Find Center of Motion
+            let sumX = 0, sumY = 0, pixCount = 0;
+            
+            // Reuse older diff logic or simpler:
+            if (window.prevFrameData) {
+               for(let i=0; i<data.length; i+=4) {
+                   if (Math.abs(data[i+1] - window.prevFrameData[i+1]) > 30) {
+                       const idx = i/4;
+                       sumX += idx % 64;
+                       sumY += Math.floor(idx / 64);
+                       pixCount++;
+                   }
+               }
+           }
+           window.prevFrameData = data;
+
+           if (pixCount > 50) {
+               const avgX = (sumX / pixCount) / 64; 
+               const avgY = (sumY / pixCount) / 48;
+               
+               const dx = avgX - prevX;
+               const dy = avgY - prevY;
+               
+               swipeVelocityX = dx * 10; 
+               swipeVelocityY = dy * 10;
+               
+               prevX = avgX;
+               prevY = avgY;
+
+               let msg = "";
+
+               // X Logic (Rotation)
+               if (Math.abs(swipeVelocityX) > 0.15) {
+                   msg += swipeVelocityX > 0 ? ">>> RIGHT " : "<<< LEFT ";
+                   targetAngle += swipeVelocityX * 0.1; 
+               }
+               
+               // Y Logic (Zoom) - Up (negative dy) = Zoom In? Down = Zoom Out?
+               // Normally Swipe Up = Push content away? Or Pull?
+               // Let's do: Swipe UP (dy < 0) = PULL CLOSER (Zoom In)
+               // Swipe DOWN (dy > 0) = PUSH AWAY (Zoom Out)
+               if (Math.abs(swipeVelocityY) > 0.15) {
+                   msg += swipeVelocityY < 0 ? "🔍 ZOOM IN" : "🔭 ZOOM OUT";
+                   
+                   // Adjust Z
+                   targetZ -= swipeVelocityY * 100; // Speed
+               }
+
+               // Clamp Z (Don't go too far or too close)
+               if(targetZ > 0) targetZ = 0;
+               if(targetZ < -2000) targetZ = -2000;
+
+               if(msg) {
+                   status.innerText = msg;
+                   status.classList.add('active');
+               } else {
+                   status.innerText = "HOVERING";
+                   status.classList.remove('active');
+               }
+           } else {
+               status.innerText = "NO MOTION";
+               status.classList.remove('active');
+           }
+           
+           // Physics Update
+           currentAngle += (targetAngle - currentAngle) * 0.1;
+           currentZ += (targetZ - currentZ) * 0.1;
+           
+           carousel.style.transform = `translateZ(${currentZ}px) rotateY(${-currentAngle}rad)`;
+
+           requestAnimationFrame(loop);
+        }
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

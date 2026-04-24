@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 全栈工具脚手架 - Vibe Coding Starter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+    <div id="app" class="flex-grow flex flex-col">
+
+        <!-- 导航 -->
+        <nav class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white">
+                    <i class="fa-solid fa-hammer text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-800">AI 全栈工具脚手架</h1>
+                    <p class="text-xs text-slate-500">Vibe Coding 启动器：一句话生成单文件应用</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <a href="../../index.html"
+                    class="text-slate-500 hover:text-blue-600 transition flex items-center gap-1 text-sm mr-2">
+                    <i class="fa-solid fa-arrow-left"></i> 返回首页
+                </a>
+
+                <!-- 模型选择 -->
+                <div class="hidden md:flex items-center gap-2">
+                    <span class="text-xs text-slate-400">模型:</span>
+                    <select v-model="apiConfig.model" @change="saveConfig"
+                        class="text-sm bg-slate-100 border-none rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 font-medium">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+
+                <!-- 设置按钮 -->
+                <button @click="showSettings = true"
+                    class="text-slate-500 hover:text-blue-600 transition p-2 hover:bg-slate-100 rounded-lg"
+                    title="设置 API Key">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </nav>
+
+        <main class="flex-grow p-6 md:p-12 max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <!-- 左侧：输入区 -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                    <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-nib text-blue-500"></i>
+                        描述你的想法
+                    </h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">你想做什么工具？</label>
+                            <textarea v-model="userInput"
+                                class="w-full h-32 p-4 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none resize-none bg-slate-50"
+                                placeholder="例如：我想做一个'周报生成器'，用户输入本周工作内容，AI 自动生成三个版本的周报（简洁、详细、凡尔赛）。界面要包含复制按钮。"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">主要颜色</label>
+                                <select v-model="themeColor"
+                                    class="w-full p-2 rounded-lg border border-slate-200 bg-white">
+                                    <option value="blue">科技蓝 (Blue)</option>
+                                    <option value="purple">创意紫 (Purple)</option>
+                                    <option value="green">护眼绿 (Green)</option>
+                                    <option value="rose">活力红 (Rose)</option>
+                                    <option value="slate">极简灰 (Slate)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">技术栈偏好</label>
+                                <select v-model="techStack"
+                                    class="w-full p-2 rounded-lg border border-slate-200 bg-white">
+                                    <option value="vue">Vue 3 (适合交互复杂)</option>
+                                    <option value="alpine">Alpine.js (适合极致轻量)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button @click="generatePrompt" :disabled="isGenerating || !userInput"
+                            class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                            <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin"></i>
+                            <span v-else><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> 生成 Prompt (提示词)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 提示与技巧 -->
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
+                    <h3 class="font-bold text-indigo-800 text-sm mb-2 flex items-center gap-2">
+                        <i class="fa-regular fa-lightbulb"></i> Vibe Coding 最佳实践
+                    </h3>
+                    <p class="text-sm text-indigo-700 leading-relaxed">
+                        <strong>为什么生成提示词？</strong><br>
+                        直接生成代码容易中断。将这段精心构造的 Prompt 发送给 <strong>Cursor / Windsurf /
+                            ChatGPT</strong>，让它们在一个完整的对话上下文为你编写代码，成功率接近 100%。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 右侧：代码预览区 -->
+            <div
+                class="flex flex-col h-[600px] lg:h-auto bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-xl border border-slate-700">
+                <div class="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-[#333]">
+                    <span class="text-xs text-slate-400 font-mono">vibe_coding_prompt.md</span>
+                    <button @click="copyCode" v-if="generatedCode"
+                        class="text-xs text-slate-300 hover:text-white flex items-center gap-1 transition">
+                        <i class="fa-regular fa-copy"></i> {{ copyBtnText }}
+                    </button>
+                </div>
+                <div class="flex-grow overflow-auto p-4 relative">
+                    <pre v-if="generatedCode"
+                        class="font-mono text-sm text-green-300 leading-relaxed whitespace-pre-wrap">{{ generatedCode }}</pre>
+
+                    <!-- 空状态 -->
+                    <div v-else
+                        class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-50">
+                        <i class="fa-solid fa-terminal text-6xl mb-4"></i>
+                        <p class="text-sm">Prompt 将在这里生成...</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 全局设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold">全局 API 配置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="sk-...">
+                        <p class="text-xs text-slate-500 mt-1">
+                            <i class="fa-solid fa-lock mr-1"></i>
+                            Key 仅保存在本地 (localStorage)，所有工具共享。
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">默认模型</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800">保存配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // ================== 代码逻辑 ==================
+                const userInput = ref('');
+                const themeColor = ref('blue');
+                const techStack = ref('vue');
+                const isGenerating = ref(false);
+                const generatedCode = ref('');
+                const copyBtnText = ref('复制提示词');
+
+                // 设置相关
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                // 加载配置
+                onMounted(() => {
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            apiConfig.value = JSON.parse(saved);
+                        }
+                    } catch (e) {
+                        console.error('Error loading config:', e);
+                    }
+                });
+
+                // 保存配置
+                const saveConfig = () => {
+                    localStorage.setItem('global_llm_config', JSON.stringify(apiConfig.value));
+                    showSettings.value = false;
+                    // 添加保存成功提示，避免用户以为没反应
+                    // 只有当不是由下拉框触发（即由弹窗按钮触发）时才弹窗，这里简单起见，仅在showSettings为true时弹窗
+                    if (showSettings.value) {
+                        alert('配置已保存！');
+                    }
+                };
+
+                const generatePrompt = async () => {
+                    isGenerating.value = true;
+
+                    // 1. 获取 API Key
+                    let config = {};
+                    try {
+                        config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) { console.error(e); }
+                    const apiKey = config.deepseek;
+
+                    let detailedRequirements = userInput.value;
+
+                    // 2. 如果有 Key，先让 AI 扩写需求
+                    if (apiKey) {
+                        try {
+                            const expandResponse = await fetch('https://api.deepseek.com/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${apiKey}`
+                                },
+                                body: JSON.stringify({
+                                    model: apiConfig.value.model || "deepseek-v4-flash",
+                                    messages: [
+                                        {
+                                            role: "system",
+                                            content: "你是一个资深产品经理。用户会输入一个简单的工具想法（如'周报生成器'）。请你将其扩写为一份详细的功能需求列表。包含：核心功能点、用户交互流程、UI/UX 建议（如配色心情、布局方式）。请保持简洁但具体，不要写代码，只写需求描述。"
+                                        },
+                                        { role: "user", content: userInput.value }
+                                    ],
+                                    temperature: 0.7
+                                })
+                            });
+                            const data = await expandResponse.json();
+                            if (data.choices && data.choices[0]) {
+                                detailedRequirements = data.choices[0].message.content;
+                            }
+                        } catch (e) {
+                            console.error("需求扩写失败，使用原始输入", e);
+                            // 不阻断，继续生成
+                        }
+                    } else {
+                        // 无 Key 时的提示
+                        detailedRequirements += "\\n(注：未配置 API Key，以上为原始需求。配置 Key 后可开启 AI 自动需求扩写功能)";
+                        // 尝试引导用户去设置
+                        if (confirm('未检测到 API Key。是否现在去设置？设置后可使用 AI 自动扩写需求。')) {
+                            showSettings.value = true;
+                            isGenerating.value = false;
+                            return;
+                        }
+                    }
+
+                    // 3. 构建最终的结构化 Prompt (技术规范 + 详细需求)
+                    // 注意：这里使用反引号构建模板字符串，内部 Markdown 的反引号需要转义
+                    const prompt = `你是一个资深的前端开发专家 (Vibe Coding 模式)。
+                请帮我编写一个单文件 HTML 应用。
+                
+                ## 🎯 详细需求
+                ${detailedRequirements}
+                
+                ## 🛠 技术栈规范 (严格遵守)
+                1.  **架构**: 单文件 HTML (Single File HTML)。无 Node.js，无构建步骤。
+                2.  **框架**: 
+                    -   JS: ${techStack.value === 'vue' ? 'Vue 3 (Global Build CDN) - 使用 Options API' : 'Alpine.js (CDN)'}
+                    -   CSS: Tailwind CSS (CDN)
+                    -   Icons: Font Awesome (CDN)
+                3.  **API 集成与全局配置 (关键)**:
+                    -   **数据源**: 必须从 \`localStorage.getItem('global_llm_config')\` 读取配置。
+                        -   数据结构: \`{ deepseek: 'sk-xxx', model: 'deepseek-v4-flash' }\`
+                    -   **UI 交互**: 
+                        -   在右上角导航栏必须包含：
+                            1.  **模型选择下拉框**: 选项包含 \`deepseek-v4-flash\` 和 \`deepseek-v4-pro\`。
+                            2.  **设置按钮**: 点击弹出模态框，允许用户输入/修改 API Key。
+                        -   修改配置后需自动保存回 localStorage。
+                    -   **真实调用**: 
+                        -   接口地址: \`https://api.deepseek.com/chat/completions\`
+                        -   必须实现真实的 API 调用逻辑，优先使用流式输出 (Stream)。
+                        -   如果是 V4 Pro 模型，注意处理 \`reasoning_content\` 字段（如果有）。
+                
+                ## 🎨 视觉风格
+                -   **主色调**: ${themeColor.value}-500 / ${themeColor.value}-600
+                -   **风格**: 现代、干净、卡片式布局、圆角、柔和阴影。
+                -   **响应式**: 完美适配移动端。
+                
+                ## 📝 代码要求
+                1.  **完整性**: 输出完整的 HTML 代码，包含所有 CSS/JS 和模态框逻辑。
+                2.  **注释**: 关键逻辑必须包含中文注释。
+                3.  **容错**: 当 Key 为空时，点击生成按钮应自动弹出设置框提示用户。
+                
+                请直接开始编写代码：`;
+
+                    generatedCode.value = prompt;
+                    isGenerating.value = false;
+                };
+                const copyCode = () => {
+                    navigator.clipboard.writeText(generatedCode.value);
+                    copyBtnText.value = '已复制！';
+                    setTimeout(() => copyBtnText.value = '复制提示词', 2000);
+                };
+
+                return {
+                    userInput,
+                    themeColor,
+                    techStack,
+                    isGenerating,
+                    generatedCode,
+                    generatePrompt,
+                    copyCode,
+                    copyBtnText,
+                    showSettings,
+                    apiConfig,
+                    saveConfig
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_basics_html_tool_builder.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

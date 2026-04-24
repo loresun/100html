@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PixiJS 2D WebGL 渲染引擎</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://pixijs.download/v8.6.6/pixi.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #faf5ff; color: #581c87; }
+    .glass { background: rgba(255, 255, 255, 0.9); border: 1px solid #e9d5ff; box-shadow: 0 4px 6px rgba(147, 51, 234, 0.1); }
+    #pixi-container { width: 100%; height: 500px; border-radius: 1rem; overflow: hidden; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold text-purple-900">🎮 PixiJS</h1>
+    <p class="text-purple-800/60 mt-2 text-lg">高性能 2D WebGL 渲染引擎，用于游戏和交互式图形</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-purple-200 text-purple-800 rounded-lg hover:bg-purple-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto space-y-8">
+  <!-- 演示区域 -->
+  <div class="glass rounded-2xl p-6">
+    <div id="pixi-container" class="bg-slate-900 flex items-center justify-center">
+      <p class="text-white/50">正在加载 PixiJS 渲染...</p>
+    </div>
+  </div>
+
+  <!-- 控制面板 -->
+  <div class="glass rounded-2xl p-6">
+    <h3 class="font-bold text-purple-900 mb-4">交互控制</h3>
+    <div class="flex gap-4 flex-wrap">
+      <button onclick="createSprite()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">添加精灵</button>
+      <button onclick="createParticles()" class="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition">粒子效果</button>
+      <button onclick="toggleFilter()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">滤镜效果</button>
+      <button onclick="clearStage()" class="px-4 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 transition">清空画布</button>
+    </div>
+  </div>
+</main>
+
+<script>
+  let app;
+  let sprites = [];
+  let filterEnabled = false;
+
+  async function initPixi() {
+    const container = document.getElementById('pixi-container');
+    
+    app = new PIXI.Application();
+    await app.init({ 
+      background: '#1e1b4b',
+      resizeTo: container,
+      antialias: true
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(app.canvas);
+    
+    // 创建初始内容
+    createInitialScene();
+    
+    // 添加键盘控制
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'c') clearStage();
+    });
+  }
+
+  function createInitialScene() {
+    // 创建一个示例精灵
+    const graphics = new PIXI.Graphics();
+    graphics.circle(0, 0, 50);
+    graphics.fill(0x9333ea);
+    
+    const sprite = new PIXI.Sprite(app.renderer.generateTexture(graphics));
+    sprite.x = app.screen.width / 2;
+    sprite.y = app.screen.height / 2;
+    sprite.anchor.set(0.5);
+    sprite.eventMode = 'static';
+    sprite.cursor = 'pointer';
+    
+    sprite.on('pointerdown', () => {
+      sprite.scale.set(1.2);
+      setTimeout(() => sprite.scale.set(1), 100);
+    });
+    
+    app.stage.addChild(sprite);
+    sprites.push(sprite);
+    
+    // 添加动画
+    app.ticker.add(() => {
+      sprite.rotation += 0.01;
+    });
+  }
+
+  function createSprite() {
+    const colors = [0x9333ea, 0xdb2777, 0x2563eb, 0x16a34a, 0xf59e0b];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    
+    const graphics = new PIXI.Graphics();
+    const size = 20 + Math.random() * 40;
+    graphics.rect(-size/2, -size/2, size, size);
+    graphics.fill(color);
+    
+    const sprite = new PIXI.Sprite(app.renderer.generateTexture(graphics));
+    sprite.x = Math.random() * app.screen.width;
+    sprite.y = Math.random() * app.screen.height;
+    sprite.anchor.set(0.5);
+    sprite.eventMode = 'static';
+    sprite.cursor = 'pointer';
+    
+    sprite.on('pointerdown', () => {
+      app.stage.removeChild(sprite);
+      sprites = sprites.filter(s => s !== sprite);
+    });
+    
+    app.stage.addChild(sprite);
+    sprites.push(sprite);
+    
+    // 随机动画
+    app.ticker.add(() => {
+      sprite.rotation += (Math.random() - 0.5) * 0.1;
+      sprite.x += Math.sin(sprite.rotation) * 2;
+    });
+  }
+
+  function createParticles() {
+    for (let i = 0; i < 50; i++) {
+      const graphics = new PIXI.Graphics();
+      graphics.circle(0, 0, 3 + Math.random() * 5);
+      graphics.fill(0xffffff);
+      
+      const particle = new PIXI.Sprite(app.renderer.generateTexture(graphics));
+      particle.x = app.screen.width / 2;
+      particle.y = app.screen.height / 2;
+      particle.anchor.set(0.5);
+      
+      const angle = (Math.PI * 2 / 50) * i;
+      const speed = 2 + Math.random() * 3;
+      const velocity = {
+        x: Math.cos(angle) * speed,
+        y: Math.sin(angle) * speed
+      };
+      
+      app.stage.addChild(particle);
+      sprites.push(particle);
+      
+      app.ticker.add(() => {
+        particle.x += velocity.x;
+        particle.y += velocity.y;
+        particle.alpha -= 0.02;
+        
+        if (particle.alpha <= 0) {
+          app.stage.removeChild(particle);
+          sprites = sprites.filter(s => s !== particle);
+        }
+      });
+    }
+  }
+
+  function toggleFilter() {
+    filterEnabled = !filterEnabled;
+    
+    if (filterEnabled) {
+      const blurFilter = new PIXI.BlurFilter();
+      blurFilter.blur = 8;
+      app.stage.filters = [blurFilter];
+    } else {
+      app.stage.filters = null;
+    }
+  }
+
+  function clearStage() {
+    sprites.forEach(sprite => {
+      app.stage.removeChild(sprite);
+      // 移除 ticker
+      const tickers = app.ticker.fns;
+      // 简单清除所有 ticker (生产环境应更精细处理)
+    });
+    sprites = [];
+    
+    // 重新创建初始场景
+    createInitialScene();
+  }
+
+  // 初始化
+  initPixi().catch(console.error);
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

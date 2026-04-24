@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心情气象台 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .mood-card {
+            transition: all 0.3s ease;
+        }
+        .mood-card:hover {
+            transform: translateY(-4px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen font-sans" x-data="moodApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    🌈 心情气象台
+                </h1>
+            </div>
+            <div class="text-sm text-slate-500" x-text="getTodayDate()"></div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Today's Mood -->
+        <div class="bg-white rounded-3xl shadow-lg border border-slate-200 p-8 mb-8">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6 text-center">今天的心情如何？</h2>
+            
+            <!-- Mood Selector -->
+            <div class="grid grid-cols-5 gap-4 mb-6">
+                <template x-for="mood in moodOptions" :key="mood.value">
+                    <button 
+                        @click="selectMood(mood.value)"
+                        :class="selectedMood === mood.value ? 'ring-4 ring-offset-2 scale-110' : 'hover:scale-105'"
+                        :style="'ring-color: ' + mood.color"
+                        class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-all"
+                    >
+                        <span class="text-4xl" x-text="mood.emoji"></span>
+                        <span class="text-xs font-medium text-slate-600" x-text="mood.label"></span>
+                    </button>
+                </template>
+            </div>
+
+            <!-- Journal Entry -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">今日日记 (可选)</label>
+                <textarea 
+                    x-model="journalText"
+                    placeholder="记录今天发生的事情、感受或想法..."
+                    rows="4"
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                ></textarea>
+            </div>
+
+            <!-- Tags -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">相关标签</label>
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="tag in tagOptions" :key="tag">
+                        <button 
+                            @click="toggleTag(tag)"
+                            :class="selectedTags.includes(tag) ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                            class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+                            x-text="tag"
+                        ></button>
+                    </template>
+                </div>
+            </div>
+
+            <button 
+                @click="saveMoodEntry()"
+                :disabled="!selectedMood"
+                class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+                <i class="fa-solid fa-floppy-disk"></i>
+                保存今日心情
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">总记录</div>
+                <div class="text-2xl font-bold text-slate-800" x-text="entries.length">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">连续天数</div>
+                <div class="text-2xl font-bold text-purple-600" x-text="streakDays">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">本周平均</div>
+                <div class="text-2xl" x-text="weekAverageMood">😊</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">最常心情</div>
+                <div class="text-2xl" x-text="mostFrequentMood">😊</div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">心情历史</h3>
+            
+            <div class="space-y-4">
+                <template x-for="entry in recentEntries" :key="entry.id">
+                    <div class="mood-card p-5 bg-slate-50 rounded-xl hover:shadow-md border border-slate-100">
+                        <div class="flex items-start gap-4">
+                            <div class="text-4xl" x-text="getMoodEmoji(entry.mood)"></div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="font-medium text-slate-800" x-text="getMoodLabel(entry.mood)"></div>
+                                    <div class="text-sm text-slate-400" x-text="formatDate(entry.date)"></div>
+                                </div>
+                                <p class="text-slate-600 text-sm leading-relaxed mb-2" x-text="entry.journal || '无日记'"></p>
+                                <div class="flex gap-2 flex-wrap">
+                                    <template x-for="tag in entry.tags" :key="tag">
+                                        <span class="px-2 py-1 bg-purple-50 text-purple-600 text-xs rounded-full" x-text="tag"></span>
+                                    </template>
+                                </div>
+                            </div>
+                            <button @click="deleteEntry(entry.id)" class="text-slate-300 hover:text-rose-500 transition-colors">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div x-show="entries.length === 0" class="text-center py-12 text-slate-400">
+                <i class="fa-solid fa-cloud-rain text-5xl mx-auto mb-3 text-slate-200"></i>
+                <p>还没有心情记录，开始记录你的第一天吧</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function moodApp() {
+            return {
+                entries: [],
+                selectedMood: null,
+                journalText: '',
+                selectedTags: [],
+                moodOptions: [
+                    { value: 5, emoji: '😄', label: '很开心', color: '#22c55e' },
+                    { value: 4, emoji: '😊', label: '开心', color: '#84cc16' },
+                    { value: 3, emoji: '😐', label: '一般', color: '#eab308' },
+                    { value: 2, emoji: '😔', label: '难过', color: '#f97316' },
+                    { value: 1, emoji: '😢', label: '很难过', color: '#ef4444' }
+                ],
+                tagOptions: ['工作', '学习', '运动', '社交', '家庭', '健康', '娱乐', '旅行'],
+
+                init() {
+                    const saved = localStorage.getItem('webtools_mood');
+                    if (saved) {
+                        this.entries = JSON.parse(saved);
+                    }
+                    
+                    // Check if today's mood exists
+                    const today = this.getTodayDate();
+                    const todayEntry = this.entries.find(e => e.date === today);
+                    if (todayEntry) {
+                        this.selectedMood = todayEntry.mood;
+                        this.journalText = todayEntry.journal || '';
+                        this.selectedTags = todayEntry.tags || [];
+                    }
+
+                    this.$watch('entries', () => {
+                        localStorage.setItem('webtools_mood', JSON.stringify(this.entries));
+                        // icons update
+                    });
+                    // init
+                },
+
+                selectMood(value) {
+                    this.selectedMood = value;
+                },
+
+                toggleTag(tag) {
+                    const index = this.selectedTags.indexOf(tag);
+                    if (index > -1) {
+                        this.selectedTags.splice(index, 1);
+                    } else {
+                        this.selectedTags.push(tag);
+                    }
+                },
+
+                saveMoodEntry() {
+                    if (!this.selectedMood) return;
+
+                    const today = this.getTodayDate();
+                    const existingIndex = this.entries.findIndex(e => e.date === today);
+
+                    const entry = {
+                        id: existingIndex > -1 ? this.entries[existingIndex].id : Date.now(),
+                        date: today,
+                        mood: this.selectedMood,
+                        journal: this.journalText.trim(),
+                        tags: [...this.selectedTags]
+                    };
+
+                    if (existingIndex > -1) {
+                        this.entries[existingIndex] = entry;
+                    } else {
+                        this.entries.unshift(entry);
+                    }
+
+                    alert('心情已保存！');
+                },
+
+                deleteEntry(id) {
+                    if (confirm('确定要删除这条记录吗？')) {
+                        this.entries = this.entries.filter(e => e.id !== id);
+                    }
+                },
+
+                getTodayDate() {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                },
+
+                formatDate(dateStr) {
+                    const d = new Date(dateStr);
+                    const today = new Date();
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+
+                    if (dateStr === this.getTodayDate()) return '今天';
+                    if (dateStr === `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`) return '昨天';
+                    
+                    return `${d.getMonth() + 1}月${d.getDate()}日`;
+                },
+
+                getMoodEmoji(value) {
+                    const mood = this.moodOptions.find(m => m.value === value);
+                    return mood ? mood.emoji : '😊';
+                },
+
+                getMoodLabel(value) {
+                    const mood = this.moodOptions.find(m => m.value === value);
+                    return mood ? mood.label : '一般';
+                },
+
+                get recentEntries() {
+                    return this.entries.slice(0, 30);
+                },
+
+                get streakDays() {
+                    let streak = 0;
+                    let currentDate = new Date();
+                    
+                    while (true) {
+                        const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+                        if (this.entries.find(e => e.date === dateStr)) {
+                            streak++;
+                            currentDate.setDate(currentDate.getDate() - 1);
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    return streak;
+                },
+
+                get weekAverageMood() {
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    
+                    const weekEntries = this.entries.filter(e => new Date(e.date) >= weekAgo);
+                    if (weekEntries.length === 0) return '😊';
+                    
+                    const avg = weekEntries.reduce((sum, e) => sum + e.mood, 0) / weekEntries.length;
+                    return this.getMoodEmoji(Math.round(avg));
+                },
+
+                get mostFrequentMood() {
+                    if (this.entries.length === 0) return '😊';
+                    
+                    const counts = {};
+                    this.entries.forEach(e => {
+                        counts[e.mood] = (counts[e.mood] || 0) + 1;
+                    });
+                    
+                    const mostFrequent = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+                    return this.getMoodEmoji(parseInt(mostFrequent[0]));
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_mood_journal.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

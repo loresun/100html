@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics：与项目其他工具保持一致 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人生成就系统 · 沉浸式 RPG 人生</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /**
+         * 赛博霓虹 + 深色游戏 UI
+         * 主色：蓝紫 / 金 / 青绿
+         */
+        :root {
+            --lq-bg0: #070714;
+            --lq-bg1: #0d0d24;
+            --lq-panel: rgba(18, 16, 42, 0.92);
+            --lq-border: rgba(129, 140, 248, 0.35);
+            --lq-neon-blue: #6366f1;
+            --lq-neon-purple: #a855f7;
+            --lq-gold: #fbbf24;
+            --lq-gold-bright: #fde047;
+            --lq-mint: #34d399;
+            --lq-text: #e2e8f0;
+            --lq-muted: #94a3b8;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            background: var(--lq-bg0);
+            color: var(--lq-text);
+            font-family: "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* 星空画布：全屏底层 */
+        #lq-star-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        #lq-app-root {
+            position: relative;
+            z-index: 1;
+            min-height: 100%;
+        }
+
+        /* 玻璃拟态面板 */
+        .lq-glass {
+            background: var(--lq-panel);
+            border: 1px solid var(--lq-border);
+            box-shadow:
+                0 0 40px rgba(99, 102, 241, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+        }
+
+        /* 霓虹描边按钮 */
+        .lq-btn-neon {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.25));
+            border: 1px solid rgba(129, 140, 248, 0.55);
+            color: #eef2ff;
+            transition: transform 0.15s, box-shadow 0.2s;
+        }
+        .lq-btn-neon:hover {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.45);
+            transform: translateY(-1px);
+        }
+        .lq-btn-neon:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .lq-btn-gold {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.35), rgba(245, 158, 11, 0.2));
+            border: 1px solid rgba(251, 191, 36, 0.55);
+            color: #fffbeb;
+        }
+
+        /* 经验条发光 */
+        .lq-xp-bar-fill {
+            background: linear-gradient(90deg, #6366f1, #a855f7, #34d399);
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+            transition: width 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 任务卡片勾选动画 */
+        .lq-task-done {
+            animation: lqTaskPop 0.45s ease;
+        }
+        @keyframes lqTaskPop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        /* 经验飘字 */
+        .lq-float-xp {
+            position: fixed;
+            z-index: 150;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--lq-gold-bright);
+            text-shadow: 0 0 12px rgba(251, 191, 36, 0.9);
+            pointer-events: none;
+            animation: lqXpFly 1.1s ease-out forwards;
+        }
+        @keyframes lqXpFly {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--fx, 0), -80px) scale(0.6); }
+        }
+
+        /* 升级全屏金色粒子 */
+        .lq-level-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 220;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .lq-level-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fff, #fbbf24);
+            opacity: 0;
+            animation: lqParticleBurst 2.2s ease-out forwards;
+        }
+        @keyframes lqParticleBurst {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.15); }
+        }
+
+        /* 成就解锁：放射金光 */
+        .lq-ach-burst {
+            animation: lqAchGlow 1.4s ease-out;
+        }
+        @keyframes lqAchGlow {
+            0% { box-shadow: 0 0 0 rgba(251, 191, 36, 0); filter: brightness(1); }
+            35% {
+                box-shadow:
+                    0 0 80px rgba(251, 191, 36, 0.65),
+                    0 0 120px rgba(168, 85, 247, 0.35);
+                filter: brightness(1.25);
+            }
+            100% { box-shadow: 0 0 0 rgba(251, 191, 36, 0); filter: brightness(1); }
+        }
+
+        /* 成就徽章格 */
+        .lq-badge {
+            width: 100%;
+            aspect-ratio: 1;
+            max-width: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            border: 2px solid rgba(148, 163, 184, 0.25);
+            background: rgba(15, 23, 42, 0.6);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .lq-badge.unlocked {
+            border-color: rgba(251, 191, 36, 0.75);
+            background: linear-gradient(145deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.2));
+            box-shadow: 0 0 16px rgba(251, 191, 36, 0.25);
+        }
+        .lq-badge.unlocked:hover {
+            transform: scale(1.08);
+        }
+
+        /* 导航按钮半透明 */
+        .lq-nav-fab {
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid rgba(129, 140, 248, 0.35);
+            color: #c7d2fe;
+            backdrop-filter: blur(8px);
+        }
+        .lq-nav-fab:hover {
+            background: rgba(99, 102, 241, 0.25);
+            border-color: rgba(129, 140, 248, 0.6);
+        }
+
+        /* AI 教练悬浮钮 */
+        .lq-fab-coach {
+            position: fixed;
+            right: 1rem;
+            bottom: 1rem;
+            z-index: 90;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, #6366f1, #a855f7);
+            border: 2px solid rgba(253, 224, 71, 0.45);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.45);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .lq-fab-coach:hover {
+            transform: scale(1.06);
+        }
+
+        .lq-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(129, 140, 248, 0.5) transparent;
+        }
+        .lq-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .lq-scroll::-webkit-scrollbar-thumb {
+            background: rgba(129, 140, 248, 0.45);
+            border-radius: 4px;
+        }
+
+        .prose-lq {
+            font-size: 0.9rem;
+            line-height: 1.65;
+            color: #cbd5e1;
+        }
+        .prose-lq strong { color: #fbbf24; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+    <!-- 背景星空粒子层（Canvas） -->
+    <canvas id="lq-star-canvas" aria-hidden="true"></canvas>
+
+    <div id="lq-app-root" x-data="lifeQuestApp()" x-init="init()">
+        <!-- 极简顶栏：返回 + 设置 -->
+        <header class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-2 pointer-events-none">
+            <a href="../../index.html"
+               class="lq-nav-fab pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm no-underline">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                <span>返回</span>
+            </a>
+            <button type="button" @click="showSettings = true"
+                    class="lq-nav-fab pointer-events-auto rounded-full p-2.5" aria-label="设置">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </header>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition.opacity.duration.200ms
+             class="fixed top-16 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-xl text-sm font-medium shadow-lg"
+             :class="toast.type === 'error' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'"
+             x-text="toast.msg"></div>
+
+        <!-- 主内容 -->
+        <main class="max-w-4xl mx-auto px-3 pt-14 pb-28 space-y-4">
+
+            <!-- ========== 角色面板（固定感：sticky） ========== -->
+            <section class="lq-glass p-4 sticky top-12 z-40 lq-scroll max-h-[none]" :class="{ 'lq-ach-burst': achBurstActive }">
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <!-- 头像 + 名稱 -->
+                    <div class="flex items-center gap-3 shrink-0">
+                        <button type="button" @click="showEmojiPicker = !showEmojiPicker"
+                                class="w-16 h-16 rounded-2xl text-3xl flex items-center justify-center lq-glass border border-indigo-500/40 hover:border-amber-400/60 transition-colors"
+                                title="点击更换头像">
+                            <span x-text="character.avatarEmoji"></span>
+                        </button>
+                        <div>
+                            <input type="text" x-model="character.name" @change="saveData()"
+                                   class="bg-slate-900/60 border border-indigo-500/30 rounded-lg px-2 py-1 text-lg font-bold text-white w-36 sm:w-44 focus:ring-2 focus:ring-violet-500 outline-none"
+                                   placeholder="勇者昵称">
+                            <p class="text-xs text-amber-300/90 mt-0.5 font-semibold" x-text="playerTitle"></p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">
+                                Lv<span x-text="levelInfo.level"></span>
+                                · 累计 <span x-text="character.totalXp"></span> XP
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 等级条 -->
+                    <div class="flex-1 min-w-0 flex flex-col justify-center">
+                        <div class="flex justify-between text-xs text-slate-400 mb-1">
+                            <span>经验值</span>
+                            <span>
+                                <span x-text="levelInfo.xpInLevel"></span> / <span x-text="levelInfo.xpToNext"></span>
+                            </span>
+                        </div>
+                        <div id="lq-xp-bar-target" class="h-3 rounded-full bg-slate-800 overflow-hidden border border-indigo-500/20">
+                            <div class="lq-xp-bar-fill h-full rounded-full" :style="'width:' + xpBarPercent + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emoji 选择 -->
+                <div x-show="showEmojiPicker" x-transition.opacity.duration.200ms
+                     class="mt-3 flex flex-wrap gap-2 p-2 rounded-xl bg-slate-900/50 border border-slate-700/50">
+                    <template x-for="em in avatarChoices" :key="em">
+                        <button type="button" @click="character.avatarEmoji = em; showEmojiPicker = false; saveData()"
+                                class="text-2xl p-1 hover:scale-110 transition-transform" x-text="em"></button>
+                    </template>
+                </div>
+
+                <!-- 雷达图 -->
+                <div class="mt-4 flex justify-center">
+                    <canvas x-ref="radarCanvas" width="280" height="240" class="max-w-full h-auto"></canvas>
+                </div>
+                <p class="text-center text-[11px] text-slate-500">五大属性 · 完成任务可成长（雷达满格 = 该项投入达到参考上限）</p>
+            </section>
+
+            <!-- ========== 任务系统 ========== -->
+            <section class="lq-glass p-4 space-y-4">
+                <h2 class="text-lg font-bold flex items-center gap-2 text-indigo-200">
+                    <i data-lucide="list-checks" class="w-5 h-5 text-emerald-400"></i>
+                    任务系统
+                </h2>
+
+                <!-- 每日任务 -->
+                <div>
+                    <h3 class="text-sm font-semibold text-violet-300 mb-2">每日任务</h3>
+                    <p class="text-xs text-slate-500 mb-2">每日 0 点逻辑日切换：完成打钩，获得经验（同一天不可重复领取）。</p>
+                    <ul class="space-y-2">
+                        <template x-for="t in dailyTasks" :key="t.id">
+                            <li class="flex items-center gap-3 p-3 rounded-xl bg-slate-900/40 border border-slate-700/40"
+                                :class="{ 'lq-task-done': t.justDone, 'opacity-50': dailyDone[t.id] }">
+                                <button type="button"
+                                        @click="!dailyDone[t.id] && completeDaily(t)"
+                                        :disabled="dailyDone[t.id]"
+                                        class="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center border-2 transition-colors"
+                                        :class="dailyDone[t.id] ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : 'border-slate-600 hover:border-indigo-400'">
+                                    <i data-lucide="check" class="w-5 h-5" x-show="dailyDone[t.id]"></i>
+                                    <span class="text-lg" x-show="!dailyDone[t.id]" x-text="t.icon"></span>
+                                </button>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-medium text-slate-100" x-text="t.name"></p>
+                                    <p class="text-xs text-slate-500">
+                                        <span x-text="attrLabel(t.attr)"></span> · +<span x-text="t.baseXp"></span> XP
+                                    </p>
+                                </div>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+
+                <!-- 自定义任务 -->
+                <div class="border-t border-slate-700/50 pt-4">
+                    <h3 class="text-sm font-semibold text-violet-300 mb-2">自定义任务</h3>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                        <input type="text" x-model="newTask.name" placeholder="任务名称"
+                               class="flex-1 rounded-lg bg-slate-900/70 border border-slate-600 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+                        <select x-model="newTask.attr"
+                                class="rounded-lg bg-slate-900/70 border border-slate-600 px-2 py-2 text-sm">
+                            <template x-for="a in attrOptions" :key="a.key">
+                                <option :value="a.key" x-text="a.label"></option>
+                            </template>
+                        </select>
+                        <select x-model="newTask.difficulty"
+                                class="rounded-lg bg-slate-900/70 border border-slate-600 px-2 py-2 text-sm">
+                            <option value="S">S 级</option>
+                            <option value="A">A 级</option>
+                            <option value="B">B 级</option>
+                            <option value="C">C 级</option>
+                        </select>
+                        <button type="button" @click="addCustomTask()" class="lq-btn-neon rounded-lg px-4 py-2 text-sm font-medium">
+                            添加
+                        </button>
+                    </div>
+                    <ul class="space-y-2">
+                        <template x-for="t in customTasks" :key="t.id">
+                            <li class="flex items-center gap-2 p-2 rounded-lg bg-slate-900/30 border border-slate-700/30">
+                                <span class="text-slate-200 flex-1 text-sm" x-text="t.name"></span>
+                                <span class="text-xs text-amber-200/80" x-text="t.difficulty + ' +' + t.xp"></span>
+                                <button type="button" @click="completeCustom(t, $event)" class="text-xs lq-btn-gold rounded-lg px-2 py-1">完成</button>
+                                <button type="button" @click="removeCustom(t.id)" class="text-slate-500 hover:text-rose-400 p-1">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+
+                <!-- AI 随机挑战 -->
+                <div class="border-t border-slate-700/50 pt-4">
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 class="text-sm font-semibold text-violet-300">AI 生成挑战</h3>
+                        <button type="button" @click="rollAiChallenge()" :disabled="aiLoading"
+                                class="lq-btn-neon text-xs rounded-lg px-3 py-1.5 font-medium">
+                            <span x-show="!aiLoading">随机挑战</span>
+                            <span x-show="aiLoading">召唤中…</span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-2">根据你最弱的属性，由 AI 生成一条有趣、可执行的现实小挑战。</p>
+                    <div x-show="aiChallengeText" class="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-sm text-indigo-100 whitespace-pre-wrap"
+                         x-text="aiChallengeText"></div>
+                    <button type="button" x-show="aiChallengeText && !aiChallengeClaimed" @click="claimAiChallenge($event)"
+                            class="mt-2 lq-btn-gold text-xs rounded-lg px-3 py-1.5 font-medium">
+                        完成此挑战 (+ 动态 XP)
+                    </button>
+                </div>
+            </section>
+
+            <!-- ========== 成就墙 ========== -->
+            <section class="lq-glass p-4">
+                <h2 class="text-lg font-bold flex items-center gap-2 text-amber-200 mb-3">
+                    <i data-lucide="award" class="w-5 h-5"></i>
+                    成就墙
+                </h2>
+                <div class="grid grid-cols-6 gap-2 sm:gap-3">
+                    <template x-for="a in achievementDefs" :key="a.id">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="lq-badge w-full max-w-[56px] mx-auto"
+                                 :class="{ unlocked: achievements[a.id] }"
+                                 :title="a.desc">
+                                <template x-if="achievements[a.id]">
+                                    <span x-text="a.icon"></span>
+                                </template>
+                                <template x-if="!achievements[a.id]">
+                                    <i data-lucide="lock" class="w-5 h-5 text-slate-600"></i>
+                                </template>
+                            </div>
+                            <span class="text-[9px] sm:text-[10px] text-center text-slate-500 leading-tight line-clamp-2" x-text="a.name"></span>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
+            <!-- ========== 排行 / 统计 ========== -->
+            <section class="lq-glass p-4 space-y-4">
+                <h2 class="text-lg font-bold flex items-center gap-2 text-emerald-200">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                    数据中枢
+                </h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-xl bg-slate-900/50 p-3 border border-slate-700/40">
+                        <p class="text-xs text-slate-500">本周完成任务</p>
+                        <p class="text-2xl font-bold text-white" x-text="weekCompleteCount"></p>
+                    </div>
+                    <div class="rounded-xl bg-slate-900/50 p-3 border border-slate-700/40">
+                        <p class="text-xs text-slate-500">最长连续打卡</p>
+                        <p class="text-2xl font-bold text-amber-300" x-text="stats.longestStreak"></p>
+                        <p class="text-[10px] text-slate-500">当前 <span x-text="stats.currentStreak"></span> 天</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-400 mb-2">各属性累计经验（柱状）</p>
+                    <canvas x-ref="barCanvas" width="340" height="160" class="w-full max-w-md mx-auto h-auto"></canvas>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-400 mb-2">近 30 天活跃度（越深越忙）</p>
+                    <canvas x-ref="heatCanvas" width="360" height="56" class="w-full h-auto"></canvas>
+                </div>
+            </section>
+        </main>
+
+        <!-- AI 教练悬浮按钮 -->
+        <button type="button" class="lq-fab-coach" @click="openCoach()" aria-label="召唤 AI 教练">
+            <i data-lucide="sparkles" class="w-6 h-6 text-amber-200"></i>
+        </button>
+
+        <!-- 设置弹窗 -->
+        <div x-show="showSettings" class="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+             x-transition.opacity>
+            <div @click.outside="showSettings = false" class="lq-glass max-w-md w-full p-6 space-y-4 border border-indigo-500/30">
+                <h3 class="text-lg font-bold text-white">API 配置</h3>
+                <p class="text-xs text-slate-400">与全站共用 <code class="text-indigo-300">global_llm_config</code>，保存时合并写入，不会覆盖其他字段。</p>
+                <div>
+                    <label class="block text-sm text-slate-300 mb-1">DeepSeek API Key</label>
+                    <input type="password" x-model="apiConfig.deepseek"
+                           class="w-full rounded-lg bg-slate-900 border border-slate-600 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-300 mb-1">模型</label>
+                    <select x-model="apiConfig.model" class="w-full rounded-lg bg-slate-900 border border-slate-600 px-3 py-2 text-sm">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-slate-400 hover:bg-slate-800">取消</button>
+                    <button type="button" @click="saveConfig()" class="lq-btn-neon px-4 py-2 rounded-lg font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 教练对话框 -->
+        <div x-show="showCoach" class="fixed inset-0 z-[260] flex items-end sm:items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+             x-transition.opacity>
+            <div @click.outside="showCoach = false" class="lq-glass w-full max-w-lg max-h-[80vh] flex flex-col border border-violet-500/35 rounded-2xl overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700/50">
+                    <span class="font-bold text-indigo-200 flex items-center gap-2">
+                        <i data-lucide="bot" class="w-5 h-5"></i>
+                        AI 人生教练
+                    </span>
+                    <button type="button" @click="showCoach = false" class="p-1 rounded-lg hover:bg-slate-800 text-slate-400">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="p-4 overflow-y-auto lq-scroll flex-1 space-y-3">
+                    <details x-show="coachReasoning" class="text-xs">
+                        <summary class="cursor-pointer text-violet-300">V4 Pro 思考过程（点击展开）</summary>
+                        <pre class="mt-2 p-2 rounded-lg bg-slate-900/80 text-slate-400 whitespace-pre-wrap max-h-40 overflow-y-auto" x-text="coachReasoning"></pre>
+                    </details>
+                    <div class="prose-lq" x-html="renderMd(coachReply)"></div>
+                    <p x-show="coachLoading" class="text-sm text-indigo-300 animate-pulse">教练正在组织语言…</p>
+                </div>
+                <div class="p-3 border-t border-slate-700/50 flex gap-2">
+                    <button type="button" @click="runCoach()" :disabled="coachLoading"
+                            class="flex-1 lq-btn-neon rounded-lg py-2 text-sm font-medium">
+                        刷新建议
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新成就弹窗 -->
+        <div x-show="newAchModal.show" class="fixed inset-0 z-[270] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <div class="lq-glass max-w-sm w-full p-8 text-center lq-ach-burst border-2 border-amber-400/50">
+                <p class="text-amber-300 text-sm font-semibold mb-2">成就解锁</p>
+                <div class="text-5xl mb-3" x-text="newAchModal.icon"></div>
+                <p class="text-xl font-bold text-white mb-1" x-text="newAchModal.name"></p>
+                <p class="text-sm text-slate-400 mb-6" x-text="newAchModal.desc"></p>
+                <button type="button" @click="newAchModal.show = false" class="lq-btn-gold w-full rounded-xl py-3 font-bold">太棒了</button>
+            </div>
+        </div>
+
+        <!-- 升级粒子层 -->
+        <div x-show="showLevelUpFx" class="lq-level-overlay">
+            <template x-for="(p, idx) in levelUpParticles" :key="idx">
+                <div class="lq-level-particle" :style="'left:50%;top:40%;--tx:' + p.tx + 'px;--ty:' + p.ty + 'px'"></div>
+            </template>
+        </div>
+    </div>
+
+    <script>
+        /** localStorage 键：人生存档 */
+        const LQ_STORAGE_KEY = 'life_quest_data';
+
+        /**
+         * Alpine 根组件：人生成就 RPG
+         * - DeepSeek 流式 API（挑战 / 教练）
+         * - global_llm_config 合并读写
+         * - Canvas：雷达、柱状、热力、星空
+         */
+        function lifeQuestApp() {
+            return {
+                toast: { show: false, msg: '', type: 'info' },
+                showSettings: false,
+                showEmojiPicker: false,
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+
+                character: { name: '星际行者', avatarEmoji: '🚀', totalXp: 0 },
+                attrXp: { body: 0, wisdom: 0, wealth: 0, social: 0, will: 0 },
+                dailyDone: {},
+                customTasks: [],
+                achievements: {},
+                stats: {
+                    totalTasksCompleted: 0,
+                    earlyRiseCount: 0,
+                    readCount: 0,
+                    meditateCount: 0,
+                    currentStreak: 0,
+                    longestStreak: 0,
+                    lastActiveDate: '',
+                    weekAnchorISO: '',
+                    bestWeekCount: 0
+                },
+                /** 每日完成任务计数：YYYY-MM-DD -> 次数 */
+                heatmap: {},
+
+                lastDailyDate: '',
+                aiChallengeText: '',
+                aiChallengeClaimed: false,
+                aiLoading: false,
+
+                showCoach: false,
+                coachReply: '',
+                coachReasoning: '',
+                coachLoading: false,
+
+                newAchModal: { show: false, name: '', desc: '', icon: '' },
+                showLevelUpFx: false,
+                levelUpParticles: [],
+                achBurstActive: false,
+
+                newTask: { name: '', attr: 'body', difficulty: 'B' },
+
+                avatarChoices: ['🚀', '⚔️', '🧙', '🐉', '👑', '🌟', '🦾', '📚', '💎', '🎯', '🌈', '🐱', '🐼', '🔥', '💜'],
+
+                attrOptions: [
+                    { key: 'body', label: '💪 体魄' },
+                    { key: 'wisdom', label: '📚 智慧' },
+                    { key: 'wealth', label: '💰 财富' },
+                    { key: 'social', label: '💕 人脉' },
+                    { key: 'will', label: '🎯 意志' }
+                ],
+
+                /** 每日任务预设 */
+                dailyTasks: [
+                    { id: 'early', name: '早起（设定闹钟前起床）', attr: 'will', baseXp: 18, icon: '🌅', justDone: false },
+                    { id: 'sport', name: '运动 20 分钟+', attr: 'body', baseXp: 22, icon: '💪', justDone: false },
+                    { id: 'read', name: '阅读 15 分钟+', attr: 'wisdom', baseXp: 20, icon: '📖', justDone: false },
+                    { id: 'meditate', name: '冥想 / 深呼吸 5 分钟', attr: 'will', baseXp: 16, icon: '🧘', justDone: false },
+                    { id: 'money', name: '记账或审视收支', attr: 'wealth', baseXp: 18, icon: '💰', justDone: false },
+                    { id: 'social', name: '主动联系一位朋友', attr: 'social', baseXp: 20, icon: '💬', justDone: false }
+                ],
+
+                achievementDefs: [
+                    { id: 'early_bird', name: '早起鸟', icon: '🌅', desc: '累计完成 5 次「早起」每日任务' },
+                    { id: 'bookworm', name: '书虫', icon: '📖', desc: '累计完成 10 次「阅读」每日任务' },
+                    { id: 'streak_king', name: '连击王', icon: '🔥', desc: '最长连续打卡 ≥ 7 天' },
+                    { id: 'iron_body', name: '铁人', icon: '💪', desc: '体魄属性累计经验 ≥ 50' },
+                    { id: 'all_round', name: '全能选手', icon: '🌟', desc: '五项属性累计经验均 ≥ 30' },
+                    { id: 'gold_hand', name: '小金库', icon: '💰', desc: '财富属性累计经验 ≥ 40' },
+                    { id: 'social_star', name: '社交达人', icon: '💕', desc: '人脉属性累计经验 ≥ 50' },
+                    { id: 'will_steel', name: '钢铁意志', icon: '🎯', desc: '意志属性累计经验 ≥ 50' },
+                    { id: 'wise_one', name: '博学者', icon: '📚', desc: '智慧属性累计经验 ≥ 50' },
+                    { id: 'level_3', name: '初露锋芒', icon: '⬆️', desc: '角色等级达到 3' },
+                    { id: 'level_10', name: '传奇之路', icon: '👑', desc: '角色等级达到 10' },
+                    { id: 'task_maniac', name: '任务狂人', icon: '⚡', desc: '累计完成 100 个任务（含每日/自定义/挑战）' },
+                    { id: 'week_star', name: '本周之星', icon: '📅', desc: '单周完成任务 ≥ 20 次（历史最佳）' },
+                    { id: 'first_step', name: '新星启程', icon: '✨', desc: '第一次升级（达到 2 级）' },
+                    { id: 'zen_10', name: '静心者', icon: '🧘', desc: '累计完成 10 次「冥想」每日任务' }
+                ],
+
+                difficultyXp: { S: 50, A: 35, B: 22, C: 12 },
+
+                /**
+                 * 初始化：读配置、读存档、刷新日期、绘图、星空
+                 */
+                init() {
+                    const g = localStorage.getItem('global_llm_config');
+                    if (g) {
+                        try { this.apiConfig = { ...this.apiConfig, ...JSON.parse(g) }; }
+                        catch (e) { /* 忽略 */ }
+                    }
+                    this.loadData();
+                    this.ensureDailyReset();
+                    this.ensureWeekAnchor();
+                    this.$nextTick(() => {
+                        if (window.lucide) lucide.createIcons();
+                        this.drawAllCharts();
+                        this.startStarfield();
+                    });
+                },
+
+                /**
+                 * 从 localStorage 恢复 life_quest_data
+                 */
+                loadData() {
+                    const raw = localStorage.getItem(LQ_STORAGE_KEY);
+                    if (!raw) return;
+                    try {
+                        const d = JSON.parse(raw);
+                        if (d.character) this.character = { ...this.character, ...d.character };
+                        if (d.attrXp) this.attrXp = { ...this.attrXp, ...d.attrXp };
+                        if (d.dailyDone) this.dailyDone = { ...d.dailyDone };
+                        if (Array.isArray(d.customTasks)) this.customTasks = d.customTasks;
+                        if (d.achievements) this.achievements = { ...d.achievements };
+                        if (d.stats) this.stats = { ...this.stats, ...d.stats };
+                        if (d.heatmap) this.heatmap = { ...d.heatmap };
+                        if (d.lastDailyDate) this.lastDailyDate = d.lastDailyDate;
+                        if (typeof d.aiChallengeText === 'string') this.aiChallengeText = d.aiChallengeText;
+                        this.aiChallengeClaimed = !!d.aiChallengeClaimed;
+                    } catch (e) {
+                        console.warn('life_quest_data 解析失败', e);
+                    }
+                },
+
+                /**
+                 * 写入 life_quest_data
+                 */
+                saveData() {
+                    const payload = {
+                        v: 1,
+                        character: this.character,
+                        attrXp: this.attrXp,
+                        dailyDone: this.dailyDone,
+                        customTasks: this.customTasks,
+                        achievements: this.achievements,
+                        stats: this.stats,
+                        heatmap: this.heatmap,
+                        lastDailyDate: this.lastDailyDate,
+                        aiChallengeText: this.aiChallengeText,
+                        aiChallengeClaimed: this.aiChallengeClaimed
+                    };
+                    localStorage.setItem(LQ_STORAGE_KEY, JSON.stringify(payload));
+                },
+
+                /**
+                 * 合并保存 DeepSeek 配置
+                 */
+                saveConfig() {
+                    const cur = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...cur,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'success');
+                },
+
+                showToast(msg, type = 'info') {
+                    this.toast = { show: true, msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2400);
+                },
+
+                /** 本地日期 YYYY-MM-DD */
+                todayStr() {
+                    const n = new Date();
+                    const p = (x) => String(x).padStart(2, '0');
+                    return `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
+                },
+
+                /**
+                 * 若跨日则清空当日完成标记（按本地日历）
+                 */
+                ensureDailyReset() {
+                    const t = this.todayStr();
+                    if (this.lastDailyDate !== t) {
+                        this.lastDailyDate = t;
+                        this.dailyDone = {};
+                        this.dailyTasks.forEach((x) => { x.justDone = false; });
+                        this.saveData();
+                    }
+                },
+
+                /**
+                 * ISO 周锚点（用于统计本周任务数）
+                 */
+                weekAnchorISO() {
+                    const d = new Date();
+                    const day = d.getDay() || 7;
+                    d.setDate(d.getDate() - day + 1);
+                    const p = (x) => String(x).padStart(2, '0');
+                    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+                },
+
+                ensureWeekAnchor() {
+                    const wa = this.weekAnchorISO();
+                    if (this.stats.weekAnchorISO !== wa) {
+                        this.stats.weekAnchorISO = wa;
+                        this.saveData();
+                    }
+                },
+
+                /**
+                 * 等级分解：累计 XP → 当前等级、条内 XP、升级所需
+                 */
+                get levelInfo() {
+                    return this.computeLevelFromTotalXp(this.character.totalXp);
+                },
+
+                get playerTitle() {
+                    return this.titleForLevel(this.levelInfo.level);
+                },
+
+                get xpBarPercent() {
+                    const { xpInLevel, xpToNext } = this.levelInfo;
+                    if (!xpToNext) return 100;
+                    return Math.min(100, Math.round((xpInLevel / xpToNext) * 1000) / 10);
+                },
+
+                /**
+                 * 升级阈值曲线：逐级递增，避免后期太容易满级
+                 * @param {number} totalXp 累计经验
+                 */
+                computeLevelFromTotalXp(totalXp) {
+                    let level = 1;
+                    let pool = Math.max(0, totalXp);
+                    let need = 120;
+                    while (pool >= need) {
+                        pool -= need;
+                        level++;
+                        need = Math.min(720, Math.floor(need * 1.14));
+                    }
+                    return { level, xpInLevel: pool, xpToNext: need };
+                },
+
+                /**
+                 * 根据等级返回称号文案
+                 * @param {number} L 等级
+                 */
+                titleForLevel(L) {
+                    if (L >= 25) return '次元超越者';
+                    if (L >= 20) return '命运雕刻师';
+                    if (L >= 15) return '星轨旅人';
+                    if (L >= 10) return '人生赢家';
+                    if (L >= 7) return '自律领主';
+                    if (L >= 5) return '进击的打工人';
+                    if (L >= 3) return '成长冒险家';
+                    return '菜鸟';
+                },
+
+                attrLabel(key) {
+                    const m = { body: '体魄', wisdom: '智慧', wealth: '财富', social: '人脉', will: '意志' };
+                    return m[key] || key;
+                },
+
+                /**
+                 * 雷达图数值：0–100，非线性映射累计属性经验
+                 */
+                radarValue(key) {
+                    const v = this.attrXp[key] || 0;
+                    return Math.min(100, Math.round(Math.sqrt(v) * 10));
+                },
+
+                /**
+                 * 完成每日任务
+                 * @param {object} t 任务对象
+                 */
+                completeDaily(t) {
+                    this.ensureDailyReset();
+                    if (this.dailyDone[t.id]) return;
+                    this.dailyDone[t.id] = true;
+                    t.justDone = true;
+                    setTimeout(() => { t.justDone = false; }, 500);
+
+                    this.grantXp(t.baseXp, t.attr, null);
+                    this.bumpDailyCounters(t.id);
+                    this.recordHeatmap();
+                    this.updateStreak();
+                    this.afterTaskComplete(null);
+                    this.saveData();
+                    this.drawAllCharts();
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                bumpDailyCounters(taskId) {
+                    if (taskId === 'early') this.stats.earlyRiseCount++;
+                    if (taskId === 'read') this.stats.readCount++;
+                    if (taskId === 'meditate') this.stats.meditateCount++;
+                },
+
+                /**
+                 * 热力图：当天 +1
+                 */
+                recordHeatmap() {
+                    const k = this.todayStr();
+                    this.heatmap[k] = (this.heatmap[k] || 0) + 1;
+                },
+
+                /**
+                 * 连续打卡：任意任务完成即算当日活跃
+                 */
+                updateStreak() {
+                    const t = this.todayStr();
+                    const y = this.yesterdayStr();
+                    if (this.stats.lastActiveDate === t) return;
+                    if (this.stats.lastActiveDate === y) {
+                        this.stats.currentStreak = (this.stats.currentStreak || 0) + 1;
+                    } else {
+                        this.stats.currentStreak = 1;
+                    }
+                    this.stats.lastActiveDate = t;
+                    this.stats.longestStreak = Math.max(this.stats.longestStreak || 0, this.stats.currentStreak);
+                },
+
+                yesterdayStr() {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    const p = (x) => String(x).padStart(2, '0');
+                    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+                },
+
+                /**
+                 * 添加自定义任务
+                 */
+                addCustomTask() {
+                    const name = (this.newTask.name || '').trim();
+                    if (!name) {
+                        this.showToast('请填写任务名称', 'error');
+                        return;
+                    }
+                    const xp = this.difficultyXp[this.newTask.difficulty] || 22;
+                    this.customTasks.push({
+                        id: 'c_' + Date.now(),
+                        name,
+                        attr: this.newTask.attr,
+                        difficulty: this.newTask.difficulty,
+                        xp
+                    });
+                    this.newTask.name = '';
+                    this.saveData();
+                    this.showToast('已添加任务', 'success');
+                },
+
+                removeCustom(id) {
+                    this.customTasks = this.customTasks.filter((c) => c.id !== id);
+                    this.saveData();
+                },
+
+                /**
+                 * 完成自定义任务
+                 */
+                completeCustom(t, ev) {
+                    this.grantXp(t.xp, t.attr, ev);
+                    this.recordHeatmap();
+                    this.updateStreak();
+                    this.removeCustom(t.id);
+                    /** 任务计数由 afterTaskComplete 统一 +1，避免重复统计 */
+                    this.afterTaskComplete(ev);
+                    this.saveData();
+                    this.drawAllCharts();
+                },
+
+                /**
+                 * 发放经验：总 XP + 属性 XP，触发飘字与升级 FX
+                 * @param {number} xp 数值
+                 * @param {string} attrKey 属性键
+                 * @param {Event|null} ev 用于飘字起点
+                 */
+                grantXp(xp, attrKey, ev) {
+                    const prevLevel = this.computeLevelFromTotalXp(this.character.totalXp).level;
+                    this.character.totalXp += xp;
+                    if (attrKey && this.attrXp[attrKey] !== undefined) {
+                        this.attrXp[attrKey] += xp;
+                    }
+                    const newLevel = this.computeLevelFromTotalXp(this.character.totalXp).level;
+                    this.spawnXpFloat(xp, ev);
+                    if (newLevel > prevLevel) {
+                        this.triggerLevelUpFx(newLevel);
+                    }
+                },
+
+                /**
+                 * 经验飘字动画
+                 */
+                spawnXpFloat(xp, ev) {
+                    const el = document.createElement('div');
+                    el.className = 'lq-float-xp';
+                    el.textContent = '+' + xp + ' XP';
+                    let left = window.innerWidth / 2;
+                    let top = window.innerHeight / 2;
+                    if (ev && ev.clientX) {
+                        left = ev.clientX;
+                        top = ev.clientY;
+                    }
+                    el.style.left = left + 'px';
+                    el.style.top = top + 'px';
+                    const bar = document.getElementById('lq-xp-bar-target');
+                    if (bar) {
+                        const r = bar.getBoundingClientRect();
+                        el.style.setProperty('--fx', (r.left + r.width / 2 - left) + 'px');
+                    } else {
+                        el.style.setProperty('--fx', '0px');
+                    }
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 1100);
+                },
+
+                /**
+                 * 升级全屏粒子
+                 */
+                triggerLevelUpFx(level) {
+                    const parts = [];
+                    for (let i = 0; i < 48; i++) {
+                        const ang = (Math.PI * 2 * i) / 48;
+                        const dist = 120 + Math.random() * 220;
+                        parts.push({
+                            tx: Math.cos(ang) * dist,
+                            ty: Math.sin(ang) * dist
+                        });
+                    }
+                    this.levelUpParticles = parts;
+                    this.showLevelUpFx = true;
+                    this.showToast('升级！Lv ' + level, 'success');
+                    setTimeout(() => { this.showLevelUpFx = false; }, 2200);
+                },
+
+                /**
+                 * 任意任务完成后的统计与成就检测
+                 */
+                afterTaskComplete(ev) {
+                    this.stats.totalTasksCompleted++;
+                    this.ensureWeekAnchor();
+                    const wc = this.weekCompleteCount;
+                    if (wc > (this.stats.bestWeekCount || 0)) {
+                        this.stats.bestWeekCount = wc;
+                    }
+                    this.checkAchievements();
+                },
+
+                /** 本周（周一至今日）完成任务总数 */
+                get weekCompleteCount() {
+                    const dates = this.weekDateStrings();
+                    let s = 0;
+                    dates.forEach((d) => {
+                        s += this.heatmap[d] || 0;
+                    });
+                    return s;
+                },
+
+                /**
+                 * 当前 ISO 周从周一到今天所有日期键
+                 */
+                weekDateStrings() {
+                    const out = [];
+                    const d = new Date();
+                    const day = d.getDay() || 7;
+                    d.setDate(d.getDate() - day + 1);
+                    const end = new Date();
+                    while (d <= end) {
+                        const p = (x) => String(x).padStart(2, '0');
+                        out.push(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);
+                        d.setDate(d.getDate() + 1);
+                    }
+                    return out;
+                },
+
+                /**
+                 * 检测并解锁成就
+                 */
+                checkAchievements() {
+                    const tests = [
+                        { id: 'early_bird', ok: () => this.stats.earlyRiseCount >= 5 },
+                        { id: 'bookworm', ok: () => this.stats.readCount >= 10 },
+                        { id: 'streak_king', ok: () => (this.stats.longestStreak || 0) >= 7 },
+                        { id: 'iron_body', ok: () => this.attrXp.body >= 50 },
+                        {
+                            id: 'all_round',
+                            ok: () => ['body', 'wisdom', 'wealth', 'social', 'will'].every((k) => this.attrXp[k] >= 30)
+                        },
+                        { id: 'gold_hand', ok: () => this.attrXp.wealth >= 40 },
+                        { id: 'social_star', ok: () => this.attrXp.social >= 50 },
+                        { id: 'will_steel', ok: () => this.attrXp.will >= 50 },
+                        { id: 'wise_one', ok: () => this.attrXp.wisdom >= 50 },
+                        { id: 'level_3', ok: () => this.levelInfo.level >= 3 },
+                        { id: 'level_10', ok: () => this.levelInfo.level >= 10 },
+                        { id: 'task_maniac', ok: () => this.stats.totalTasksCompleted >= 100 },
+                        { id: 'week_star', ok: () => (this.stats.bestWeekCount || 0) >= 20 },
+                        { id: 'first_step', ok: () => this.levelInfo.level >= 2 },
+                        { id: 'zen_10', ok: () => this.stats.meditateCount >= 10 }
+                    ];
+                    tests.forEach(({ id, ok }) => {
+                        if (!this.achievements[id] && ok()) {
+                            this.unlockAchievement(id);
+                        }
+                    });
+                },
+
+                /**
+                 * 解锁单个成就：弹窗 + 金光
+                 */
+                unlockAchievement(id) {
+                    const def = this.achievementDefs.find((a) => a.id === id);
+                    if (!def) return;
+                    this.achievements[id] = true;
+                    this.newAchModal = { show: true, name: def.name, desc: def.desc, icon: def.icon };
+                    this.achBurstActive = true;
+                    setTimeout(() => { this.achBurstActive = false; }, 1400);
+                    this.saveData();
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /**
+                 * AI：随机挑战（流式）
+                 */
+                async rollAiChallenge() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'error');
+                        return;
+                    }
+                    this.aiLoading = true;
+                    this.aiChallengeText = '';
+                    this.aiChallengeClaimed = false;
+                    const weakest = this.weakestAttrKey();
+                    const prompt = `你是「人生 RPG」任务设计师。用户最弱的属性是「${this.attrLabel(weakest)}」。
+请用 2~4 句中文，生成**一个**具体、有趣、能在今天内完成的现实小挑战（不要说教）。
+最后一行单独写：【XP建议:数字】 给出 15-40 的整数作为完成经验。不要 Markdown 标题。`;
+                    try {
+                        await this.streamApi(
+                            [
+                                { role: 'system', content: '只输出中文正文，简洁有梗，适合年轻人。' },
+                                { role: 'user', content: prompt }
+                            ],
+                            (c, r) => {
+                                this.aiChallengeText += c;
+                                if (r) { /* V4 Pro：挑战模式可忽略思考展示 */ }
+                            }
+                        );
+                    } catch (e) {
+                        this.showToast(e.message || '请求失败', 'error');
+                    } finally {
+                        this.aiLoading = false;
+                        this.saveData();
+                    }
+                },
+
+                weakestAttrKey() {
+                    let k = 'body';
+                    let min = Infinity;
+                    ['body', 'wisdom', 'wealth', 'social', 'will'].forEach((key) => {
+                        const v = this.attrXp[key] || 0;
+                        if (v < min) {
+                            min = v;
+                            k = key;
+                        }
+                    });
+                    return k;
+                },
+
+                /**
+                 * 解析 AI 文本中的 XP 建议，完成挑战
+                 */
+                claimAiChallenge(ev) {
+                    if (!this.aiChallengeText || this.aiChallengeClaimed) return;
+                    let bonus = 25;
+                    const m = this.aiChallengeText.match(/【XP建议:\s*(\d+)\s*】/);
+                    if (m) {
+                        bonus = Math.max(15, Math.min(40, parseInt(m[1], 10)));
+                    }
+                    const attr = this.weakestAttrKey();
+                    this.grantXp(bonus, attr, ev);
+                    this.aiChallengeClaimed = true;
+                    this.recordHeatmap();
+                    this.updateStreak();
+                    this.afterTaskComplete(ev);
+                    this.saveData();
+                    this.drawAllCharts();
+                    this.showToast('挑战完成！', 'success');
+                },
+
+                openCoach() {
+                    this.showCoach = true;
+                    this.coachReply = '';
+                    this.coachReasoning = '';
+                    this.runCoach();
+                },
+
+                /**
+                 * AI 教练：根据当前状态流式输出鼓励与建议（Markdown）
+                 */
+                async runCoach() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'error');
+                        return;
+                    }
+                    this.coachLoading = true;
+                    this.coachReply = '';
+                    this.coachReasoning = '';
+                    const snap = {
+                        level: this.levelInfo.level,
+                        title: this.playerTitle,
+                        totalXp: this.character.totalXp,
+                        attrs: { ...this.attrXp },
+                        streak: this.stats.currentStreak,
+                        week: this.weekCompleteCount,
+                        achievements: Object.keys(this.achievements).length
+                    };
+                    const user = `玩家状态快照（JSON）：${JSON.stringify(snap)}
+请用亲切、游戏化语气写一段「人生教练」回复（Markdown）：
+1) 先给一句开场白打气
+2) 点出 1~2 个可行动的小建议（结合最弱属性）
+3) 结尾一句仪式感金句
+控制在 250 字以内。`;
+                    try {
+                        await this.streamApi(
+                            [
+                                { role: 'system', content: '你是温暖幽默的人生 RPG 教练，中文输出。' },
+                                { role: 'user', content: user }
+                            ],
+                            (c, r) => {
+                                if (r) this.coachReasoning += r;
+                                if (c) this.coachReply += c;
+                            }
+                        );
+                    } catch (e) {
+                        this.coachReply = '（连接失败）' + (e.message || '');
+                    } finally {
+                        this.coachLoading = false;
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    }
+                },
+
+                renderMd(text) {
+                    if (!text) return '';
+                    try { return marked.parse(text); }
+                    catch { return String(text).replace(/\n/g, '<br>'); }
+                },
+
+                /**
+                 * DeepSeek 流式 Chat Completions
+                 * @param {Array} messages OpenAI 格式 messages
+                 * @param {function} onDelta (contentDelta, reasoningDelta)
+                 */
+                async streamApi(messages, onDelta) {
+                    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages,
+                            stream: true,
+                            temperature: 0.75
+                        })
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}));
+                        throw new Error(err.error?.message || 'API 错误 ' + resp.status);
+                    }
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const raw = line.slice(6).trim();
+                            if (raw === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(raw);
+                                const delta = parsed.choices[0]?.delta || {};
+                                const r = delta.reasoning_content || '';
+                                const c = delta.content || '';
+                                if (r || c) onDelta(c, r);
+                            } catch (err) { /* 忽略单行损坏 */ }
+                        }
+                    }
+                },
+
+                drawAllCharts() {
+                    this.drawRadar();
+                    this.drawBars();
+                    this.drawHeatmap();
+                },
+
+                /**
+                 * 五维雷达图（Canvas）
+                 */
+                drawRadar() {
+                    const canvas = this.$refs.radarCanvas;
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    const w = canvas.width;
+                    const h = canvas.height;
+                    const cx = w / 2;
+                    const cy = h / 2 + 8;
+                    const rMax = Math.min(w, h) * 0.36;
+                    const labels = ['体魄', '智慧', '财富', '人脉', '意志'];
+                    const keys = ['body', 'wisdom', 'wealth', 'social', 'will'];
+                    const n = 5;
+                    ctx.clearRect(0, 0, w, h);
+
+                    const angle = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
+
+                    for (let layer = 1; layer <= 4; layer++) {
+                        const rr = (rMax * layer) / 4;
+                        ctx.beginPath();
+                        for (let i = 0; i <= n; i++) {
+                            const a = angle(i % n);
+                            const x = cx + Math.cos(a) * rr;
+                            const y = cy + Math.sin(a) * rr;
+                            if (i === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        ctx.closePath();
+                        ctx.strokeStyle = 'rgba(129, 140, 248, 0.2)';
+                        ctx.stroke();
+                    }
+
+                    const vals = keys.map((k) => this.radarValue(k));
+                    ctx.beginPath();
+                    for (let i = 0; i <= n; i++) {
+                        const a = angle(i % n);
+                        const rr = (rMax * vals[i % n]) / 100;
+                        const x = cx + Math.cos(a) * rr;
+                        const y = cy + Math.sin(a) * rr;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(99, 102, 241, 0.35)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.font = '11px system-ui,sans-serif';
+                    for (let i = 0; i < n; i++) {
+                        const a = angle(i);
+                        const lx = cx + Math.cos(a) * (rMax + 18);
+                        const ly = cy + Math.sin(a) * (rMax + 18);
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(labels[i], lx, ly);
+                    }
+                },
+
+                /**
+                 * 属性柱状图
+                 */
+                drawBars() {
+                    const canvas = this.$refs.barCanvas;
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    const w = canvas.width;
+                    const h = canvas.height;
+                    ctx.clearRect(0, 0, w, h);
+                    const keys = ['body', 'wisdom', 'wealth', 'social', 'will'];
+                    const labels = ['体', '智', '财', '脉', '志'];
+                    const maxV = Math.max(10, ...keys.map((k) => this.attrXp[k] || 0));
+                    const barW = (w - 40) / keys.length - 8;
+                    let x = 20;
+                    keys.forEach((k, i) => {
+                        const v = this.attrXp[k] || 0;
+                        const bh = (v / maxV) * (h - 28);
+                        const grad = ctx.createLinearGradient(0, h - bh, 0, h);
+                        grad.addColorStop(0, '#a855f7');
+                        grad.addColorStop(1, '#6366f1');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(x, h - 10 - bh, barW, bh);
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.font = '10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(labels[i], x + barW / 2, h - 2);
+                        x += barW + 8;
+                    });
+                },
+
+                /**
+                 * 近 30 天热力条
+                 */
+                drawHeatmap() {
+                    const canvas = this.$refs.heatCanvas;
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    const w = canvas.width;
+                    const h = canvas.height;
+                    ctx.clearRect(0, 0, w, h);
+                    const days = 30;
+                    const pad = 2;
+                    const cw = (w - pad * 2) / days;
+                    let maxC = 1;
+                    const series = [];
+                    for (let i = days - 1; i >= 0; i--) {
+                        const d = new Date();
+                        d.setDate(d.getDate() - i);
+                        const p = (x) => String(x).padStart(2, '0');
+                        const key = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+                        const c = this.heatmap[key] || 0;
+                        maxC = Math.max(maxC, c);
+                        series.push(c);
+                    }
+                    for (let i = 0; i < days; i++) {
+                        const intensity = series[i] / maxC;
+                        const g = Math.floor(40 + intensity * 180);
+                        const b = Math.floor(80 + intensity * 120);
+                        ctx.fillStyle = `rgba(99, ${g}, ${b}, ${0.25 + intensity * 0.65})`;
+                        ctx.fillRect(pad + i * cw, pad, cw - 1, h - pad * 2);
+                    }
+                },
+
+                /**
+                 * 背景星空：微弱漂移粒子
+                 */
+                startStarfield() {
+                    const c = document.getElementById('lq-star-canvas');
+                    if (!c) return;
+                    const resize = () => {
+                        c.width = window.innerWidth;
+                        c.height = window.innerHeight;
+                    };
+                    resize();
+                    window.addEventListener('resize', resize);
+                    const ctx = c.getContext('2d');
+                    /** 星点坐标在画布尺寸确定后再生成，避免首帧 width/height 为 0 */
+                    const stars = Array.from({ length: 80 }, () => ({
+                        x: Math.random() * window.innerWidth,
+                        y: Math.random() * window.innerHeight,
+                        r: Math.random() * 1.2 + 0.2,
+                        s: Math.random() * 0.15 + 0.02,
+                        o: Math.random() * 0.5 + 0.2
+                    }));
+                    const tick = () => {
+                        if (!ctx) return;
+                        ctx.clearRect(0, 0, c.width, c.height);
+                        stars.forEach((st) => {
+                            st.y += st.s;
+                            if (st.y > c.height) st.y = 0;
+                            ctx.beginPath();
+                            ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(199, 210, 254, ${st.o})`;
+                            ctx.fill();
+                        });
+                        requestAnimationFrame(tick);
+                    };
+                    tick();
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

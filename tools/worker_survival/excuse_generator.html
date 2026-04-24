@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>请假借口生成器 - 打工人求生</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /**
+     * 页面主背景：绿色系渐变，暗示「假期 / 自由」
+     */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(160deg, #ecfdf5 0%, #a7f3d0 22%, #34d399 48%, #059669 72%, #064e3b 100%);
+      min-height: 100vh;
+    }
+
+    .form-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      box-shadow: 0 20px 50px rgba(6, 78, 59, 0.18);
+    }
+
+    .card-safe {
+      border-color: rgba(34, 197, 94, 0.55);
+      background: linear-gradient(180deg, rgba(240, 253, 244, 0.98) 0%, rgba(220, 252, 231, 0.95) 100%);
+    }
+    .card-risk {
+      border-color: rgba(234, 179, 8, 0.6);
+      background: linear-gradient(180deg, rgba(254, 252, 232, 0.98) 0%, rgba(254, 243, 199, 0.95) 100%);
+    }
+    .card-nuclear {
+      border-color: rgba(239, 68, 68, 0.55);
+      background: linear-gradient(180deg, rgba(254, 242, 242, 0.98) 0%, rgba(254, 226, 226, 0.95) 100%);
+    }
+
+    /** 可信度：外环进度（用 conic-gradient，--deg = 可信度 * 3.6） */
+    .cred-ring {
+      background: conic-gradient(var(--ring) var(--deg), #e2e8f0 0deg);
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+  <div x-data="excuseGenerator()" x-init="init()" class="min-h-screen flex flex-col pb-12 relative">
+
+    <!-- 装饰：日历 / 棕榈 -->
+    <div class="pointer-events-none fixed inset-0 overflow-hidden z-0 opacity-[0.12]">
+      <i data-lucide="calendar-heart" class="absolute top-24 right-[6%] w-28 h-28 text-emerald-900"></i>
+      <i data-lucide="sun" class="absolute bottom-20 left-[5%] w-24 h-24 text-emerald-800"></i>
+    </div>
+
+    <!-- 顶部导航：返回站点首页 -->
+    <nav class="relative z-50 bg-white/75 backdrop-blur-md sticky top-0 border-b border-emerald-200/80 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer shrink-0" onclick="location.href='../../index.html'">
+          <i data-lucide="coffee" class="text-emerald-600 h-7 w-7"></i>
+          <span class="font-bold text-lg sm:text-xl text-slate-900">请假借口生成器</span>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="hidden sm:flex bg-emerald-50 rounded-lg p-0.5 text-xs border border-emerald-200">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-800'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-800'"
+              class="px-2 py-1 rounded-md transition font-semibold">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-slate-600 hover:bg-emerald-50"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+      <!-- 免责提示 -->
+      <p class="text-center text-xs text-emerald-900/70 max-w-2xl mx-auto leading-relaxed">
+        本工具仅供创意与娱乐，生成内容请勿用于违法、欺诈或损害他人权益；真实请假请诚实沟通。
+      </p>
+
+      <div class="grid lg:grid-cols-[minmax(0,340px)_1fr] gap-6 items-start">
+
+        <!-- 左侧：表单卡片 -->
+        <section class="form-card rounded-2xl p-5 sm:p-6 space-y-4">
+          <h2 class="text-base font-bold text-emerald-900 flex items-center gap-2">
+            <i data-lucide="clipboard-list" class="w-5 h-5 text-emerald-600"></i>
+            请假参数
+          </h2>
+
+          <!-- 星期几 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-2">星期几请假</label>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="d in weekdays" :key="d">
+                <button type="button" @click="weekday = d"
+                  :class="weekday === d ? 'bg-emerald-600 text-white border-emerald-700 shadow' : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'"
+                  class="px-3 py-1.5 rounded-lg text-sm font-medium border transition"
+                  x-text="d"></button>
+              </template>
+            </div>
+          </div>
+
+          <!-- 请几天 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-2">请假时长</label>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="n in dayOptions" :key="n">
+                <button type="button" @click="leaveDays = n"
+                  :class="leaveDays === n ? 'bg-teal-600 text-white border-teal-700' : 'bg-white border-slate-200'"
+                  class="px-3 py-1.5 rounded-lg text-sm font-medium border transition"
+                  x-text="n + ' 天'"></button>
+              </template>
+            </div>
+          </div>
+
+          <!-- 岗位 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-2">岗位类型</label>
+            <select x-model="roleId"
+              class="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-400">
+              <template x-for="r in roles" :key="r.id">
+                <option :value="r.id" x-text="r.label"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- 老板严格度 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-2">老板严格程度</label>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="b in bossLevels" :key="b.id">
+                <button type="button" @click="bossId = b.id"
+                  :class="bossId === b.id ? 'bg-amber-500 text-white border-amber-600' : 'bg-white border-slate-200 text-slate-700'"
+                  class="px-2.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium border transition"
+                  x-text="b.label"></button>
+              </template>
+            </div>
+          </div>
+
+          <!-- 天气 -->
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold text-slate-600">当前天气</label>
+            <div class="flex flex-wrap gap-2 items-center">
+              <button type="button" @click="weatherMode = 'auto'; fetchWeatherAuto()"
+                :class="weatherMode === 'auto' ? 'ring-2 ring-emerald-500 bg-emerald-50' : 'bg-white'"
+                class="px-3 py-1.5 rounded-lg text-sm border border-slate-200 font-medium">
+                自动获取
+              </button>
+              <button type="button" @click="weatherMode = 'manual'"
+                :class="weatherMode === 'manual' ? 'ring-2 ring-emerald-500 bg-emerald-50' : 'bg-white'"
+                class="px-3 py-1.5 rounded-lg text-sm border border-slate-200 font-medium">
+                手选
+              </button>
+              <span x-show="weatherMode === 'auto'" class="text-xs text-slate-500 flex items-center gap-1">
+                <i x-show="weatherLoading" data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+                <span x-text="resolvedWeatherLabel"></span>
+              </span>
+            </div>
+            <div x-show="weatherMode === 'manual'" class="flex flex-wrap gap-2">
+              <template x-for="w in weatherChoices" :key="w">
+                <button type="button" @click="weatherManual = w"
+                  :class="weatherManual === w ? 'bg-sky-600 text-white' : 'bg-white border-slate-200'"
+                  class="px-2.5 py-1 rounded-lg text-xs border font-medium" x-text="w"></button>
+              </template>
+            </div>
+            <p x-show="weatherError" class="text-xs text-amber-700" x-text="weatherError"></p>
+          </div>
+
+          <!-- 主按钮 -->
+          <button type="button" @click="generate()" :disabled="isGenerating"
+            class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-500/50">
+            <i x-show="!isGenerating" data-lucide="sparkles" class="w-5 h-5"></i>
+            <i x-show="isGenerating" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+            <span x-text="isGenerating ? 'AI 编造中…' : '编造借口'"></span>
+          </button>
+
+          <p x-show="errorMsg" class="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2" x-text="errorMsg"></p>
+        </section>
+
+        <!-- 右侧：结果区 -->
+        <section class="space-y-4">
+          <!-- V4 Pro 推理 -->
+          <details x-show="reasoningText" class="form-card rounded-xl px-4 py-3 text-sm">
+            <summary class="cursor-pointer font-semibold text-emerald-800 select-none flex items-center gap-2">
+              <i data-lucide="brain" class="w-4 h-4"></i>
+              深度思考过程（点击展开）
+            </summary>
+            <pre class="mt-2 whitespace-pre-wrap text-slate-600 text-xs max-h-40 overflow-y-auto" x-text="reasoningText"></pre>
+          </details>
+
+          <!-- 流式原始 JSON（生成中） -->
+          <div x-show="isGenerating && streamText" class="form-card rounded-xl p-4">
+            <p class="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-2">
+              <i data-lucide="binary" class="w-4 h-4 animate-pulse"></i>
+              流式输出中（完成后自动解析为卡片）
+            </p>
+            <pre class="text-xs text-slate-600 whitespace-pre-wrap break-all max-h-48 overflow-y-auto font-mono" x-text="streamText"></pre>
+          </div>
+
+          <!-- 三列借口卡片：桌面并排，移动纵向 -->
+          <div class="grid md:grid-cols-3 gap-4" x-show="!isGenerating && parsed">
+
+            <!-- 借口 A：安全绿 -->
+            <article class="rounded-2xl border-2 p-4 sm:p-5 flex flex-col card-safe shadow-md">
+              <div class="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <h3 class="font-bold text-emerald-900 flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-5 h-5 text-green-600"></i>
+                    借口 A · 最安全
+                  </h3>
+                  <p class="text-xs text-emerald-700/80 mt-0.5">保守、不易穿帮</p>
+                </div>
+                <div class="relative w-12 h-12 shrink-0 rounded-full cred-ring p-[3px] flex items-center justify-center"
+                  :style="'--deg:' + ((parsed?.excuseA?.credibility ?? 0) * 3.6) + 'deg; --ring: #22c55e'">
+                  <div class="w-full h-full rounded-full bg-white flex items-center justify-center text-xs font-bold text-emerald-800"
+                    x-text="(parsed?.excuseA?.credibility ?? '—') + ''"></div>
+                </div>
+              </div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold mb-1">可信度</p>
+              <div class="space-y-3 flex-1 text-sm">
+                <div>
+                  <p class="text-xs font-bold text-emerald-800 mb-1">理由</p>
+                  <p class="text-slate-700 whitespace-pre-wrap" x-text="parsed?.excuseA?.reason || ''"></p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-emerald-800 mb-1">发给老板的话术</p>
+                  <p class="text-slate-800 whitespace-pre-wrap bg-white/60 rounded-lg p-2 border border-green-200/80" x-text="parsed?.excuseA?.bossScript || ''"></p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-emerald-800 mb-1">被追问时应对</p>
+                  <p class="text-slate-700 whitespace-pre-wrap text-xs" x-text="parsed?.excuseA?.followUp || ''"></p>
+                </div>
+              </div>
+              <button type="button" @click="copyBossScript('A')"
+                class="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold shadow">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                复制话术
+              </button>
+            </article>
+
+            <!-- 借口 B：冒险黄 -->
+            <article class="rounded-2xl border-2 p-4 sm:p-5 flex flex-col card-risk shadow-md">
+              <div class="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <h3 class="font-bold text-amber-900 flex items-center gap-2">
+                    <i data-lucide="flame" class="w-5 h-5 text-amber-600"></i>
+                    借口 B · 略冒险
+                  </h3>
+                  <p class="text-xs text-amber-800/80 mt-0.5">更生活化、略需圆场</p>
+                </div>
+                <div class="relative w-12 h-12 shrink-0 rounded-full cred-ring p-[3px] flex items-center justify-center"
+                  :style="'--deg:' + ((parsed?.excuseB?.credibility ?? 0) * 3.6) + 'deg; --ring: #ca8a04'">
+                  <div class="w-full h-full rounded-full bg-white flex items-center justify-center text-xs font-bold text-amber-900"
+                    x-text="(parsed?.excuseB?.credibility ?? '—') + ''"></div>
+                </div>
+              </div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold mb-1">可信度</p>
+              <div class="space-y-3 flex-1 text-sm">
+                <div>
+                  <p class="text-xs font-bold text-amber-900 mb-1">理由</p>
+                  <p class="text-slate-700 whitespace-pre-wrap" x-text="parsed?.excuseB?.reason || ''"></p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-amber-900 mb-1">发给老板的话术</p>
+                  <p class="text-slate-800 whitespace-pre-wrap bg-white/70 rounded-lg p-2 border border-amber-200/80" x-text="parsed?.excuseB?.bossScript || ''"></p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-amber-900 mb-1">被追问时应对</p>
+                  <p class="text-slate-700 whitespace-pre-wrap text-xs" x-text="parsed?.excuseB?.followUp || ''"></p>
+                </div>
+              </div>
+              <button type="button" @click="copyBossScript('B')"
+                class="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-semibold shadow">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                复制话术
+              </button>
+            </article>
+
+            <!-- 借口 C：破釜沉舟红 -->
+            <article class="rounded-2xl border-2 p-4 sm:p-5 flex flex-col card-nuclear shadow-md">
+              <div class="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <h3 class="font-bold text-red-900 flex items-center gap-2">
+                    <i data-lucide="bomb" class="w-5 h-5 text-red-600"></i>
+                    借口 C · 破釜沉舟
+                  </h3>
+                  <p class="text-xs text-red-800/80 mt-0.5">搞笑向，慎用</p>
+                </div>
+                <div class="relative w-12 h-12 shrink-0 rounded-full cred-ring p-[3px] flex items-center justify-center"
+                  :style="'--deg:' + ((parsed?.excuseC?.credibility ?? 0) * 3.6) + 'deg; --ring: #ef4444'">
+                  <div class="w-full h-full rounded-full bg-white flex items-center justify-center text-xs font-bold text-red-900"
+                    x-text="(parsed?.excuseC?.credibility ?? '—') + ''"></div>
+                </div>
+              </div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold mb-1">可信度</p>
+              <div class="space-y-3 flex-1 text-sm">
+                <div>
+                  <p class="text-xs font-bold text-red-900 mb-1">理由</p>
+                  <p class="text-slate-700 whitespace-pre-wrap" x-text="parsed?.excuseC?.reason || ''"></p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-red-900 mb-1">发给老板的话术</p>
+                  <p class="text-slate-800 whitespace-pre-wrap bg-white/70 rounded-lg p-2 border border-red-200/80" x-text="parsed?.excuseC?.bossScript || ''"></p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-red-900 mb-1">被追问时应对</p>
+                  <p class="text-slate-700 whitespace-pre-wrap text-xs" x-text="parsed?.excuseC?.followUp || ''"></p>
+                </div>
+              </div>
+              <button type="button" @click="copyBossScript('C')"
+                class="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold shadow">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                复制话术
+              </button>
+            </article>
+          </div>
+
+          <!-- 空状态 -->
+          <div x-show="!isGenerating && !parsed" class="form-card rounded-2xl p-10 text-center text-slate-500">
+            <i data-lucide="message-circle-question" class="w-14 h-14 mx-auto mb-3 text-emerald-400 opacity-80"></i>
+            <p class="text-sm">填好左侧参数，点击<strong class="text-emerald-700">「编造借口」</strong></p>
+            <p class="text-xs mt-2 text-slate-400">将生成三个不同风格的请假话术与可信度参考</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- API 设置 -->
+    <div x-show="showSettings" x-transition.opacity
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50"
+      @keydown.escape.window="showSettings = false">
+      <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 border border-emerald-100">
+        <h3 class="text-lg font-bold text-emerald-900">API 配置</h3>
+        <p class="text-xs text-slate-500">密钥保存在浏览器本地，使用 <code class="bg-slate-100 px-1 rounded">global_llm_config</code>，保存时<strong>合并</strong>、不覆盖其他工具字段。</p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+          <input type="password" x-model="apiConfig.deepseek"
+            class="w-full rounded-lg border border-slate-200 p-2.5 text-sm" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-200 p-2.5 text-sm">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-500">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl bg-slate-900 text-white text-sm shadow-lg flex items-center gap-2">
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 将 Open-Meteo 的 WMO weather_code 映射为四类天气文案（供提示词使用）
+     * @param {number} code
+     * @returns {'晴'|'雨'|'雪'|'雾霾'}
+     */
+    function mapWeatherCodeToLabel(code) {
+      const c = Number(code);
+      if (Number.isNaN(c)) return '晴';
+      // 雪：71-77, 85-86
+      if (c >= 71 && c <= 77 || c === 85 || c === 86) return '雪';
+      // 雨 / 冻雨 / 阵雨
+      if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c === 56 || c === 57) return '雨';
+      // 雾 / 霾相关
+      if (c >= 45 && c <= 48) return '雾霾';
+      // 晴 / 少云 / 多云
+      return '晴';
+    }
+
+    /**
+     * 归一化模型返回的借口对象字段（兼容别名）
+     * @param {object} raw
+     * @returns {{reason:string, bossScript:string, followUp:string, credibility:number}}
+     */
+    function normalizeExcuse(raw) {
+      if (!raw || typeof raw !== 'object') {
+        return { reason: '', bossScript: '', followUp: '', credibility: 0 };
+      }
+      const reason = raw.reason || raw.理由 || '';
+      const bossScript = raw.bossScript || raw.boss_template || raw.发给老板的话术 || raw.bossMessage || '';
+      const followUp = raw.followUp || raw.follow_up || raw.追问应对 || raw.qaReplies || '';
+      let credibility = Number(raw.credibility ?? raw.score ?? raw.可信度 ?? 0);
+      if (Number.isNaN(credibility)) credibility = 0;
+      credibility = Math.max(1, Math.min(100, Math.round(credibility)));
+      return { reason, bossScript, followUp, credibility };
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('excuseGenerator', () => ({
+        /** @type {string[]} */
+        weekdays: ['周一', '周二', '周三', '周四', '周五'],
+        weekday: '周五',
+        /** @type {(0.5|1|2|3)[]} */
+        dayOptions: [0.5, 1, 2, 3],
+        leaveDays: 1,
+        roles: [
+          { id: 'dev', label: '程序员' },
+          { id: 'designer', label: '设计师' },
+          { id: 'sales', label: '销售' },
+          { id: 'ops', label: '运营' },
+          { id: 'finance', label: '财务' },
+          { id: 'general', label: '通用' }
+        ],
+        roleId: 'general',
+        bossLevels: [
+          { id: 'chill', label: '佛系' },
+          { id: 'normal', label: '普通' },
+          { id: 'strict', label: '严格' },
+          { id: 'insane', label: '变态级' }
+        ],
+        bossId: 'normal',
+        weatherMode: 'manual',
+        weatherChoices: ['晴', '雨', '雪', '雾霾'],
+        weatherManual: '晴',
+        /** 自动模式解析后的天气 */
+        weatherAutoLabel: '晴',
+        weatherLoading: false,
+        weatherError: '',
+        streamText: '',
+        reasoningText: '',
+        isGenerating: false,
+        errorMsg: '',
+        /** @type {{excuseA:object, excuseB:object, excuseC:object}|null} */
+        parsed: null,
+        showSettings: false,
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+
+        init() {
+          this.loadConfig();
+          if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true });
+          }
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 合并加载 global_llm_config */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存配置：合并写入，禁止整表覆盖
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          setTimeout(() => { this.toast.show = false; }, 2400);
+        },
+
+        /** 当前用于提示词的天气文案 */
+        get resolvedWeatherLabel() {
+          if (this.weatherMode === 'manual') return this.weatherManual;
+          return this.weatherAutoLabel || '晴';
+        },
+
+        /**
+         * 浏览器定位 + Open-Meteo 当前天气（无需 API Key）
+         */
+        fetchWeatherAuto() {
+          this.weatherError = '';
+          if (!navigator.geolocation) {
+            this.weatherError = '浏览器不支持定位，请改用手选天气。';
+            return;
+          }
+          this.weatherLoading = true;
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              try {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code&timezone=auto`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('天气接口错误');
+                const data = await res.json();
+                const code = data.current?.weather_code ?? 0;
+                this.weatherAutoLabel = mapWeatherCodeToLabel(code);
+              } catch (e) {
+                console.error(e);
+                this.weatherError = '获取天气失败，请手选或稍后重试。';
+              } finally {
+                this.weatherLoading = false;
+                this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+              }
+            },
+            () => {
+              this.weatherLoading = false;
+              this.weatherError = '定位被拒绝或未授权，请手选天气。';
+              this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+            },
+            { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
+          );
+        },
+
+        getRoleLabel() {
+          const r = this.roles.find((x) => x.id === this.roleId);
+          return r ? r.label : '通用';
+        },
+
+        getBossLabel() {
+          const b = this.bossLevels.find((x) => x.id === this.bossId);
+          return b ? b.label : '普通';
+        },
+
+        /**
+         * 系统提示：强制 JSON 结构（配合 response_format json_object）
+         */
+        getSystemPrompt() {
+          return `你是中文职场情景喜剧编剧，擅长用幽默、口语化方式写「请假沟通」创意内容。
+本任务仅供用户娱乐与写作练习，禁止鼓励违法欺诈；内容需虚构、勿影射真实个人。
+
+【输出要求】
+仅输出一个 JSON 对象（不要 markdown 代码块、不要前后说明文字），且必须能被 JSON.parse 解析。
+结构如下（字段名必须一致）：
+{
+  "excuseA": { "reason": "...", "bossScript": "...", "followUp": "...", "credibility": 85 },
+  "excuseB": { "reason": "...", "bossScript": "...", "followUp": "...", "credibility": 60 },
+  "excuseC": { "reason": "...", "bossScript": "...", "followUp": "...", "credibility": 20 }
+}
+
+字段说明：
+- reason：一句话概括借口内核（可稍展开）
+- bossScript：可直接复制发给老板/主管的微信话术，语气礼貌、自然
+- followUp：若老板追问细节时的 2～4 条应对要点（换行分条）
+- credibility：整数 1～100，表示「听起来像真事」的虚构评分（非事实保证）
+
+风格：
+- excuseA：最安全保守、常见、低风险
+- excuseB：略冒险但更生活化、真实感强，需一点圆场技巧
+- excuseC：破釜沉舟、夸张搞笑向，明显玩笑感，可信度应偏低
+
+请结合用户给的：星期几、请假天数、岗位、老板严格度、天气，让理由与话术自洽。`;
+        },
+
+        buildUserMessage() {
+          return `请根据以下参数生成 JSON：
+
+- 请假星期：${this.weekday}
+- 请假时长：${this.leaveDays} 天
+- 岗位类型：${this.getRoleLabel()}
+- 老板严格程度：${this.getBossLabel()}
+- 当前天气（用于编造与天气有关的细节时可引用）：${this.resolvedWeatherLabel}
+
+请输出 excuseA / excuseB / excuseC 三个对象，credibility 需符合各自定位（A 高、B 中、C 低）。`;
+        },
+
+        /**
+         * DeepSeek 流式请求；JSON 模式下仍逐字累积 content
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {function(string):void} onDelta
+         * @param {function(string):void} [onReasoning]
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.85,
+              response_format: { type: 'json_object' }
+            })
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || 'HTTP ' + response.status);
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) onReasoning(delta.reasoning_content);
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 行解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /**
+         * 尝试从完整字符串中解析借口 JSON（容忍首尾空白）
+         * @param {string} text
+         */
+        tryParseResult(text) {
+          const trimmed = (text || '').trim();
+          if (!trimmed) return null;
+          let obj;
+          try {
+            obj = JSON.parse(trimmed);
+          } catch (e) {
+            const start = trimmed.indexOf('{');
+            const end = trimmed.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+              try {
+                obj = JSON.parse(trimmed.slice(start, end + 1));
+              } catch (e2) {
+                console.error('JSON 解析失败:', e2);
+                return null;
+              }
+            } else {
+              return null;
+            }
+          }
+          if (!obj.excuseA && !obj.excuseB && !obj.excuseC) return null;
+          return {
+            excuseA: normalizeExcuse(obj.excuseA),
+            excuseB: normalizeExcuse(obj.excuseB),
+            excuseC: normalizeExcuse(obj.excuseC)
+          };
+        },
+
+        /** 主流程：编造借口 */
+        async generate() {
+          this.errorMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先在设置中填写 DeepSeek API Key。';
+            return;
+          }
+
+          this.isGenerating = true;
+          this.streamText = '';
+          this.reasoningText = '';
+          this.parsed = null;
+
+          const messages = [
+            { role: 'system', content: this.getSystemPrompt() },
+            { role: 'user', content: this.buildUserMessage() }
+          ];
+
+          try {
+            await this.streamDeepSeek(
+              messages,
+              (chunk) => { this.streamText += chunk; },
+              (r) => { this.reasoningText += r; }
+            );
+            const result = this.tryParseResult(this.streamText);
+            if (!result) {
+              throw new Error('AI 返回的 JSON 无法解析，请换模型重试或稍后再试。');
+            }
+            this.parsed = result;
+            this.showToast('生成完成', 'check-circle');
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败';
+            this.showToast(this.errorMsg, 'alert-circle');
+          } finally {
+            this.isGenerating = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /**
+         * 复制指定借口的话术（发给老板模板）
+         * @param {'A'|'B'|'C'} which
+         */
+        async copyBossScript(which) {
+          const map = { A: 'excuseA', B: 'excuseB', C: 'excuseC' };
+          const key = map[which];
+          const ex = this.parsed?.[key];
+          const text = (ex?.bossScript || '').trim();
+          if (!text) {
+            this.showToast('暂无话术可复制', 'alert-circle');
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('话术已复制', 'copy');
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('话术已复制', 'copy');
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

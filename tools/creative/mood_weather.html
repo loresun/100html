@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Weather | 情绪天气</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-font: 'Outfit', sans-serif;
+            --secondary-font: 'Noto Sans SC', sans-serif;
+        }
+
+        body {
+            font-family: var(--secondary-font);
+            overflow: hidden; /* Prevent scroll on effects */
+            transition: background 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        h1, h2, h3, .brand-font {
+            font-family: var(--primary-font);
+        }
+
+        /* Ambient Background Transitions */
+        .bg-storm { background: linear-gradient(to bottom right, #1e293b, #0f172a, #312e81); }
+        .bg-cloudy { background: linear-gradient(to bottom right, #64748b, #94a3b8, #cbd5e1); }
+        .bg-sunny { background: linear-gradient(to bottom right, #0ea5e9, #38bdf8, #bae6fd); }
+        .bg-radiant { background: linear-gradient(to bottom right, #f43f5e, #fbbf24, #f59e0b); }
+
+        /* Glassmorphism Card */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid rgba(0,0,0,0.1);
+            cursor: pointer;
+            margin-top: -12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 999px;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes rain {
+            0% { transform: translateY(-100vh); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px 0px rgba(255, 255, 255, 0.3); }
+            50% { box-shadow: 0 0 40px 10px rgba(255, 255, 255, 0.5); }
+        }
+
+        @keyframes rotate-sun {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-spin-slow { animation: rotate-sun 20s linear infinite; }
+
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.6);
+            opacity: 0;
+            animation: rain 1s linear infinite;
+        }
+
+        .sun-rays {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140%;
+            height: 140%;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%);
+            animation: pulse-glow 3s infinite;
+        }
+
+        /* Weather Elements Container */
+        #weather-stage {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="h-screen w-full flex items-center justify-center relative bg-storm transition-colors duration-700">
+
+    <!-- Dynamic Weather Stage (Background Effects) -->
+    <div id="weather-stage">
+        <!-- Elements will be injected here by JS -->
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="glass-panel w-full max-w-md mx-6 p-8 rounded-[40px] relative z-10 transition-all duration-300">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md border border-white/30">
+                    <i class="fa-solid fa-cloud-sun w-6 h-6 text-slate-800 dark:text-white transition-colors duration-300" id="header-icon"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-800 dark:text-white transition-colors duration-300">Mood Weather</h1>
+        </div>
+
+        <!-- Main Display -->
+        <div class="text-center mb-10">
+            <div id="weather-icon-lg" class="mb-4 h-32 flex items-center justify-center transition-transform duration-500">
+                <!-- Large Icon / Illustration injected here -->
+            </div>
+            
+            <h2 id="mood-title" class="text-4xl font-black mb-2 text-slate-900 dark:text-white transition-all duration-300 brand-font">
+                雷暴
+            </h2>
+            <p id="mood-desc" class="text-slate-600 dark:text-slate-100 text-lg font-medium transition-all duration-300">
+                有时候，哭一场也没关系。
+            </p>
+        </div>
+
+        <!-- Control -->
+        <div class="relative pt-6 pb-2">
+            <div class="flex justify-between text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">
+                <span>Low</span>
+                <span>Energy</span>
+                <span>High</span>
+            </div>
+            <input id="mood-slider" type="range" min="1" max="10" value="5" step="1" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+            <style id="slider-style"></style> <!-- For dynamic track coloring -->
+            <div class="mt-4 flex justify-between items-center">
+                <span class="text-xs text-slate-500 dark:text-slate-400">Current Level</span>
+                <span id="score-display" class="text-2xl font-black brand-font text-slate-800 dark:text-white">5.0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+
+        // DOM Elements
+        const slider = document.getElementById('mood-slider');
+        const body = document.body;
+        const moodTitle = document.getElementById('mood-title');
+        const moodDesc = document.getElementById('mood-desc');
+        const weatherStage = document.getElementById('weather-stage');
+        const headerIcon = document.getElementById('header-icon');
+        const scoreDisplay = document.getElementById('score-display');
+        const weatherIconLg = document.getElementById('weather-icon-lg');
+        const glassPanel = document.querySelector('.glass-panel');
+        const sliderStyle = document.getElementById('slider-style');
+
+        // Configuration
+        const configs = {
+            storm: {
+                class: 'bg-storm',
+                title: '暴风雨',
+                desc: '允许自己低落，这是风暴的净化。',
+                dark: true,
+                render: () => {
+                    let html = '';
+                    // Rain drops
+                    for(let i=0; i<40; i++) {
+                        const left = Math.random() * 100;
+                        const delay = Math.random() * 2;
+                        const duration = 0.5 + Math.random() * 0.5;
+                        html += `<div class="rain-drop" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; opacity: 0.3;"></div>`;
+                    }
+                    // Dark clouds
+                    html += `
+                        <div class="absolute top-10 left-10 opacity-40 animate-float" style="animation-duration: 8s;">
+                            <i class="fa-solid fa-cloud-bolt text-[8rem] text-slate-400"></i>
+                        </div>
+                         <div class="absolute top-20 right-20 opacity-30 animate-float" style="animation-delay: 2s;">
+                            <i class="fa-solid fa-cloud text-[12rem] text-slate-500"></i>
+                        </div>
+                    `;
+                    return html;
+                },
+                icon: '<i class="fa-solid fa-cloud-bolt text-8xl text-slate-300 drop-shadow-lg"></i>'
+            },
+            cloudy: {
+                class: 'bg-cloudy',
+                title: '多云',
+                desc: '迷雾终将散去，给自己一点时间。',
+                dark: false,
+                render: () => {
+                   return `
+                        <div class="absolute top-1/4 -left-12 opacity-60 animate-float">
+                            <i class="fa-solid fa-cloud text-[16rem] text-white"></i>
+                        </div>
+                         <div class="absolute bottom-1/3 -right-20 opacity-50 animate-float" style="animation-delay: -3s;">
+                            <i class="fa-solid fa-cloud text-[20rem] text-slate-100"></i>
+                        </div>
+                   `;
+                },
+                icon: '<i class="fa-solid fa-cloud text-8xl text-slate-600 drop-shadow-md"></i>'
+            },
+            sunny: {
+                class: 'bg-sunny',
+                title: '晴朗',
+                desc: '微风正好，适合出发。',
+                dark: false,
+                render: () => {
+                    return `
+                        <div class="absolute -top-20 -right-20 pointer-events-none">
+                            <div class="sun-rays w-[500px] h-[500px] bg-yellow-300/20 rounded-full blur-3xl"></div>
+                        </div>
+                         <div class="absolute top-20 left-20 opacity-80 animate-float">
+                            <i class="fa-solid fa-cloud-sun text-[8rem] text-white"></i>
+                        </div>
+                    `;
+                },
+                icon: '<i class="fa-solid fa-sun text-8xl text-yellow-500 drop-shadow-lg animate-spin-slow"></i>'
+            },
+            radiant: {
+                class: 'bg-radiant',
+                title: '绚烂',
+                desc: '能量爆棚，你正在发光！',
+                dark: true,
+                render: () => {
+                    return `
+                        <div class="absolute inset-0 bg-gradient-to-t from-orange-400/20 to-transparent mix-blend-overlay"></div>
+                        <div class="absolute top-10 left-1/2 -translate-x-1/2">
+                             <div class="w-64 h-64 bg-yellow-300 rounded-full blur-[80px] opacity-60 animate-pulse"></div>
+                        </div>
+                        <div class="absolute bottom-0 w-full h-1/2 bg-gradient-to-t from-rose-500/30 to-transparent"></div>
+                    `;
+                },
+                icon: '<i class="fa-solid fa-wand-magic-sparkles text-8xl text-yellow-200 drop-shadow-[0_0_15px_rgba(255,255,0,0.5)]"></i>'
+            }
+        };
+
+        const updateUI = (val) => {
+            let state;
+            if (val <= 3) state = 'storm';
+            else if (val <= 6) state = 'cloudy';
+            else if (val <= 8) state = 'sunny';
+            else state = 'radiant';
+            
+            const config = configs[state];
+
+            // Update Background Class
+            body.className = `h-screen w-full flex items-center justify-center relative transition-colors duration-1000 ${config.class}`;
+            
+            // Toggle Dark Mode on wrapper for text Contrast
+            if (config.dark) {
+                body.classList.add('dark');
+            } else {
+                body.classList.remove('dark');
+            }
+
+            // Update Content (only if changed to avoid flicker, but here simple replacement is fine)
+            if (moodTitle.innerText !== config.title) {
+                // Fade out text? Optional polish.
+                moodTitle.innerText = config.title;
+                moodDesc.innerText = config.desc;
+                weatherIconLg.innerHTML = config.icon;
+                weatherStage.innerHTML = config.render();
+
+            }
+
+            scoreDisplay.innerText = val;
+            
+            // Slider Track Gradient
+            const percent = (val - 1) / 9 * 100;
+            // Simple dynamic coloring for slider track
+            let trackColor = config.dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)';
+            let fillColor = config.dark ? '#ffffff' : '#0ea5e9';
+            if (state === 'radiant') fillColor = '#fbbf24';
+            
+            sliderStyle.textContent = `
+                input[type=range]::-webkit-slider-runnable-track {
+                    background: linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${percent}%, ${trackColor} ${percent}%, ${trackColor} 100%);
+                }
+            `;
+        };
+
+        slider.addEventListener('input', (e) => {
+            updateUI(e.target.value);
+        });
+
+        // Initialize
+        updateUI(slider.value);
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

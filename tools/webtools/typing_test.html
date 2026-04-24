@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简打字练习 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .cursor-blink { animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .correct { color: #10b981; }
+        .incorrect { color: #ef4444; background-color: #fef2f2; text-decoration: underline; }
+        .typing-area { font-family: 'Menlo', 'Monaco', 'Courier New', monospace; line-height: 2; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-teal-50 min-h-screen font-sans text-slate-800" x-data="typingApp()" x-init="init()" @keydown.window="handleKeydown($event)">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-teal-100 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-teal-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-600">
+                ⌨️ 极简打字练习
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-teal-50 flex flex-col items-center">
+                <span class="text-xs font-bold text-slate-400 uppercase">WPM</span>
+                <span class="text-3xl font-bold text-teal-600" x-text="wpm">0</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-teal-50 flex flex-col items-center">
+                 <span class="text-xs font-bold text-slate-400 uppercase">准确率</span>
+                <span class="text-3xl font-bold text-emerald-600" x-text="accuracy + '%'">100%</span>
+            </div>
+             <div class="bg-white p-4 rounded-2xl shadow-sm border border-teal-50 flex flex-col items-center">
+                 <span class="text-xs font-bold text-slate-400 uppercase">时间</span>
+                <span class="text-3xl font-bold text-slate-700" x-text="timeLeft + 's'">60s</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-teal-50 flex flex-col items-center justify-center">
+                <button @click="reset()" class="w-full h-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate w-4 h-4"></i> 重置
+                </button>
+            </div>
+        </div>
+
+        <!-- Typing Area -->
+        <div class="relative bg-white rounded-3xl shadow-lg border border-teal-100/50 p-8 min-h-[300px] flex items-center justify-center overflow-hidden"
+             :class="!started && !finished ? 'cursor-pointer' : ''"
+             @click="!started && !finished && start()">
+            
+            <!-- Start Overlay -->
+            <div x-show="!started && !finished" class="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur z-10 transition-opacity">
+                <div class="text-slate-400 mb-2">点击或按键盘任意键开始</div>
+                <div class="text-3xl font-bold text-teal-600 animate-pulse">Start Typing</div>
+            </div>
+
+            <!-- Result Overlay -->
+             <div x-show="finished" class="absolute inset-0 flex flex-col items-center justify-center bg-white/95 backdrop-blur z-20">
+                <div class="text-4xl font-bold text-slate-800 mb-4">练习完成! 🎉</div>
+                <div class="flex gap-8 mb-8">
+                     <div class="text-center">
+                        <div class="text-sm text-slate-500">WPM</div>
+                        <div class="text-5xl font-bold text-teal-600" x-text="wpm"></div>
+                     </div>
+                     <div class="text-center">
+                        <div class="text-sm text-slate-500">准确率</div>
+                        <div class="text-5xl font-bold text-emerald-600" x-text="accuracy + '%'"></div>
+                     </div>
+                </div>
+                <button @click="reset()" class="px-8 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-full font-bold shadow-lg transition-transform active:scale-95">
+                    再练一次
+                </button>
+            </div>
+
+            <!-- Text Content -->
+            <div class="text-2xl md:text-3xl typing-area text-slate-300 break-words w-full h-full relative" id="text-container">
+                 <template x-for="(char, index) in targetText.split('')" :key="index">
+                     <span :class="getCharClass(index)" class="relative">
+                         <span x-text="char"></span>
+                         <!-- Cursor -->
+                         <span x-show="started && index === currentIndex" class="absolute -left-[1px] top-0 h-full w-[2px] bg-teal-500 cursor-blink"></span>
+                     </span>
+                 </template>
+            </div>
+
+        </div>
+        
+        <!-- Settings (Simplified) -->
+        <div class="mt-8 flex justify-center gap-4">
+            <template x-for="time in [15, 30, 60]">
+                <button @click="setDuration(time)" 
+                    :class="duration === time ? 'text-teal-600 font-bold' : 'text-slate-400 hover:text-slate-600'"
+                    class="px-2 py-1 text-sm transition-colors" x-text="time + 's'">
+                </button>
+            </template>
+             <span class="text-slate-300">|</span>
+             <button @click="toggleMode()" class="px-2 py-1 text-sm text-slate-400 hover:text-slate-600" x-text="modeText"></button>
+        </div>
+
+    </main>
+
+    <script>
+        function typingApp() {
+            return {
+                started: false,
+                finished: false,
+                duration: 60,
+                timeLeft: 60,
+                timer: null,
+                
+                targetText: '',
+                currentIndex: 0,
+                mistakes: 0,
+                
+                // Words bank
+                wordsEn: "the be to of and a in that have I it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us".split(' '),
+                wordsZh: "的一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政四日那社义事平形相全表间样与关各重新线内数正心反你明看原又么利比或但质气第向道命此变条只没结解问意建月公无系军很情者最立代想已通并提直题党程展五果料象员革位入常文总次品式活设及管特件长求老头基资边流身车七阿每带风安少切今才准收女床找叫死色脸色走话".split(''), // Single chars for simplicity in mixed
+                
+                currentMode: 'en', // 'en' or 'zh' (simplified to chars)
+
+                get modeText() {
+                    return this.currentMode === 'en' ? 'English' : '中文 (单字)';
+                },
+
+                init() {
+                    // icons removed
+                    this.generateText();
+                },
+
+                toggleMode() {
+                    this.currentMode = this.currentMode === 'en' ? 'zh' : 'en';
+                    this.reset();
+                },
+
+                setDuration(time) {
+                    this.duration = time;
+                    this.reset();
+                },
+
+                generateText() {
+                    const count = 100;
+                    let arr = [];
+                    if (this.currentMode === 'en') {
+                         for(let i=0; i<count; i++) {
+                             arr.push(this.wordsEn[Math.floor(Math.random() * this.wordsEn.length)]);
+                         }
+                         this.targetText = arr.join(' ');
+                    } else {
+                        // Chinese mode: random chars
+                         for(let i=0; i<count; i++) {
+                             arr.push(this.wordsZh[Math.floor(Math.random() * this.wordsZh.length)]);
+                         }
+                         this.targetText = arr.join('');
+                    }
+                },
+
+                reset() {
+                    this.started = false;
+                    this.finished = false;
+                    this.timeLeft = this.duration;
+                    this.currentIndex = 0;
+                    this.mistakes = 0;
+                    if(this.timer) clearInterval(this.timer);
+                    this.generateText();
+                },
+
+                start() {
+                    if (this.started) return;
+                    this.started = true;
+                    this.timer = setInterval(() => {
+                        this.timeLeft--;
+                        if (this.timeLeft <= 0) {
+                            this.finish();
+                        }
+                    }, 1000);
+                },
+
+                finish() {
+                    this.finished = true;
+                    this.started = false;
+                    clearInterval(this.timer);
+                },
+
+                handleKeydown(e) {
+                    if (this.finished) return;
+                    if (!this.started && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                        this.start();
+                    }
+                    if (!this.started) return;
+
+                    // Prevent scrolling with space
+                    if(e.key === ' ' && e.target === document.body) e.preventDefault();
+                    
+                    if (e.key === 'Backspace') {
+                        if (this.currentIndex > 0) {
+                            // Don't allow backspace if we want strict?
+                            // Standard behavior: allow backspace
+                            // But for simple implementation let's just allow
+                            // Need to track typing state per char if we allow correction
+                            // Simplified: Just decrement index, we don't track "corrected" state perfectly
+                            // Actually it's better to verify if previous was incorrect, decrement mistakes?
+                            // Let's keep it simple: can't backspace for now or just move cursor back
+                            // Moving cursor back:
+                             this.currentIndex--; 
+                             // We don't decrement mistakes because the mistake happened.
+                        }
+                        return;
+                    }
+
+                    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                         const targetChar = this.targetText[this.currentIndex];
+                         if (e.key === targetChar) {
+                             // Correct
+                         } else {
+                             // Incorrect
+                             this.mistakes++;
+                         }
+                         this.typedHistory[this.currentIndex] = e.key; // Store what was typed?
+                         // Ideally we need to store state per index: correct/incorrect
+                         // Let's use a simpler way: just comparison in getCharClass
+                         // But we need to know what the user typed to show incorrect color
+                         // So we need an array of user inputs
+                         this.userInputs[this.currentIndex] = e.key;
+                         
+                         this.currentIndex++;
+                         
+                         if (this.currentIndex >= this.targetText.length) {
+                             this.finish();
+                         }
+                    }
+                },
+                
+                userInputs: [], // Array to store user input chars
+
+                getCharClass(index) {
+                     if (index >= this.currentIndex) return 'text-slate-300';
+                     const userChar = this.userInputs[index];
+                     const targetChar = this.targetText[index];
+                     if (userChar === targetChar) {
+                         return 'correct';
+                     } else {
+                         return 'incorrect';
+                     }
+                },
+                
+                get wpm() {
+                    const timeElapsed = this.duration - this.timeLeft;
+                    if (timeElapsed === 0) return 0;
+                    // Standard WPM = (all typed / 5) / time in minutes
+                    // Here we count valid chars? Or all chars?
+                    // Typically: (Total Entries / 5) / Time (min)
+                    const wpm = (this.currentIndex / 5) / (timeElapsed / 60);
+                    return Math.round(wpm);
+                },
+                
+                get accuracy() {
+                    if (this.currentIndex === 0) return 100;
+                    const correct = this.currentIndex - this.mistakes; // Rough estimate
+                    // Better: loop through userInputs and count matches
+                    let hits = 0;
+                    for(let i=0; i<this.currentIndex; i++) {
+                        if(this.userInputs[i] === this.targetText[i]) hits++;
+                    }
+                    return Math.round((hits / this.currentIndex) * 100);
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

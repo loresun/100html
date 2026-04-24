@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JD 避雷扫描仪 - 牛马指数检测</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /**
+         * 全局：红色警戒风 + 深色底纹
+         */
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(165deg, #1c0a0a 0%, #2d0f0f 35%, #1a0508 100%);
+            color: #fecaca;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1c0a0a; }
+        ::-webkit-scrollbar-thumb { background: #7f1d1d; border-radius: 3px; }
+
+        /* ========== 安检扫描：上下移动的横线 ========== */
+        .scan-overlay {
+            pointer-events: none;
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            border-radius: inherit;
+            z-index: 20;
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(248, 113, 113, 0.95), transparent);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+            animation: scanMove 2.2s ease-in-out infinite;
+        }
+
+        .scan-line:nth-child(2) { animation-delay: 0.35s; opacity: 0.7; }
+        .scan-line:nth-child(3) { animation-delay: 0.7s; opacity: 0.5; }
+        .scan-line:nth-child(4) { animation-delay: 1.05s; opacity: 0.35; }
+
+        @keyframes scanMove {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(calc(100% - 2px)); }
+        }
+
+        /* 反向扫描的一组线 */
+        .scan-line.rev {
+            animation-name: scanMoveRev;
+        }
+
+        @keyframes scanMoveRev {
+            0%, 100% { transform: translateY(calc(100% - 2px)); }
+            50% { transform: translateY(0); }
+        }
+
+        /* ========== 半圆仪表盘（conic-gradient 圆弧） ========== */
+        .gauge-wrap {
+            position: relative;
+            width: 220px;
+            height: 110px;
+            margin: 0 auto;
+        }
+
+        .gauge-disk {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            /* 从左侧 180deg 起顺时针扫 180°：0~100 映射到 0~180deg */
+            background: conic-gradient(
+                from 180deg at 50% 50%,
+                #22c55e 0deg,
+                #eab308 54deg,
+                #f97316 108deg,
+                #dc2626 180deg
+            );
+            mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+            -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+            clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+            transform: rotate(0deg);
+        }
+
+        .gauge-pointer {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            width: 4px;
+            height: 88px;
+            margin-left: -2px;
+            background: linear-gradient(to top, #fecaca, #fff);
+            border-radius: 2px;
+            transform-origin: bottom center;
+            box-shadow: 0 0 10px rgba(248, 113, 113, 0.9);
+            transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 2;
+        }
+
+        .gauge-hub {
+            position: absolute;
+            left: 50%;
+            bottom: -6px;
+            width: 16px;
+            height: 16px;
+            margin-left: -8px;
+            background: #7f1d1d;
+            border: 2px solid #fecaca;
+            border-radius: 50%;
+            z-index: 3;
+        }
+
+        /* 大号分数在圆弧下方单独展示，避免与指针重叠 */
+        .gauge-score {
+            font-size: 2.75rem;
+            font-weight: 800;
+            line-height: 1;
+            text-shadow: 0 0 28px rgba(239, 68, 68, 0.45);
+            letter-spacing: -0.02em;
+        }
+
+        /* Markdown 综合建议 */
+        .prose-jd h2 { font-size: 1.1rem; font-weight: 700; color: #fecaca; margin-top: 0.75rem; }
+        .prose-jd p { margin: 0.35rem 0; line-height: 1.65; color: #fca5a5; }
+        .prose-jd ul { padding-left: 1.2rem; margin: 0.35rem 0; }
+        .prose-jd li { margin: 0.2rem 0; }
+        .prose-jd strong { color: #fff; }
+
+        .toast-enter {
+            animation: toastIn 0.28s ease-out;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+    <div x-data="jdScanner()" x-init="init()" class="min-h-screen pb-16">
+
+        <!-- 顶部导航 -->
+        <nav class="bg-red-950/80 backdrop-blur-md sticky top-0 z-50 border-b border-red-900/80">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer select-none" onclick="location.href='../../index.html'">
+                    <i data-lucide="radar" class="text-red-400 h-6 w-6"></i>
+                    <span class="font-bold text-lg text-red-100">JD 避雷扫描仪</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="showSettings = true"
+                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-red-200/80 hover:bg-red-900/60 border border-red-800/50 transition">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">API 设置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+
+            <!-- 简介 -->
+            <p class="text-sm text-red-300/80 text-center">
+                粘贴招聘 JD 全文，AI 估算「牛马指数」、加班概率与薪资水分，并翻译职场黑话。
+                <span class="text-red-500/90">（娱乐向参考，不构成法律或职业建议）</span>
+            </p>
+
+            <div class="grid lg:grid-cols-5 gap-6">
+
+                <!-- 左侧：输入 -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="relative rounded-2xl border border-red-900/60 bg-red-950/40 shadow-lg shadow-red-950/50 overflow-hidden">
+                        <!-- 扫描动画层（仅在扫描时显示） -->
+                        <div x-show="isScanning" x-transition class="scan-overlay">
+                            <div class="scan-line" style="top: 8%;"></div>
+                            <div class="scan-line rev" style="top: 35%;"></div>
+                            <div class="scan-line" style="top: 62%;"></div>
+                            <div class="scan-line rev" style="top: 88%;"></div>
+                        </div>
+
+                        <label class="block px-4 pt-4 text-xs font-semibold text-red-300 uppercase tracking-wider">
+                            招聘 JD 全文
+                        </label>
+                        <textarea x-model="jdText" rows="16" :disabled="isScanning"
+                            placeholder="在此粘贴岗位描述、任职要求、薪资福利等完整内容…"
+                            class="w-full bg-transparent border-0 rounded-b-2xl px-4 py-3 text-sm text-red-100 placeholder-red-600/50 resize-y min-h-[280px] focus:ring-0 focus:outline-none relative z-10"></textarea>
+                    </div>
+
+                    <button type="button" @click="startScan()"
+                        :disabled="isScanning || !jdText.trim()"
+                        class="w-full py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-red-900/40 border border-red-500/30 flex items-center justify-center gap-2 transition">
+                        <i data-lucide="scan-line" class="w-5 h-5" :class="{ 'animate-pulse': isScanning }"></i>
+                        <span x-text="isScanning ? '安检扫描中…' : '开始扫描'"></span>
+                    </button>
+
+                    <!-- 流式 JSON 混合：显示接收进度（字符数） -->
+                    <div x-show="isScanning && streamCharCount > 0" class="text-xs text-red-400/80 font-mono">
+                        已接收分析数据 <span x-text="streamCharCount"></span> 字符…
+                    </div>
+                </div>
+
+                <!-- 右侧：结果 -->
+                <div class="lg:col-span-3 space-y-4">
+
+                    <!-- 空状态 -->
+                    <template x-if="!report && !isScanning && !errorMsg">
+                        <div class="rounded-2xl border border-dashed border-red-900/50 bg-red-950/20 p-10 text-center">
+                            <i data-lucide="clipboard-list" class="w-14 h-14 mx-auto text-red-800 mb-3 opacity-60"></i>
+                            <p class="text-red-400/70 text-sm">左侧粘贴 JD 后点击「开始扫描」</p>
+                        </div>
+                    </template>
+
+                    <!-- 扫描中占位 -->
+                    <div x-show="isScanning && !report" x-cloak
+                        class="rounded-2xl border border-red-800/50 bg-red-950/30 p-8 text-center relative overflow-hidden min-h-[200px]">
+                        <div class="scan-overlay opacity-40">
+                            <div class="scan-line"></div>
+                            <div class="scan-line rev"></div>
+                        </div>
+                        <i data-lucide="loader-2" class="w-10 h-10 mx-auto text-red-400 animate-spin mb-3 relative z-10"></i>
+                        <p class="text-red-200 font-medium relative z-10">正在通过「避雷安检通道」…</p>
+                        <p class="text-xs text-red-400/60 mt-2 relative z-10">JSON 流式解析中，请稍候</p>
+                    </div>
+
+                    <!-- 错误 -->
+                    <div x-show="errorMsg" x-cloak class="rounded-xl border border-red-600/50 bg-red-950/50 p-4 text-sm text-red-200">
+                        <span x-text="errorMsg"></span>
+                    </div>
+
+                    <!-- 报告卡片 -->
+                    <div x-show="report" x-cloak class="space-y-4 animate-[toastIn_0.4s_ease-out]">
+
+                        <!-- 仪表盘 + 核心指标 -->
+                        <div class="rounded-2xl border border-red-800/60 bg-gradient-to-b from-red-950/80 to-red-950/40 p-6 shadow-xl">
+                            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+                                <div class="flex-1">
+                                    <div class="gauge-wrap mb-1">
+                                        <div class="gauge-disk" aria-hidden="true"></div>
+                                        <!-- 指针：-90° 为 0，+90° 为 100 → rotation = -90 + score * 1.8 -->
+                                        <div class="gauge-pointer" :style="'transform: rotate(' + gaugeRotation + 'deg)'"></div>
+                                        <div class="gauge-hub"></div>
+                                    </div>
+                                    <p class="text-center gauge-score tabular-nums" :style="'color:' + indexTextColor"
+                                        x-text="report ? report.niuMaIndex : '--'"></p>
+                                    <p class="text-center text-xs text-red-400/80 mt-1">牛马指数（越高越「卷」）</p>
+                                </div>
+                                <div class="flex-1 space-y-3 text-sm">
+                                    <div class="flex justify-between items-center py-2 border-b border-red-900/50">
+                                        <span class="text-red-300/90">强制加班概率</span>
+                                        <span class="text-xl font-bold text-amber-300" x-text="report ? (report.overtimeProbability + '%') : '--'"></span>
+                                    </div>
+                                    <div class="py-2 border-b border-red-900/50">
+                                        <span class="text-red-300/90 block mb-1">JD 标明薪资</span>
+                                        <span class="text-red-100" x-text="report?.jdSalaryStated || '—'"></span>
+                                    </div>
+                                    <div class="py-2 border-b border-red-900/50">
+                                        <span class="text-red-300/90 block mb-1">真实薪资预估</span>
+                                        <span class="text-red-100" x-text="report?.realSalaryEstimate || '—'"></span>
+                                    </div>
+                                    <p class="text-xs text-red-400/70 leading-relaxed" x-text="report?.salaryCompareNote || ''"></p>
+                                </div>
+                            </div>
+
+                            <!-- 结论徽章 -->
+                            <div class="mt-6 flex flex-wrap items-center gap-3 justify-center">
+                                <span class="text-xs text-red-400">综合结论</span>
+                                <span class="px-4 py-1.5 rounded-full text-sm font-bold border-2"
+                                    :class="verdictBadgeClass"
+                                    x-text="verdictLabel"></span>
+                            </div>
+                        </div>
+
+                        <!-- 黑话翻译表 -->
+                        <div class="rounded-2xl border border-red-900/50 bg-red-950/30 overflow-hidden">
+                            <h3 class="px-4 py-3 text-sm font-bold text-red-200 border-b border-red-900/50 flex items-center gap-2">
+                                <i data-lucide="languages" class="w-4 h-4 text-red-400"></i>
+                                黑话翻译对照
+                            </h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="bg-red-950/80 text-red-300/90 text-left">
+                                            <th class="px-4 py-2 font-medium">JD 黑话</th>
+                                            <th class="px-4 py-2 font-medium">人话翻译</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="(row, i) in (report?.jargonTranslations || [])" :key="i">
+                                            <tr class="border-t border-red-900/40 hover:bg-red-900/20">
+                                                <td class="px-4 py-2.5 text-red-200 align-top" x-text="row.jargon"></td>
+                                                <td class="px-4 py-2.5 text-amber-100/90 align-top" x-text="row.translation"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="px-4 py-2 text-xs text-red-500/70" x-show="!report?.jargonTranslations?.length">未识别到典型黑话（可尝试粘贴更完整的 JD）</p>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <!-- 红旗 -->
+                            <div class="rounded-2xl border border-red-700/40 bg-red-950/40 p-4">
+                                <h3 class="text-sm font-bold text-red-300 mb-3 flex items-center gap-2">
+                                    <i data-lucide="flag" class="w-4 h-4 text-red-500"></i>
+                                    红旗警告
+                                </h3>
+                                <ul class="space-y-2 text-sm">
+                                    <template x-for="(f, i) in (report?.redFlags || [])" :key="'r'+i">
+                                        <li class="pl-3 border-l-2 border-red-600">
+                                            <span class="font-semibold text-red-200" x-text="f.title"></span>
+                                            <p class="text-red-300/70 text-xs mt-0.5" x-text="f.detail"></p>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                            <!-- 绿旗 -->
+                            <div class="rounded-2xl border border-emerald-800/40 bg-emerald-950/20 p-4">
+                                <h3 class="text-sm font-bold text-emerald-300 mb-3 flex items-center gap-2">
+                                    <i data-lucide="flag" class="w-4 h-4 text-emerald-500"></i>
+                                    绿旗信号
+                                </h3>
+                                <ul class="space-y-2 text-sm">
+                                    <template x-for="(f, i) in (report?.greenFlags || [])" :key="'g'+i">
+                                        <li class="pl-3 border-l-2 border-emerald-600">
+                                            <span class="font-semibold text-emerald-200" x-text="f.title"></span>
+                                            <p class="text-emerald-300/70 text-xs mt-0.5" x-text="f.detail"></p>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- 综合建议（Markdown） -->
+                        <div class="rounded-2xl border border-red-900/50 bg-red-950/25 p-4">
+                            <h3 class="text-sm font-bold text-red-200 mb-2 flex items-center gap-2">
+                                <i data-lucide="message-square-warning" class="w-4 h-4"></i>
+                                综合建议
+                            </h3>
+                            <div class="prose-jd text-sm" x-html="renderAdvice"></div>
+                        </div>
+
+                        <!-- 操作 -->
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" @click="copyReport()"
+                                class="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-900/60 hover:bg-red-800/80 text-red-100 text-sm border border-red-700/50 transition">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                                复制报告
+                            </button>
+                            <button type="button" @click="shareReport()"
+                                class="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-950/60 hover:bg-red-900/60 text-red-200 text-sm border border-red-800/50 transition">
+                                <i data-lucide="share-2" class="w-4 h-4"></i>
+                                分享
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- V4 Pro 推理折叠（若有） -->
+        <div x-show="reasoningBuffer" x-cloak class="max-w-5xl mx-auto px-4 pb-8">
+            <details class="rounded-xl border border-red-900/40 bg-red-950/30 p-3 text-sm">
+                <summary class="cursor-pointer text-red-300 font-medium">深度推理过程（点击展开）</summary>
+                <pre class="mt-2 whitespace-pre-wrap text-xs text-red-400/80 max-h-48 overflow-y-auto" x-text="reasoningBuffer"></pre>
+            </details>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div x-show="showSettings" x-cloak
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            @keydown.escape.window="showSettings = false">
+            <div class="bg-red-950 border border-red-800 rounded-2xl shadow-2xl w-full max-w-md p-6" @click.outside="showSettings = false">
+                <h3 class="text-lg font-bold text-red-100 mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-red-300 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg bg-red-950/50 border border-red-800 px-3 py-2 text-sm text-red-100 placeholder-red-800 focus:ring-2 focus:ring-red-600 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-red-300 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg bg-red-950/50 border border-red-800 px-3 py-2 text-sm text-red-100 outline-none">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-red-300 hover:bg-red-900/50 text-sm">取消</button>
+                    <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl text-sm font-medium shadow-lg toast-enter"
+            :class="toast.type === 'error' ? 'bg-red-900 text-red-100 border border-red-600' : 'bg-emerald-900 text-emerald-100 border border-emerald-600'"
+            x-text="toast.msg"></div>
+    </div>
+
+    <script>
+        /**
+         * JD 避雷扫描仪 — Alpine 根组件
+         * 使用 DeepSeek：response_format json_object + stream:true 混合（流式累积完整 JSON 后解析）
+         */
+        function jdScanner() {
+            return {
+                jdText: '',
+                isScanning: false,
+                streamCharCount: 0,
+                rawJsonBuffer: '',
+                reasoningBuffer: '',
+                errorMsg: '',
+                report: null,
+                showSettings: false,
+                toast: { show: false, msg: '', type: 'info' },
+
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        } catch (e) { /* 忽略 */ }
+                    }
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /** 合并写入 localStorage，避免覆盖其他工具字段 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('已保存', 'success');
+                },
+
+                showToast(msg, type = 'info') {
+                    this.toast = { show: true, msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2800);
+                },
+
+                /** 仪表盘指针角度：0→-90°，100→+90° */
+                get gaugeRotation() {
+                    if (!this.report || typeof this.report.niuMaIndex !== 'number') return -90;
+                    const s = Math.max(0, Math.min(100, this.report.niuMaIndex));
+                    return -90 + s * 1.8;
+                },
+
+                /** 牛马指数数字颜色 */
+                get indexTextColor() {
+                    if (!this.report || typeof this.report.niuMaIndex !== 'number') return '#fecaca';
+                    const s = this.report.niuMaIndex;
+                    if (s < 40) return '#4ade80';
+                    if (s < 70) return '#fbbf24';
+                    return '#f87171';
+                },
+
+                /** 结论展示文案 */
+                get verdictLabel() {
+                    const v = this.report?.verdict;
+                    if (v === '去') return '可以去';
+                    if (v === '快跑') return '快跑';
+                    if (v === '慎重') return '慎重考虑';
+                    return v || '—';
+                },
+
+                get verdictBadgeClass() {
+                    const v = this.report?.verdict;
+                    if (v === '去') return 'border-emerald-500 text-emerald-300 bg-emerald-950/40';
+                    if (v === '快跑') return 'border-red-500 text-red-200 bg-red-900/40';
+                    return 'border-amber-500 text-amber-200 bg-amber-950/30';
+                },
+
+                /** 综合建议：合并 verdictReason 与 summaryAdvice，走 Markdown */
+                get renderAdvice() {
+                    if (!this.report) return '';
+                    const parts = [];
+                    if (this.report.verdictReason) parts.push(this.report.verdictReason);
+                    if (this.report.summaryAdvice) parts.push(this.report.summaryAdvice);
+                    const md = parts.join('\n\n');
+                    try {
+                        return marked.parse(md || '_暂无_');
+                    } catch {
+                        return md;
+                    }
+                },
+
+                /**
+                 * 开始扫描：流式 JSON 模式请求，结束后解析为 report
+                 */
+                async startScan() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 DeepSeek API Key', 'error');
+                        return;
+                    }
+                    const text = this.jdText.trim();
+                    if (!text) {
+                        this.showToast('请粘贴 JD 内容', 'error');
+                        return;
+                    }
+
+                    this.isScanning = true;
+                    this.errorMsg = '';
+                    this.report = null;
+                    this.rawJsonBuffer = '';
+                    this.reasoningBuffer = '';
+                    this.streamCharCount = 0;
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+
+                    const systemPrompt = `你是资深职场与招聘分析助手，擅长识别招聘 JD 中的加班文化、薪资水分、管理风格与话术陷阱。
+请仅输出一个合法 JSON 对象（不要 Markdown 代码块），字段必须齐全、类型正确：
+{
+  "niuMaIndex": 0-100 的整数（牛马指数：越高表示岗位越可能高强度加班/模糊边界/压榨感越强，娱乐化命名勿过度恐怖化）,
+  "overtimeProbability": 0-100 的整数（强制或高频加班的主观概率估计）,
+  "jdSalaryStated": "从 JD 中提取的薪资表述；若无写「未标明」",
+  "realSalaryEstimate": "结合岗位与城市档位的真实到手/总包预估简述（中文一句到三句）",
+  "salaryCompareNote": "与 JD 标称的对比说明（是否虚高、结构是否含糊等）",
+  "jargonTranslations": [ { "jargon": "原文短语", "translation": "人话翻译" } ],
+  "redFlags": [ { "title": "短标题", "detail": "依据 JD 的说明" } ],
+  "greenFlags": [ { "title": "短标题", "detail": "依据 JD 的说明" } ],
+  "verdict": "仅允许三选一：去、慎重、快跑",
+  "verdictReason": "用 Markdown，简短说明为何给出该结论",
+  "summaryAdvice": "用 Markdown，3-6 条 bullet 或短段落：面试反问、背调要点、合同注意点等"
+}
+要求：jargonTranslations 至少 3 条（若 JD 较短可合理推断常见搭配）；redFlags/greenFlags 各至少 2 条；所有判断需可追溯到 JD 内容或合理行业常识，避免编造具体公司违法事实。`;
+
+                    const userPrompt = `以下是一份招聘 JD，请完成 JSON 分析：\n\n---\n${text}\n---`;
+
+                    try {
+                        const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                            },
+                            body: JSON.stringify({
+                                model: this.apiConfig.model,
+                                messages: [
+                                    { role: 'system', content: systemPrompt },
+                                    { role: 'user', content: userPrompt }
+                                ],
+                                stream: true,
+                                response_format: { type: 'json_object' },
+                                temperature: 0.55
+                            })
+                        });
+
+                        if (!resp.ok) {
+                            const errData = await resp.json().catch(() => ({}));
+                            throw new Error(errData.error?.message || 'HTTP ' + resp.status);
+                        }
+
+                        const reader = resp.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+
+                            for (const line of lines) {
+                                if (!line.startsWith('data: ')) continue;
+                                const raw = line.slice(6).trim();
+                                if (raw === '[DONE]') continue;
+                                try {
+                                    const chunk = JSON.parse(raw);
+                                    const delta = chunk.choices?.[0]?.delta;
+                                    if (!delta) continue;
+                                    if (delta.reasoning_content) {
+                                        this.reasoningBuffer += delta.reasoning_content;
+                                    }
+                                    if (delta.content) {
+                                        this.rawJsonBuffer += delta.content;
+                                        this.streamCharCount = this.rawJsonBuffer.length;
+                                    }
+                                } catch (e) { /* 单行解析失败跳过 */ }
+                            }
+                        }
+
+                        const parsed = JSON.parse(this.rawJsonBuffer);
+                        this.normalizeReport(parsed);
+                        this.report = parsed;
+                        this.showToast('扫描完成', 'success');
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = e.message || '解析失败，请重试';
+                        if (this.rawJsonBuffer) {
+                            this.errorMsg += '（若使用 V4 Pro，可尝试切换到 V4 Flash 模型）';
+                        }
+                        this.showToast(this.errorMsg, 'error');
+                    } finally {
+                        this.isScanning = false;
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    }
+                },
+
+                /**
+                 * 归一化 AI 返回：补全数组、限制 verdict 枚举、钳制数值
+                 */
+                normalizeReport(obj) {
+                    if (typeof obj.niuMaIndex !== 'number') obj.niuMaIndex = parseInt(obj.niuMaIndex, 10) || 0;
+                    obj.niuMaIndex = Math.max(0, Math.min(100, obj.niuMaIndex));
+                    if (typeof obj.overtimeProbability !== 'number') obj.overtimeProbability = parseInt(obj.overtimeProbability, 10) || 0;
+                    obj.overtimeProbability = Math.max(0, Math.min(100, obj.overtimeProbability));
+                    const ok = ['去', '慎重', '快跑'];
+                    if (!ok.includes(obj.verdict)) obj.verdict = '慎重';
+                    obj.jargonTranslations = Array.isArray(obj.jargonTranslations) ? obj.jargonTranslations : [];
+                    obj.redFlags = Array.isArray(obj.redFlags) ? obj.redFlags : [];
+                    obj.greenFlags = Array.isArray(obj.greenFlags) ? obj.greenFlags : [];
+                },
+
+                /** 纯文本报告（用于复制 / 分享降级） */
+                buildPlainReport() {
+                    if (!this.report) return '';
+                    const r = this.report;
+                    let t = '【JD 避雷扫描报告】\n';
+                    t += '牛马指数：' + r.niuMaIndex + '/100\n';
+                    t += '强制加班概率：' + r.overtimeProbability + '%\n';
+                    t += 'JD 标明薪资：' + (r.jdSalaryStated || '') + '\n';
+                    t += '真实薪资预估：' + (r.realSalaryEstimate || '') + '\n';
+                    t += '薪资对比：' + (r.salaryCompareNote || '') + '\n\n';
+                    t += '结论：' + this.verdictLabel + '\n\n';
+                    t += '--- 黑话翻译 ---\n';
+                    (r.jargonTranslations || []).forEach(x => {
+                        t += '· ' + x.jargon + ' → ' + x.translation + '\n';
+                    });
+                    t += '\n--- 红旗 ---\n';
+                    (r.redFlags || []).forEach(x => { t += '· ' + x.title + '：' + x.detail + '\n'; });
+                    t += '\n--- 绿旗 ---\n';
+                    (r.greenFlags || []).forEach(x => { t += '· ' + x.title + '：' + x.detail + '\n'; });
+                    t += '\n--- 综合建议 ---\n';
+                    t += (r.verdictReason || '') + '\n' + (r.summaryAdvice || '');
+                    return t;
+                },
+
+                async copyReport() {
+                    const text = this.buildPlainReport();
+                    if (!text) return;
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        this.showToast('报告已复制', 'success');
+                    } catch {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        this.showToast('报告已复制', 'success');
+                    }
+                },
+
+                async shareReport() {
+                    const text = this.buildPlainReport();
+                    if (!text) {
+                        this.showToast('暂无报告', 'error');
+                        return;
+                    }
+                    if (navigator.share) {
+                        try {
+                            await navigator.share({ title: 'JD 避雷扫描报告', text });
+                            this.showToast('已唤起分享', 'success');
+                            return;
+                        } catch (e) {
+                            if (e.name === 'AbortError') return;
+                        }
+                    }
+                    await this.copyReport();
+                    this.showToast('已复制（当前环境不支持系统分享）', 'success');
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

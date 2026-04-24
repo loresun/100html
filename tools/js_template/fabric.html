@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fabric.js 画布编辑器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/fabric@5.3.0/dist/fabric.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f0fdf4; color: #14532d; }
+    .glass { background: white; border: 1px solid #bbf7d0; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.05); }
+    .tool-btn { 
+      padding: 0.5rem; border-radius: 0.5rem; border: 1px solid #e5e7eb; background: white; color: #374151; 
+      transition: all 0.2s; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+    }
+    .tool-btn:hover { background: #f0fdf4; border-color: #86efac; color: #166534; }
+    .tool-btn:active { transform: scale(0.95); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold text-green-900">🎨 Fabric.js</h1>
+    <p class="text-green-800/60 mt-2 text-lg">基于 Canvas 的交互式对象模型库，简单实现 Photoshop 功能</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-green-200 text-green-800 rounded-lg hover:bg-green-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+  <!-- 工具栏 -->
+  <div class="glass p-6 rounded-2xl h-fit lg:col-span-1 space-y-6">
+    <div>
+      <h3 class="font-bold text-green-900 mb-2">添加形状</h3>
+      <div class="grid grid-cols-4 gap-2">
+        <button class="tool-btn" onclick="addRect()" title="矩形">⬜</button>
+        <button class="tool-btn" onclick="addCircle()" title="圆形">⚪</button>
+        <button class="tool-btn" onclick="addTriangle()" title="三角形">🔺</button>
+        <button class="tool-btn" onclick="addText()" title="文字">T</button>
+      </div>
+    </div>
+
+    <div>
+      <h3 class="font-bold text-green-900 mb-2">样式控制</h3>
+      <div class="space-y-2">
+        <div>
+          <label class="text-xs text-green-700">填充颜色</label>
+          <input type="color" id="fill-color" class="w-full h-8 rounded cursor-pointer" value="#16a34a" onchange="updateActiveObject('fill', this.value)">
+        </div>
+        <div>
+          <label class="text-xs text-green-700">边框颜色</label>
+          <input type="color" id="stroke-color" class="w-full h-8 rounded cursor-pointer" value="#14532d" onchange="updateActiveObject('stroke', this.value)">
+        </div>
+        <div>
+          <label class="text-xs text-green-700">边框宽度</label>
+          <input type="range" min="0" max="10" value="0" class="w-full accent-green-600" oninput="updateActiveObject('strokeWidth', parseInt(this.value))">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h3 class="font-bold text-green-900 mb-2">图层操作</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <button class="tool-btn w-full" onclick="bringForward()" title="上移一层">↑</button>
+        <button class="tool-btn w-full" onclick="sendBackwards()" title="下移一层">↓</button>
+        <button class="tool-btn w-full col-span-2 text-red-500 hover:text-red-700" onclick="deleteObject()">🗑️ 删除</button>
+      </div>
+    </div>
+
+    <div>
+      <button onclick="downloadImage()" class="w-full py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">💾 下载图片</button>
+    </div>
+  </div>
+
+  <!-- 画布区 -->
+  <div class="lg:col-span-3 bg-white p-1 rounded-2xl shadow-lg border border-green-100 flex justify-center items-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0id2hpdGUiPjwvcmVjdD4KPHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjZjNmMzgzIj48L3JlY3Q+CjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjZjNmMzgzIj48L3JlY3Q+Cjwvc3ZnPg==')]">
+    <canvas id="c" width="800" height="600"></canvas>
+  </div>
+
+</main>
+
+<script>
+  const canvas = new fabric.Canvas('c', {
+    backgroundColor: 'rgba(255,255,255,0.8)' // 半透明白色背景
+  });
+
+  // 1. Add Shapes
+  function addRect() {
+    const rect = new fabric.Rect({
+      left: 100, top: 100, fill: '#16a34a', width: 60, height: 60,
+      strokeWidth: 0, stroke: '#14532d'
+    });
+    canvas.add(rect);
+  }
+
+  function addCircle() {
+    const circle = new fabric.Circle({
+      left: 200, top: 100, fill: '#2563eb', radius: 30
+    });
+    canvas.add(circle);
+  }
+
+  function addTriangle() {
+    const triangle = new fabric.Triangle({
+      left: 300, top: 100, fill: '#e11d48', width: 60, height: 60
+    });
+    canvas.add(triangle);
+  }
+
+  function addText() {
+    const text = new fabric.IText('Double click me', {
+      left: 400, top: 100, fontFamily: 'Inter', fill: '#333'
+    });
+    canvas.add(text);
+  }
+
+  // 2. Modify Properties
+  function updateActiveObject(prop, val) {
+    const obj = canvas.getActiveObject();
+    if(obj) {
+      obj.set(prop, val);
+      canvas.requestRenderAll();
+    }
+  }
+
+  // 3. Layer Control
+  function deleteObject() {
+    const obj = canvas.getActiveObject();
+    if(obj) canvas.remove(obj);
+  }
+
+  function bringForward() {
+    const obj = canvas.getActiveObject();
+    if(obj) canvas.bringForward(obj);
+  }
+
+  function sendBackwards() {
+    const obj = canvas.getActiveObject();
+    if(obj) canvas.sendBackwards(obj);
+  }
+
+  // 4. Download
+  function downloadImage() {
+    const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
+    const link = document.createElement('a');
+    link.download = 'fabric-art.png';
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Init Listener for UI Sync (Optional but good for UX)
+  canvas.on('selection:created', syncUI);
+  canvas.on('selection:updated', syncUI);
+
+  function syncUI(e) {
+    const obj = e.selected[0];
+    if(obj) {
+      document.getElementById('fill-color').value = obj.fill;
+      // ... sync other properties
+    }
+  }
+
+  // Keyboard Delete
+  window.addEventListener('keydown', (e) => {
+    if(e.key === 'Backspace' || e.key === 'Delete') {
+      deleteObject();
+    }
+  });
+
+  // initial demo
+  addRect();
+  addCircle();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

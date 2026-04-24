@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SheetJS (xlsx) 电子表格</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f0fdf4; color: #166534; }
+    .glass { background: white; border: 1px solid #bbf7d0; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.05); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { background: #dcfce7; color: #15803d; font-weight: 600; padding: 0.75rem; text-align: left; }
+    td { border-bottom: 1px solid #f0fdf4; padding: 0.75rem; color: #374151; }
+    tr:nth-child(even) { background: #f9fafb; }
+    tr:hover { background: #f0fdf4; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-green-900">📊 SheetJS (xlsx)</h1>
+    <p class="text-green-800/60 mt-2 text-lg">在浏览器中解析和生成 Excel 电子表格</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-green-200 text-green-800 rounded-lg hover:bg-green-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-5xl mx-auto space-y-8">
+
+  <!-- 操作栏 -->
+  <div class="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center">
+    
+    <div class="relative">
+      <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-md shadow-green-500/20 active:scale-95 transition">
+        📂 导入 Excel / CSV
+      </button>
+      <input type="file" id="file-input" class="absolute inset-0 opacity-0 cursor-pointer" accept=".xlsx, .xls, .csv">
+    </div>
+
+    <button onclick="downloadExcel()" class="px-4 py-2 bg-white border border-green-300 text-green-700 rounded-lg hover:bg-green-50 font-bold">
+      ⬇️ 导出当前数据
+    </button>
+    
+    <div class="ml-auto text-sm text-green-600">
+      演示数据: 员工工资表
+    </div>
+  </div>
+
+  <!-- 数据预览 -->
+  <div class="glass rounded-xl overflow-hidden border border-green-200 shadow-lg min-h-[300px]">
+    <div class="overflow-x-auto">
+      <table id="data-table">
+        <!-- 动态生成 -->
+      </table>
+    </div>
+    <div id="empty-state" class="hidden p-10 text-center text-green-400">
+      暂无数据，请导入文件或使用默认数据
+    </div>
+  </div>
+  
+  <div class="text-center">
+    <button onclick="loadDemoData()" class="text-sm text-green-600 hover:underline">加载默认演示数据</button>
+  </div>
+
+</main>
+
+<script>
+  let currentData = [];
+
+  // 1. 初始化演示数据
+  function loadDemoData() {
+    currentData = [
+      { "Name": "Alice", "Role": "Manager", "Salary": 8500, "Department": "Sales" },
+      { "Name": "Bob", "Role": "Engineer", "Salary": 7200, "Department": "IT" },
+      { "Name": "Charlie", "Role": "Designer", "Salary": 6500, "Department": "Marketing" },
+      { "Name": "David", "Role": "Developer", "Salary": 7800, "Department": "IT" },
+      { "Name": "Eve", "Role": "HR", "Salary": 6000, "Department": "HR" }
+    ];
+    renderTable(currentData);
+  }
+
+  // 2. 渲染表格
+  function renderTable(data) {
+    const table = document.getElementById('data-table');
+    table.innerHTML = '';
+    
+    if(!data || data.length === 0) return;
+
+    // Headers
+    const headers = Object.keys(data[0]);
+    const thead = document.createElement('thead');
+    const trHead = document.createElement('tr');
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      th.innerText = h;
+      trHead.appendChild(th);
+    });
+    thead.appendChild(trHead);
+    table.appendChild(thead);
+
+    // Body
+    const tbody = document.createElement('tbody');
+    data.forEach(row => {
+      const tr = document.createElement('tr');
+      headers.forEach(h => {
+        const td = document.createElement('td');
+        td.innerText = row[h];
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+  }
+
+  // 3. 导入文件
+  document.getElementById('file-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      
+      // 读取第一个 sheet
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      
+      // 转换为 JSON
+      const json = XLSX.utils.sheet_to_json(worksheet);
+      currentData = json;
+      renderTable(json);
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // 4. 导出文件
+  function downloadExcel() {
+    if(currentData.length === 0) return alert("没有数据可导出");
+
+    const ws = XLSX.utils.json_to_sheet(currentData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    
+    XLSX.writeFile(wb, "export_data.xlsx");
+  }
+
+  // Init
+  loadDemoData();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

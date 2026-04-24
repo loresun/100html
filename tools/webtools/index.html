@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Webtools 高频工具合集</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css">
+  <!-- Load the tool definitions -->
+  <script src="../../data/categories.js"></script>
+  <script src="tools.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+    }
+    .gradient-bg {
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans" x-data="hubApp()" x-init="init()">
+  
+  <!-- Navigation -->
+  <nav class="sticky top-0 z-50 glass-effect border-b border-slate-200/60 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="../../index.html" class="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
+          <i class="fa-solid fa-arrow-left text-lg"></i>
+        </a>
+        <div class="flex items-center gap-2">
+          <div class="bg-indigo-600 text-white p-2 rounded-lg">
+            <i class="fa-solid fa-th-large"></i>
+          </div>
+          <span class="font-bold text-lg text-slate-900">Webtools</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <div class="relative hidden sm:block group">
+          <i class="fa-solid fa-search text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within:text-indigo-500 transition-colors"></i>
+          <input 
+            type="text" 
+            x-model="searchQuery" 
+            placeholder="搜索工具..." 
+            class="pl-10 pr-4 py-2 bg-slate-100 border-transparent border focus:bg-white focus:border-indigo-500 rounded-full text-sm w-64 transition-all outline-none"
+          />
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <div class="relative overflow-hidden bg-white border-b border-slate-200">
+    <div class="absolute inset-0 gradient-bg opacity-50"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+      <div class="max-w-2xl">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
+          发现高效生活的<span class="text-indigo-600">秘密武器</span>
+        </h1>
+        <p class="text-lg text-slate-600 mb-8 leading-relaxed">
+          精选 20+ 款高频实用工具，从时间管理到健康追踪，为您打造极致的生产力体验。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Category Filter -->
+    <div class="flex overflow-x-auto pb-4 gap-2 mb-6 scrollbar-hide">
+      <button 
+        @click="activeFilter = 'all'" 
+        :class="activeFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
+        class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+      >
+        全部
+      </button>
+      <button 
+        @click="activeFilter = 'productivity'" 
+        :class="activeFilter === 'productivity' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
+        class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2"
+      >
+        <i class="fa-solid fa-clock"></i> 效率与时间
+      </button>
+      <button 
+        @click="activeFilter = 'wellness'" 
+        :class="activeFilter === 'wellness' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
+        class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2"
+      >
+        <i class="fa-solid fa-heart"></i> 生活与健康
+      </button>
+      <button 
+        @click="activeFilter = 'utility'" 
+        :class="activeFilter === 'utility' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
+        class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2"
+      >
+        <i class="fa-solid fa-wrench"></i> 实用工具
+      </button>
+      <button 
+        @click="activeFilter = 'creation'" 
+        :class="activeFilter === 'creation' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
+        class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2"
+      >
+        <i class="fa-solid fa-pen-nib"></i> 学习与创作
+      </button>
+    </div>
+
+    <!-- Tools Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <template x-for="tool in filteredTools" :key="tool.id">
+        <a :href="resolvePath(tool.href)" class="group block h-full">
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-lg hover:border-indigo-200 transition-all duration-300 h-full flex flex-col relative overflow-hidden">
+            
+            <!-- Hover Effect Background -->
+            <div class="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            
+            <div class="relative z-10 flex items-start justify-between mb-4">
+              <div 
+                class="w-12 h-12 rounded-xl flex items-center justify-center text-indigo-600 transform group-hover:scale-110 transition-transform duration-300"
+                :class="tool.iconBg || 'bg-indigo-50'"
+              >
+                <i :class="getFaIcon(tool.icon || 'box')" class="w-6 h-6 text-xl"></i>
+              </div>
+              <div class="p-1.5 rounded-full bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+              </div>
+            </div>
+            
+            <div class="relative z-10 flex-1">
+              <h3 class="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors mb-2" x-text="tool.name"></h3>
+              <p class="text-sm text-slate-500 leading-relaxed line-clamp-2" x-text="tool.desc"></p>
+            </div>
+            
+            <div class="relative z-10 mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium uppercase tracking-wider">
+              <span x-text="getCategoryLabel(tool)"></span>
+              <span x-show="tool.isNew" class="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full normal-case">NEW</span>
+            </div>
+          </div>
+        </a>
+      </template>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="filteredTools.length === 0" x-cloak class="text-center py-20">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400 mb-4">
+        <i class="fa-solid fa-magnifying-glass text-4xl"></i>
+      </div>
+      <h3 class="text-lg font-medium text-slate-900">未找到相关工具</h3>
+      <p class="text-slate-500 mt-2">换个关键词试试？</p>
+    </div>
+
+  </main>
+
+  <script>
+    function hubApp() {
+      return {
+        searchQuery: '',
+        activeFilter: 'all',
+        allTools: [],
+        
+        init() {
+          // Load tools from the global window.toolCollections.webtools
+          if (window.toolCollections && window.toolCollections.webtools) {
+            // Filter out the hub itself to avoid recursion if it's in the list
+            this.allTools = window.toolCollections.webtools.filter(t => t.id !== 'webtools_hub');
+          }
+          
+          // Initialize icons
+            // init
+        },
+        
+        get filteredTools() {
+          let tools = this.allTools;
+          
+          // 1. Filter by Category
+          if (this.activeFilter !== 'all') {
+             tools = tools.filter(tool => {
+               const id = tool.id;
+               if (this.activeFilter === 'productivity') return ['todo_list', 'pomodoro_timer', 'habit_tracker', 'idea_box', 'countdown_days'].includes(id);
+               if (this.activeFilter === 'wellness') return ['expense_tracker', 'mood_journal', 'water_tracker', 'breathing_exercise', 'period_tracker'].includes(id);
+               if (this.activeFilter === 'utility') return ['qr_code_studio', 'password_manager', 'decision_maker', 'white_noise', 'life_progress'].includes(id);
+               if (this.activeFilter === 'creation') return ['reading_list', 'flashcards', 'resume_builder', 'color_palette', 'image_compressor'].includes(id);
+               return true;
+             });
+          }
+          
+          // 2. Filter by Search
+          if (this.searchQuery) {
+            const q = this.searchQuery.toLowerCase();
+            tools = tools.filter(t => 
+              t.name.toLowerCase().includes(q) || 
+              t.desc.toLowerCase().includes(q)
+            );
+          }
+          
+          return tools;
+        },
+        
+        resolvePath(href) {
+            // href is typically "tools/webtools/xxx.html"
+            // We are in "tools/webtools/index.html"
+            if (href.startsWith('tools/webtools/')) {
+                return href.replace('tools/webtools/', './');
+            }
+            return '../../' + href;
+        },
+        
+        getCategoryLabel(tool) {
+            const id = tool.id;
+            if (['todo_list', 'pomodoro_timer', 'habit_tracker', 'idea_box', 'countdown_days'].includes(id)) return '效率';
+            if (['expense_tracker', 'mood_journal', 'water_tracker', 'breathing_exercise', 'period_tracker'].includes(id)) return '健康';
+            if (['qr_code_studio', 'password_manager', 'decision_maker', 'white_noise', 'life_progress'].includes(id)) return '实用';
+            if (['reading_list', 'flashcards', 'resume_builder', 'color_palette', 'image_compressor'].includes(id)) return '创作';
+            return '工具';
+        },
+        
+        getFaIcon(name) {
+            const map = {
+                'settings': 'fa-solid fa-gear',
+                'user': 'fa-solid fa-user',
+                'users': 'fa-solid fa-users',
+                'box': 'fa-solid fa-box',
+                'layout-grid': 'fa-solid fa-th-large',
+                'clock': 'fa-solid fa-clock',
+                'calendar': 'fa-solid fa-calendar',
+                'bar-chart': 'fa-solid fa-chart-bar',
+                'trending-up': 'fa-solid fa-arrow-trend-up',
+                'dollar-sign': 'fa-solid fa-dollar-sign',
+                'credit-card': 'fa-solid fa-credit-card',
+                'check-circle': 'fa-solid fa-circle-check',
+                'alert-circle': 'fa-solid fa-circle-exclamation',
+                'file-text': 'fa-solid fa-file-lines',
+                'image': 'fa-solid fa-image',
+                'music': 'fa-solid fa-music',
+                'video': 'fa-solid fa-video',
+                'smile': 'fa-solid fa-face-smile',
+                'heart': 'fa-solid fa-heart',
+                'star': 'fa-solid fa-star',
+                'zap': 'fa-solid fa-bolt',
+                'activity': 'fa-solid fa-chart-line',
+                'command': 'fa-solid fa-command',
+                'hash': 'fa-solid fa-hashtag',
+                'percent': 'fa-solid fa-percent',
+                'search': 'fa-solid fa-search',
+                'menu': 'fa-solid fa-bars',
+                'x': 'fa-solid fa-xmark',
+                'filter': 'fa-solid fa-filter',
+                'sliders': 'fa-solid fa-sliders',
+                'pen-tool': 'fa-solid fa-pen-nib',
+                'wrench': 'fa-solid fa-wrench',
+                'scissors': 'fa-solid fa-scissors',
+                'trash-2': 'fa-solid fa-trash-can',
+                'edit-2': 'fa-solid fa-pen',
+                'edit-3': 'fa-solid fa-pen-to-square',
+                'link': 'fa-solid fa-link',
+                'external-link': 'fa-solid fa-arrow-up-right-from-square',
+                'refresh-cw': 'fa-solid fa-rotate',
+                'upload': 'fa-solid fa-upload',
+                'download': 'fa-solid fa-download',
+                'camera': 'fa-solid fa-camera',
+                'map-pin': 'fa-solid fa-location-dot',
+                'phone': 'fa-solid fa-phone',
+                'mail': 'fa-solid fa-envelope',
+                'message-circle': 'fa-solid fa-message',
+                'globe': 'fa-solid fa-globe',
+                'sun': 'fa-solid fa-sun',
+                'moon': 'fa-solid fa-moon',
+                'shield': 'fa-solid fa-shield-halved',
+                'lock': 'fa-solid fa-lock',
+                'unlock': 'fa-solid fa-unlock',
+                'key': 'fa-solid fa-key',
+                'database': 'fa-solid fa-database',
+                'server': 'fa-solid fa-server',
+                'cpu': 'fa-solid fa-microchip',
+                'code': 'fa-solid fa-code',
+                'terminal': 'fa-solid fa-terminal',
+                'book': 'fa-solid fa-book',
+                'bookmark': 'fa-solid fa-bookmark',
+                'flag': 'fa-solid fa-flag',
+                'archive': 'fa-solid fa-box-archive',
+                'inbox': 'fa-solid fa-inbox',
+                'layers': 'fa-solid fa-layer-group',
+                'layout': 'fa-solid fa-table-columns',
+                'grid': 'fa-solid fa-border-all',
+                'list': 'fa-solid fa-list',
+                'check': 'fa-solid fa-check',
+                'plus': 'fa-solid fa-plus',
+                'minus': 'fa-solid fa-minus',
+                'info': 'fa-solid fa-info',
+                'help-circle': 'fa-solid fa-circle-question',
+                // Webtools specific icons that need mapping
+                'timer': 'fa-solid fa-stopwatch',
+                'calendar-clock': 'fa-solid fa-calendar-day',
+                'scale': 'fa-solid fa-weight-scale',
+                'regex': 'fa-solid fa-asterisk',
+                'brain-circuit': 'fa-solid fa-brain',
+                'party-popper': 'fa-solid fa-champagne-glasses',
+                'pie-chart': 'fa-solid fa-chart-pie',
+                'arrow-right-left': 'fa-solid fa-right-left',
+                'dices': 'fa-solid fa-dice',
+                'git-compare-arrows': 'fa-solid fa-code-branch',
+                'text-cursor-input': 'fa-solid fa-i-cursor',
+                'shield-check': 'fa-solid fa-shield-virus',
+                'wand-magic-sparkles': 'fa-solid fa-wand-magic',
+                'pipette': 'fa-solid fa-eye-dropper',
+                'binary': 'fa-solid fa-binary',
+                'calendar-heart': 'fa-solid fa-heart',
+                'case-sensitive': 'fa-solid fa-font',
+                'fingerprint': 'fa-solid fa-fingerprint',
+                'table-cells': 'fa-solid fa-table-cells',
+                'layout': 'fa-solid fa-table-columns',
+            };
+            return map[name] || 'fa-solid fa-' + name;
+        },
+      }
+    }
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拖延症诊断与治疗 - AI心理工具</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        [v-cloak] { display: none; }
+        .prose { max-width: none; }
+        .prose h1, .prose h2, .prose h3 { color: #dc2626; font-weight: bold; margin-top: 1.5rem; }
+        .prose p { margin: 1rem 0; line-height: 1.75; }
+        .prose ul, .prose ol { margin: 1rem 0; padding-left: 2rem; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gradient-to-br from-orange-50 via-red-50 to-amber-50 min-h-screen">
+    <div id="app" v-cloak>
+        <!-- 导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i class="fa-solid fa-clock text-red-600 text-2xl"></i>
+                    <span class="font-bold text-xl text-slate-900">拖延症诊断与治疗</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg">
+                        <button
+                            @click="apiConfig.model = 'deepseek-v4-flash'"
+                            :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-red-600 text-white' : 'bg-white text-slate-600'"
+                            class="px-3 py-1 rounded text-sm font-medium transition-all"
+                        >V4 Flash</button>
+                        <button
+                            @click="apiConfig.model = 'deepseek-v4-pro'"
+                            :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-red-600 text-white' : 'bg-white text-slate-600'"
+                            class="px-3 py-1 rounded text-sm font-medium transition-all"
+                        >V4 Pro</button>
+                    </div>
+                    <button @click="showSettings = true" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                        <i class="fa-solid fa-gear text-slate-600 text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 左侧输入区 -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
+                        <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-list text-red-600"></i>
+                            拖延症诊断
+                        </h2>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">拖延的任务</label>
+                                <input
+                                    v-model="formData.task"
+                                    type="text"
+                                    placeholder="例如：写报告、健身、学习英语..."
+                                    class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-red-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">拖延行为描述</label>
+                                <textarea
+                                    v-model="formData.behavior"
+                                    rows="5"
+                                    placeholder="描述你的拖延行为：&#10;- 你如何拖延的？（刷手机、睡觉、做其他事）&#10;- 拖延多久了？&#10;- 拖延时的感受？（焦虑、愧疚、无所谓）"
+                                    class="w-full rounded-lg border-slate-300 border p-3 focus:ring-2 focus:ring-red-500"
+                                ></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">任务难度感受</label>
+                                <select v-model="formData.difficulty" class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-red-500">
+                                    <option value="easy">看起来很简单</option>
+                                    <option value="medium">有点难度</option>
+                                    <option value="hard">非常困难</option>
+                                    <option value="unclear">不知道怎么开始</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">截止时间</label>
+                                <select v-model="formData.deadline" class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-red-500">
+                                    <option value="urgent">今天/明天</option>
+                                    <option value="soon">一周内</option>
+                                    <option value="later">一个月内</option>
+                                    <option value="none">没有明确截止时间</option>
+                                </select>
+                            </div>
+
+                            <button
+                                @click="generate"
+                                :disabled="isLoading || !canGenerate"
+                                class="w-full bg-red-600 text-white py-3 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                            >
+                                <span v-if="isLoading"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                                <span v-else><i class="fa-solid fa-bolt"></i></span>
+                                <span>{{ isLoading ? '诊断中...' : '开始诊断' }}</span> </button> </div> </div> <!-- 快速计时器 --> <div class="bg-white rounded-2xl shadow-lg p-6 border border-slate-200"> <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2"> <i class="fa-solid fa-stopwatch text-orange-600"></i> 番茄钟计时器 </h3> <div class="text-center"> <div class="text-5xl font-bold text-red-600 mb-4">{{ timerDisplay }}</div>
+                            <div class="flex gap-2 justify-center">
+                                <button
+                                    v-if="!timerRunning"
+                                    @click="startTimer"
+                                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                >
+                                    开始 (25分钟)
+                                </button>
+                                <button
+                                    v-if="timerRunning"
+                                    @click="stopTimer"
+                                    class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                                >
+                                    停止
+                                </button>
+                                <button
+                                    @click="resetTimer"
+                                    class="px-4 py-2 bg-slate-300 text-slate-700 rounded-lg hover:bg-slate-400 transition-colors"
+                                >
+                                    重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧结果区 -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 min-h-[600px]">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-stethoscope text-red-600"></i>
+                                诊断报告
+                            </h2>
+                            <div v-if="result" class="flex gap-2">
+                                <button @click="copyResult" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                                    <i class="fa-solid fa-copy text-slate-600"></i>
+                                </button>
+                                <button @click="exportResult" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                                    <i class="fa-solid fa-download text-slate-600"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="!result && !isLoading" class="flex flex-col items-center justify-center h-96 text-slate-400">
+                            <i class="fa-solid fa-clipboard-check text-6xl mb-4 opacity-50"></i>
+                            <p class="text-center">填写拖延信息后点击诊断<br/>基于行为心理学</p>
+                        </div>
+
+                        <div v-if="isLoading" class="flex flex-col items-center justify-center h-96">
+                            <i class="fa-solid fa-spinner fa-spin text-5xl text-red-600 mb-4"></i>
+                            <p class="text-slate-600">正在分析拖延根因...</p>
+                        </div>
+
+                        <div v-if="reasoningContent" class="mb-4">
+                            <details class="bg-slate-50 rounded-lg p-4">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-600 flex items-center gap-2">
+                                    <i class="fa-solid fa-brain"></i>
+                                    深度思考过程 (点击展开)
+                                </summary>
+                                <div class="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{{ reasoningContent }}</div>
+                            </details>
+                        </div>
+
+                        <div v-if="result" class="prose prose-slate max-w-none" v-html="marked.parse(result)"></div>
+
+                        <div v-if="errorMessage" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                                <span>{{ errorMessage }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-slate-900">API 配置</h3>
+                    <button @click="showSettings = false" class="p-2 hover:bg-slate-100 rounded-lg">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">DeepSeek API Key</label>
+                        <input
+                            type="password"
+                            v-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-red-500"
+                        />
+                        <p class="mt-1 text-xs text-slate-500">获取地址: <a href="https://platform.deepseek.com" target="_blank" class="text-red-600 hover:underline">platform.deepseek.com</a></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">模型选择</label>
+                        <select v-model="apiConfig.model" class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-red-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">系统提示词</label>
+                        <textarea
+                            v-model="apiConfig.systemPrompt"
+                            rows="8"
+                            class="w-full rounded-lg border-slate-300 border p-3 focus:ring-2 focus:ring-red-500 font-mono text-sm"
+                        ></textarea>
+                        <p class="mt-1 text-xs text-slate-500">基于行为心理学</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                        取消
+                    </button>
+                    <button @click="saveConfig" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, onUnmounted } = Vue;
+
+        createApp({
+            setup() {
+
+                const showSettings = ref(false);
+                const isLoading = ref(false);
+                const result = ref('');
+                const reasoningContent = ref('');
+                const errorMessage = ref('');
+
+                const formData = reactive({
+                    task: '',
+                    behavior: '',
+                    difficulty: 'medium',
+                    deadline: 'soon'
+                });
+
+                // 番茄钟计时器
+                const timerSeconds = ref(25 * 60);
+                const timerRunning = ref(false);
+                let timerInterval = null;
+
+                const timerDisplay = computed(() => {
+                    const mins = Math.floor(timerSeconds.value / 60);
+                    const secs = timerSeconds.value % 60;
+                    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                });
+
+                function startTimer() {
+                    timerRunning.value = true;
+                    timerInterval = setInterval(() => {
+                        if (timerSeconds.value > 0) {
+                            timerSeconds.value--;
+                        } else {
+                            stopTimer();
+                            alert('番茄钟时间到！休息5分钟吧！');
+                        }
+                    }, 1000);
+                }
+
+                function stopTimer() {
+                    timerRunning.value = false;
+                    if (timerInterval) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                    }
+                }
+
+                function resetTimer() {
+                    stopTimer();
+                    timerSeconds.value = 25 * 60;
+                }
+
+                const apiConfig = reactive({
+                    deepseek: '',
+                    model: 'deepseek-v4-flash',
+                    systemPrompt: `你是一位专业的心理咨询师和行为治疗专家，精通拖延症的诊断与治疗。
+
+你的任务是：
+1. **识别拖延类型**：
+   - 完美主义型：害怕做不好，所以不开始
+   - 畏难型：任务太难/太大，不知从何开始
+   - 享乐型：追求即时满足，逃避不舒服的任务
+   - 叛逆型：对任务有抵触情绪
+
+2. **根因分析**：
+   - 心理层面：恐惧、焦虑、自我怀疑
+   - 认知层面：错误信念、时间感知偏差
+   - 环境层面：干扰因素、缺乏结构
+
+3. **行为实验方案**：
+   - 2分钟启动法：先做2分钟，降低启动阻力
+   - 番茄工作法：25分钟专注 + 5分钟休息
+   - 任务分解：大任务拆解成小步骤
+   - 实施意图：制定"如果-那么"计划
+   - 环境设计：移除干扰，设置触发器
+
+4. **个性化建议**：
+   - 根据拖延类型给出针对性策略
+   - 提供具体可执行的行动清单
+   - 设置合理的期望值
+
+输出格式：
+# 拖延症诊断报告
+
+## 📊 拖延类型
+[识别主要类型]
+
+## 🔍 根因分析
+[深度分析]
+
+## 💊 治疗方案
+[具体行为实验]
+
+## ✅ 行动清单
+[今天就能做的3-5个步骤]
+
+使用Markdown格式，清晰分段。`
+                });
+
+                const canGenerate = computed(() => {
+                    return formData.task && formData.behavior;
+                });
+
+                async function generate() {
+                    if (!apiConfig.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isLoading.value = true;
+                    result.value = '';
+                    reasoningContent.value = '';
+                    errorMessage.value = '';
+
+                    const difficultyMap = {
+                        easy: '看起来很简单',
+                        medium: '有点难度',
+                        hard: '非常困难',
+                        unclear: '不知道怎么开始'
+                    };
+
+                    const deadlineMap = {
+                        urgent: '今天/明天',
+                        soon: '一周内',
+                        later: '一个月内',
+                        none: '没有明确截止时间'
+                    };
+
+                    const userPrompt = `请帮我诊断拖延症并提供治疗方案：
+
+**拖延的任务**：${formData.task}
+
+**拖延行为描述**：
+${formData.behavior}
+
+**任务难度感受**：${difficultyMap[formData.difficulty]}
+
+**截止时间**：${deadlineMap[formData.deadline]}
+
+请基于行为心理学，识别我的拖延类型、分析根因，并提供具体可执行的治疗方案。`;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: [
+                                    { role: 'system', content: apiConfig.systemPrompt },
+                                    { role: 'user', content: userPrompt }
+                                ],
+                                stream: true,
+                                temperature: 0.7
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`API 请求失败: ${response.status}`);
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop();
+
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const data = line.slice(6);
+                                    if (data === '[DONE]') continue;
+
+                                    try {
+                                        const parsed = JSON.parse(data);
+                                        const delta = parsed.choices[0].delta;
+
+                                        if (delta.reasoning_content) {
+                                            reasoningContent.value += delta.reasoning_content;
+                                        }
+
+                                        if (delta.content) {
+                                            result.value += delta.content;
+                                        }
+                                    } catch (e) {
+                                        console.error('解析错误:', e);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('生成失败:', error);
+                        errorMessage.value = error.message || '生成失败，请重试';
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                async function copyResult() {
+                    try {
+                        let text = result.value;
+                        if (reasoningContent.value) {
+                            text = `=== 思考过程 ===\n\n${reasoningContent.value}\n\n=== 诊断报告 ===\n\n${text}`;
+                        }
+                        await navigator.clipboard.writeText(text);
+                        alert('已复制到剪贴板');
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                    }
+                }
+
+                function exportResult() {
+                    let content = '';
+                    if (reasoningContent.value) {
+                        content += '=== 思考过程 ===\n\n' + reasoningContent.value + '\n\n';
+                    }
+                    content += '=== 诊断报告 ===\n\n' + result.value;
+
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '拖延症诊断报告.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+
+                function saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: apiConfig.deepseek,
+                        model: apiConfig.model
+                    }));
+                    showSettings.value = false;
+                    alert('配置已保存');
+                }
+
+                function loadConfig() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        const config = JSON.parse(saved);
+                        if (config.deepseek) apiConfig.deepseek = config.deepseek;
+                        if (config.model) apiConfig.model = config.model;
+                    }
+                }
+
+                onMounted(() => {
+                    loadConfig();
+                });
+
+                onUnmounted(() => {
+                    stopTimer();
+                });
+
+                return {
+                    // 状态
+                    showSettings,
+                    isLoading,
+                    result,
+                    reasoningContent,
+                    errorMessage,
+                    formData,
+                    apiConfig,
+                    
+                    // 计算属性
+                    canGenerate,
+                    timerDisplay,
+                    
+                    // 方法
+                    generate,
+                    copyResult,
+                    exportResult,
+                    startTimer,
+                    stopTimer,
+                    resetTimer,
+                    
+                    // 库
+                    marked
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/psychological_procrastination_cure.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

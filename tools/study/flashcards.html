@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>记忆闪卡</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.0/index.css">
+  <style>
+    body {
+      font-family: "Noto Sans SC", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(120deg, #ecfeff 0%, #f8fafc 60%, #e0f2fe 100%);
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen text-slate-800">
+  <div x-data="flashcardLab()" x-init="init()" class="min-h-screen flex flex-col">
+    <header class="bg-white/80 backdrop-blur border-b border-slate-200">
+      <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-cyan-500 font-semibold">Study · 记忆闪卡</p>
+          <h1 class="text-xl font-bold">记忆闪卡实验室</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1 bg-slate-100 rounded-full p-1">
+            <button @click="setModel('v4-flash')" class="px-3 py-1 text-xs rounded-full font-semibold"
+              :class="modelLabel === 'v4-flash' ? 'bg-white shadow text-cyan-600' : 'text-slate-500'">V4 Flash</button>
+            <button @click="setModel('v4-pro')" class="px-3 py-1 text-xs rounded-full font-semibold"
+              :class="modelLabel === 'v4-pro' ? 'bg-white shadow text-cyan-600' : 'text-slate-500'">V4 Pro</button>
+          </div>
+          <button @click="showSettings = true" class="text-sm text-slate-600 hover:text-cyan-600">API 设置</button>
+          <a href="index.html" class="text-sm text-slate-500 hover:text-cyan-600">返回学习中心</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-[380px_1fr] gap-6">
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">学习主题或词汇列表</label>
+          <textarea x-model="seed" rows="4" class="w-full rounded-lg border border-slate-200 px-3 py-2" placeholder="例：英语 phrasal verbs 或 10 个单词列表"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">生成数量</label>
+            <input type="number" min="5" max="20" x-model.number="count" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+          </div>
+          <div class="flex items-end">
+            <button @click="generateCards" :disabled="isLoading" class="w-full bg-cyan-600 text-white rounded-lg py-2 font-semibold hover:bg-cyan-500">
+              <span x-show="!isLoading">生成闪卡</span>
+              <span x-show="isLoading">生成中...</span>
+            </button>
+          </div>
+        </div>
+        <div class="border-t border-slate-100 pt-4">
+          <h3 class="text-sm font-semibold text-slate-700 mb-2">手动添加</h3>
+          <input x-model="manualFront" class="w-full rounded-lg border border-slate-200 px-3 py-2 mb-2" placeholder="正面内容">
+          <input x-model="manualBack" class="w-full rounded-lg border border-slate-200 px-3 py-2" placeholder="背面内容">
+          <button @click="addManual" class="mt-3 w-full bg-slate-900 text-white rounded-lg py-2 font-semibold hover:bg-slate-700">加入卡片</button>
+        </div>
+        <p x-show="error" class="text-sm text-rose-600" x-text="error"></p>
+      </section>
+
+      <section class="space-y-4 min-h-[200px]">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-semibold">闪卡练习</h2>
+            <p class="text-sm text-slate-500">点击卡片翻转，标记记忆状态。</p>
+          </div>
+          <button @click="shuffle" class="text-sm text-cyan-600 hover:text-cyan-500">随机排序</button>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <template x-for="(card, index) in cards" :key="index">
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+              <button @click="card.show = !card.show" class="text-left w-full">
+                <div class="text-xs text-slate-400">点击翻转</div>
+                <h3 class="text-lg font-semibold mt-2" x-text="card.show ? card.back : card.front"></h3>
+              </button>
+              <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-600" x-show="card.tag === '熟悉'">熟悉</span>
+                <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-600" x-show="card.tag === '待练'">待练</span>
+                <span class="px-2 py-1 rounded-full bg-rose-50 text-rose-600" x-show="card.tag === '难记'">难记</span>
+              </div>
+              <div class="mt-3 flex gap-2">
+                <button @click="card.tag = '熟悉'" class="text-xs px-3 py-1 rounded-lg border border-emerald-200 text-emerald-600">熟悉</button>
+                <button @click="card.tag = '待练'" class="text-xs px-3 py-1 rounded-lg border border-amber-200 text-amber-600">待练</button>
+                <button @click="card.tag = '难记'" class="text-xs px-3 py-1 rounded-lg border border-rose-200 text-rose-600">难记</button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
+    </main>
+
+    <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div @click.away="showSettings = false" class="bg-white rounded-2xl p-6 w-full max-w-md">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">API 配置</h3>
+          <button @click="showSettings = false" class="text-slate-400">✕</button>
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+          <input x-model="apiConfig.deepseek" type="password" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <button @click="saveConfig" class="mt-6 w-full bg-cyan-600 text-white rounded-lg py-2 font-medium hover:bg-cyan-500">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="study-shared.js"></script>
+  <script>
+    const createBaseState = () => ({
+      apiConfig: studyShared.loadConfig(),
+      modelLabel: 'v3',
+      showSettings: false,
+      init() {
+        this.modelLabel = studyShared.resolveLabel(this.apiConfig.model);
+      },
+      setModel(label) {
+        this.modelLabel = label;
+        this.apiConfig.model = studyShared.modelMap[label] || this.apiConfig.model;
+        studyShared.saveConfig(this.apiConfig);
+      },
+      saveConfig() {
+        this.apiConfig.deepseek = this.apiConfig.deepseek.trim();
+        studyShared.saveConfig(this.apiConfig);
+        this.showSettings = false;
+      }
+    });
+
+    function flashcardLab() {
+      return {
+        ...createBaseState(),
+        seed: '英语 phrasal verbs',
+        count: 8,
+        manualFront: '',
+        manualBack: '',
+        cards: [],
+        isLoading: false,
+        error: '',
+        async generateCards() {
+          this.error = '';
+          this.isLoading = true;
+          const prompt = `请根据主题“${this.seed}”生成 ${this.count} 张学习闪卡。\n\n格式为 JSON：{\"cards\":[{\"front\":\"卡片正面\",\"back\":\"卡片背面\"}]}，仅返回 JSON。`;
+          try {
+            const content = await studyShared.callLLM({
+              apiKey: this.apiConfig.deepseek,
+              model: this.apiConfig.model,
+              messages: [
+                { role: 'system', content: '你是记忆卡片设计师，擅长给出清晰的知识点与记忆提示。' },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0.7
+            });
+            const cleaned = content.replace(/```json|```/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            this.cards = (parsed.cards || []).map(card => ({ ...card, show: false, tag: '待练' }));
+          } catch (error) {
+            this.error = error.message || '生成失败，请稍后再试。';
+          } finally {
+            this.isLoading = false;
+          }
+        },
+        addManual() {
+          if (!this.manualFront || !this.manualBack) return;
+          this.cards.unshift({
+            front: this.manualFront,
+            back: this.manualBack,
+            show: false,
+            tag: '待练'
+          });
+          this.manualFront = '';
+          this.manualBack = '';
+        },
+        shuffle() {
+          this.cards = [...this.cards].sort(() => Math.random() - 0.5);
+        }
+      };
+    }
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/study_flashcards.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

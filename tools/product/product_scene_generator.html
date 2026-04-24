@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品场景图生成器 - AI Content Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f766e 0%, #14b8a6 50%, #5eead4 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .scene-card {
+            transition: all 0.3s ease;
+        }
+
+        .scene-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .scene-card.selected {
+            ring: 4px;
+            ring-color: #14b8a6;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .loading-shimmer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen p-4">
+    <div x-data="productSceneGen()" x-init="init()" class="max-w-7xl mx-auto">
+        <nav class="glass rounded-2xl shadow-2xl mb-6 p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                    <div class="p-2 bg-gradient-to-br from-teal-600 to-emerald-600 rounded-xl">
+                        <i class="fa-solid fa-box text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-2xl text-slate-900">产品场景图生成器</h1>
+                        <p class="text-sm text-slate-500">AI 生成产品展示场景图</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 px-3 py-2 bg-teal-100 rounded-lg">
+                        <i class="fa-solid fa-microchip text-teal-600 text-xs"></i>
+                        <span class="text-xs text-teal-600">当前模型:</span>
+                        <span class="text-sm font-medium text-teal-900" x-text="getModelDisplayName()"></span>
+                    </div>
+                    <button @click="showSettings = true"
+                        class="flex items-center gap-2 px-4 py-2 bg-teal-100 hover:bg-teal-200 rounded-lg transition text-teal-700">
+                        <i class="fa-solid fa-gear text-sm"></i>
+                        <span>模型配置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-image text-teal-500"></i>
+                        上传产品图
+                    </h3>
+                    <div @click="$refs.productImageInput.click()"
+                        class="border-2 border-dashed border-teal-300 rounded-xl p-8 text-center cursor-pointer hover:border-teal-500 transition">
+                        <div x-show="!productImage">
+                            <i class="fa-solid fa-cloud-arrow-up text-4xl mx-auto text-teal-400 mb-3"></i>
+                            <p class="text-slate-600 font-medium">点击上传产品图片</p>
+                            <p class="text-sm text-slate-400 mt-1">支持 JPG、PNG 格式</p>
+                        </div>
+                        <div x-show="productImage" class="relative">
+                            <img :src="productImage" class="max-h-48 mx-auto rounded-lg">
+                            <button @click.stop="productImage = null; productImageBase64 = null"
+                                class="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="file" x-ref="productImageInput" @change="handleProductImageUpload($event)"
+                        accept="image/*" class="hidden">
+                </div>
+
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-layer-group text-teal-500"></i>
+                        选择场景
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button @click="scene = 'lifestyle'"
+                            :class="scene === 'lifestyle' ? 'ring-4 ring-teal-400' : ''"
+                            class="scene-card p-3 rounded-xl bg-gradient-to-br from-rose-100 to-teal-100 text-slate-800 text-center">
+                            <div class="text-xs font-medium">生活场景</div>
+                            <div class="text-xs opacity-70">日常使用展示</div>
+                        </button>
+                        <button @click="scene = 'studio'" :class="scene === 'studio' ? 'ring-4 ring-teal-400' : ''"
+                            class="scene-card p-3 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-slate-800 text-center">
+                            <div class="text-xs font-medium">专业棚拍</div>
+                            <div class="text-xs opacity-70">商业级质感</div>
+                        </button>
+                        <button @click="scene = 'outdoor'" :class="scene === 'outdoor' ? 'ring-4 ring-teal-400' : ''"
+                            class="scene-card p-3 rounded-xl bg-gradient-to-br from-blue-200 to-green-200 text-slate-800 text-center">
+                            <div class="text-xs font-medium">户外场景</div>
+                            <div class="text-xs opacity-70">自然光线</div>
+                        </button>
+                        <button @click="scene = 'indoor'" :class="scene === 'indoor' ? 'ring-4 ring-teal-400' : ''"
+                            class="scene-card p-3 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 text-slate-800 text-center">
+                            <div class="text-xs font-medium">室内家居</div>
+                            <div class="text-xs opacity-70">温馨氛围</div>
+                        </button>
+                        <button @click="scene = 'minimal'" :class="scene === 'minimal' ? 'ring-4 ring-teal-400' : ''"
+                            class="scene-card p-3 rounded-xl bg-white border-2 border-slate-200 text-slate-800 text-center">
+                            <div class="text-xs font-medium">极简纯色</div>
+                            <div class="text-xs opacity-70">干净背景</div>
+                        </button>
+                        <button @click="scene = 'creative'" :class="scene === 'creative' ? 'ring-4 ring-teal-400' : ''"
+                            class="scene-card p-3 rounded-xl bg-gradient-to-r from-purple-400 to-pink-400 text-white text-center">
+                            <div class="text-xs font-medium">创意合成</div>
+                            <div class="text-xs opacity-70">梦幻效果</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-comment-dots text-teal-500 text-base"></i>
+                        场景描述
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">场景详细描述</label>
+                            <textarea x-model="scenePrompt" rows="3" placeholder="描述想要的场景效果，如：阳光明媚的窗台、简约的白色书桌、户外草地等..."
+                                class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">生成数量</label>
+                            <select x-model.number="batchCount"
+                                class="w-full rounded-lg border-slate-200 border p-2 text-sm">
+                                <option value="1">1 张</option>
+                                <option value="2">2 张</option>
+                                <option value="4">4 张</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button @click="generate()" :disabled="isGenerating || !canGenerate()"
+                    :class="isGenerating ? 'bg-slate-400' : 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700'"
+                    class="w-full text-white font-bold py-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2">
+                    <i
+                        :class="isGenerating ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-wand-magic-sparkles text-lg'"></i>
+                    <span x-text="isGenerating ? `生成中... ${generatedCount}/${totalCount}` : '生成场景图'"></span>
+                </button>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-xl flex items-center gap-2 text-slate-900">
+                            <i class="fa-solid fa-images text-teal-500"></i>
+                            生成结果
+                        </h3>
+                        <div x-show="results.length > 0" class="flex gap-2">
+                            <button @click="downloadAll()"
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-download text-xs text-white"></i>
+                                下载全部
+                            </button>
+                            <button @click="clearResults()"
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-trash-can text-xs text-white"></i>
+                                清空
+                            </button>
+                        </div>
+                    </div>
+
+                    <div x-show="results.length === 0 && !isGenerating"
+                        class="flex flex-col items-center justify-center py-20 text-slate-400">
+                        <i class="fa-solid fa-image text-6xl mb-4 opacity-50"></i>
+                        <p class="text-lg font-medium">还没有生成场景图</p>
+                        <p class="text-sm">上传产品图，选择场景，开始生成</p>
+                    </div>
+
+                    <div x-show="isGenerating" class="grid grid-cols-2 gap-4">
+                        <template x-for="i in totalCount" :key="i">
+                            <div class="aspect-square rounded-xl bg-slate-200 loading-shimmer relative overflow-hidden">
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="!isGenerating && results.length > 0" class="grid grid-cols-2 gap-4">
+                        <template x-for="(result, idx) in results" :key="idx">
+                            <div class="relative group rounded-xl overflow-hidden shadow-lg">
+                                <img :src="result.url" :alt="result.scene" class="w-full aspect-square object-cover">
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition p-4 flex flex-col justify-end">
+                                    <p class="text-white text-sm font-medium mb-2" x-text="result.scene"></p>
+                                    <div class="flex gap-2">
+                                        <button @click="downloadImage(result)"
+                                            class="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm">
+                                            <i class="fa-solid fa-download text-sm text-white"></i>
+                                        </button>
+                                        <button @click="copyImageUrl(result)"
+                                            class="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm">
+                                            <i class="fa-solid fa-link text-sm text-white"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="absolute top-2 left-2 px-2 py-1 bg-black/50 rounded text-xs text-white"
+                                    x-text="result.model"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="showSettings" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+                <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-900">
+                    <i class="fa-solid fa-gear text-teal-500"></i>
+                    模型配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">选择模型</label>
+                        <select x-model="model" class="w-full rounded-lg border-slate-300 border p-3 bg-white">
+                            <option value="doubao-seedream-4.5">豆包 Seedream 4.5（图生图）</option>
+                            <option value="doubao-seedream-4.0">豆包 Seedream 4.0（图生图）</option>
+                            <option value="nanobanana-flash">Google Nano Banana (2.5 Flash)</option>
+                            <option value="nanobanana-pro">Google Nano Banana Pro (3.0 Pro)</option>
+                            <option value="google-imagen">谷歌 Imagen 3</option>
+                            <option value="openrouter-dalle3">OpenRouter DALL-E 3</option>
+                        </select>
+                    </div>
+                    <div x-show="model.startsWith('doubao')">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">API Key</label>
+                                <input type="password" x-model="apiConfig.apiKey" placeholder="输入 API Key"
+                                    class="w-full rounded-lg border-slate-300 border p-3">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Endpoint ID</label>
+                                <input type="text" x-model="apiConfig.endpointId" placeholder="ep-xxx"
+                                    class="w-full rounded-lg border-slate-300 border p-3">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">分辨率</label>
+                                <select x-model="apiConfig.size"
+                                    class="w-full rounded-lg border-slate-300 border p-3 bg-white">
+                                    <option value="2K">2K</option>
+                                    <option value="4K">4K</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" x-model="apiConfig.disableWatermark"
+                                        class="rounded border-slate-300">
+                                    <span class="text-sm text-slate-700">关闭水印</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div x-show="model.startsWith('nanobanana') || model === 'google-imagen'">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Google API Key</label>
+                        <input type="password" x-model="googleApiKey" placeholder="输入 Google API Key"
+                            class="w-full rounded-lg border-slate-300 border p-3">
+                        <p class="text-xs text-slate-500 mt-1">获取地址: <a href="https://aistudio.google.com/apikey"
+                                target="_blank" class="text-blue-500 hover:underline">Google AI Studio</a></p>
+                        <div class="mt-3 p-3 bg-blue-50 rounded-lg">
+                            <div class="flex items-start gap-2">
+                                <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+                                <div class="text-sm text-blue-700">
+                                    Nano Banana 支持上传参考图进行图像编辑和组合创作
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div x-show="model === 'openrouter-dalle3'">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">谷歌 API Key</label>
+                        <input type="password" x-model="googleApiKey" placeholder="输入谷歌 API Key"
+                            class="w-full rounded-lg border-slate-300 border p-3">
+                    </div>
+                    <div x-show="model === 'openrouter-dalle3'">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">OpenRouter API Key</label>
+                        <input type="password" x-model="openrouterApiKey" placeholder="输入 OpenRouter API Key"
+                            class="w-full rounded-lg border-slate-300 border p-3">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @click="showSettings = false"
+                        class="px-6 py-2 hover:bg-slate-100 rounded-lg text-slate-700">取消</button>
+                    <button @click="saveConfig()"
+                        class="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function productSceneGen() {
+            return {
+                showSettings: false,
+                isGenerating: false,
+                generatedCount: 0,
+                totalCount: 0,
+                progress: 0,
+                productImage: null,
+                productImageBase64: null,
+                scene: 'lifestyle',
+                scenePrompt: '',
+                batchCount: 1,
+                model: 'doubao-seedream-4.5',
+                results: [],
+
+                apiConfig: {
+                    apiKey: '',
+                    endpointId: 'doubao-seedream-4-5-251128',
+                    size: '2K',
+                    disableWatermark: true
+                },
+                googleApiKey: '',
+                openrouterApiKey: '',
+
+                init() {
+                    this.loadConfig();
+                    // 初始化图标已由 Font Awesome 自动处理
+                },
+
+                loadConfig() {
+                    const saved = localStorage.getItem('product_scene_config');
+                    if (saved) {
+                        try {
+                            const data = JSON.parse(saved);
+                            this.model = data.model || this.model;
+                            this.apiConfig = { ...this.apiConfig, ...data.apiConfig };
+                            this.googleApiKey = data.googleApiKey || '';
+                            this.openrouterApiKey = data.openrouterApiKey || '';
+                        } catch (e) {
+                            console.error('解析配置失败:', e);
+                        }
+                    }
+                    // 从全局配置读取 API Key 作为 fallback
+                    const globalConfig = localStorage.getItem('global_llm_config');
+                    if (globalConfig) {
+                        try {
+                            const parsed = JSON.parse(globalConfig);
+                            if (!this.googleApiKey && parsed.google) {
+                                this.googleApiKey = parsed.google;
+                            }
+                        } catch (e) {
+                            console.error('解析全局配置失败:', e);
+                        }
+                    }
+                },
+
+                saveConfig() {
+                    localStorage.setItem('product_scene_config', JSON.stringify({
+                        model: this.model,
+                        apiConfig: this.apiConfig,
+                        googleApiKey: this.googleApiKey,
+                        openrouterApiKey: this.openrouterApiKey
+                    }));
+                    this.showSettings = false;
+                },
+
+                getModelDisplayName() {
+                    const names = {
+                        'doubao-seedream-4.5': '豆包 Seedream 4.5',
+                        'doubao-seedream-4.0': '豆包 Seedream 4.0',
+                        'nanobanana-flash': 'Nano Banana (2.5 Flash)',
+                        'nanobanana-pro': 'Nano Banana Pro',
+                        'google-imagen': '谷歌 Imagen 3',
+                        'openrouter-dalle3': 'OpenRouter DALL-E 3'
+                    };
+                    return names[this.model] || '未配置';
+                },
+
+                handleProductImageUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.productImage = e.target.result;
+                            this.productImageBase64 = e.target.result.split(',')[1];
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                },
+
+                canGenerate() {
+                    return this.productImage && this.scenePrompt.trim() !== '';
+                },
+
+                async generate() {
+                    this.isGenerating = true;
+                    this.results = [];
+                    this.generatedCount = 0;
+                    this.totalCount = this.batchCount;
+
+                    try {
+                        for (let i = 0; i < this.batchCount; i++) {
+                            const prompt = this.buildPrompt();
+                            const result = await this.callImageAPI(prompt);
+                            if (result) {
+                                this.results.push({
+                                    ...result,
+                                    scene: this.getSceneName(),
+                                    timestamp: Date.now()
+                                });
+                            }
+                            this.generatedCount++;
+                        }
+                    } catch (error) {
+                        alert(error.message || '生成失败');
+                    } finally {
+                        this.isGenerating = false;
+                    }
+                },
+
+                buildPrompt() {
+                    const sceneDescriptions = {
+                        'lifestyle': 'A natural lifestyle scene showing the product in everyday use. Warm, inviting atmosphere with soft natural lighting. The product is organically integrated into the scene.',
+                        'studio': 'Professional studio product photography. Clean, high-end commercial look with dramatic lighting. The product is the clear focus with perfect composition.',
+                        'outdoor': 'Outdoor natural scene with the product. Sunlight filtering through trees, natural environment, fresh air feeling. The product blends naturally with nature.',
+                        'indoor': 'Cozy indoor home setting. Warm ambient lighting, comfortable furniture, homey atmosphere. The product shown in a realistic living environment.',
+                        'minimal': 'Clean minimal studio setting with solid colored background. Simple, elegant, focus solely on the product. Modern e-commerce style.',
+                        'creative': 'Creative and dreamy composition with surreal elements. Magical atmosphere, unique visual impact, artistic interpretation of the product.'
+                    };
+
+                    return `${sceneDescriptions[this.scene]}
+
+Product reference image will be integrated into this scene.
+
+Additional scene details: ${this.scenePrompt}
+
+The product should be naturally placed in the scene, maintaining its original appearance while being contextually appropriate. High quality, professional photography look.`;
+                },
+
+                getSceneName() {
+                    const names = {
+                        'lifestyle': '生活场景',
+                        'studio': '专业棚拍',
+                        'outdoor': '户外场景',
+                        'indoor': '室内家居',
+                        'minimal': '极简纯色',
+                        'creative': '创意合成'
+                    };
+                    return names[this.scene] || this.scene;
+                },
+
+                async callImageAPI(prompt) {
+                    if (this.model.startsWith('doubao')) {
+                        return await this.callDoubaoAPI(prompt);
+                    } else if (this.model.startsWith('nanobanana')) {
+                        return await this.callNanoBananaAPI(prompt);
+                    } else if (this.model === 'google-imagen') {
+                        return await this.callGoogleAPI(prompt);
+                    } else if (this.model === 'openrouter-dalle3') {
+                        return await this.callOpenRouterAPI(prompt);
+                    }
+                    throw new Error('未选择的模型');
+                },
+
+                async callNanoBananaAPI(prompt) {
+                    if (!this.googleApiKey) throw new Error('请先配置 Google API Key');
+
+                    const modelId = this.model === 'nanobanana-pro' ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${this.googleApiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: {
+                                responseModalities: ['IMAGE'],
+                                imageGenerationConfig: {
+                                    width: 1024,
+                                    height: 1024,
+                                    outputCompressionQuality: 90,
+                                    outputFormat: 'PNG'
+                                }
+                            }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                        for (const part of data.candidates[0].content.parts) {
+                            if (part.inlineData && part.inlineData.data) {
+                                return {
+                                    url: `data:image/png;base64,${part.inlineData.data}`,
+                                    base64: part.inlineData.data,
+                                    model: 'Nano Banana'
+                                };
+                            }
+                        }
+                    }
+                    throw new Error('API 返回格式错误');
+                },
+
+                async callDoubaoAPI(prompt) {
+                    if (!this.apiConfig.apiKey) throw new Error('请先配置 API Key');
+
+                    const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/images/generations', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.endpointId,
+                            prompt: prompt,
+                            size: this.apiConfig.size === '2K' ? '2048x2048' : '4096x2160',
+                            watermark: !this.apiConfig.disableWatermark,
+                            reference_image: this.productImageBase64
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.data && data.data[0]) {
+                        return {
+                            url: data.data[0].url || `data:image/png;base64,${data.data[0].b64_json}`,
+                            base64: data.data[0].b64_json,
+                            model: '豆包 Seedream'
+                        };
+                    }
+                    throw new Error('API 返回格式错误');
+                },
+
+                async callGoogleAPI(prompt) {
+                    if (!this.googleApiKey) throw new Error('请先配置谷歌 API Key');
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImages?key=${this.googleApiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: prompt,
+                            imageSize: { width: 1024, height: 1024 },
+                            generateImageResponse: { mimeType: 'image/png' }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.generatedImages && data.generatedImages[0]) {
+                        return {
+                            url: `data:image/png;base64,${data.generatedImages[0].generatedImage}`,
+                            base64: data.generatedImages[0].generatedImage,
+                            model: '谷歌 Imagen'
+                        };
+                    }
+                    throw new Error('API 返回格式错误');
+                },
+
+                async callOpenRouterAPI(prompt) {
+                    if (!this.openrouterApiKey) throw new Error('请先配置 OpenRouter API Key');
+
+                    const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.openrouterApiKey}`,
+                            'HTTP-Referer': window.location.origin
+                        },
+                        body: JSON.stringify({
+                            model: 'dall-e-3',
+                            prompt: prompt,
+                            n: 1,
+                            size: '1024x1024'
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({}));
+                        throw new Error(error.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.data && data.data[0]) {
+                        return {
+                            url: data.data[0].url,
+                            base64: data.data[0].b64_json,
+                            model: 'DALL-E 3'
+                        };
+                    }
+                    throw new Error('API 返回格式错误');
+                },
+
+                downloadImage(result) {
+                    const a = document.createElement('a');
+                    a.href = result.url;
+                    a.download = `product_scene_${result.timestamp}.png`;
+                    a.click();
+                },
+
+                downloadAll() {
+                    this.results.forEach((result, idx) => {
+                        setTimeout(() => this.downloadImage(result), idx * 500);
+                    });
+                },
+
+                clearResults() {
+                    if (confirm('确定要清空所有结果吗？')) {
+                        this.results = [];
+                    }
+                },
+
+                copyImageUrl(result) {
+                    navigator.clipboard.writeText(result.url).then(() => {
+                        alert('链接已复制');
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

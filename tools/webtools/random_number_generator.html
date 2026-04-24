@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>随机数字生成器 - Webtools</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="./standalone.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div x-data="webtoolPage('random_number_generator')" x-init="init()" class="min-h-screen flex flex-col">
+    <nav class="bg-white/80 backdrop-blur border-b border-slate-200 sticky top-0 z-40">
+      <div class="max-w-4xl mx-auto h-16 px-4 flex items-center justify-between">
+        <a href="./index.html" class="flex items-center gap-2 text-slate-700 hover:text-slate-900">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span class="font-semibold">返回 Webtools</span>
+        </a>
+        <button @click="showSettings = true" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+      </div>
+    </nav>
+
+    <main class="flex-1">
+      <section class="max-w-4xl mx-auto px-4 py-8" x-show="tool" x-cloak>
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900" x-text="tool.name"></h1>
+            <p class="text-slate-500 mt-2" x-text="tool.desc"></p>
+          </div>
+
+          <div class="border-t border-slate-200 pt-6 space-y-4">
+            <!-- 公式计算器 -->
+            <div x-show="tool.type === 'formula'" x-cloak>
+              <div class="grid gap-4 md:grid-cols-2">
+                <template x-for="field in tool.fields" :key="field.key">
+                  <label class="text-sm font-medium text-slate-700">
+                    <span x-text="field.label"></span>
+                    <div class="mt-2 flex items-center gap-2">
+                      <input type="number" x-model.number="tool.values[field.key]" :min="field.min" :max="field.max" :step="field.step || 'any'" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500" />
+                      <span class="text-xs text-slate-400" x-text="field.unit"></span>
+                    </div>
+                  </label>
+                </template>
+              </div>
+              <button @click="calculate(tool)" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">计算结果</button>
+              <div class="mt-4" x-show="tool.result" x-cloak>
+                <template x-if="Array.isArray(tool.result)">
+                  <div class="grid gap-3 md:grid-cols-2">
+                    <template x-for="item in tool.result" :key="item.label">
+                      <div class="border border-slate-200 rounded-lg p-3">
+                        <div class="text-xs text-slate-500" x-text="item.label"></div>
+                        <div class="text-lg font-semibold text-slate-900" x-text="item.value"></div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+                <template x-if="!Array.isArray(tool.result)">
+                  <div class="border border-slate-200 rounded-lg p-3">
+                    <div class="text-xs text-slate-500" x-text="tool.resultLabel"></div>
+                    <div class="text-lg font-semibold text-slate-900" x-text="tool.result"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- 计时器 -->
+            <div x-show="tool.type === 'timer'" x-cloak class="space-y-3">
+              <div class="grid gap-4 md:grid-cols-2">
+                <label class="text-sm font-medium text-slate-700">
+                  设置分钟数
+                  <input type="number" min="1" x-model.number="tool.duration" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500" />
+                </label>
+                <div class="flex flex-col justify-end">
+                  <div class="text-sm text-slate-500">剩余时间</div>
+                  <div class="text-2xl font-semibold" x-text="formatTime(tool.remaining)"></div>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button @click="startTimer(tool)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg">开始</button>
+                <button @click="pauseTimer(tool)" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg">暂停</button>
+                <button @click="resetTimer(tool)" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg">重置</button>
+              </div>
+            </div>
+
+            <!-- 番茄钟 -->
+            <div x-show="tool.type === 'pomodoro'" x-cloak class="space-y-3">
+              <div class="grid gap-4 md:grid-cols-3">
+                <label class="text-sm font-medium text-slate-700">
+                  专注分钟
+                  <input type="number" min="10" x-model.number="tool.workMinutes" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                </label>
+                <label class="text-sm font-medium text-slate-700">
+                  休息分钟
+                  <input type="number" min="3" x-model.number="tool.breakMinutes" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                </label>
+                <div class="flex flex-col justify-end">
+                  <div class="text-sm text-slate-500" x-text="tool.phaseLabel"></div>
+                  <div class="text-2xl font-semibold" x-text="formatTime(tool.remaining)"></div>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button @click="startPomodoro(tool)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg">开始</button>
+                <button @click="pausePomodoro(tool)" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg">暂停</button>
+                <button @click="resetPomodoro(tool)" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg">重置</button>
+              </div>
+            </div>
+
+            <!-- 秒表 -->
+            <div x-show="tool.type === 'stopwatch'" x-cloak class="space-y-3">
+              <div class="text-3xl font-semibold" x-text="formatTime(tool.elapsed)"></div>
+              <div class="flex flex-wrap gap-2">
+                <button @click="startStopwatch(tool)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg">开始</button>
+                <button @click="pauseStopwatch(tool)" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg">暂停</button>
+                <button @click="resetStopwatch(tool)" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg">清零</button>
+              </div>
+            </div>
+
+            <!-- 清单工具 -->
+            <div x-show="tool.type === 'list'" x-cloak class="space-y-3">
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input x-model="tool.input" placeholder="输入内容后回车" @keydown.enter.prevent="addListItem(tool)" class="flex-1 rounded-lg border border-slate-200 px-3 py-2" />
+                <button @click="addListItem(tool)" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">添加</button>
+              </div>
+              <ul class="space-y-2">
+                <template x-for="(item, index) in tool.items" :key="item.id">
+                  <li class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    <label class="flex items-center gap-2">
+                      <input type="checkbox" x-show="tool.allowCheck" x-model="item.done" @change="saveList(tool)" class="rounded" />
+                      <span :class="item.done ? 'line-through text-slate-400' : 'text-slate-700'" x-text="item.text"></span>
+                    </label>
+                    <button @click="removeListItem(tool, index)" class="text-xs text-rose-500">删除</button>
+                  </li>
+                </template>
+              </ul>
+              <p x-show="tool.items.length === 0" class="text-sm text-slate-400">暂无记录</p>
+            </div>
+
+            <!-- 记账工具 -->
+            <div x-show="tool.type === 'ledger'" x-cloak class="space-y-4">
+              <div class="grid gap-3 md:grid-cols-3">
+                <label class="text-sm font-medium text-slate-700">
+                  金额 (元)
+                  <input type="number" x-model.number="tool.form.amount" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                </label>
+                <label class="text-sm font-medium text-slate-700">
+                  分类
+                  <input type="text" x-model="tool.form.category" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                </label>
+                <label class="text-sm font-medium text-slate-700">
+                  备注
+                  <input type="text" x-model="tool.form.note" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                </label>
+              </div>
+              <button @click="addLedgerEntry(tool)" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">记录一笔</button>
+              <div class="grid gap-3 md:grid-cols-2">
+                <div class="border border-slate-200 rounded-lg p-3">
+                  <div class="text-xs text-slate-500">本月累计</div>
+                  <div class="text-lg font-semibold" x-text="formatCurrency(tool.total)"></div>
+                </div>
+                <div class="border border-slate-200 rounded-lg p-3">
+                  <div class="text-xs text-slate-500">记录条数</div>
+                  <div class="text-lg font-semibold" x-text="tool.entries.length"></div>
+                </div>
+              </div>
+              <ul class="space-y-2">
+                <template x-for="(entry, index) in tool.entries" :key="entry.id">
+                  <li class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                    <div>
+                      <div class="font-medium text-slate-700" x-text="entry.category"></div>
+                      <div class="text-xs text-slate-500" x-text="entry.note"></div>
+                    </div>
+                    <div class="text-right">
+                      <div class="font-semibold text-slate-900" x-text="formatCurrency(entry.amount)"></div>
+                      <button @click="removeLedgerEntry(tool, index)" class="text-xs text-rose-500">删除</button>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+            </div>
+
+            <!-- 笔记工具 -->
+            <div x-show="tool.type === 'note'" x-cloak>
+              <textarea x-model="tool.content" @input.debounce.400ms="saveNote(tool)" rows="6" class="w-full rounded-lg border border-slate-200 px-3 py-2" placeholder="记录要点..."></textarea>
+            </div>
+
+            <!-- 随机/生成器 -->
+            <div x-show="tool.type === 'generator'" x-cloak class="space-y-3">
+              <template x-if="tool.fields && tool.fields.length">
+                <div class="grid gap-4 md:grid-cols-2">
+                  <template x-for="field in tool.fields" :key="field.key">
+                    <label class="text-sm font-medium text-slate-700">
+                      <span x-text="field.label"></span>
+                      <input :type="field.type || 'text'" x-model="tool.values[field.key]" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                    </label>
+                  </template>
+                </div>
+              </template>
+              <button @click="runGenerator(tool)" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">生成结果</button>
+              <div class="border border-slate-200 rounded-lg p-3" x-show="tool.result" x-cloak>
+                <div class="text-xs text-slate-500" x-text="tool.resultLabel"></div>
+                <div class="text-lg font-semibold" x-text="tool.result"></div>
+              </div>
+            </div>
+
+            <!-- 文本工具 -->
+            <div x-show="tool.type === 'text'" x-cloak class="space-y-3">
+              <textarea x-model="tool.input" rows="4" class="w-full rounded-lg border border-slate-200 px-3 py-2" placeholder="输入文本"></textarea>
+              <button @click="runTextTool(tool)" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">处理文本</button>
+              <div class="border border-slate-200 rounded-lg p-3" x-show="tool.output" x-cloak>
+                <div class="text-xs text-slate-500" x-text="tool.resultLabel"></div>
+                <div class="text-sm text-slate-700 whitespace-pre-wrap" x-text="tool.output"></div>
+              </div>
+            </div>
+
+            <!-- 转换器 -->
+            <div x-show="tool.type === 'converter'" x-cloak class="space-y-3">
+              <div class="grid gap-4 md:grid-cols-3">
+                <label class="text-sm font-medium text-slate-700">
+                  数值
+                  <input type="number" x-model.number="tool.value" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                </label>
+                <label class="text-sm font-medium text-slate-700">
+                  从
+                  <select x-model="tool.from" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2">
+                    <template x-for="option in tool.options" :key="option.value">
+                      <option :value="option.value" x-text="option.label"></option>
+                    </template>
+                  </select>
+                </label>
+                <label class="text-sm font-medium text-slate-700">
+                  到
+                  <select x-model="tool.to" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2">
+                    <template x-for="option in tool.options" :key="option.value">
+                      <option :value="option.value" x-text="option.label"></option>
+                    </template>
+                  </select>
+                </label>
+              </div>
+              <button @click="runConverter(tool)" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">换算</button>
+              <div class="border border-slate-200 rounded-lg p-3" x-show="tool.result" x-cloak>
+                <div class="text-xs text-slate-500" x-text="tool.resultLabel"></div>
+                <div class="text-lg font-semibold" x-text="tool.result"></div>
+              </div>
+            </div>
+
+            <!-- 计数器 -->
+            <div x-show="tool.type === 'counter'" x-cloak class="space-y-3">
+              <div class="grid gap-4 md:grid-cols-2">
+                <label class="text-sm font-medium text-slate-700">
+                  目标
+                  <input type="number" x-model.number="tool.target" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" />
+                </label>
+                <div class="flex flex-col justify-end">
+                  <div class="text-sm text-slate-500">当前进度</div>
+                  <div class="text-2xl font-semibold" x-text="tool.count"></div>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button @click="incrementCounter(tool)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg">+1</button>
+                <button @click="resetCounter(tool)" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg">清零</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div x-show="showSettings" x-cloak class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-slate-900">API 配置</h3>
+          <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+            <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..." class="w-full rounded-lg border-slate-300 border p-2" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+            <select x-model="apiConfig.model" class="w-full rounded-lg border-slate-300 border p-2">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <button @click="saveConfig" class="mt-6 w-full bg-indigo-600 text-white px-4 py-2 rounded-lg">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_random_number_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人IP自我介绍生成器 (Self Intro Generator)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* 自定义字体 - 使用更有设计感的字体 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #fdf4ff 0%, #faf5ff 50%, #f5f3ff 100%);
+            min-height: 100vh;
+        }
+
+        /* 隐藏滚动条 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 场景卡片渐变 */
+        .scene-gradient-platform {
+            background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+        }
+
+        .scene-gradient-collab {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+        }
+
+        .scene-gradient-speech {
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+        }
+
+        /* 版本卡片悬停效果 */
+        .version-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .version-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 加载动画 */
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e9d5ff;
+            border-top-color: #a855f7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 渐入动画 */
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 复制成功提示 */
+        .copy-toast {
+            animation: toastPop 2s ease forwards;
+        }
+
+        @keyframes toastPop {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            10% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            90% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        /* 场景选项样式 */
+        .scene-option {
+            transition: all 0.2s ease;
+        }
+
+        .scene-option:hover {
+            transform: scale(1.02);
+        }
+
+        .scene-option.selected {
+            ring-color: #a855f7;
+            border-color: #a855f7;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-purple-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <!-- 左侧：Logo 和标题 -->
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-circle-user text-purple-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">Self Intro Generator</span>
+                    </div>
+                    <!-- 右侧：模型切换和设置 -->
+                    <div class="flex items-center gap-4">
+                        <!-- 模型切换器 -->
+                        <div class="hidden md:flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'; saveConfig()"
+                                :class="{'bg-white shadow text-purple-600': apiConfig.model === 'deepseek-v4-flash', 'text-slate-500 hover:text-slate-700': apiConfig.model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1">
+                                <i class="fa-solid fa-bolt w-3 h-3"></i> V4 Flash (快)
+                            </button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'; saveConfig()"
+                                :class="{'bg-white shadow text-indigo-600': apiConfig.model === 'deepseek-v4-pro', 'text-slate-500 hover:text-slate-700': apiConfig.model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1">
+                                <i class="fa-solid fa-brain w-3 h-3"></i> V4 Pro (深)
+                            </button>
+                        </div>
+                        <!-- 设置按钮 -->
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-purple-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i> 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主布局容器 -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- ========== 左侧：输入区 ========== -->
+            <!-- 添加 flex-shrink-0 防止被右侧压缩，添加 min-w 确保最小宽度 -->
+            <div
+                class="w-full md:w-2/5 lg:w-1/3 md:min-w-[320px] lg:min-w-[360px] flex-shrink-0 bg-white border-r border-purple-100 flex flex-col h-full overflow-y-auto no-scrollbar">
+
+                <!-- 头部说明 -->
+                <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-pink-50">
+                    <h2 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <span class="text-2xl">✨</span> 个人IP自我介绍生成器
+                    </h2>
+                    <p class="text-sm text-slate-500">解决自我介绍写不出差异化的痛点，多场景生成标准化介绍模板</p>
+                </div>
+
+                <!-- 输入表单区 -->
+                <div class="p-6 space-y-6">
+
+                    <!-- 1. 人设导入区 -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-sm font-bold text-slate-700">
+                                <span class="text-purple-500 mr-1">①</span> 人设信息来源
+                            </label>
+                            <button @click="showImportModal = true"
+                                class="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1 font-medium">
+                                <i class="fa-solid fa-upload w-3 h-3"></i> 导入人设JSON
+                            </button>
+                        </div>
+
+                        <!-- 已导入人设展示 -->
+                        <div v-if="importedPersona" class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="text-3xl">{{ importedPersona.emoji || '👤' }}</span>
+                                <div>
+                                    <h4 class="font-bold text-slate-800">{{ importedPersona.name }}</h4>
+                                    <p class="text-xs text-purple-600">{{ importedPersona.slogan }}</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-600 line-clamp-2">{{ importedPersona.bio }}</p>
+                            <button @click="clearImportedPersona"
+                                class="mt-2 text-xs text-red-500 hover:text-red-600 flex items-center gap-1">
+                                <i class="fa-solid fa-xmark w-3 h-3"></i> 清除导入
+                            </button>
+                        </div>
+
+                        <!-- 手动输入表单 (当没有导入时显示) -->
+                        <div v-else class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">昵称/账号名 <span
+                                        class="text-red-400">*</span></label>
+                                <input type="text" v-model="manualInput.name" placeholder="如：小王老师、职场老司机"
+                                    class="w-full rounded-lg border-slate-200 border p-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">一句话定位 <span
+                                        class="text-red-400">*</span></label>
+                                <input type="text" v-model="manualInput.slogan" placeholder="如：专注职场沟通10年的老HR"
+                                    class="w-full rounded-lg border-slate-200 border p-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">详细介绍/背景故事</label>
+                                <textarea v-model="manualInput.bio" rows="3" placeholder="个人经历、专业背景、成就亮点等..."
+                                    class="w-full rounded-lg border-slate-200 border p-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition resize-none"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">核心标签 (用逗号分隔)</label>
+                                <input type="text" v-model="manualInput.tags" placeholder="如：HR老司机, 职场导师, 沟通专家"
+                                    class="w-full rounded-lg border-slate-200 border p-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">目标受众</label>
+                                <input type="text" v-model="manualInput.audience" placeholder="如：职场新人、想转行的打工人"
+                                    class="w-full rounded-lg border-slate-200 border p-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 场景选择 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <span class="text-purple-500 mr-1">②</span> 选择生成场景 (可多选)
+                        </label>
+
+                        <!-- 平台简介 -->
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2 text-xs font-bold text-pink-600">
+                                <span
+                                    class="w-5 h-5 rounded scene-gradient-platform flex items-center justify-center text-white text-xs">📱</span>
+                                平台简介
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label v-for="scene in sceneOptions.platform" :key="scene.id"
+                                    class="scene-option flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer"
+                                    :class="selectedScenes.includes(scene.id) ? 'border-purple-400 bg-purple-50' : 'border-slate-200 hover:border-slate-300'">
+                                    <input type="checkbox" :value="scene.id" v-model="selectedScenes" class="sr-only">
+                                    <span
+                                        class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
+                                        :class="selectedScenes.includes(scene.id) ? 'bg-purple-500 border-purple-500' : 'border-slate-300'">
+                                        <i class="fa-solid fa-check w-3 h-3 text-white"></i>
+                                    </span>
+                                    <span class="text-xs"
+                                        :class="selectedScenes.includes(scene.id) ? 'text-purple-700 font-medium' : 'text-slate-600'">{{
+                                        scene.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 合作介绍 -->
+                        <div class="space-y-2 pt-2">
+                            <div class="flex items-center gap-2 text-xs font-bold text-violet-600">
+                                <span
+                                    class="w-5 h-5 rounded scene-gradient-collab flex items-center justify-center text-white text-xs">🤝</span>
+                                合作介绍
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label v-for="scene in sceneOptions.collab" :key="scene.id"
+                                    class="scene-option flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer"
+                                    :class="selectedScenes.includes(scene.id) ? 'border-purple-400 bg-purple-50' : 'border-slate-200 hover:border-slate-300'">
+                                    <input type="checkbox" :value="scene.id" v-model="selectedScenes" class="sr-only">
+                                    <span
+                                        class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
+                                        :class="selectedScenes.includes(scene.id) ? 'bg-purple-500 border-purple-500' : 'border-slate-300'">
+                                        <i class="fa-solid fa-check w-3 h-3 text-white"></i>
+                                    </span>
+                                    <span class="text-xs"
+                                        :class="selectedScenes.includes(scene.id) ? 'text-purple-700 font-medium' : 'text-slate-600'">{{
+                                        scene.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 演讲开场 -->
+                        <div class="space-y-2 pt-2">
+                            <div class="flex items-center gap-2 text-xs font-bold text-orange-600">
+                                <span
+                                    class="w-5 h-5 rounded scene-gradient-speech flex items-center justify-center text-white text-xs">🎤</span>
+                                演讲开场
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label v-for="scene in sceneOptions.speech" :key="scene.id"
+                                    class="scene-option flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer"
+                                    :class="selectedScenes.includes(scene.id) ? 'border-purple-400 bg-purple-50' : 'border-slate-200 hover:border-slate-300'">
+                                    <input type="checkbox" :value="scene.id" v-model="selectedScenes" class="sr-only">
+                                    <span
+                                        class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
+                                        :class="selectedScenes.includes(scene.id) ? 'bg-purple-500 border-purple-500' : 'border-slate-300'">
+                                        <i class="fa-solid fa-check w-3 h-3 text-white"></i>
+                                    </span>
+                                    <span class="text-xs"
+                                        :class="selectedScenes.includes(scene.id) ? 'text-purple-700 font-medium' : 'text-slate-600'">{{
+                                        scene.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 版本数量 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <span class="text-purple-500 mr-1">③</span> 每个场景生成版本数
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model="versionsPerScene" min="1" max="3" step="1"
+                                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                            <span class="text-lg font-bold text-purple-600 w-8 text-center">{{ versionsPerScene
+                                }}</span>
+                        </div>
+                        <p class="text-xs text-slate-400">预计生成 {{ selectedScenes.length * versionsPerScene }} 条自我介绍</p>
+                    </div>
+
+                    <!-- 4. 附加选项 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <span class="text-purple-500 mr-1">④</span> 风格偏好 (可选)
+                        </label>
+                        <select v-model="stylePreference"
+                            class="w-full rounded-lg border-slate-200 border p-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white">
+                            <option value="">自动匹配</option>
+                            <option value="professional">专业权威型</option>
+                            <option value="friendly">亲切温暖型</option>
+                            <option value="humorous">幽默风趣型</option>
+                            <option value="storytelling">故事叙述型</option>
+                            <option value="minimal">简洁干练型</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- 底部操作按钮 -->
+                <div class="p-6 mt-auto border-t border-slate-100 bg-white sticky bottom-0">
+                    <button @click="generateIntros" :disabled="isGenerating || !canGenerate"
+                        class="w-full py-3.5 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 shadow-lg"
+                        :class="canGenerate && !isGenerating ? 'bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600' : 'bg-slate-300 cursor-not-allowed'">
+                        <template v-if="isGenerating">
+                            <div class="loader w-5 h-5 border-2"></div>
+                            <span>正在生成中...</span>
+                        </template>
+                        <template v-else>
+                            <i class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i>
+                            <span>生成自我介绍</span>
+                        </template>
+                    </button>
+                    <p v-if="!canGenerate" class="text-xs text-center text-red-400 mt-2">请填写基本信息并至少选择一个场景</p>
+                </div>
+            </div>
+
+            <!-- ========== 右侧：结果展示区 ========== -->
+            <!-- 添加 min-w-0 防止 flex 子项溢出，确保内容可以正确滚动 -->
+            <div class="flex-grow min-w-0 bg-slate-50 flex flex-col h-full overflow-hidden">
+
+                <!-- 空状态 -->
+                <div v-if="results.length === 0 && !isGenerating"
+                    class="flex-grow flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+                    <div class="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
+                        <i class="fa-regular fa-circle-user w-16 h-16 text-slate-200 text-6xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-600 mb-3">等待生成...</h3>
+                    <p class="max-w-md text-slate-500">在左侧填写你的人设信息，选择需要的场景，点击生成按钮即可获得多版本差异化自我介绍。</p>
+                    <div class="mt-8 flex items-center gap-4 text-xs text-slate-400">
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-upload w-4 h-4"></i> 支持导入人设打造师的
+                            JSON</span>
+                    </div>
+                </div>
+
+                <!-- 加载状态 -->
+                <div v-if="isGenerating" class="flex-grow flex flex-col items-center justify-center text-slate-400 p-8">
+                    <div class="loader mb-6"></div>
+                    <h3 class="text-xl font-bold text-slate-600 mb-2">正在生成自我介绍...</h3>
+                    <p class="text-sm text-slate-500">AI 正在为你打造差异化的介绍文案</p>
+                    <p class="text-xs text-slate-400 mt-2">已生成 {{ completedCount }} / {{ totalToGenerate }} 个场景</p>
+                </div>
+
+                <!-- 结果展示 -->
+                <div v-if="results.length > 0 && !isGenerating" class="flex-grow overflow-y-auto p-6 no-scrollbar">
+
+                    <!-- 顶部操作栏 -->
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-bold text-slate-800">
+                            生成结果 <span class="text-purple-500">({{ totalResultCount }} 条)</span>
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <button @click="exportAllResults"
+                                class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-download w-4 h-4"></i> 导出全部
+                            </button>
+                            <button @click="results = []; completedCount = 0"
+                                class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-trash-can w-4 h-4"></i> 清空
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 按场景分组展示 -->
+                    <div class="space-y-8">
+                        <div v-for="(group, idx) in groupedResults" :key="group.sceneId" class="fade-in"
+                            :style="{ animationDelay: idx * 0.1 + 's' }">
+
+                            <!-- 场景标题 -->
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-lg"
+                                    :class="getSceneGradient(group.sceneId)">
+                                    {{ getSceneEmoji(group.sceneId) }}
+                                </span>
+                                <div>
+                                    <h4 class="font-bold text-slate-800">{{ group.sceneName }}</h4>
+                                    <p class="text-xs text-slate-400">{{ group.versions.length }} 个版本</p>
+                                </div>
+                            </div>
+
+                            <!-- 版本卡片 -->
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div v-for="(version, vIdx) in group.versions" :key="vIdx"
+                                    class="version-card bg-white rounded-2xl p-5 border border-slate-100 shadow-sm relative group">
+
+                                    <!-- 版本标签 -->
+                                    <div class="flex items-center justify-between mb-3">
+                                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                            版本 {{ vIdx + 1 }}
+                                        </span>
+                                        <span v-if="version.charCount" class="text-xs text-slate-400">
+                                            {{ version.charCount }} 字
+                                        </span>
+                                    </div>
+
+                                    <!-- 介绍内容 -->
+                                    <div class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                        {{ version.content }}
+                                    </div>
+
+                                    <!-- 深度思考展示 (V4 Pro 模型) -->
+                                    <details v-if="version.reasoning" class="mt-3 pt-3 border-t border-slate-100">
+                                        <summary
+                                            class="text-xs text-slate-400 cursor-pointer hover:text-purple-500 transition">
+                                            🧠 查看深度思考过程
+                                        </summary>
+                                        <div
+                                            class="mt-2 p-3 bg-slate-50 rounded-lg text-xs text-slate-500 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                            {{ version.reasoning }}
+                                        </div>
+                                    </details>
+
+                                    <!-- 操作按钮 -->
+                                    <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-50">
+                                        <button
+                                            @click="copyToClipboard(version.content, `${group.sceneName}-v${vIdx+1}`)"
+                                            class="flex-1 py-2 rounded-lg text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 transition flex items-center justify-center gap-1">
+                                            <i class="fa-regular fa-copy w-3 h-3"></i> 复制
+                                        </button>
+                                        <button @click="regenerateSingle(group.sceneId, vIdx)"
+                                            class="flex-1 py-2 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition flex items-center justify-center gap-1">
+                                            <i class="fa-solid fa-rotate w-3 h-3"></i> 重新生成
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 设置弹窗 ========== -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gear w-5 h-5 text-purple-600"></i> API 设置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-purple-500 outline-none"
+                            placeholder="sk-...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">默认模型</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2.5 focus:ring-2 focus:ring-purple-500 outline-none bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 导入人设 JSON 弹窗 ========== -->
+        <div v-if="showImportModal" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click.self="showImportModal = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-upload w-5 h-5 text-purple-600"></i> 导入人设打造师 JSON
+                </h3>
+                <p class="text-sm text-slate-500 mb-4">将「人设打造师」导出的 JSON 内容粘贴到下方，可自动填充人设信息。</p>
+                <textarea v-model="importJsonText" rows="8" placeholder='粘贴 JSON 内容，格式如：
+{
+  "name": "账号名",
+  "slogan": "一句话定位",
+  "bio": "详细介绍",
+  "tags": {...}
+}' class="w-full rounded-lg border-slate-200 border p-3 text-sm font-mono focus:ring-2 focus:ring-purple-500 outline-none resize-none"></textarea>
+                <p v-if="importError" class="text-xs text-red-500 mt-2">{{ importError }}</p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showImportModal = false; importJsonText = ''; importError = ''"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="parseImportJson"
+                        class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">解析并导入</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 复制成功提示 Toast ========== -->
+        <div v-if="showCopyToast" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200]">
+            <div class="copy-toast bg-slate-900 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
+                <i class="fa-solid fa-circle-check w-5 h-5 text-green-400"></i>
+                <span>{{ copyToastMessage }}</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, nextTick, watch } = Vue;
+
+        createApp({
+            setup() {
+
+
+                // ==================== 状态定义 ====================
+
+                // API 配置
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                // 导入相关
+                const showImportModal = ref(false);
+                const importJsonText = ref('');
+                const importError = ref('');
+                const importedPersona = ref(null);
+
+                // 手动输入表单
+                const manualInput = reactive({
+                    name: '',
+                    slogan: '',
+                    bio: '',
+                    tags: '',
+                    audience: ''
+                });
+
+                // 场景选项定义
+                const sceneOptions = {
+                    platform: [
+                        { id: 'xhs_bio', label: '小红书主页简介' },
+                        { id: 'wechat_bio', label: '公众号简介' },
+                        { id: 'douyin_bio', label: '抖音个人简介' },
+                        { id: 'zhihu_bio', label: '知乎个人介绍' },
+                    ],
+                    collab: [
+                        { id: 'business_intro', label: '商务合作介绍' },
+                        { id: 'media_kit', label: '品牌媒体包' },
+                        { id: 'guest_intro', label: '嘉宾介绍' },
+                        { id: 'resume_profile', label: '简历个人简介' },
+                    ],
+                    speech: [
+                        { id: 'online_sharing', label: '线上分享开场' },
+                        { id: 'offline_event', label: '线下活动开场' },
+                        { id: 'podcast_intro', label: '播客自我介绍' },
+                        { id: 'video_intro', label: '视频开场白' },
+                    ]
+                };
+
+                // 选中的场景
+                const selectedScenes = ref([]);
+
+                // 每个场景的版本数
+                const versionsPerScene = ref(2);
+
+                // 风格偏好
+                const stylePreference = ref('');
+
+                // 生成状态
+                const isGenerating = ref(false);
+                const completedCount = ref(0);
+                const totalToGenerate = computed(() => selectedScenes.value.length);
+
+                // 结果存储
+                const results = ref([]);
+
+                // 复制提示
+                const showCopyToast = ref(false);
+                const copyToastMessage = ref('');
+
+                // ==================== 计算属性 ====================
+
+                /**
+                 * 判断是否可以生成
+                 * 需要有基本信息且至少选择一个场景
+                 */
+                const canGenerate = computed(() => {
+                    const hasPersona = importedPersona.value || (manualInput.name.trim() && manualInput.slogan.trim());
+                    const hasScenes = selectedScenes.value.length > 0;
+                    return hasPersona && hasScenes;
+                });
+
+                /**
+                 * 总结果数量
+                 */
+                const totalResultCount = computed(() => {
+                    return results.value.reduce((sum, group) => sum + group.versions.length, 0);
+                });
+
+                /**
+                 * 按场景分组的结果
+                 */
+                const groupedResults = computed(() => results.value);
+
+                // ==================== 生命周期 ====================
+
+
+
+                onMounted(() => {
+                    // 加载 API 配置
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            apiConfig.value = { ...apiConfig.value, ...parsed };
+                            if (!apiConfig.value.model) apiConfig.value.model = 'deepseek-v4-flash';
+                        } catch (e) {
+
+                        }
+                    }
+                });
+
+
+
+                // ==================== 方法定义 ====================
+
+                /**
+                 * 保存 API 配置到 localStorage
+                 */
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                /**
+                 * 解析导入的 JSON 文本
+                 */
+                const parseImportJson = () => {
+                    try {
+                        const parsed = JSON.parse(importJsonText.value);
+                        // 验证必要字段
+                        if (!parsed.name || !parsed.slogan) {
+                            importError.value = '缺少必要字段：name 或 slogan';
+                            return;
+                        }
+                        importedPersona.value = parsed;
+                        showImportModal.value = false;
+                        importJsonText.value = '';
+                        importError.value = '';
+                    } catch (e) {
+                        importError.value = 'JSON 格式错误，请检查后重试';
+                    }
+                };
+
+                /**
+                 * 清除导入的人设
+                 */
+                const clearImportedPersona = () => {
+                    importedPersona.value = null;
+                };
+
+                /**
+                 * 获取当前人设信息（整合导入和手动输入）
+                 */
+                const getPersonaInfo = () => {
+                    if (importedPersona.value) {
+                        const p = importedPersona.value;
+                        return {
+                            name: p.name,
+                            slogan: p.slogan,
+                            bio: p.bio || '',
+                            tags: p.tags ? (
+                                Array.isArray(p.tags.identity)
+                                    ? [...p.tags.identity, ...(p.tags.personality || []), ...(p.tags.memory_hook || [])]
+                                    : []
+                            ).join('、') : '',
+                            audience: '',
+                            catchphrases: p.catchphrases || [],
+                            visualStyle: p.visual_style || []
+                        };
+                    }
+                    return {
+                        name: manualInput.name,
+                        slogan: manualInput.slogan,
+                        bio: manualInput.bio,
+                        tags: manualInput.tags,
+                        audience: manualInput.audience,
+                        catchphrases: [],
+                        visualStyle: []
+                    };
+                };
+
+                /**
+                 * 获取场景的详细信息
+                 */
+                const getSceneInfo = (sceneId) => {
+                    const allScenes = [...sceneOptions.platform, ...sceneOptions.collab, ...sceneOptions.speech];
+                    return allScenes.find(s => s.id === sceneId);
+                };
+
+                /**
+                 * 获取场景的渐变类名
+                 */
+                const getSceneGradient = (sceneId) => {
+                    if (sceneOptions.platform.find(s => s.id === sceneId)) return 'scene-gradient-platform';
+                    if (sceneOptions.collab.find(s => s.id === sceneId)) return 'scene-gradient-collab';
+                    return 'scene-gradient-speech';
+                };
+
+                /**
+                 * 获取场景的 Emoji
+                 */
+                const getSceneEmoji = (sceneId) => {
+                    const emojiMap = {
+                        'xhs_bio': '📕',
+                        'wechat_bio': '💚',
+                        'douyin_bio': '🎵',
+                        'zhihu_bio': '💡',
+                        'business_intro': '💼',
+                        'media_kit': '📊',
+                        'guest_intro': '🎯',
+                        'resume_profile': '📝',
+                        'online_sharing': '💻',
+                        'offline_event': '🎤',
+                        'podcast_intro': '🎙️',
+                        'video_intro': '🎬'
+                    };
+                    return emojiMap[sceneId] || '✨';
+                };
+
+                /**
+                 * 获取场景特定的写作指南
+                 */
+                const getSceneGuide = (sceneId) => {
+                    const guides = {
+                        'xhs_bio': '小红书风格：控制在 80 字以内，使用分行+emoji，突出人设标签和账号价值，营造真实感',
+                        'wechat_bio': '公众号风格：120字以内，专业但不失温度，明确定位和内容方向，可加金句或口号',
+                        'douyin_bio': '抖音风格：30字以内，简洁有力，突出核心卖点，可用表情包分隔',
+                        'zhihu_bio': '知乎风格：150字以内，强调专业背景和成就，突出可信度和知识权威性',
+                        'business_intro': '商务风格：150-200字，正式专业，包含背景、成就、合作价值，适合发给品牌方',
+                        'media_kit': '媒体包风格：结构化呈现，包含账号数据、受众画像、过往合作案例、报价等',
+                        'guest_intro': '嘉宾介绍风格：第三人称，100-150字，适合活动主持人念读，突出亮点和权威性',
+                        'resume_profile': '简历风格：100字以内，正式专业，突出核心能力和职业价值',
+                        'online_sharing': '线上分享开场：口语化，30秒内说完，拉近距离，引出分享主题',
+                        'offline_event': '线下活动开场：有感染力，适当幽默，快速建立信任，1分钟内',
+                        'podcast_intro': '播客自我介绍：轻松自然，有故事感，可稍长，2-3分钟的口播稿',
+                        'video_intro': '视频开场白：15-30秒，节奏快，有记忆点，适合视频开头'
+                    };
+                    return guides[sceneId] || '生成一段差异化的自我介绍';
+                };
+
+                /**
+                 * 主生成函数：调用 API 生成自我介绍
+                 */
+                const generateIntros = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isGenerating.value = true;
+                    results.value = [];
+                    completedCount.value = 0;
+
+                    const persona = getPersonaInfo();
+                    const styleGuide = stylePreference.value ? getStyleGuide(stylePreference.value) : '';
+
+                    // 并行生成所有场景
+                    const tasks = selectedScenes.value.map(async (sceneId) => {
+                        const sceneInfo = getSceneInfo(sceneId);
+                        const sceneGuide = getSceneGuide(sceneId);
+
+                        const versions = [];
+
+                        // 串行生成每个场景的多个版本（避免重复）
+                        for (let i = 0; i < versionsPerScene.value; i++) {
+                            const versionHint = versionsPerScene.value > 1 ? `这是第 ${i + 1}/${versionsPerScene.value} 个版本，请确保与其他版本有明显差异，可以尝试不同的切入角度、语气或结构。` : '';
+
+                            const systemPrompt = `你是一位顶尖的个人品牌文案专家，擅长为个人IP打造差异化、有记忆点的自我介绍。
+请根据用户提供的人设信息，为指定场景生成一段自我介绍。
+
+【写作要求】
+1. 场景：${sceneInfo.label}
+2. 场景特定要求：${sceneGuide}
+3. ${styleGuide}
+4. ${versionHint}
+
+【输出规范】
+- 直接输出自我介绍文本，不需要标题或额外解释
+- 确保内容有差异化记忆点，避免千篇一律的模板感
+- 根据场景调整语气和长度`;
+
+                            const userPrompt = `
+【人设信息】
+- 昵称：${persona.name}
+- 定位：${persona.slogan}
+- 详细背景：${persona.bio || '无'}
+- 核心标签：${persona.tags || '无'}
+- 目标受众：${persona.audience || '无'}
+${persona.catchphrases.length > 0 ? `- 口头禅：${persona.catchphrases.join('、')}` : ''}
+
+请为「${sceneInfo.label}」场景生成一段差异化的自我介绍。`;
+
+                            try {
+                                const response = await callDeepSeek(userPrompt, systemPrompt);
+                                versions.push({
+                                    content: response.content.trim(),
+                                    reasoning: response.reasoning,
+                                    charCount: response.content.trim().length
+                                });
+                            } catch (e) {
+
+                                versions.push({
+                                    content: '生成失败，请点击重新生成',
+                                    reasoning: null,
+                                    charCount: 0,
+                                    error: true
+                                });
+                            }
+                        }
+
+                        completedCount.value++;
+
+                        return {
+                            sceneId,
+                            sceneName: sceneInfo.label,
+                            versions
+                        };
+                    });
+
+                    try {
+                        const allResults = await Promise.all(tasks);
+                        results.value = allResults;
+                    } catch (e) {
+
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                /**
+                 * 获取风格指南文本
+                 */
+                const getStyleGuide = (style) => {
+                    const guides = {
+                        'professional': '风格偏好：专业权威型 - 突出专业背景、成就和权威性，语言正式但不刻板',
+                        'friendly': '风格偏好：亲切温暖型 - 像朋友聊天一样自然，拉近距离，有亲和力',
+                        'humorous': '风格偏好：幽默风趣型 - 适当加入幽默元素和金句，让人印象深刻',
+                        'storytelling': '风格偏好：故事叙述型 - 用故事的方式引入，有起承转合，引人入胜',
+                        'minimal': '风格偏好：简洁干练型 - 直击重点，不废话，每句话都有价值'
+                    };
+                    return guides[style] || '';
+                };
+
+                /**
+                 * 调用 DeepSeek API
+                 * 包含完整的错误处理，捕获网络错误和 API 错误
+                 */
+                const callDeepSeek = async (userPrompt, systemPrompt) => {
+                    const apiKey = apiConfig.value.deepseek;
+                    const model = apiConfig.value.model;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: model,
+                                messages: [
+                                    { role: 'system', content: systemPrompt },
+                                    { role: 'user', content: userPrompt }
+                                ],
+                                stream: false
+                            })
+                        });
+
+                        if (!response.ok) {
+                            // 尝试解析错误响应获取详细信息
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        const choice = data.choices[0];
+
+                        return {
+                            content: choice.message.content,
+                            reasoning: choice.message.reasoning_content || null
+                        };
+                    } catch (error) {
+                        // 区分网络错误和 API 错误
+                        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                            throw new Error('网络连接失败，请检查网络设置');
+                        }
+                        throw error; // 重新抛出其他错误供调用方处理
+                    }
+                };
+
+                /**
+                 * 重新生成单个版本
+                 */
+                const regenerateSingle = async (sceneId, versionIdx) => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    // 找到对应的结果组
+                    const groupIdx = results.value.findIndex(g => g.sceneId === sceneId);
+                    if (groupIdx === -1) return;
+
+                    // 标记为加载中
+                    results.value[groupIdx].versions[versionIdx] = {
+                        content: '重新生成中...',
+                        reasoning: null,
+                        charCount: 0,
+                        loading: true
+                    };
+
+                    const persona = getPersonaInfo();
+                    const sceneInfo = getSceneInfo(sceneId);
+                    const sceneGuide = getSceneGuide(sceneId);
+                    const styleGuide = stylePreference.value ? getStyleGuide(stylePreference.value) : '';
+
+                    const systemPrompt = `你是一位顶尖的个人品牌文案专家。
+请根据人设信息，为「${sceneInfo.label}」场景重新生成一段自我介绍。
+要求：${sceneGuide}
+${styleGuide}
+请给出一个与之前完全不同的版本，尝试新的切入角度。`;
+
+                    const userPrompt = `
+【人设信息】
+- 昵称：${persona.name}
+- 定位：${persona.slogan}
+- 详细背景：${persona.bio || '无'}
+- 核心标签：${persona.tags || '无'}
+
+请生成一段全新的自我介绍。`;
+
+                    try {
+                        const response = await callDeepSeek(userPrompt, systemPrompt);
+                        results.value[groupIdx].versions[versionIdx] = {
+                            content: response.content.trim(),
+                            reasoning: response.reasoning,
+                            charCount: response.content.trim().length
+                        };
+                    } catch (e) {
+
+                        results.value[groupIdx].versions[versionIdx] = {
+                            content: '生成失败，请重试',
+                            reasoning: null,
+                            charCount: 0,
+                            error: true
+                        };
+                    }
+                };
+
+                /**
+                 * 复制到剪贴板
+                 */
+                const copyToClipboard = async (text, label) => {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        copyToastMessage.value = `已复制「${label}」`;
+                        showCopyToast.value = true;
+                        setTimeout(() => {
+                            showCopyToast.value = false;
+                        }, 2000);
+                    } catch (e) {
+
+                    }
+                };
+
+                /**
+                 * 导出所有结果
+                 */
+                const exportAllResults = () => {
+                    let content = `# 个人IP自我介绍生成结果\n`;
+                    content += `生成时间: ${new Date().toLocaleString()}\n\n`;
+
+                    const persona = getPersonaInfo();
+                    content += `## 人设信息\n`;
+                    content += `- 昵称: ${persona.name}\n`;
+                    content += `- 定位: ${persona.slogan}\n\n`;
+                    content += `---\n\n`;
+
+                    results.value.forEach(group => {
+                        content += `## ${group.sceneName}\n\n`;
+                        group.versions.forEach((v, idx) => {
+                            content += `### 版本 ${idx + 1} (${v.charCount}字)\n\n`;
+                            content += v.content + '\n\n';
+                            if (v.reasoning) {
+                                content += `<details>\n<summary>深度思考过程</summary>\n\n${v.reasoning}\n\n</details>\n\n`;
+                            }
+                        });
+                        content += `---\n\n`;
+                    });
+
+                    const blob = new Blob([content], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `self_intro_${persona.name}_${new Date().toISOString().slice(0, 10)}.md`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+
+                // ==================== 返回模板需要的变量和方法 ====================
+                return {
+                    // API 配置
+                    showSettings,
+                    apiConfig,
+                    saveConfig,
+
+                    // 导入功能
+                    showImportModal,
+                    importJsonText,
+                    importError,
+                    importedPersona,
+                    parseImportJson,
+                    clearImportedPersona,
+
+                    // 手动输入
+                    manualInput,
+
+                    // 场景选择
+                    sceneOptions,
+                    selectedScenes,
+                    versionsPerScene,
+                    stylePreference,
+
+                    // 生成状态
+                    isGenerating,
+                    completedCount,
+                    totalToGenerate,
+                    canGenerate,
+
+                    // 结果
+                    results,
+                    totalResultCount,
+                    groupedResults,
+
+                    // 工具方法
+                    getSceneGradient,
+                    getSceneEmoji,
+                    generateIntros,
+                    regenerateSingle,
+                    copyToClipboard,
+                    exportAllResults,
+
+                    // Toast
+                    showCopyToast,
+                    copyToastMessage
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/branding_self_intro.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

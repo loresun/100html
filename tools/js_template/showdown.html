@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Showdown Markdown 转换器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #374151 0%, #111827 100%); min-height: 100vh; }
+    .mono { font-family: monospace; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+    .preview-content h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
+    .preview-content h2 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
+    .preview-content h3 { font-size: 1.2em; font-weight: bold; margin: 0.5em 0; }
+    .preview-content p { margin: 0.5em 0; }
+    .preview-content code { background: #374151; padding: 2px 6px; border-radius: 4px; }
+    .preview-content pre { background: #1f2937; padding: 1em; border-radius: 8px; overflow-x: auto; }
+    .preview-content ul, .preview-content ol { padding-left: 2em; margin: 0.5em 0; }
+    .preview-content blockquote { border-left: 4px solid #6366f1; padding-left: 1em; color: #9ca3af; }
+    .preview-content a { color: #60a5fa; text-decoration: underline; }
+    .preview-content table { border-collapse: collapse; width: 100%; }
+    .preview-content th, .preview-content td { border: 1px solid #4b5563; padding: 8px; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-6">
+  <div>
+    <h1 class="text-3xl font-bold">📝 Showdown 转换器</h1>
+    <p class="text-white/60 mt-1">双向 Markdown ↔ HTML 转换</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto space-y-6">
+  <!-- 实时编辑器 -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="glass p-4 rounded-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <span class="font-bold text-sm">📄 Markdown</span>
+        <button onclick="insertTemplate()" class="text-xs px-2 py-1 bg-slate-700 rounded hover:bg-slate-600">插入模板</button>
+      </div>
+      <textarea id="md-input" rows="18" class="w-full px-4 py-3 bg-slate-900/80 border border-white/20 rounded-xl text-white mono text-sm resize-none" oninput="convert()"># 标题示例
+
+这是一段**粗体**和*斜体*文本。
+
+## 列表
+- 项目一
+- 项目二
+- 项目三
+
+## 代码
+`行内代码`示例
+
+```javascript
+function hello() {
+  console.log("Hello!");
+}
+```
+
+## 引用
+> 这是一段引用文字
+
+## 链接
+[访问链接](https://example.com)
+
+## 表格
+| 名称 | 值 |
+|------|-----|
+| A | 100 |
+| B | 200 |</textarea>
+    </div>
+    
+    <div class="glass p-4 rounded-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <span class="font-bold text-sm">👁️ 预览</span>
+        <div class="flex gap-2">
+          <button onclick="showPreview()" id="btn-preview" class="text-xs px-2 py-1 bg-indigo-600 rounded">预览</button>
+          <button onclick="showHtml()" id="btn-html" class="text-xs px-2 py-1 bg-slate-700 rounded hover:bg-slate-600">HTML</button>
+        </div>
+      </div>
+      <div id="preview-panel" class="h-[450px] overflow-auto">
+        <div id="preview-content" class="preview-content bg-white text-slate-800 p-4 rounded-xl min-h-full"></div>
+        <pre id="html-content" class="hidden mono text-xs text-emerald-300 whitespace-pre-wrap bg-slate-900/80 p-4 rounded-xl min-h-full"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配置选项 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚙️ 转换配置</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="opt-tables" checked onchange="updateConfig()" class="w-4 h-4">
+        <span class="text-sm">表格支持</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="opt-emoji" checked onchange="updateConfig()" class="w-4 h-4">
+        <span class="text-sm">Emoji 支持</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="opt-strikethrough" checked onchange="updateConfig()" class="w-4 h-4">
+        <span class="text-sm">删除线</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="opt-tasklists" checked onchange="updateConfig()" class="w-4 h-4">
+        <span class="text-sm">任务列表</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- HTML 转 Markdown -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🔄 HTML → Markdown</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <textarea id="html-input" rows="6" class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white mono text-sm" placeholder="粘贴 HTML 代码..."><h1>标题</h1><p>这是<strong>粗体</strong>文本。</p><ul><li>列表项</li></ul></textarea>
+        <button onclick="htmlToMd()" class="mt-3 w-full px-4 py-2 bg-orange-600 rounded-lg hover:bg-orange-700 font-bold">转换为 Markdown</button>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-orange-400 text-xs mb-2 font-bold">转换结果:</div>
+        <pre id="md-output" class="mono text-sm text-cyan-300 whitespace-pre-wrap"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 语法速查 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📚 Markdown 语法速查</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+      <div class="bg-slate-900/50 p-3 rounded-lg">
+        <div class="text-indigo-300 font-bold"># 标题</div>
+        <div class="text-white/50 text-xs mt-1">1-6级标题</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg">
+        <div class="text-indigo-300 font-bold">**粗体**</div>
+        <div class="text-white/50 text-xs mt-1">加粗文字</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg">
+        <div class="text-indigo-300 font-bold">*斜体*</div>
+        <div class="text-white/50 text-xs mt-1">斜体文字</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg">
+        <div class="text-indigo-300 font-bold">`代码`</div>
+        <div class="text-white/50 text-xs mt-1">行内代码</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg">
+        <div class="text-indigo-300 font-bold">[文字](url)</div>
+        <div class="text-white/50 text-xs mt-1">链接</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg">
+        <div class="text-indigo-300 font-bold">![alt](url)</div>
+        <div class="text-white/50 text-xs mt-1">图片</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg">
+        <div class="text-indigo-300 font-bold">> 引用</div>
+        <div class="text-white/50 text-xs mt-1">块引用</div>
+      </div>
+      <div class="bg-slate-900/50 p-3 rounded-lg">
+        <div class="text-indigo-300 font-bold">- [ ] 任务</div>
+        <div class="text-white/50 text-xs mt-1">任务列表</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js"></script>
+<script>
+let converter = new showdown.Converter({
+  tables: true,
+  emoji: true,
+  strikethrough: true,
+  tasklists: true
+});
+
+function convert() {
+  const md = document.getElementById('md-input').value;
+  const html = converter.makeHtml(md);
+  document.getElementById('preview-content').innerHTML = html;
+  document.getElementById('html-content').textContent = html;
+}
+
+function showPreview() {
+  document.getElementById('preview-content').classList.remove('hidden');
+  document.getElementById('html-content').classList.add('hidden');
+  document.getElementById('btn-preview').className = 'text-xs px-2 py-1 bg-indigo-600 rounded';
+  document.getElementById('btn-html').className = 'text-xs px-2 py-1 bg-slate-700 rounded hover:bg-slate-600';
+}
+
+function showHtml() {
+  document.getElementById('preview-content').classList.add('hidden');
+  document.getElementById('html-content').classList.remove('hidden');
+  document.getElementById('btn-html').className = 'text-xs px-2 py-1 bg-indigo-600 rounded';
+  document.getElementById('btn-preview').className = 'text-xs px-2 py-1 bg-slate-700 rounded hover:bg-slate-600';
+}
+
+function updateConfig() {
+  converter = new showdown.Converter({
+    tables: document.getElementById('opt-tables').checked,
+    emoji: document.getElementById('opt-emoji').checked,
+    strikethrough: document.getElementById('opt-strikethrough').checked,
+    tasklists: document.getElementById('opt-tasklists').checked
+  });
+  convert();
+}
+
+function htmlToMd() {
+  const html = document.getElementById('html-input').value;
+  const md = converter.makeMarkdown(html);
+  document.getElementById('md-output').textContent = md;
+}
+
+function insertTemplate() {
+  document.getElementById('md-input').value = `# 文章标题
+
+## 简介
+这是一篇示例文章，展示 Showdown 的各种功能。
+
+## 特性列表
+- 支持**粗体**和*斜体*
+- 支持~~删除线~~
+- 支持表情 :smile: :heart:
+
+## 任务清单
+- [x] 已完成任务
+- [ ] 待完成任务
+
+## 代码示例
+\`\`\`javascript
+const greeting = "Hello, World!";
+console.log(greeting);
+\`\`\`
+
+## 引用
+> 知识就是力量。 —— 培根
+
+## 表格
+| 功能 | 支持 |
+|------|------|
+| 表格 | ✅ |
+| 任务列表 | ✅ |
+| 表情 | ✅ |`;
+  convert();
+}
+
+// 初始化
+convert();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

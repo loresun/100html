@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人生剧本改写师 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .drama-gradient {
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 50%, #FCD34D 100%);
+        }
+
+        .drama-card {
+            background: linear-gradient(135deg, #ffffff 0%, #FFFBEB 100%);
+            border: 2px solid #FBBF24;
+        }
+
+        @keyframes curtain-open {
+            from {
+                transform: scaleX(0);
+                opacity: 0;
+            }
+
+            to {
+                transform: scaleX(1);
+                opacity: 1;
+            }
+        }
+
+        .curtain-animation {
+            animation: curtain-open 0.8s ease-out;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="drama-gradient min-h-screen">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b-2 border-yellow-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-film text-white h-5 w-5"></i>
+                        </div>
+                        <span class="font-bold text-xl text-slate-900">人生剧本改写师</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 bg-yellow-100 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-yellow-600': apiConfig.model === 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-yellow-600': apiConfig.model === 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true" class="text-yellow-600 hover:text-yellow-700 transition"><i
+                                class="fa-solid fa-gear h-4 w-4"></i></button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow max-w-6xl mx-auto w-full p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+                <div class="drama-card rounded-2xl p-6 shadow-lg">
+                    <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-user w-5 h-5 text-yellow-600"></i>
+                        当前剧本
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">重复出现的模式</label>
+                            <textarea v-model="input.pattern" placeholder="例如：我总是选择不适合我的伴侣；我总在关键时刻退缩；我习惯压抑自己的需求..."
+                                rows="3"
+                                class="w-full bg-white border-2 border-yellow-200 rounded-lg p-3 focus:border-yellow-400"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">早年经历（可选）</label>
+                            <textarea v-model="input.childhood" placeholder="童年时期的重要事件或家庭环境..." rows="2"
+                                class="w-full bg-white border-2 border-yellow-200 rounded-lg p-3"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">核心信念</label>
+                            <input v-model="input.belief" placeholder="例如：我不够好；我不值得被爱；我必须完美"
+                                class="w-full bg-white border-2 border-yellow-200 rounded-lg p-3">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">理想剧本方向</label>
+                            <select v-model="input.direction"
+                                class="w-full bg-white border-2 border-yellow-200 rounded-lg p-3">
+                                <option value="自我接纳">自我接纳与爱</option>
+                                <option value="勇敢突破">勇敢突破舒适区</option>
+                                <option value="建立界限">建立健康界限</option>
+                                <option value="真实表达">真实表达自我</option>
+                                <option value="自我价值">重建自我价值</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button @click="rewriteScript" :disabled="isGenerating || !input.pattern || !input.belief"
+                        class="w-full mt-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-bold py-3 rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <i class="fa-solid fa-wand-magic-sparkles w-5 h-5 inline mr-2"></i>改写人生剧本
+                    </button>
+                </div>
+            </div>
+
+            <div class="drama-card rounded-2xl p-6 shadow-lg">
+                <div v-if="isGenerating" class="flex flex-col items-center justify-center h-full text-yellow-600">
+                    <i class="fa-solid fa-film w-16 h-16 mb-4 animate-pulse"></i>
+                    <p class="text-lg font-medium">正在改写人生剧本...</p>
+                </div>
+                <div v-else-if="!result" class="flex flex-col items-center justify-center h-full text-slate-400">
+                    <i class="fa-solid fa-scroll w-16 h-16 mb-4 opacity-50"></i>
+                    <p>描述你的人生模式，让 AI 帮你改写剧本</p>
+                </div>
+                <div v-else class="space-y-4 curtain-animation">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">新剧本</h3>
+                        <button @click="copyResult" class="text-sm text-yellow-600 hover:text-yellow-700">
+                            <i class="fa-solid fa-copy w-4 h-4 inline mr-1"></i>复制
+                        </button>
+                    </div>
+                    <div class="prose max-w-none" v-html="renderMarkdown(result)"></div>
+                </div>
+            </div>
+        </main>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6" @click.stop>
+                <h3 class="text-xl font-bold mb-4">高级设置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-2">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" class="w-full rounded-lg border-2 p-3">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2">系统提示词</label>
+                        <textarea v-model="apiConfig.systemPrompt" rows="12"
+                            class="w-full rounded-lg border-2 p-3 font-mono text-sm"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-6 py-2 rounded-lg hover:bg-slate-100">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue;
+        const DEFAULT_SYSTEM_PROMPT = `你是一位专业的交互分析（TA）心理学家，擅长识别和改写人生剧本。
+
+**分析框架**：
+1. **剧本识别**：
+   - 识别重复模式背后的核心剧本（如：我不够好、我不值得、我必须完美）
+   - 分析剧本起源（早年决定、父母信息、文化影响）
+   - 识别剧本维持机制（自我应验预言、选择性注意）
+
+2. **剧本功能**：
+   - 分析旧剧本曾经的保护作用
+   - 识别当前剧本的代价
+   - 探索改变的阻力（次级获益）
+
+3. **新剧本设计**：
+   - 基于用户期望方向设计新的核心信念
+   - 提供具体的认知重构技术
+   - 设计行为实验验证新剧本
+
+4. **实施路径**：
+   - 小步骤渐进式改变
+   - 设计"剧本觉察触发器"
+   - 提供应对旧剧本复发的策略
+
+**输出结构**：
+# 🎭 你的旧剧本分析
+## 核心剧本主题
+[识别核心信念和重复模式]
+
+## 剧本起源
+[分析可能的早年决定]
+
+## 剧本代价
+[当前剧本如何限制你]
+
+---
+
+# ✨ 新剧本：[新主题标题]
+## 新的核心信念
+[3-5 条新信念]
+
+## 认知重构练习
+[具体的思维转换技术]
+
+## 行为实验
+[3-5 个可操作的小实验]
+
+## 剧本觉察卡
+[当旧剧本触发时的应对策略]
+
+---
+
+# 🌱 30 天改写计划
+[分阶段的实施建议]
+
+**风格**：温暖、赋能、不评判，强调改变的可能性。`;
+
+        createApp({
+            setup() {
+                // renderIcon removed
+
+                const showSettings = ref(false);
+                const isGenerating = ref(false);
+                const result = ref('');
+                const apiConfig = reactive({ deepseek: '', model: 'deepseek-v4-pro', systemPrompt: DEFAULT_SYSTEM_PROMPT });
+                const input = reactive({ pattern: '', childhood: '', belief: '', direction: '自我接纳' });
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    // lucide.createIcons();
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const config = JSON.parse(saved);
+                            apiConfig.deepseek = config.deepseek || '';
+                            apiConfig.model = config.model || 'deepseek-v4-pro';
+                        } catch (e) {
+                            console.error('解析 global_llm_config 失败:', e);
+                        }
+                    }
+                });
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('解析 global_llm_config 失败:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, deepseek: apiConfig.deepseek, model: apiConfig.model }));
+                    showSettings.value = false;
+                    alert('配置已保存！');
+                };
+
+                const rewriteScript = async () => {
+                    if (!apiConfig.deepseek) { showSettings.value = true; return; }
+                    isGenerating.value = true;
+                    result.value = '';
+
+                    try {
+                        const userPrompt = `重复模式：${input.pattern}\n${input.childhood ? `早年经历：${input.childhood}\n` : ''}核心信念：${input.belief}\n期望方向：${input.direction}\n\n请帮我分析旧剧本并设计新剧本。`;
+
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiConfig.deepseek}` },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: [{ role: 'system', content: apiConfig.systemPrompt }, { role: 'user', content: userPrompt }],
+                                stream: true
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop();
+
+                            for (const line of lines) {
+                                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                                    try {
+                                        const data = JSON.parse(line.slice(6));
+                                        const delta = data.choices[0].delta;
+                                        if (delta.content) result.value += delta.content;
+                                    } catch (e) {
+                                        console.error('Stream parse error:', e);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        alert('生成失败：' + error.message);
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const copyResult = async () => {
+                    await navigator.clipboard.writeText(result.value);
+                    alert('已复制到剪贴板！');
+                };
+
+                return {
+                    showSettings, isGenerating, result, apiConfig, input, saveConfig, rewriteScript, copyResult, renderMarkdown
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/psychological_life_script_rewriter.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运动打卡 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-orange-50 min-h-screen font-sans" x-data="workoutTracker()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-orange-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-orange-100/50 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-600">
+                    💪 运动打卡
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <div class="text-xs font-bold text-orange-600 bg-orange-100 px-3 py-1 rounded-full flex items-center gap-1">
+                    <i class="fa-solid fa-fire w-3 h-3"></i>
+                    <span x-text="streak"></span> 天连胜
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 py-6 pb-24 space-y-6">
+
+        <!-- Weekly Summary -->
+        <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20">
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <div class="text-orange-100 text-sm font-medium">本周运动</div>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-4xl font-bold" x-text="weeklyStats.minutes"></span>
+                        <span class="text-sm opacity-80">分钟</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="flex items-center gap-1 text-orange-100 text-sm">
+                        <i class="fa-solid fa-bolt w-4 h-4"></i>
+                        <span>消耗热量</span>
+                    </div>
+                    <div class="font-bold text-xl mt-1">
+                        <span x-text="weeklyStats.calories"></span> <span class="text-xs font-normal opacity-70">kcal</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Heatmap-ish dots for the week -->
+            <div class="flex justify-between items-center bg-white/10 rounded-xl p-3">
+                <template x-for="(day, index) in weekDays" :key="index">
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="text-[10px] opacity-80" x-text="day.label"></div>
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center transition-all border-2"
+                             :class="day.active ? 'bg-white text-orange-600 border-white' : 'border-white/20 text-white/50'">
+                            <i class="fa-solid fa-check w-4 h-4" x-show="day.active"></i>
+                            <span class="text-xs" x-show="!day.active" x-text="day.date"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Add Workout -->
+        <div class="glass rounded-2xl p-5 border border-white shadow-sm space-y-4">
+            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-square-plus w-5 h-5 text-orange-500"></i>
+                记录运动
+            </h2>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <!-- Type Selection -->
+                <div class="col-span-2 grid grid-cols-3 gap-2">
+                    <template x-for="type in workoutTypes" :key="type.id">
+                        <button @click="newWorkout.type = type.id" 
+                                class="flex flex-col items-center gap-1 p-3 rounded-xl border transition-all"
+                                :class="newWorkout.type === type.id ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-slate-100 hover:bg-slate-50 text-slate-600'">
+                            <span class="text-2xl" x-text="type.icon"></span>
+                            <span class="text-xs font-medium" x-text="type.label"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Input Fields -->
+                <div>
+                    <label class="text-xs text-slate-500 font-medium ml-1">时长 (分钟)</label>
+                    <input type="number" x-model.number="newWorkout.duration" class="w-full mt-1 rounded-xl border-slate-200 px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-200 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500 font-medium ml-1">消耗 (千卡)</label>
+                    <input type="number" x-model.number="newWorkout.calories" class="w-full mt-1 rounded-xl border-slate-200 px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-200 outline-none transition-all">
+                </div>
+                <div class="col-span-2">
+                    <label class="text-xs text-slate-500 font-medium ml-1">备注 (可选)</label>
+                    <input type="text" x-model="newWorkout.note" class="w-full mt-1 rounded-xl border-slate-200 px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-200 outline-none transition-all" placeholder="今天感觉如何？">
+                </div>
+            </div>
+
+            <button @click="addWorkout()" 
+                    :disabled="!newWorkout.duration"
+                    class="w-full py-3 bg-orange-600 text-white rounded-xl font-medium shadow-lg shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                打卡完成
+            </button>
+        </div>
+
+        <!-- History -->
+        <div class="space-y-4">
+            <h3 class="font-bold text-slate-800 px-1">最近记录</h3>
+            <div class="space-y-3">
+                <template x-for="workout in sortedWorkouts" :key="workout.id">
+                    <div class="glass flex items-center gap-4 p-4 rounded-xl border border-white/50 hover:shadow-md transition-all group">
+                        <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-2xl shadow-inner">
+                            <span x-text="getIcon(workout.type)"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-start">
+                                <h4 class="font-bold text-slate-800" x-text="getLabel(workout.type)"></h4>
+                                <span class="text-xs text-slate-400" x-text="formatDate(workout.date)"></span>
+                            </div>
+                            <div class="flex items-center gap-3 text-sm text-slate-500 mt-1">
+                                <span class="flex items-center gap-1">
+                                    <i class="fa-regular fa-clock w-3.5 h-3.5"></i>
+                                    <span x-text="workout.duration"></span> min
+                                </span>
+                                <span class="flex items-center gap-1" x-show="workout.calories">
+                                    <i class="fa-solid fa-fire w-3.5 h-3.5 text-orange-500"></i>
+                                    <span x-text="workout.calories"></span> kcal
+                                </span>
+                            </div>
+                            <p x-show="workout.note" class="text-xs text-slate-400 mt-1 truncate" x-text="workout.note"></p>
+                        </div>
+                        <button @click="deleteWorkout(workout.id)" class="text-slate-300 hover:text-rose-500 p-2 opacity-0 group-hover:opacity-100 transition-all">
+                            <i class="fa-solid fa-trash w-4 h-4"></i>
+                        </button>
+                    </div>
+                </template>
+                
+                <div x-show="workouts.length === 0" class="text-center py-8 text-slate-400 text-sm">
+                    还没有记录，动起来吧！
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function workoutTracker() {
+            return {
+                workouts: [],
+                newWorkout: {
+                    type: 'run',
+                    duration: '',
+                    calories: '',
+                    note: ''
+                },
+                
+                workoutTypes: [
+                    { id: 'run', label: '跑步', icon: '🏃' },
+                    { id: 'fitness', label: '健身', icon: '🏋️' },
+                    { id: 'yoga', label: '瑜伽', icon: '🧘' },
+                    { id: 'cycle', label: '骑行', icon: '🚴' },
+                    { id: 'walk', label: '步行', icon: '🚶' },
+                    { id: 'swim', label: '游泳', icon: '🏊' }
+                ],
+
+                init() {
+                    const saved = localStorage.getItem('webtools_workouts');
+                    if (saved) {
+                        this.workouts = JSON.parse(saved);
+                    }
+                    this.$watch('workouts', () => {
+                        localStorage.setItem('webtools_workouts', JSON.stringify(this.workouts));
+                    });
+                    
+                    // Auto calculate calories estimation if empty
+                    this.$watch('newWorkout.duration', (val) => {
+                        if (val && !this.newWorkout.calories) {
+                            // Rough estimate: 8 kcal/min for running/fitness
+                            this.newWorkout.calories = Math.round(val * 8); 
+                        }
+                    });
+
+                    // icons removed
+                },
+
+                addWorkout() {
+                    if (!this.newWorkout.duration) return;
+
+                    this.workouts.unshift({
+                        id: Date.now(),
+                        date: new Date().toISOString(),
+                        type: this.newWorkout.type,
+                        duration: parseInt(this.newWorkout.duration),
+                        calories: parseInt(this.newWorkout.calories) || 0,
+                        note: this.newWorkout.note
+                    });
+
+                    this.newWorkout = {
+                        type: this.newWorkout.type, // keep last type
+                        duration: '',
+                        calories: '',
+                        note: ''
+                    };
+                    
+                    this.$nextTick(() => { });
+                },
+
+                deleteWorkout(id) {
+                    if (confirm('删除这条打卡?')) {
+                        this.workouts = this.workouts.filter(w => w.id !== id);
+                    }
+                },
+
+                get sortedWorkouts() {
+                    // Already unshifted to top, but safety sort
+                    return this.workouts.sort((a, b) => new Date(b.date) - new Date(a.date));
+                },
+
+                getLabel(typeId) {
+                    return this.workoutTypes.find(t => t.id === typeId)?.label || typeId;
+                },
+
+                getIcon(typeId) {
+                    return this.workoutTypes.find(t => t.id === typeId)?.icon || '💪';
+                },
+
+                formatDate(iso) {
+                    const d = new Date(iso);
+                    const now = new Date();
+                    const diff = now - d;
+                    
+                    // If today
+                    if (d.toDateString() === now.toDateString()) {
+                        return '今天 ' + d.getHours() + ':' + d.getMinutes().toString().padStart(2, '0');
+                    }
+                    
+                    return `${d.getMonth()+1}月${d.getDate()}日`;
+                },
+
+                get weeklyStats() {
+                    // Logic: Get current week's Monday to Sunday
+                    // Simple logic: last 7 days? Or calendar week? 
+                    // Let's do "Current Week" (starting Monday)
+                    
+                    const now = new Date();
+                    const day = now.getDay() || 7; // 1-7 (Mon-Sun)
+                    
+                    // Get 'Monday' timestamp of this week at 00:00:00
+                    const monday = new Date(now);
+                    monday.setDate(now.getDate() - day + 1);
+                    monday.setHours(0,0,0,0);
+                    
+                    const thisWeekWorkouts = this.workouts.filter(w => new Date(w.date) >= monday);
+                    
+                    return {
+                        minutes: thisWeekWorkouts.reduce((acc, curr) => acc + (curr.duration || 0), 0),
+                        calories: thisWeekWorkouts.reduce((acc, curr) => acc + (curr.calories || 0), 0)
+                    };
+                },
+                
+                get weekDays() {
+                    const days = ['一', '二', '三', '四', '五', '六', '日'];
+                    const now = new Date();
+                    const currentDayIndex = (now.getDay() || 7) - 1; // 0-6 (Mon-Sun)
+                    
+                    const result = [];
+                    
+                    // Generate last 7 days (or current week Mon-Sun)
+                    // Let's do current week Mon-Sun
+                    const monday = new Date(now);
+                    monday.setDate(now.getDate() - (now.getDay() || 7) + 1);
+                    
+                    for (let i = 0; i < 7; i++) {
+                        const d = new Date(monday);
+                        d.setDate(monday.getDate() + i);
+                        const isToday = i === currentDayIndex;
+                        const dateStr = d.getDate();
+                        
+                        // Check if active
+                        const hasWorkout = this.workouts.some(w => {
+                            const wd = new Date(w.date);
+                            return wd.toDateString() === d.toDateString();
+                        });
+                        
+                        result.push({
+                            label: days[i],
+                            date: dateStr,
+                            active: hasWorkout,
+                            isToday: isToday
+                        });
+                    }
+                    return result;
+                },
+
+                get streak() {
+                    // Simple streak calculation
+                    // Count consecutive days going backwards from today/yesterday
+                    if (this.workouts.length === 0) return 0;
+                    
+                    const dates = new Set(this.workouts.map(w => new Date(w.date).toDateString()));
+                    const today = new Date().toDateString();
+                    const yesterday = new Date(Date.now() - 86400000).toDateString();
+                    
+                    let count = 0;
+                    let current = new Date();
+                    
+                    // Check today first
+                    if (dates.has(today)) {
+                        // start counting from today
+                    } else if (dates.has(yesterday)) {
+                        // start counting from yesterday
+                        current.setDate(current.getDate() - 1);
+                    } else {
+                        return 0; // Streak broken
+                    }
+                    
+                    while (true) {
+                        if (dates.has(current.toDateString())) {
+                            count++;
+                            current.setDate(current.getDate() - 1);
+                        } else {
+                            break;
+                        }
+                    }
+                    return count;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_workout_tracker.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

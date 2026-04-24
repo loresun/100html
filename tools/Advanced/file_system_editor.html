@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地文件系统编辑器 (File System Access)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .editor-container { height: calc(100vh - 140px); }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        textarea:focus { outline: none; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-16 flex items-center justify-between px-6 border-b border-gray-700 bg-slate-900/50">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-white">Local Editor</h1>
+                <p class="text-xs text-gray-400" id="file-name-display">未打开文件 (Unsaved)</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="openFile()" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm font-medium transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path></svg>
+                打开文件
+            </button>
+            <button onclick="saveFile()" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors shadow-lg shadow-blue-500/20">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                保存 (Save)
+            </button>
+            <button onclick="saveFileAs()" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm font-medium transition-colors">
+                另存为...
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Editor -->
+    <main class="flex-1 bg-[#1e1e1e] relative">
+        <div class="absolute inset-0 flex">
+            <!-- Line Numbers (Mock) -->
+            <div class="w-12 bg-[#2d2d2d] text-gray-500 text-right pr-3 pt-4 text-sm font-mono select-none border-r border-gray-700 hidden md:block opacity-50">
+                1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10
+            </div>
+            
+            <textarea id="editor" class="flex-1 bg-transparent text-gray-200 p-4 font-mono text-sm leading-6 resize-none w-full h-full" placeholder="在此处输入内容，或点击 '打开文件' 编辑本地文件...
+注意：
+1. 此功能基于 File System Access API
+2. 仅支持 Chrome / Edge 等现代浏览器
+3. 必须在 HTTPS 或 localhost 环境下运行" spellcheck="false"></textarea>
+        </div>
+    </main>
+    
+    <!-- Status Bar -->
+    <footer class="h-8 bg-slate-900 border-t border-gray-800 flex items-center justify-between px-4 text-xs text-gray-500">
+        <div id="status-msg">Ready</div>
+        <div class="flex gap-4">
+            <span>UTF-8</span>
+            <span>File System API Demo</span>
+        </div>
+    </footer>
+
+    <script>
+        let fileHandle;
+
+        // 检查 API 支持
+        if (!('showOpenFilePicker' in window)) {
+            alert('您的浏览器不支持 File System Access API，请使用最新版 Chrome 或 Edge。');
+        }
+
+        async function openFile() {
+            try {
+                // 打开文件选择器
+                [fileHandle] = await window.showOpenFilePicker({
+                    types: [
+                        {
+                            description: 'Text Files',
+                            accept: {
+                                'text/plain': ['.txt', '.md', '.js', '.html', '.css', '.json', '.csv']
+                            }
+                        },
+                    ],
+                    excludeAcceptAllOption: false,
+                    multiple: false
+                });
+
+                // 获取文件内容
+                const file = await fileHandle.getFile();
+                const contents = await file.text();
+
+                // 更新 UI
+                document.getElementById('editor').value = contents;
+                document.getElementById('file-name-display').innerText = file.name;
+                updateStatus(`Opened: ${file.name}`);
+                
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error(err);
+                    updateStatus('Error opening file', true);
+                }
+            }
+        }
+
+        async function saveFile() {
+            if (!fileHandle) {
+                return saveFileAs();
+            }
+
+            try {
+                updateStatus('Saving...');
+                // 创建写入流
+                const writable = await fileHandle.createWritable();
+                // 写入内容
+                await writable.write(document.getElementById('editor').value);
+                // 关闭文件
+                await writable.close();
+                
+                updateStatus('Saved successfully!');
+            } catch (err) {
+                console.error(err);
+                updateStatus('Error saving file', true);
+            }
+        }
+
+        async function saveFileAs() {
+            try {
+                const options = {
+                    types: [{
+                        description: 'Text Files',
+                        accept: {'text/plain': ['.txt', '.md', '.js']}
+                    }]
+                };
+                
+                const handle = await window.showSaveFilePicker(options);
+                fileHandle = handle;
+                
+                await saveFile();
+                
+                const file = await fileHandle.getFile();
+                document.getElementById('file-name-display').innerText = file.name;
+                
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error(err);
+                    updateStatus('Error saving file', true);
+                }
+            }
+        }
+
+        function updateStatus(msg, isError = false) {
+            const el = document.getElementById('status-msg');
+            el.innerText = msg;
+            el.className = isError ? 'text-red-400' : 'text-gray-500';
+            
+            if (!isError) {
+                setTimeout(() => {
+                    el.innerText = 'Ready';
+                }, 3000);
+            }
+        }
+
+        // 简单的按键绑定 (Ctrl/Cmd + S)
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveFile();
+            }
+        });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>同人文生成器 - AI 连载创作</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /**
+         * 少女系整体背景 + 阅读区独立浅色「电子书」样式
+         */
+        body {
+            font-family: ui-sans-serif, system-ui, sans-serif;
+            background: linear-gradient(145deg, #fdf2f8 0%, #fae8ff 35%, #ede9fe 100%);
+            min-height: 100vh;
+        }
+        .reader-surface {
+            font-family: 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
+            background: linear-gradient(180deg, #fffefb 0%, #faf7f2 100%);
+            color: #3f3a45;
+            line-height: 1.85;
+            letter-spacing: 0.02em;
+        }
+        .reader-surface .prose-chapter :deep(p) {
+            margin-bottom: 1.1em;
+            text-indent: 2em;
+        }
+        .reader-surface h2 {
+            font-weight: 600;
+            color: #6b21a8;
+            border-bottom: 1px solid rgba(192, 132, 252, 0.35);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .sidebar-card {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(244, 114, 182, 0.25);
+        }
+        .typing-dot::after {
+            content: '▋';
+            animation: blink 1s step-end infinite;
+            color: #db2777;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(192, 132, 252, 0.45);
+            border-radius: 4px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="text-slate-800">
+    <div x-data="fanficMachine()" x-init="init()" class="min-h-screen flex flex-col">
+        <!-- 顶部导航 -->
+        <nav class="sticky top-0 z-50 border-b border-pink-200/80 bg-white/75 backdrop-blur-md">
+            <div class="max-w-[1600px] mx-auto px-4 h-14 flex items-center justify-between gap-3">
+                <a href="../../index.html" class="flex items-center gap-2 min-w-0 group">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-400 to-violet-500 text-white shadow-md shadow-pink-300/40 group-hover:shadow-pink-400/50 transition-shadow">
+                        <i data-lucide="book-heart" class="w-5 h-5"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <span class="font-bold text-lg bg-gradient-to-r from-pink-600 to-violet-600 bg-clip-text text-transparent truncate block">同人文生成器</span>
+                        <span class="text-[11px] text-slate-500 truncate block">CP 设定 · 无限续写连载</span>
+                    </div>
+                </a>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div class="hidden sm:flex rounded-lg border border-pink-200 bg-white/80 p-0.5 text-xs">
+                        <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+                            :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-pink-500 text-white shadow' : 'text-slate-600 hover:bg-pink-50'"
+                            class="px-2.5 py-1 rounded-md transition">V4 Flash</button>
+                        <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+                            :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-violet-600 text-white shadow' : 'text-slate-600 hover:bg-violet-50'"
+                            class="px-2.5 py-1 rounded-md transition">V4 Pro</button>
+                    </div>
+                    <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-slate-600 hover:bg-pink-50 hover:text-pink-600 transition" title="API 设置">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                    </button>
+                    <button type="button" @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-pink-50" title="目录">
+                        <i data-lucide="panel-left" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="flex flex-1 max-w-[1600px] mx-auto w-full min-h-0">
+            <!-- 左侧：章节目录 + 创作设定 -->
+            <aside
+                class="sidebar-card lg:border-r border-pink-200/80 flex flex-col transition-all duration-200 overflow-hidden"
+                :class="sidebarOpen ? 'w-full max-w-[340px] absolute lg:relative inset-y-0 left-0 z-40 lg:z-0 h-[calc(100vh-3.5rem)] lg:h-auto lg:min-h-[calc(100vh-3.5rem)]' : 'hidden lg:flex lg:w-72 lg:max-w-none'"
+            >
+                <div class="p-4 border-b border-pink-100 flex items-center justify-between">
+                    <h2 class="font-semibold text-violet-800 flex items-center gap-2 text-sm">
+                        <i data-lucide="list" class="w-4 h-4"></i> 章节目录
+                    </h2>
+                    <button type="button" class="lg:hidden p-1 rounded hover:bg-pink-50" @click="sidebarOpen = false">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-3 space-y-1">
+                    <template x-if="chapters.length === 0">
+                        <p class="text-xs text-slate-500 px-2 py-4 text-center">填写设定后点击「开始创作」<br>章节将显示在此处</p>
+                    </template>
+                    <template x-for="(ch, idx) in chapters" :key="ch.id">
+                        <button type="button"
+                            @click="scrollToChapter(ch.id); sidebarOpen = false"
+                            class="w-full text-left px-3 py-2 rounded-lg text-sm transition border"
+                            :class="activeChapterId === ch.id ? 'bg-pink-100 border-pink-300 text-pink-900' : 'border-transparent hover:bg-white/90 text-slate-700'">
+                            <span x-text="ch.title || ('第' + (idx + 1) + '章')"></span>
+                            <span x-show="ch.streaming" class="text-pink-500 text-xs ml-1 typing-dot">生成中</span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="p-4 border-t border-pink-100 space-y-3 max-h-[48vh] overflow-y-auto">
+                    <h3 class="text-xs font-bold text-violet-700 uppercase tracking-wide flex items-center gap-1">
+                        <i data-lucide="pen-line" class="w-3.5 h-3.5"></i> 创作设定
+                    </h3>
+                    <div class="space-y-2">
+                        <label class="text-[11px] text-slate-500">角色 A</label>
+                        <input type="text" x-model="charA.name" placeholder="名字" class="w-full text-sm border border-pink-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-pink-300 outline-none bg-white/90" :disabled="isGenerating">
+                        <textarea x-model="charA.bio" rows="2" placeholder="简介、性格、口癖等" class="w-full text-sm border border-pink-200 rounded-lg px-2 py-1.5 resize-none focus:ring-2 focus:ring-pink-300 outline-none bg-white/90" :disabled="isGenerating"></textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[11px] text-slate-500">角色 B</label>
+                        <input type="text" x-model="charB.name" placeholder="名字" class="w-full text-sm border border-pink-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-pink-300 outline-none bg-white/90" :disabled="isGenerating">
+                        <textarea x-model="charB.bio" rows="2" placeholder="简介、性格、口癖等" class="w-full text-sm border border-pink-200 rounded-lg px-2 py-1.5 resize-none focus:ring-2 focus:ring-pink-300 outline-none bg-white/90" :disabled="isGenerating"></textarea>
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-500 block mb-1">CP 属性</label>
+                        <select x-model="cpType" class="w-full text-sm border border-pink-200 rounded-lg px-2 py-1.5 bg-white/90 focus:ring-2 focus:ring-pink-300 outline-none" :disabled="isGenerating">
+                            <template x-for="opt in cpOptions" :key="opt">
+                                <option :value="opt" x-text="opt"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-500 block mb-1">世界观</label>
+                        <select x-model="worldview" class="w-full text-sm border border-pink-200 rounded-lg px-2 py-1.5 bg-white/90 focus:ring-2 focus:ring-pink-300 outline-none" :disabled="isGenerating">
+                            <template x-for="opt in worldOptions" :key="opt">
+                                <option :value="opt" x-text="opt"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-500 block mb-1">分级</label>
+                        <select x-model="rating" class="w-full text-sm border border-pink-200 rounded-lg px-2 py-1.5 bg-white/90 focus:ring-2 focus:ring-pink-300 outline-none" :disabled="isGenerating">
+                            <template x-for="opt in ratingOptions" :key="opt">
+                                <option :value="opt" x-text="opt"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <button type="button"
+                        @click="startFirstChapter()"
+                        :disabled="isGenerating || !canStart"
+                        class="w-full py-2.5 rounded-xl font-medium text-white bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-pink-300/30 text-sm">
+                        开始创作
+                    </button>
+                </div>
+            </aside>
+
+            <!-- 移动端遮罩 -->
+            <div x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 bg-black/30 z-30 lg:hidden" @click="sidebarOpen = false"></div>
+
+            <!-- 主阅读区 -->
+            <main class="flex-1 flex flex-col min-w-0 min-h-0">
+                <div class="reader-surface flex-1 overflow-y-auto shadow-inner border-l border-r border-pink-100/50">
+                    <div class="max-w-3xl mx-auto px-6 py-8 pb-32">
+                        <!-- V4 Pro 思考过程 -->
+                        <details x-show="reasoningContent" class="mb-6 rounded-xl border border-violet-200 bg-violet-50/50 p-3 text-sm">
+                            <summary class="cursor-pointer font-medium text-violet-800 flex items-center gap-2">
+                                <i data-lucide="brain" class="w-4 h-4"></i> 深度思考过程（V4 Pro）
+                            </summary>
+                            <pre class="mt-2 whitespace-pre-wrap text-slate-600 text-xs leading-relaxed" x-text="reasoningContent"></pre>
+                        </details>
+
+                        <template x-if="chapters.length === 0">
+                            <div class="text-center py-20 text-slate-500">
+                                <i data-lucide="sparkles" class="w-14 h-14 mx-auto mb-4 text-pink-300"></i>
+                                <p class="text-base">在左侧填写双角色与 CP 设定，</p>
+                                <p class="text-sm mt-1">点击「开始创作」生成约千字第一章。</p>
+                            </div>
+                        </template>
+
+                        <template x-for="(ch, idx) in chapters" :key="ch.id">
+                            <article :id="'chapter-' + ch.id" class="mb-14 scroll-mt-24">
+                                <h2 class="text-xl" x-text="ch.title || ('第' + (idx + 1) + '章')"></h2>
+                                <div class="prose-chapter mt-4 text-[1.05rem]" x-html="renderChapterHtml(ch.content)"></div>
+                                <p x-show="ch.streaming && !ch.content" class="text-pink-500 text-sm mt-2 typing-dot">正在执笔</p>
+                            </article>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 底部操作条 -->
+                <div class="border-t border-pink-200 bg-white/90 backdrop-blur-md px-4 py-3 shrink-0">
+                    <div class="max-w-3xl mx-auto flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center justify-between">
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" @click="queueFlavor('sweet')" :disabled="isGenerating"
+                                class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm border border-pink-200 bg-pink-50 text-pink-800 hover:bg-pink-100 disabled:opacity-50">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i> 加点糖
+                            </button>
+                            <button type="button" @click="queueFlavor('knife')" :disabled="isGenerating"
+                                class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 disabled:opacity-50">
+                                <i data-lucide="cloud-rain" class="w-4 h-4"></i> 来点刀
+                            </button>
+                            <button type="button" @click="queueFlavor('twist')" :disabled="isGenerating"
+                                class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm border border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 disabled:opacity-50">
+                                <i data-lucide="zap" class="w-4 h-4"></i> 翻车了
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-2 justify-end">
+                            <button type="button" @click="exportTxt()" :disabled="!chapters.length"
+                                class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                                <i data-lucide="download" class="w-4 h-4"></i> 导出全文 TXT
+                            </button>
+                            <button type="button" @click="continueNextChapter()" :disabled="isGenerating || !chapters.length"
+                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:to-fuchsia-600 disabled:opacity-50 shadow-lg shadow-pink-400/25">
+                                <i data-lucide="heart" class="w-4 h-4 fill-current"></i>
+                                续写下一章
+                                <i data-lucide="heart" class="w-4 h-4 fill-current opacity-80"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="max-w-3xl mx-auto text-[11px] text-slate-500 mt-2 text-center sm:text-left" x-show="flavorHints.length">
+                        <span class="text-pink-600">下一章将叠加：</span>
+                        <span x-text="flavorHints.join('、')"></span>
+                    </p>
+                </div>
+            </main>
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div x-show="showSettings" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="showSettings = false" x-cloak>
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-pink-100">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-violet-900 flex items-center gap-2">
+                        <i data-lucide="key-round" class="w-5 h-5"></i> API 配置
+                    </h3>
+                    <button type="button" @click="showSettings = false" class="p-1 rounded-lg hover:bg-pink-50"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <label class="block text-sm text-slate-600 mb-1">DeepSeek API Key</label>
+                <input type="password" x-model="apiConfig.deepseek" class="w-full border border-pink-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-pink-400 outline-none" placeholder="sk-...">
+                <p class="text-xs text-slate-500 mt-2">
+                    <a href="https://platform.deepseek.com/" target="_blank" rel="noopener" class="text-pink-600 hover:underline">前往 DeepSeek 控制台</a>
+                </p>
+                <label class="block text-sm text-slate-600 mt-4 mb-1">模型</label>
+                <select x-model="apiConfig.model" class="w-full border border-pink-200 rounded-xl px-3 py-2 text-sm">
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                </select>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100">取消</button>
+                    <button type="button" @click="saveConfig()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-violet-500 text-white font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 right-6 z-[110] px-4 py-3 rounded-xl shadow-xl border border-pink-200 bg-white/95 text-sm flex items-center gap-2 max-w-sm">
+            <i data-lucide="info" class="w-4 h-4 text-pink-500 shrink-0"></i>
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 同人文生成器 — Alpine 根组件
+         * 职责：管理章节数组、DeepSeek 流式请求、localStorage 合并、阅读器渲染与导出
+         */
+        function fanficMachine() {
+            return {
+                showSettings: false,
+                sidebarOpen: false,
+                isGenerating: false,
+                /** @type {{ deepseek: string, model: string }} */
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+                charA: { name: '', bio: '' },
+                charB: { name: '', bio: '' },
+                cpType: '甜宠',
+                worldview: '现代都市',
+                rating: '清水',
+                cpOptions: ['甜宠', '虐恋', '欢喜冤家', '破镜重圆', '青梅竹马', '强强', '相爱相杀'],
+                worldOptions: ['现代都市', '古代', '校园', '末日', '仙侠', 'ABO'],
+                ratingOptions: ['清水', '微糖', '高甜'],
+                /** @type {{ id: string, title: string, content: string, streaming: boolean }[]} */
+                chapters: [],
+                activeChapterId: null,
+                reasoningContent: '',
+                /** @type {('sweet'|'knife'|'twist')[]} 下一章生成时叠加的调味指令 */
+                flavorQueue: [],
+                toast: { show: false, message: '' },
+                nextId: 1,
+
+                /**
+                 * 是否可以点击「开始创作」
+                 */
+                get canStart() {
+                    return !!(this.charA.name.trim() && this.charB.name.trim());
+                },
+
+                /**
+                 * 人类可读的调味说明（用于底部提示）
+                 */
+                get flavorHints() {
+                    const map = { sweet: '更甜', knife: '虐心桥段', twist: '意外反转' };
+                    return this.flavorQueue.map((k) => map[k] || k);
+                },
+
+                init() {
+                    this.loadConfig();
+                    this.$nextTick(() => {
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    });
+                    // 章节变化时刷新图标（动态按钮）
+                    this.$watch('chapters', () => {
+                        this.$nextTick(() => {
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                        });
+                    });
+                    this.$watch('toast.show', (v) => {
+                        if (v) this.$nextTick(() => lucide?.createIcons?.());
+                    });
+                    // 滚动时高亮当前章（简易版：以视口中部为准）
+                    const main = document.querySelector('.reader-surface');
+                    if (main) {
+                        main.addEventListener('scroll', () => this.updateActiveFromScroll(main), { passive: true });
+                    }
+                },
+
+                /**
+                 * 从 localStorage 合并加载 global_llm_config（禁止整对象覆盖）
+                 */
+                loadConfig() {
+                    try {
+                        const raw = localStorage.getItem('global_llm_config');
+                        if (!raw) return;
+                        const saved = JSON.parse(raw);
+                        this.apiConfig = { ...this.apiConfig, ...saved };
+                    } catch (e) {
+                        console.error('加载 global_llm_config 失败', e);
+                    }
+                },
+
+                /**
+                 * 保存 API 配置：与已有键合并写入
+                 */
+                saveConfig() {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('解析 global_llm_config 失败', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showToast('配置已保存');
+                    this.showSettings = false;
+                },
+
+                showToast(msg) {
+                    this.toast = { show: true, message: msg };
+                    setTimeout(() => { this.toast.show = false; }, 2600);
+                },
+
+                /**
+                 * 构建系统提示：文体为第三人称/对话夹杂的同人小说
+                 */
+                buildSystemPrompt() {
+                    return `你是一位擅长中文同人小说创作的作者。要求：
+1. 尊重用户给出的角色设定与 CP 关系，人物性格前后一致。
+2. 叙事流畅，可有对话与心理描写，避免 OOC 说明式堆砌。
+3. 章节结构完整，有场景与情绪推进，结尾可适当留钩以便连载。
+4. 不要输出「我是 AI」等元话语；不要重复粘贴用户设定原文。
+5. 分级约束：清水=无任何露骨描写；微糖=亲密氛围点到为止；高甜=高糖互动但仍避免露骨色情描写。`;
+                },
+
+                /**
+                 * 将表单格式化为自然语言设定块
+                 */
+                buildSettingBlock() {
+                    return `【角色A】${this.charA.name}
+简介：${this.charA.bio || '（未填写）'}
+【角色B】${this.charB.name}
+简介：${this.charB.bio || '（未填写）'}
+【CP属性】${this.cpType}
+【世界观】${this.worldview}
+【分级】${this.rating}`;
+                },
+
+                /**
+                 * 把调味队列转成给模型的中文指令片段
+                 */
+                buildFlavorInstruction() {
+                    if (!this.flavorQueue.length) return '';
+                    const parts = [];
+                    if (this.flavorQueue.includes('sweet')) parts.push('请明显加强甜蜜互动与情绪张力，整体更「甜」。');
+                    if (this.flavorQueue.includes('knife')) parts.push('请加入虐心或误会、压抑等桥段，情感冲击强一些（仍遵守分级，不写露骨内容）。');
+                    if (this.flavorQueue.includes('twist')) parts.push('请安排意外反转或翻车事件，推动剧情陡转，但要能圆回人物关系。');
+                    return '\n【本章额外调味】\n' + parts.join('\n');
+                },
+
+                /**
+                 * 用户点击调味按钮：仅影响下一次生成（章节开始或续写）
+                 */
+                queueFlavor(kind) {
+                    if (!this.flavorQueue.includes(kind)) this.flavorQueue.push(kind);
+                    const labels = { sweet: '加点糖', knife: '来点刀', twist: '翻车了' };
+                    this.showToast('已记录「' + labels[kind] + '」，将体现在下一次生成中');
+                },
+
+                /**
+                 * 前文拼接（过长时保留尾部，避免超出上下文）
+                 * @param {number} maxChars 最大字符数近似上限
+                 */
+                buildPriorText(maxChars = 28000) {
+                    if (this.chapters.length <= 1) return '';
+                    const completed = this.chapters.slice(0, -1);
+                    let text = completed.map((c, i) => `《${c.title || '第' + (i + 1) + '章'}》\n${c.content}`).join('\n\n---\n\n');
+                    if (text.length > maxChars) {
+                        text = '（更早章节已省略部分篇幅以保持连贯，请根据下列近文衔接。）\n\n' + text.slice(-maxChars);
+                    }
+                    return text;
+                },
+
+                /**
+                 * 生成唯一章节 id
+                 */
+                newChapterId() {
+                    return 'ch-' + (this.nextId++);
+                },
+
+                /**
+                 * 开始创作：新增第一章并流式生成约 1000 字
+                 */
+                async startFirstChapter() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showToast('请先配置 DeepSeek API Key');
+                        this.showSettings = true;
+                        return;
+                    }
+                    if (!this.canStart) {
+                        this.showToast('请填写角色 A、B 的名字');
+                        return;
+                    }
+                    this.isGenerating = true;
+                    this.reasoningContent = '';
+                    this.chapters = [];
+                    const id = this.newChapterId();
+                    this.chapters.push({
+                        id,
+                        title: '第1章',
+                        content: '',
+                        streaming: true
+                    });
+                    this.activeChapterId = id;
+                    const flavor = this.buildFlavorInstruction();
+                    this.flavorQueue = [];
+
+                    const userMsg = `${this.buildSettingBlock()}
+${flavor}
+
+请根据以上设定创作**第一章**同人小说正文，字数约 1000 字（900–1100 字为宜）。
+请直接在正文开头用一行标题（格式：《章节标题》或 第1章 标题），下一行空行后开始正文。
+不要列出设定提纲，不要分点说明写作计划。`;
+
+                    try {
+                        await this.streamChat(
+                            [
+                                { role: 'system', content: this.buildSystemPrompt() },
+                                { role: 'user', content: userMsg }
+                            ],
+                            id
+                        );
+                        this.refineChapterTitle(0);
+                        this.showToast('第一章生成完成');
+                    } catch (err) {
+                        console.error(err);
+                        this.showToast('生成失败：' + (err.message || String(err)));
+                        this.chapters = [];
+                    } finally {
+                        const ch = this.chapters.find((c) => c.id === id);
+                        if (ch) ch.streaming = false;
+                        this.isGenerating = false;
+                        this.$nextTick(() => lucide?.createIcons?.());
+                    }
+                },
+
+                /**
+                 * 续写下一章：追加空章并流式写入
+                 */
+                async continueNextChapter() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showToast('请先配置 API Key');
+                        this.showSettings = true;
+                        return;
+                    }
+                    if (!this.chapters.length) return;
+                    const last = this.chapters[this.chapters.length - 1];
+                    if (last.streaming || this.isGenerating) return;
+
+                    const n = this.chapters.length + 1;
+                    const id = this.newChapterId();
+                    this.chapters.push({
+                        id,
+                        title: '第' + n + '章',
+                        content: '',
+                        streaming: true
+                    });
+                    this.activeChapterId = id;
+                    this.isGenerating = true;
+                    this.reasoningContent = '';
+
+                    const prior = this.buildPriorText();
+                    const flavor = this.buildFlavorInstruction();
+                    this.flavorQueue = [];
+
+                    const userMsg = `${this.buildSettingBlock()}
+
+【已连载前文】（请保持人物与伏笔连贯）
+${prior}
+
+请续写**第 ${n} 章**，字数约 1000 字（900–1100 字为宜）。
+开头一行给出本章标题（格式：《章节标题》或 第${n}章 标题），空行后正文。
+必须承接上文情绪与情节，不要重复前文大段内容。
+${flavor}`;
+
+                    try {
+                        await this.streamChat(
+                            [
+                                { role: 'system', content: this.buildSystemPrompt() },
+                                { role: 'user', content: userMsg }
+                            ],
+                            id
+                        );
+                        this.refineChapterTitle(this.chapters.length - 1);
+                        this.showToast('第 ' + n + ' 章生成完成');
+                    } catch (err) {
+                        console.error(err);
+                        this.showToast('续写失败：' + (err.message || String(err)));
+                        this.chapters.pop();
+                    } finally {
+                        const ch = this.chapters.find((c) => c.id === id);
+                        if (ch) ch.streaming = false;
+                        this.isGenerating = false;
+                        this.$nextTick(() => {
+                            lucide?.createIcons?.();
+                            document.getElementById('chapter-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                    }
+                },
+
+                /**
+                 * DeepSeek 流式请求；将增量写入指定章节 content
+                 * 使用缓冲处理不完整的 SSE 行，避免 JSON 截断
+                 * @param {object[]} messages OpenAI 格式 messages
+                 * @param {string} targetChapterId 写入目标章节 id
+                 */
+                async streamChat(messages, targetChapterId) {
+                    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages,
+                            stream: true,
+                            temperature: 0.85
+                        })
+                    });
+
+                    if (!response.ok) {
+                        let msg = 'HTTP ' + response.status;
+                        try {
+                            const errBody = await response.json();
+                            msg = errBody.error?.message || msg;
+                        } catch (e) { /* ignore */ }
+                        throw new Error(msg);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    let full = '';
+                    let reasoning = '';
+                    let lastUi = 0;
+                    const THROTTLE_MS = 70;
+
+                    const target = () => this.chapters.find((c) => c.id === targetChapterId);
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            const t = line.trim();
+                            if (!t.startsWith('data:')) continue;
+                            const data = t.slice(5).trim();
+                            if (data === '[DONE]') continue;
+                            try {
+                                const json = JSON.parse(data);
+                                const delta = json.choices?.[0]?.delta;
+                                if (delta?.reasoning_content) {
+                                    reasoning += delta.reasoning_content;
+                                    if (Date.now() - lastUi >= THROTTLE_MS) {
+                                        this.reasoningContent = reasoning;
+                                        lastUi = Date.now();
+                                    }
+                                }
+                                if (delta?.content) {
+                                    full += delta.content;
+                                    const ch = target();
+                                    if (ch && Date.now() - lastUi >= THROTTLE_MS) {
+                                        ch.content = full;
+                                        lastUi = Date.now();
+                                    }
+                                }
+                            } catch (e) {
+                                /* 单行解析失败时跳过 */
+                            }
+                        }
+                    }
+
+                    const ch = target();
+                    if (ch) ch.content = full;
+                    this.reasoningContent = reasoning;
+                },
+
+                /**
+                 * 尝试从正文首行解析标题写回章节 title
+                 * @param {number} index chapters 数组下标
+                 */
+                refineChapterTitle(index) {
+                    const ch = this.chapters[index];
+                    if (!ch || !ch.content) return;
+                    const lines = ch.content.trim().split(/\r?\n/);
+                    const first = (lines[0] || '').trim();
+                    const mBook = first.match(/^《(.+?)》/);
+                    const mNum = first.match(/^第\s*\d+\s*章\s*[：:]\s*(.+)/);
+                    const mNum2 = first.match(/^第\s*\d+\s*章\s+(.+)/);
+                    let extracted = false;
+                    if (mBook) {
+                        ch.title = mBook[1].trim();
+                        extracted = true;
+                    } else if (mNum) {
+                        ch.title = mNum[1].trim();
+                        extracted = true;
+                    } else if (mNum2) {
+                        ch.title = mNum2[1].trim();
+                        extracted = true;
+                    }
+                    /** 已从首行解析标题时，去掉首行（及紧随空行），避免阅读区重复显示大标题 */
+                    if (extracted && lines.length > 1) {
+                        let rest = lines.slice(1);
+                        while (rest.length && !rest[0].trim()) rest.shift();
+                        if (rest.length) ch.content = rest.join('\n');
+                    }
+                },
+
+                /**
+                 * 阅读区：Markdown → HTML（marked），失败时转纯文本段落
+                 * @param {string} raw
+                 */
+                renderChapterHtml(raw) {
+                    if (!raw) return '';
+                    try {
+                        return marked.parse(raw, { breaks: true });
+                    } catch (e) {
+                        return '<p>' + raw.replace(/</g, '&lt;').replace(/\n/g, '</p><p>') + '</p>';
+                    }
+                },
+
+                scrollToChapter(id) {
+                    this.activeChapterId = id;
+                    const el = document.getElementById('chapter-' + id);
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                },
+
+                /**
+                 * 根据滚动位置更新侧边栏高亮章节
+                 */
+                updateActiveFromScroll(el) {
+                    const articles = this.chapters.map((c) => document.getElementById('chapter-' + c.id)).filter(Boolean);
+                    if (!articles.length) return;
+                    const mid = el.getBoundingClientRect().top + el.getBoundingClientRect().height * 0.35;
+                    let current = this.chapters[0]?.id;
+                    for (const a of articles) {
+                        if (a.getBoundingClientRect().top <= mid) current = a.id.replace('chapter-', '');
+                    }
+                    if (current && current.startsWith('ch-')) this.activeChapterId = current;
+                },
+
+                /**
+                 * 导出全部章节为 UTF-8 TXT
+                 */
+                exportTxt() {
+                    if (!this.chapters.length) return;
+                    const lines = [];
+                    lines.push('《同人文连载导出》');
+                    lines.push('导出时间：' + new Date().toLocaleString('zh-CN'));
+                    lines.push('');
+                    lines.push(this.buildSettingBlock());
+                    lines.push('');
+                    lines.push('='.repeat(48));
+                    this.chapters.forEach((c, i) => {
+                        lines.push('');
+                        lines.push(c.title || '第' + (i + 1) + '章');
+                        lines.push('-'.repeat(24));
+                        lines.push(c.content);
+                    });
+                    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '同人文连载_' + new Date().toISOString().slice(0, 10) + '.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showToast('已下载 TXT');
+                }
+            };
+        }
+    </script>
+    <style>[x-cloak] { display: none !important; }</style>
+</body>
+</html>

@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>同人小说生成器 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* 基础样式 */
+        body {
+            font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+            background: linear-gradient(135deg, #1a1625 0%, #2d1f3d 50%, #1a1625 100%);
+            min-height: 100vh;
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(168, 85, 247, 0.4);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(168, 85, 247, 0.6);
+        }
+        
+        /* 对话气泡样式 */
+        .dialogue-bubble {
+            position: relative;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease;
+        }
+        .dialogue-left {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            border-bottom-left-radius: 4px;
+            margin-right: auto;
+        }
+        .dialogue-right {
+            background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+            border-bottom-right-radius: 4px;
+            margin-left: auto;
+        }
+        
+        /* 淡入动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 闪烁光标 */
+        .typing-cursor::after {
+            content: '▋';
+            animation: blink 1s infinite;
+            color: #a855f7;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        /* 玻璃态效果 */
+        .glass-panel {
+            background: rgba(30, 20, 45, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+        
+        /* 角色标签 */
+        .character-tag {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(139, 92, 246, 0.2) 100%);
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+        
+        /* 文本区域样式 */
+        textarea, input {
+            font-family: inherit;
+        }
+        
+        /* 叙述文本样式 */
+        .narration-text {
+            color: #a1a1aa;
+            font-style: italic;
+            padding: 8px 16px;
+            border-left: 3px solid rgba(168, 85, 247, 0.5);
+            background: rgba(168, 85, 247, 0.05);
+            margin: 12px 0;
+        }
+        
+        /* 思考过程折叠样式 */
+        .thinking-section summary {
+            cursor: pointer;
+            user-select: none;
+        }
+        .thinking-section[open] summary {
+            margin-bottom: 12px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="text-slate-200">
+    <!-- 主应用容器 -->
+    <div x-data="fanficGenerator" class="min-h-screen flex flex-col">
+        
+        <!-- ==================== 顶部导航栏 ==================== -->
+        <nav class="glass-panel sticky top-0 z-50 border-b border-purple-500/20">
+            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <!-- 左侧：首页链接和标题 -->
+                <a href="../../index.html" class="flex items-center gap-3 group">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:shadow-purple-500/50 transition-shadow">
+                        <i class="fa-solid fa-feather w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">同人小说生成器</span>
+                        <p class="text-xs text-slate-400">对话体创作助手</p>
+                    </div>
+                </a>
+                
+                <!-- 右侧：模型切换和设置 -->
+                <div class="flex items-center gap-4">
+                    <!-- 模型选择器 -->
+                    <div class="flex bg-slate-800/50 rounded-lg p-1 border border-slate-700">
+                        <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                            :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200">V4 Flash</button>
+                        <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                            :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200">V4 Pro</button>
+                    </div>
+                    
+                    <!-- 提示词设置按钮 -->
+                    <button @click="showPromptSettings = true" 
+                        class="p-2 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+                        title="提示词设置">
+                        <i class="fa-solid fa-scroll w-5 h-5"></i>
+                    </button>
+                    
+                    <!-- API设置按钮 -->
+                    <button @click="showSettings = true" 
+                        class="p-2 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+                        title="API 设置">
+                        <i class="fa-solid fa-gear w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ==================== 主内容区域 ==================== -->
+        <main class="flex-grow flex flex-col lg:flex-row gap-6 p-4 lg:p-6 max-w-7xl mx-auto w-full">
+            
+            <!-- ========== 左侧：输入面板 ========== -->
+            <aside class="w-full lg:w-96 flex-shrink-0 space-y-4">
+                
+                <!-- 原作信息卡片 -->
+                <div class="glass-panel rounded-2xl p-5">
+                    <h3 class="flex items-center gap-2 font-bold text-purple-300 mb-4">
+                        <i class="fa-solid fa-book-open w-4 h-4"></i>
+                        原作信息
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">作品名称 / IP</label>
+                            <input type="text" x-model="settings.sourceName" 
+                                class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition"
+                                placeholder="如：原神、哈利波特、进击的巨人...">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">世界观/背景补充（可选）</label>
+                            <textarea x-model="settings.worldSetting"
+                                class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm h-16 resize-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition"
+                                placeholder="补充原作世界观设定..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 角色设定卡片 -->
+                <div class="glass-panel rounded-2xl p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="flex items-center gap-2 font-bold text-purple-300">
+                            <i class="fa-solid fa-users w-4 h-4"></i>
+                            角色设定
+                        </h3>
+                        <button @click="addCharacter()" 
+                            class="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 transition">
+                            <i class="fa-solid fa-plus w-3 h-3"></i> 添加角色
+                        </button>
+                    </div>
+                    
+                    <!-- 角色列表 -->
+                    <div class="space-y-3">
+                        <template x-for="(char, index) in characters" :key="index">
+                            <div class="bg-slate-800/30 rounded-xl p-3 border border-slate-700/50">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="character-tag text-xs px-2 py-0.5 rounded-full text-purple-300" x-text="'角色 ' + (index + 1)"></span>
+                                    <button @click="removeCharacter(index)" x-show="characters.length > 2"
+                                        class="text-slate-500 hover:text-red-400 transition">
+                                        <i class="fa-solid fa-xmark w-4 h-4"></i>
+                                    </button>
+                                </div>
+                                <input type="text" x-model="char.name"
+                                    class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-1.5 text-sm mb-2 focus:border-purple-500 outline-none transition"
+                                    placeholder="角色名称">
+                                <textarea x-model="char.personality"
+                                    class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-1.5 text-sm h-16 resize-none focus:border-purple-500 outline-none transition"
+                                    placeholder="性格特点、说话方式、口癖等..."></textarea>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                
+                <!-- 情节设定卡片 -->
+                <div class="glass-panel rounded-2xl p-5">
+                    <h3 class="flex items-center gap-2 font-bold text-purple-300 mb-4">
+                        <i class="fa-solid fa-clapperboard w-4 h-4"></i>
+                        情节设定
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">场景描述</label>
+                            <textarea x-model="settings.scene"
+                                class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm h-20 resize-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition"
+                                placeholder="描述故事发生的场景和情境..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">情节走向/主题</label>
+                            <textarea x-model="settings.plot"
+                                class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm h-16 resize-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition"
+                                placeholder="希望对话发展的方向或想要表达的主题..."></textarea>
+                        </div>
+                        
+                        <!-- 风格选择 -->
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-2">写作风格</label>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="style in styleOptions" :key="style.value">
+                                    <button @click="settings.style = style.value"
+                                        :class="settings.style === style.value ? 'bg-purple-600 border-purple-500 text-white' : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-purple-500/50'"
+                                        class="px-3 py-1.5 text-xs rounded-lg border transition-all"
+                                        x-text="style.label">
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                        
+                        <!-- 字数控制 -->
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-2">预计字数</label>
+                            <div class="flex gap-2">
+                                <template x-for="len in lengthOptions" :key="len.value">
+                                    <button @click="settings.length = len.value"
+                                        :class="settings.length === len.value ? 'bg-purple-600 border-purple-500 text-white' : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-purple-500/50'"
+                                        class="flex-1 px-2 py-1.5 text-xs rounded-lg border transition-all"
+                                        x-text="len.label">
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 生成按钮 -->
+                <button @click="generate()" 
+                    :disabled="isGenerating"
+                    class="w-full py-4 rounded-xl font-bold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :class="isGenerating ? 'bg-slate-700' : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50'">
+                    <span x-show="!isGenerating" class="flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i>
+                        开始创作
+                    </span>
+                    <span x-show="isGenerating" class="flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-spinner fa-spin w-5 h-5"></i>
+                        创作中...
+                    </span>
+                </button>
+            </aside>
+
+            <!-- ========== 右侧：结果展示区 ========== -->
+            <section class="flex-grow glass-panel rounded-2xl flex flex-col min-h-[600px]">
+                
+                <!-- 结果区标题栏 -->
+                <div class="flex items-center justify-between p-4 border-b border-slate-700/50">
+                    <h2 class="flex items-center gap-2 font-bold text-purple-300">
+                        <i class="fa-solid fa-scroll w-5 h-5"></i>
+                        创作结果
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <!-- 续写按钮 -->
+                        <button @click="continueWriting()" 
+                            x-show="result && !isGenerating"
+                            class="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600/20 text-purple-300 rounded-lg hover:bg-purple-600/30 transition">
+                            <i class="fa-solid fa-pen-fancy w-4 h-4"></i>
+                            续写
+                        </button>
+                        <!-- 复制按钮 -->
+                        <button @click="copyResult()" 
+                            x-show="result"
+                            class="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700/50 text-slate-300 rounded-lg hover:bg-slate-700 transition">
+                            <i class="fa-solid fa-copy w-4 h-4"></i>
+                            复制
+                        </button>
+                        <!-- 导出按钮 -->
+                        <button @click="exportResult()" 
+                            x-show="result"
+                            class="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-700/50 text-slate-300 rounded-lg hover:bg-slate-700 transition">
+                            <i class="fa-solid fa-download w-4 h-4"></i>
+                            导出
+                        </button>
+                        <!-- 清空按钮 -->
+                        <button @click="clearResult()" 
+                            x-show="result"
+                            class="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition">
+                            <i class="fa-solid fa-trash w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 结果内容区 -->
+                <div class="flex-grow p-6 overflow-y-auto">
+                    <!-- 空状态 -->
+                    <div x-show="!result && !isGenerating" class="h-full flex flex-col items-center justify-center text-slate-500">
+                        <div class="w-24 h-24 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                            <i class="fa-solid fa-book-open w-12 h-12 text-purple-500/50"></i>
+                        </div>
+                        <p class="text-lg font-medium mb-2">等待创作</p>
+                        <p class="text-sm text-slate-600">设置好角色和情节，点击「开始创作」</p>
+                    </div>
+                    
+                    <!-- 思考过程（V4 Pro 模型） -->
+                    <template x-if="reasoningContent">
+                        <details class="thinking-section mb-6 bg-slate-800/30 rounded-xl border border-slate-700/50 overflow-hidden">
+                            <summary class="px-4 py-3 text-sm text-purple-400 hover:bg-slate-800/50 transition flex items-center gap-2">
+                                <i class="fa-solid fa-brain w-4 h-4"></i>
+                                深度思考过程
+                                <i class="fa-solid fa-chevron-down w-4 h-4 ml-auto"></i>
+                            </summary>
+                            <div class="px-4 pb-4 text-sm text-slate-400 whitespace-pre-wrap leading-relaxed" x-text="reasoningContent"></div>
+                        </details>
+                    </template>
+                    
+                    <!-- 生成中状态 -->
+                    <div x-show="isGenerating && !result" class="h-full flex flex-col items-center justify-center">
+                        <div class="w-16 h-16 rounded-full border-4 border-purple-500/30 border-t-purple-500 animate-spin mb-4"></div>
+                        <p class="text-purple-300 font-medium">正在构思剧情...</p>
+                        <p class="text-sm text-slate-500 mt-1" x-text="apiConfig.model === 'deepseek-v4-pro' ? '深度思考模式，请耐心等待' : '快速生成中'"></p>
+                    </div>
+                    
+                    <!-- 小说内容展示 -->
+                    <div x-show="result" class="prose prose-invert max-w-none">
+                        <!-- 标题 -->
+                        <div class="text-center mb-8">
+                            <h1 class="text-2xl font-bold text-purple-300 mb-2" x-text="generatedTitle || '无题'"></h1>
+                            <p class="text-sm text-slate-500">
+                                <span x-text="settings.sourceName"></span> 同人 · 
+                                <span x-text="styleOptions.find(s => s.value === settings.style)?.label || ''"></span>
+                            </p>
+                        </div>
+                        
+                        <!-- 正文内容 -->
+                        <div class="text-slate-200 leading-loose text-base whitespace-pre-wrap" 
+                            :class="isGenerating ? 'typing-cursor' : ''"
+                            x-html="formatDialogue(result)">
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ==================== API 设置弹窗 ==================== -->
+        <div x-show="showSettings" 
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" 
+            @click.self="showSettings = false">
+            <div class="glass-panel rounded-2xl w-full max-w-md p-6"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-purple-300 flex items-center gap-2">
+                        <i class="fa-solid fa-key w-5 h-5"></i>
+                        API 设置
+                    </h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" 
+                            class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition" 
+                            placeholder="sk-...">
+                        <p class="text-xs text-slate-500 mt-2">
+                            <a href="https://platform.deepseek.com/" target="_blank" class="text-purple-400 hover:underline">前往 DeepSeek 获取 API Key</a>
+                        </p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-4 py-2 text-slate-400 hover:text-white transition">取消</button>
+                    <button @click="saveConfig()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 提示词设置弹窗 ==================== -->
+        <div x-show="showPromptSettings" 
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" 
+            @click.self="showPromptSettings = false">
+            <div class="glass-panel rounded-2xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-purple-300 flex items-center gap-2">
+                        <i class="fa-solid fa-scroll w-5 h-5"></i>
+                        自定义提示词
+                    </h3>
+                    <button @click="showPromptSettings = false" class="text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">系统提示词</label>
+                        <textarea x-model="customPrompt.system"
+                            class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-sm h-40 resize-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition"
+                            placeholder="自定义系统提示词，留空使用默认..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">额外要求</label>
+                        <textarea x-model="customPrompt.extra"
+                            class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-sm h-24 resize-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition"
+                            placeholder="添加额外的写作要求..."></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-between">
+                    <button @click="resetPrompt()" class="px-4 py-2 text-slate-400 hover:text-red-400 transition flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-left w-4 h-4"></i>
+                        恢复默认
+                    </button>
+                    <div class="flex gap-3">
+                        <button @click="showPromptSettings = false" class="px-4 py-2 text-slate-400 hover:text-white transition">取消</button>
+                        <button @click="savePrompt()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition">
+                            保存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Toast 提示 ==================== -->
+        <div x-show="toast.show" 
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-4"
+            class="fixed bottom-6 right-6 glass-panel rounded-xl px-5 py-3 flex items-center gap-3 z-50 shadow-xl">
+            <i :class="['fa-solid', toast.icon === 'check' ? 'fa-circle-check text-green-400' : toast.icon === 'alert-circle' ? 'fa-circle-exclamation text-yellow-400' : 'fa-circle-xmark text-red-400']"
+                class="w-5 h-5"></i>
+            <span class="text-sm" x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <!-- ==================== Alpine.js 组件逻辑 ==================== -->
+    <script>
+        /**
+         * 同人小说生成器 Alpine.js 组件
+         * 功能：基于用户设定的角色和情节，生成对话体同人小说
+         */
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('fanficGenerator', () => ({
+                // ==================== 状态变量 ====================
+                showSettings: false,           // 显示API设置弹窗
+                showPromptSettings: false,     // 显示提示词设置弹窗
+                isGenerating: false,           // 是否正在生成
+                
+                // API 配置
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'      // 默认使用V3快速模型
+                },
+                
+                // 角色列表（至少2个角色）
+                characters: [
+                    { name: '', personality: '' },
+                    { name: '', personality: '' }
+                ],
+                
+                // 创作设定
+                settings: {
+                    sourceName: '',            // 原作名称
+                    worldSetting: '',          // 世界观补充
+                    scene: '',                 // 场景描述
+                    plot: '',                  // 情节走向
+                    style: 'sweet',            // 写作风格
+                    length: 'medium'           // 字数长度
+                },
+                
+                // 风格选项
+                styleOptions: [
+                    { value: 'sweet', label: '甜蜜' },
+                    { value: 'funny', label: '搞笑' },
+                    { value: 'daily', label: '日常' },
+                    { value: 'angst', label: '虐心' },
+                    { value: 'adventure', label: '冒险' },
+                    { value: 'mystery', label: '悬疑' }
+                ],
+                
+                // 字数选项
+                lengthOptions: [
+                    { value: 'short', label: '短篇 (500字)' },
+                    { value: 'medium', label: '中篇 (1000字)' },
+                    { value: 'long', label: '长篇 (2000字)' }
+                ],
+                
+                // 自定义提示词
+                customPrompt: {
+                    system: '',
+                    extra: ''
+                },
+                
+                // 生成结果
+                result: '',
+                reasoningContent: '',          // V4 Pro 模型的思考过程
+                generatedTitle: '',            // 生成的标题
+                
+                // Toast 提示
+                toast: { show: false, message: '', icon: 'check' },
+                
+                // ==================== 生命周期方法 ====================
+                /**
+                 * 组件初始化
+                 */
+                init() {
+                    this.loadConfig();
+                    this.loadPrompt();
+                },
+                
+                // ==================== 配置管理方法 ====================
+                /**
+                 * 从 localStorage 加载配置
+                 */
+                loadConfig() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const config = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...config };
+                        } catch (e) {
+                            console.error('解析 global_llm_config 失败:', e);
+                        }
+                    }
+                },
+                
+                /**
+                 * 保存配置到 localStorage
+                 */
+                saveConfig() {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                         console.error('解析 global_llm_config 失败:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        ...this.apiConfig
+                    }));
+                    this.showToast('配置已保存');
+                    this.showSettings = false;
+                },
+                
+                /**
+                 * 加载自定义提示词
+                 */
+                loadPrompt() {
+                    const saved = localStorage.getItem('fanfic_custom_prompt');
+                    if (saved) {
+                        try {
+                            this.customPrompt = { ...this.customPrompt, ...JSON.parse(saved) };
+                        } catch (e) {
+                            console.error('解析 fanfic_custom_prompt 失败:', e);
+                        }
+                    }
+                },
+                
+                /**
+                 * 保存自定义提示词
+                 */
+                savePrompt() {
+                    localStorage.setItem('fanfic_custom_prompt', JSON.stringify(this.customPrompt));
+                    this.showToast('提示词已保存');
+                    this.showPromptSettings = false;
+                },
+                
+                /**
+                 * 重置提示词为默认
+                 */
+                resetPrompt() {
+                    this.customPrompt = { system: '', extra: '' };
+                    localStorage.removeItem('fanfic_custom_prompt');
+                    this.showToast('已恢复默认提示词');
+                },
+                
+                // ==================== 角色管理方法 ====================
+                /**
+                 * 添加新角色
+                 */
+                addCharacter() {
+                    if (this.characters.length < 6) {
+                        this.characters.push({ name: '', personality: '' });
+                        this.refreshIcons();
+                    } else {
+                        this.showToast('最多支持6个角色', 'alert-circle');
+                    }
+                },
+                
+                /**
+                 * 删除指定角色
+                 */
+                removeCharacter(index) {
+                    if (this.characters.length > 2) {
+                        this.characters.splice(index, 1);
+                    }
+                },
+                
+                // ==================== 生成相关方法 ====================
+                /**
+                 * 构建系统提示词
+                 */
+                buildSystemPrompt() {
+                    if (this.customPrompt.system) {
+                        return this.customPrompt.system;
+                    }
+                    
+                    return `你是一位专业的同人小说作家，擅长创作对话体小说。你的特点是：
+1. 善于捕捉角色的性格特点和说话方式，让对话真实生动
+2. 对话中穿插简洁的动作、神态描写，增强画面感
+3. 情节发展自然流畅，角色互动有张力
+4. 熟悉各类动漫、游戏、小说等作品的世界观和角色设定
+
+写作规范：
+- 对话使用「」包裹，如：「这是一句对话。」
+- 动作和神态描写用普通文字，不加引号
+- 内心独白可用（）包裹
+- 角色说话前用"角色名："标注说话人
+- 适当添加场景描写和气氛烘托
+- 保持角色性格的一致性`;
+                },
+                
+                /**
+                 * 构建用户提示词
+                 */
+                buildUserPrompt() {
+                    // 获取字数要求
+                    const lengthMap = {
+                        'short': '约500字',
+                        'medium': '约1000字',
+                        'long': '约2000字'
+                    };
+                    
+                    // 获取风格描述
+                    const styleMap = {
+                        'sweet': '甜蜜温馨，充满粉红泡泡',
+                        'funny': '轻松搞笑，充满吐槽和梗',
+                        'daily': '日常生活，温馨自然',
+                        'angst': '虐心催泪，情感深刻',
+                        'adventure': '冒险刺激，充满紧张感',
+                        'mystery': '悬疑烧脑，引人入胜'
+                    };
+                    
+                    // 构建角色信息
+                    const characterInfo = this.characters
+                        .filter(c => c.name.trim())
+                        .map((c, i) => `角色${i + 1}：${c.name}\n性格特点：${c.personality || '（未设定）'}`)
+                        .join('\n\n');
+                    
+                    let prompt = `请创作一篇对话体同人小说。
+
+【原作信息】
+作品名称：${this.settings.sourceName || '（未指定）'}
+${this.settings.worldSetting ? `世界观补充：${this.settings.worldSetting}` : ''}
+
+【角色设定】
+${characterInfo}
+
+【情节设定】
+场景：${this.settings.scene || '（自由发挥）'}
+情节走向：${this.settings.plot || '（自由发挥）'}
+
+【写作要求】
+- 风格：${styleMap[this.settings.style] || '自然流畅'}
+- 篇幅：${lengthMap[this.settings.length] || '约1000字'}
+- 请在开头给小说起一个吸引人的标题
+- 对话要生动有趣，符合角色性格
+- 适当穿插动作神态描写，增强画面感`;
+                    
+                    // 添加额外要求
+                    if (this.customPrompt.extra) {
+                        prompt += `\n\n【额外要求】\n${this.customPrompt.extra}`;
+                    }
+                    
+                    return prompt;
+                },
+                
+                /**
+                 * 主生成函数
+                 */
+                async generate() {
+                    // 验证API Key
+                    if (!this.apiConfig.deepseek) {
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        this.showSettings = true;
+                        return;
+                    }
+                    
+                    // 验证角色信息
+                    const validCharacters = this.characters.filter(c => c.name.trim());
+                    if (validCharacters.length < 2) {
+                        this.showToast('请至少设置2个角色', 'alert-circle');
+                        return;
+                    }
+                    
+                    // 重置状态
+                    this.isGenerating = true;
+                    this.result = '';
+                    this.reasoningContent = '';
+                    this.generatedTitle = '';
+                    
+                    try {
+                        const messages = [
+                            { role: 'system', content: this.buildSystemPrompt() },
+                            { role: 'user', content: this.buildUserPrompt() }
+                        ];
+                        
+                        await this.streamChat(messages);
+                        
+                        // 提取标题
+                        this.extractTitle();
+                        this.showToast('创作完成');
+                        
+                    } catch (error) {
+                        console.error('生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'x-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+                
+                /**
+                 * 续写功能
+                 */
+                async continueWriting() {
+                    if (!this.result) return;
+                    
+                    this.isGenerating = true;
+                    
+                    try {
+                        const messages = [
+                            { role: 'system', content: this.buildSystemPrompt() },
+                            { role: 'user', content: this.buildUserPrompt() },
+                            { role: 'assistant', content: this.result },
+                            { role: 'user', content: '请继续创作，保持角色性格和情节风格的一致性，自然衔接上文，续写约500字。' }
+                        ];
+                        
+                        // 保存当前内容
+                        const previousContent = this.result;
+                        this.result += '\n\n';
+                        
+                        await this.streamChat(messages, true);
+                        this.showToast('续写完成');
+                        
+                    } catch (error) {
+                        console.error('续写失败:', error);
+                        this.showToast('续写失败: ' + error.message, 'x-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+                
+                /**
+                 * 流式调用 API
+                 * @param {Array} messages - 消息列表
+                 * @param {Boolean} isContinue - 是否为续写模式
+                 */
+                async streamChat(messages, isContinue = false) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages: messages,
+                            stream: true
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullContent = isContinue ? this.result : '';
+                    let reasoningContent = '';
+                    let lastUpdate = Date.now();
+                    const UPDATE_INTERVAL = 80; // 节流间隔
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+                        
+                        for (const line of lines) {
+                            if (line === 'data: [DONE]') continue;
+                            
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                const delta = data.choices[0]?.delta;
+                                
+                                // 处理推理内容（V4 Pro 模型）
+                                if (delta?.reasoning_content) {
+                                    reasoningContent += delta.reasoning_content;
+                                    // 节流更新
+                                    if (Date.now() - lastUpdate >= UPDATE_INTERVAL) {
+                                        this.reasoningContent = reasoningContent;
+                                        lastUpdate = Date.now();
+                                    }
+                                }
+                                
+                                // 处理正常内容
+                                if (delta?.content) {
+                                    fullContent += delta.content;
+                                    // 节流更新
+                                    if (Date.now() - lastUpdate >= UPDATE_INTERVAL) {
+                                        this.result = fullContent;
+                                        lastUpdate = Date.now();
+                                    }
+                                }
+                            } catch (e) {
+                                // 忽略解析错误
+                            }
+                        }
+                    }
+                    
+                    // 最终更新
+                    this.result = fullContent;
+                    this.reasoningContent = reasoningContent;
+                },
+                
+                /**
+                 * 从生成内容中提取标题
+                 */
+                extractTitle() {
+                    if (!this.result) return;
+                    
+                    // 尝试匹配各种标题格式
+                    const patterns = [
+                        /^[#\s]*《(.+?)》/m,           // 《标题》
+                        /^[#\s]*[【\[](.+?)[】\]]/m,   // 【标题】或 [标题]
+                        /^[#\s]*标题[：:]\s*(.+)/m,    // 标题：xxx
+                        /^[#\s]*(.{2,20})\n/m          // 开头简短的一行
+                    ];
+                    
+                    for (const pattern of patterns) {
+                        const match = this.result.match(pattern);
+                        if (match && match[1]) {
+                            this.generatedTitle = match[1].trim();
+                            return;
+                        }
+                    }
+                },
+                
+                /**
+                 * 格式化对话内容，添加样式
+                 * @param {String} text - 原始文本
+                 */
+                formatDialogue(text) {
+                    if (!text) return '';
+                    
+                    // 转义 HTML
+                    let formatted = text
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    
+                    // 高亮对话（「」内的内容）
+                    formatted = formatted.replace(/「(.+?)」/g, '<span class="text-purple-300">「$1」</span>');
+                    
+                    // 高亮角色名（xx：或xx:）
+                    formatted = formatted.replace(/^(\S{1,10})[：:]/gm, '<span class="text-pink-400 font-medium">$1：</span>');
+                    
+                    // 高亮内心独白（（）内的内容）
+                    formatted = formatted.replace(/[（\(](.+?)[）\)]/g, '<span class="text-slate-400 italic">（$1）</span>');
+                    
+                    return formatted;
+                },
+                
+                // ==================== 工具方法 ====================
+                /**
+                 * 复制结果到剪贴板
+                 */
+                async copyResult() {
+                    if (!this.result) return;
+                    
+                    let exportText = this.result;
+                    
+                    // 如果有思考过程，添加到导出内容
+                    if (this.reasoningContent) {
+                        exportText = `【深度思考过程】\n${this.reasoningContent}\n\n【正文】\n${this.result}`;
+                    }
+                    
+                    try {
+                        await navigator.clipboard.writeText(exportText);
+                        this.showToast('已复制到剪贴板');
+                    } catch (e) {
+                        // 降级方案
+                        const textarea = document.createElement('textarea');
+                        textarea.value = exportText;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        this.showToast('已复制到剪贴板');
+                    }
+                },
+                
+                /**
+                 * 导出为 TXT 文件
+                 */
+                exportResult() {
+                    if (!this.result) return;
+                    
+                    let exportText = '';
+                    
+                    // 添加标题和信息
+                    if (this.generatedTitle) {
+                        exportText += `《${this.generatedTitle}》\n`;
+                    }
+                    exportText += `原作：${this.settings.sourceName || '未指定'}\n`;
+                    exportText += `生成时间：${new Date().toLocaleString()}\n`;
+                    exportText += `模型：${this.apiConfig.model}\n`;
+                    exportText += '\n' + '='.repeat(50) + '\n\n';
+                    
+                    // 添加思考过程（如果有）
+                    if (this.reasoningContent) {
+                        exportText += '【深度思考过程】\n';
+                        exportText += this.reasoningContent;
+                        exportText += '\n\n' + '='.repeat(50) + '\n\n';
+                    }
+                    
+                    // 添加正文
+                    exportText += this.result;
+                    
+                    // 创建下载
+                    const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${this.generatedTitle || '同人小说'}_${new Date().toISOString().slice(0, 10)}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    this.showToast('已导出 TXT 文件');
+                },
+                
+                /**
+                 * 清空结果
+                 */
+                clearResult() {
+                    this.result = '';
+                    this.reasoningContent = '';
+                    this.generatedTitle = '';
+                },
+                
+                /**
+                 * 显示 Toast 提示
+                 */
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+                
+                /**
+                 * 刷新 Lucide 图标
+                 */
+                refreshIcons() {
+                    // Font Awesome automatically watches for DOM changes
+                }
+            }));
+        });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/writing_fanfic_dialogue_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>
+
+
+

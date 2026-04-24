@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Models API - 多功能AI工作台</title>
+    <meta name="description" content="一个配置驱动的AI工具生成器，学习动态加载与解析的最佳实践">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fade-in-up 0.4s ease-out forwards;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: linear-gradient(to right, #818cf8, #a78bfa);
+            height: 8px;
+            border-radius: 4px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -4px;
+            background-color: #4f46e5;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]:focus {
+            outline: none;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#4f46e5', secondary: '#10b981' }
+                }
+            }
+        }
+
+        // Font Awesome 映射
+        const FA_MAP = {
+            'layout-grid': 'fa-solid fa-table-cells-large',
+            'settings': 'fa-solid fa-gear',
+            'arrow-left': 'fa-solid fa-arrow-left',
+            'plus': 'fa-solid fa-plus',
+            'x': 'fa-solid fa-xmark',
+            'sparkles': 'fa-solid fa-wand-magic-sparkles',
+            'loader-2': 'fa-solid fa-spinner fa-spin',
+            'copy': 'fa-solid fa-copy',
+            'alert-circle': 'fa-solid fa-circle-exclamation',
+            'chevron-down': 'fa-solid fa-chevron-down',
+            'file-text': 'fa-solid fa-file-lines',
+            'sliders-horizontal': 'fa-solid fa-sliders',
+            'file-json': 'fa-solid fa-file-code',
+            'puzzle': 'fa-solid fa-puzzle-piece',
+            'zap': 'fa-solid fa-bolt',
+            'lightbulb': 'fa-solid fa-lightbulb',
+            'grid-3x3': 'fa-solid fa-border-all',
+            'instagram': 'fa-brands fa-instagram',
+            'languages': 'fa-solid fa-language',
+            'code': 'fa-solid fa-code',
+            'moon': 'fa-solid fa-moon',
+            'image': 'fa-solid fa-image',
+            'mail': 'fa-solid fa-envelope',
+            'activity': 'fa-solid fa-chart-line',
+            'box': 'fa-solid fa-box'
+        };
+
+        // 全局渲染图标函数
+        function renderIcon(name, classes = '') {
+            const iconClass = FA_MAP[name] || FA_MAP['box'];
+            return `<i class="${iconClass} ${classes}"></i>`;
+        }
+    </script>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="bg-slate-100 min-h-screen text-slate-800" x-data="app()">
+
+    <!-- ===================== 导航栏 ===================== -->
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- 左侧：标题 / 返回按钮 -->
+            <div class="flex items-center gap-3">
+                <!-- 返回主界面按钮 (仅在详情页显示) -->
+                <template x-if="currentView === 'detail'">
+                    <button @click="goBack()"
+                        class="p-2 mr-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+                        x-html="icon('arrow-left', 'text-lg')"></button>
+                </template>
+                <div class="cursor-pointer" @click="goBack()">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-gradient-to-br from-primary to-violet-500 p-2 rounded-xl shadow text-white"
+                            x-html="icon('layout-grid', 'text-lg')"></div>
+                        <div>
+                            <h1 class="font-bold text-lg text-slate-900 leading-tight"
+                                x-text="currentView === 'home' ? 'Models API 工作台' : selectedTool?.name"></h1>
+                            <p class="text-xs text-slate-400"
+                                x-text="currentView === 'home' ? '配置驱动 · 动态渲染' : '点击左侧箭头返回'"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 右侧：设置 -->
+            <div class="flex items-center gap-2">
+                <button @click="showSettings = true"
+                    class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+                    x-html="icon('settings', 'text-lg')"></button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===================== 主界面 (Home View) ===================== -->
+    <main x-show="currentView === 'home'" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- 教学说明区域 -->
+        <section
+            class="mb-10 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-black/10 rounded-full blur-xl"></div>
+            <div class="relative z-10">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-white/20 px-3 py-1 rounded-full text-xs font-medium tracking-wide">🚀 VIBE CODING
+                        教程</span>
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-bold mb-3">什么是"动态加载与解析"？</h2>
+                <p class="text-white/80 text-sm sm:text-base leading-relaxed max-w-3xl">
+                    这个页面展示了一种强大的前端模式：<strong class="text-white">配置驱动的 UI 渲染</strong>。
+                    所有你看到的 9 个功能，都<strong class="text-white">不是事先写死</strong>的 HTML，而是：
+                </p>
+                <div class="mt-5 grid sm:grid-cols-3 gap-4 text-sm">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center" x-html="icon('file-json', 'text-sm')"></span>
+                            <span class="font-semibold">1. 读取 JSON 配置</span>
+                        </div>
+                        <p class="text-white/70 text-xs">程序启动时，自动从 <code
+                                class="bg-black/20 px-1 rounded">prompts.json</code> 读取所有功能定义。</p>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center" x-html="icon('puzzle', 'text-sm')"></span>
+                            <span class="font-semibold">2. 动态渲染组件</span>
+                        </div>
+                        <p class="text-white/70 text-xs">根据 JSON 中的 <code class="bg-black/20 px-1 rounded">type</code>
+                            字段（text, select, range...），实时生成对应的 UI 控件。</p>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center" x-html="icon('zap', 'text-sm')"></span>
+                            <span class="font-semibold">3. 无需修改 HTML</span>
+                        </div>
+                        <p class="text-white/70 text-xs">添加新功能？只需在 JSON 里加几行配置，页面自动更新！</p>
+                    </div>
+                </div>
+                <p class="text-white/60 text-xs mt-5 flex items-center gap-1">
+                    <span x-html="icon('lightbulb', 'text-xs')"></span>
+                    核心技术：Alpine.js <code class="bg-black/20 px-1 rounded">x-for</code> 循环 + <code
+                        class="bg-black/20 px-1 rounded">x-if</code>/<code
+                        class="bg-black/20 px-1 rounded">x-show</code> 条件渲染
+                </p>
+            </div>
+        </section>
+
+        <!-- 功能卡片九宫格 -->
+        <section>
+            <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <span x-html="icon('grid-3x3', 'text-lg text-primary')"></span>
+                选择一个功能模块开始体验
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <template x-for="(tool, index) in tools" :key="tool.id">
+                    <button @click="selectTool(tool)"
+                        class="group bg-white rounded-2xl p-5 border border-slate-200 text-left hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden animate-fade-in-up"
+                        :style="`animation-delay: ${index * 50}ms`">
+                        <!-- 背景装饰 -->
+                        <div
+                            class="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-primary/5 to-violet-500/5 rounded-full group-hover:scale-150 transition-transform duration-500">
+                        </div>
+                        <!-- 图标 -->
+                        <div class="relative mb-4">
+                            <div class="bg-gradient-to-br from-slate-50 to-slate-100 group-hover:from-primary/10 group-hover:to-violet-500/10 p-3 rounded-xl w-fit transition-colors duration-300 border border-slate-100 text-slate-500 group-hover:text-primary"
+                                x-html="icon(tool.icon, 'text-2xl')">
+                            </div>
+                        </div>
+                        <!-- 文本 -->
+                        <h4 class="font-bold text-slate-800 group-hover:text-primary transition-colors"
+                            x-text="tool.name"></h4>
+                        <p class="text-sm text-slate-400 mt-1 line-clamp-2" x-text="tool.description"></p>
+                        <!-- 输入类型标签 -->
+                        <div class="mt-4 flex flex-wrap gap-1.5">
+                            <template x-for="inputType in getUniqueInputTypes(tool)" :key="inputType">
+                                <span
+                                    class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full group-hover:bg-primary/10 group-hover:text-primary/80 transition-colors"
+                                    x-text="inputType"></span>
+                            </template>
+                        </div>
+                    </button>
+                </template>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===================== 详情界面 (Detail View) ===================== -->
+    <main x-show="currentView === 'detail'" x-cloak x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0"
+        class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <template x-if="selectedTool">
+            <div class="space-y-6 animate-fade-in-up">
+
+                <!-- 工具介绍卡片 -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <div class="flex items-start gap-4">
+                        <div class="bg-gradient-to-br from-primary to-violet-500 p-3 rounded-xl shadow-lg text-white"
+                            x-html="icon(selectedTool.icon, 'text-2xl')"></div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800" x-text="selectedTool.name"></h2>
+                            <p class="text-slate-500 text-sm mt-1" x-text="selectedTool.description"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 动态渲染输入表单 -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-5 flex items-center gap-2">
+                        <span x-html="icon('sliders-horizontal', 'text-base')"></span>
+                        参数配置
+                    </h3>
+                    <div class="space-y-6">
+                        <template x-for="input in selectedTool.inputs" :key="input.id">
+                            <div>
+                                <!-- Label -->
+                                <label class="block text-sm font-medium text-slate-700 mb-2"
+                                    x-text="input.label"></label>
+
+                                <!-- ========== TEXT ========== -->
+                                <template x-if="input.type === 'text'">
+                                    <input type="text" x-model="formData[input.id]" :placeholder="input.placeholder"
+                                        class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary p-3 transition-all">
+                                </template>
+
+                                <!-- ========== TEXTAREA ========== -->
+                                <template x-if="input.type === 'textarea'">
+                                    <textarea x-model="formData[input.id]" :placeholder="input.placeholder" rows="4"
+                                        class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary p-3 transition-all resize-y"></textarea>
+                                </template>
+
+                                <!-- ========== SELECT (下拉菜单) ========== -->
+                                <template x-if="input.type === 'select'">
+                                    <div class="relative">
+                                        <select x-model="formData[input.id]"
+                                            class="appearance-none w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary p-3 pr-10 transition-all cursor-pointer">
+                                            <template x-for="option in input.options" :key="option">
+                                                <option :value="option" x-text="option"></option>
+                                            </template>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"
+                                            x-html="icon('chevron-down', 'text-sm')"></div>
+                                    </div>
+                                </template>
+
+                                <!-- ========== RANGE (滑块) ========== -->
+                                <template x-if="input.type === 'range'">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center gap-4">
+                                            <input type="range" x-model="formData[input.id]" :min="input.min"
+                                                :max="input.max" :step="input.step || 1"
+                                                class="flex-1 h-2 rounded-full">
+                                            <span
+                                                class="text-sm font-mono font-semibold text-primary bg-primary/10 px-3 py-1 rounded-lg min-w-[60px] text-center"
+                                                x-text="formData[input.id]"></span>
+                                        </div>
+                                        <p class="text-xs text-slate-400" x-show="input.helpText"
+                                            x-text="input.helpText"></p>
+                                    </div>
+                                </template>
+
+                                <!-- ========== CHECKBOX_GROUP (多选) ========== -->
+                                <template x-if="input.type === 'checkbox_group'">
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="option in input.options" :key="option">
+                                            <label
+                                                class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all"
+                                                :class="(formData[input.id] || []).includes(option) ? 'bg-primary text-white border-primary shadow-md' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-primary/50'">
+                                                <input type="checkbox" :value="option" x-model="formData[input.id]"
+                                                    class="sr-only">
+                                                <span class="text-sm" x-text="option"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <!-- ========== RADIO_GROUP (单选) ========== -->
+                                <template x-if="input.type === 'radio_group'">
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="option in input.options" :key="option">
+                                            <label
+                                                class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all"
+                                                :class="formData[input.id] === option ? 'bg-primary text-white border-primary shadow-md' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-primary/50'">
+                                                <input type="radio" :name="input.id" :value="option"
+                                                    x-model="formData[input.id]" class="sr-only">
+                                                <span class="text-sm" x-text="option"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </template>
+
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- 生成按钮 -->
+                    <div class="mt-8 pt-6 border-t border-slate-100">
+                        <button @click="generate()" :disabled="isLoading"
+                            class="w-full py-3.5 px-6 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-700 text-white font-semibold rounded-xl shadow-lg shadow-primary/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base">
+                            <template x-if="isLoading">
+                                <div x-html="icon('loader-2', 'text-lg')"></div>
+                            </template>
+                            <template x-if="!isLoading">
+                                <div x-html="icon('sparkles', 'text-lg')"></div>
+                            </template>
+                            <span x-text="isLoading ? 'AI 生成中...' : '生成内容'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 错误提示 -->
+                <template x-if="errorMsg">
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                        <div x-html="icon('alert-circle', 'text-lg text-red-500 mt-0.5')"></div>
+                        <div>
+                            <p class="text-sm font-medium text-red-700">生成失败</p>
+                            <p class="text-sm text-red-600 mt-1" x-text="errorMsg"></p>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- 结果区域 -->
+                <template x-if="output">
+                    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm animate-fade-in-up">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3
+                                class="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                <span x-html="icon('file-text', 'text-base')"></span>
+                                生成结果
+                            </h3>
+                            <button @click="copyResult()"
+                                class="text-sm text-primary hover:text-indigo-700 font-medium flex items-center gap-1 hover:bg-primary/5 px-2 py-1 rounded-lg transition-colors">
+                                <div x-html="icon('copy', 'text-base')"></div>
+                                复制
+                            </button>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-5 border border-slate-100 prose prose-sm max-w-none prose-slate prose-headings:text-slate-800 prose-p:text-slate-600 prose-strong:text-slate-700"
+                            x-html="marked.parse(output)"></div>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </main>
+
+    <!-- ===================== 设置弹窗 ===================== -->
+    <div x-show="showSettings" x-cloak
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-150"
+        x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" @click.away="showSettings = false"
+            x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800">API 配置</h3>
+                <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    x-html="icon('x', 'text-lg')"></button>
+            </div>
+            <div class="p-6 space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">DeepSeek API Key</label>
+                    <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                        class="w-full rounded-xl border-slate-300 border p-3 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+                    <p class="text-xs text-slate-400 mt-1.5">从 <a href="https://platform.deepseek.com/api_keys"
+                            target="_blank" class="text-primary hover:underline">DeepSeek 平台</a> 获取</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">默认模型</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                            :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-slate-200 hover:border-primary/50'"
+                            class="py-2.5 rounded-xl border text-sm font-medium transition-all">V4 Flash</button>
+                        <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                            :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-slate-200 hover:border-primary/50'"
+                            class="py-2.5 rounded-xl border text-sm font-medium transition-all">V4 Pro</button>
+                    </div>
+                </div>
+                <button @click="saveConfig(); showSettings = false"
+                    class="w-full bg-primary hover:bg-indigo-700 text-white font-medium py-3 rounded-xl shadow-lg shadow-primary/20 transition-all">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== JavaScript 逻辑 ===================== -->
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('app', () => ({
+                // --- 视图状态 ---
+                currentView: 'home', // 'home' or 'detail'
+                showSettings: false,
+
+                // --- 数据 ---
+                tools: [],           // 从 JSON 加载的工具列表
+                selectedTool: null,  // 当前选中的工具
+                formData: {},        // 表单数据
+                output: '',          // AI 生成结果
+                errorMsg: '',        // 错误信息
+                isLoading: false,    // 加载状态
+
+                // --- API 配置 ---
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+
+                // --- 初始化 ---
+                async init() {
+                    this.loadConfig();
+                    await this.fetchTools();
+                },
+
+                // --- 图标渲染辅助函数 (调用全局函数) ---
+                icon(name, classes = '') {
+                    return renderIcon(name, classes);
+                },
+
+                // --- 配置管理 ---
+                loadConfig() {
+                    try {
+                        const saved = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        this.apiConfig = { ...this.apiConfig, ...saved };
+                    } catch (e) { console.error("Config parse error", e); }
+                },
+                saveConfig() {
+                    localStorage.setItem('global_llm_config', JSON.stringify(this.apiConfig));
+                },
+
+                // --- 加载工具配置 ---
+                async fetchTools() {
+                    try {
+                        const response = await fetch('prompts.json');
+                        if (!response.ok) throw new Error('Failed to load prompts.json');
+                        this.tools = await response.json();
+                    } catch (e) {
+                        console.error('Failed to load tools:', e);
+                        alert('无法加载工具配置文件 (prompts.json)');
+                    }
+                },
+
+                // --- 选择工具，切换到详情页 ---
+                selectTool(tool) {
+                    this.selectedTool = tool;
+                    this.output = '';
+                    this.errorMsg = '';
+                    // 初始化表单数据 (包括默认值)
+                    this.formData = {};
+                    tool.inputs.forEach(input => {
+                        this.formData[input.id] = input.defaultValue ?? (input.type === 'checkbox_group' ? [] : '');
+                    });
+                    this.currentView = 'detail';
+                    // 滚动到顶部
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+
+                // --- 返回主界面 ---
+                goBack() {
+                    this.currentView = 'home';
+                    this.selectedTool = null;
+                    this.output = '';
+                    this.errorMsg = '';
+                },
+
+                // --- 获取工具的唯一输入类型 (用于显示标签) ---
+                getUniqueInputTypes(tool) {
+                    const typeMap = {
+                        'text': '文本',
+                        'textarea': '长文本',
+                        'select': '下拉菜单',
+                        'range': '滑块',
+                        'checkbox_group': '多选',
+                        'radio_group': '单选'
+                    };
+                    const types = [...new Set(tool.inputs.map(i => i.type))];
+                    return types.map(t => typeMap[t] || t);
+                },
+
+                // --- 生成内容 ---
+                async generate() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    // 校验必填项
+                    const missing = this.selectedTool.inputs.filter(i => i.required && !this.formData[i.id]?.toString().trim());
+                    if (missing.length > 0) {
+                        this.errorMsg = `请填写必填项：${missing.map(m => m.label).join(', ')}`;
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    this.errorMsg = '';
+                    this.output = '';
+
+                    // 构建用户 Prompt
+                    let userPrompt = "";
+                    this.selectedTool.inputs.forEach(input => {
+                        const val = this.formData[input.id];
+                        if (val !== undefined && val !== '' && !(Array.isArray(val) && val.length === 0)) {
+                            const displayVal = Array.isArray(val) ? val.join(', ') : val;
+                            userPrompt += `【${input.label}】: ${displayVal}\n`;
+                        }
+                    });
+
+                    const messages = [
+                        { role: 'system', content: this.selectedTool.systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ];
+
+                    try {
+                        await this.callDeepSeekStream(messages, (chunk) => {
+                            if (chunk.type === 'content') this.output += chunk.content;
+                        });
+                    } catch (e) {
+                        this.errorMsg = e.message;
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                // --- 流式调用 DeepSeek API ---
+                async callDeepSeekStream(messages, onChunk) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages: messages,
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API 错误: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0]?.delta;
+                                    if (delta?.reasoning_content) onChunk({ type: 'reasoning', content: delta.reasoning_content });
+                                    if (delta?.content) onChunk({ type: 'content', content: delta.content });
+                                } catch (e) { /* ignore parse errors */ }
+                            }
+                        }
+                    }
+                },
+
+                // --- 复制结果 ---
+                copyResult() {
+                    navigator.clipboard.writeText(this.output).then(() => {
+                        // 可以在此添加 Toast 提示
+                    });
+                }
+            }));
+        });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

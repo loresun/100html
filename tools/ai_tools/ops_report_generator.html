@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运营周报/月报生成器 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* ========== 基础样式 - 采用青绿/琥珀色调 ========== */
+        body {
+            background: radial-gradient(circle at 20% 20%, rgba(34, 197, 94, 0.08), transparent 25%),
+                radial-gradient(circle at 80% 10%, rgba(14, 165, 233, 0.08), transparent 25%),
+                linear-gradient(135deg, #ecfdf3 0%, #e0f2fe 50%, #fff7ed 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #22c55e;
+            border-radius: 3px;
+            opacity: 0.5;
+        }
+
+        /* 卡片悬浮效果 */
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 40px -18px rgba(34, 197, 94, 0.35);
+        }
+
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeInUp 0.35s ease-out forwards;
+        }
+
+        /* 思考过程折叠样式 */
+        details summary {
+            cursor: pointer;
+            user-select: none;
+            list-style: none;
+        }
+
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        /* 展开/收起箭头动画 */
+        details summary .chevron-icon {
+            transition: transform 0.2s ease;
+        }
+
+        details[open] summary .chevron-icon {
+            transform: rotate(90deg);
+        }
+
+        /* Toast 动画 */
+        .toast-enter {
+            animation: toastIn 0.3s ease-out forwards;
+        }
+
+        .toast-leave {
+            animation: toastOut 0.3s ease-out forwards;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes toastOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+        }
+
+        /* 按钮选中态样式 */
+        .btn-selected {
+            background-color: var(--selected-bg);
+            color: white;
+            border-color: var(--selected-bg);
+        }
+
+        /* 加载动画 */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- ========== 顶部导航栏 ========== -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-emerald-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <!-- 左侧：返回首页 -->
+                    <div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-chart-column text-emerald-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">运营周报/月报生成器</span>
+                    </div>
+                    <!-- 右侧：模型选择 & 设置 -->
+                    <div class="flex items-center gap-3">
+                        <select id="modelSelect"
+                            class="text-sm border border-emerald-200 rounded-lg px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <button id="btnShowSettings"
+                            class="text-slate-500 hover:text-emerald-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i>
+                            <span class="hidden sm:inline">全局设置</span>
+                        </button>
+                        <button id="btnShowPrompt"
+                            class="text-slate-500 hover:text-emerald-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-regular fa-file-lines h-4 w-4"></i>
+                            <span class="hidden sm:inline">提示词</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ========== 主内容区：分屏布局 ========== -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：输入面板 -->
+            <div
+                class="w-full md:w-1/3 lg:w-1/4 bg-white/80 backdrop-blur-sm border-r border-emerald-100 p-5 overflow-y-auto space-y-5">
+
+                <div class="space-y-4">
+                    <!-- 基础信息 -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h2 class="text-sm font-bold text-slate-700 flex items-center gap-1">
+                                <i class="fa-solid fa-briefcase w-4 h-4 text-emerald-600"></i>
+                                基础信息
+                            </h2>
+                            <span id="projectStatus" class="text-xs text-slate-400">未填写</span>
+                        </div>
+                        <input id="inputProject" type="text" placeholder="项目/品牌/业务线"
+                            class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                        <input id="inputOwner" type="text" placeholder="负责人或团队"
+                            class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 mt-2">
+                    </div>
+
+                    <!-- 日期范围 -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs text-slate-500">起始日期</label>
+                            <input id="inputDateStart" type="date"
+                                class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">结束日期</label>
+                            <input id="inputDateEnd" type="date"
+                                class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    <!-- 报告节奏 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700 flex items-center gap-1 mb-2">
+                            <i class="fa-solid fa-calendar-check w-4 h-4 text-emerald-600"></i>
+                            报告节奏（可多选）
+                        </h3>
+                        <div id="reportTypesContainer" class="flex flex-wrap gap-2">
+                            <!-- 动态生成按钮 -->
+                        </div>
+                    </div>
+
+                    <!-- 汇报视角 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700 flex items-center gap-1 mb-2">
+                            <i class="fa-solid fa-certificate w-4 h-4 text-emerald-600"></i>
+                            汇报视角/对象
+                        </h3>
+                        <div id="audiencesContainer" class="flex flex-wrap gap-2">
+                            <!-- 动态生成按钮 -->
+                        </div>
+                    </div>
+
+                    <!-- 报告侧重点 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700 flex items-center gap-1 mb-2">
+                            <i class="fa-solid fa-layer-group w-4 h-4 text-emerald-600"></i>
+                            报告侧重点
+                        </h3>
+                        <div id="focusContainer" class="flex flex-wrap gap-2">
+                            <!-- 动态生成按钮 -->
+                        </div>
+                    </div>
+
+                    <!-- 文本输入区域 -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-slate-500 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-chart-line w-3 h-3 text-emerald-600"></i>
+                                核心指标与变化
+                            </label>
+                            <textarea id="inputMetrics" rows="3"
+                                placeholder="如 GMV、转化率、留存、广告消耗、线索、活跃、ROI 等的本期数据与环比/同比变化"
+                                class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-fire w-3 h-3 text-emerald-600"></i>
+                                关键动作 / 亮点
+                            </label>
+                            <textarea id="inputHighlights" rows="3" placeholder="本期完成的重点动作、优秀案例、临时抢救动作及效果"
+                                class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-triangle-exclamation w-3 h-3 text-emerald-600"></i>
+                                风险 & 阻塞
+                            </label>
+                            <textarea id="inputRisks" rows="3" placeholder="出现的问题、风险、待解的依赖、资源缺口等"
+                                class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 flex items-center gap-1 mb-1">
+                                <i class="fa-solid fa-bullseye w-3 h-3 text-emerald-600"></i>
+                                下期计划 & 需要支持
+                            </label>
+                            <textarea id="inputNextPlan" rows="3" placeholder="下周期目标、关键举措、需要的跨部门或管理层支持"
+                                class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 输出偏好 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700 flex items-center gap-1 mb-2">
+                            <i class="fa-solid fa-wand-magic-sparkles w-4 h-4 text-emerald-600"></i>
+                            输出偏好
+                        </h3>
+                        <div id="outputStyleContainer" class="flex flex-wrap gap-2">
+                            <!-- 动态生成按钮 -->
+                        </div>
+                        <div class="flex items-center gap-2 mt-3">
+                            <label class="flex items-center gap-1 text-xs text-slate-600">
+                                <input type="checkbox" id="checkChartIdeas" checked class="rounded text-emerald-600">
+                                需要图表/数据解读建议
+                            </label>
+                            <label class="flex items-center gap-1 text-xs text-slate-600">
+                                <input type="checkbox" id="checkActionList" checked class="rounded text-emerald-600">
+                                生成可执行待办清单
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 生成按钮 -->
+                <button id="btnGenerate"
+                    class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 mt-4">
+                    <i class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i>
+                    <span>✨ 生成运营日报/周报/月报</span>
+                </button>
+            </div>
+
+            <!-- 右侧：结果展示区 -->
+            <div class="flex-1 bg-gradient-to-br from-white/60 to-slate-50/70 backdrop-blur-sm overflow-y-auto p-6">
+
+                <!-- 结果工具栏 -->
+                <div class="flex flex-wrap items-center gap-2 mb-4 justify-between">
+                    <div class="flex items-center gap-2 text-slate-500 text-sm">
+                        <i class="fa-solid fa-wand-magic w-4 h-4"></i>
+                        <span>可同时生成不同节奏与汇报视角的报告</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btnCopyAll"
+                            class="px-3 py-2 rounded-lg text-xs bg-white border border-emerald-200 text-slate-700 hover:bg-emerald-50 flex items-center gap-1">
+                            <i class="fa-regular fa-copy w-4 h-4"></i>
+                            复制全部
+                        </button>
+                        <button id="btnExportTxt"
+                            class="px-3 py-2 rounded-lg text-xs bg-white border border-emerald-200 text-slate-700 hover:bg-emerald-50 flex items-center gap-1">
+                            <i class="fa-solid fa-download w-4 h-4"></i>
+                            导出 TXT
+                        </button>
+                        <button id="btnExportCsv"
+                            class="px-3 py-2 rounded-lg text-xs bg-white border border-emerald-200 text-slate-700 hover:bg-emerald-50 flex items-center gap-1">
+                            <i class="fa-solid fa-file-csv w-4 h-4"></i>
+                            导出 CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 结果容器 -->
+                <div id="resultsContainer">
+                    <!-- 空状态 -->
+                    <div id="emptyState" class="h-full flex flex-col items-center justify-center text-slate-400 py-12">
+                        <i class="fa-solid fa-chart-column w-20 h-20 mb-4 opacity-20"></i>
+                        <p class="text-lg">填写左侧信息，选择日报/周报/月报与汇报对象</p>
+                        <p class="text-sm text-slate-500 mt-1">支持一次生成多种版本，方便向上汇报</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div id="loadingState" class="hidden h-full flex flex-col items-center justify-center py-10">
+                        <div
+                            class="bg-emerald-500/10 border border-emerald-200 text-emerald-700 px-4 py-2 rounded-full text-sm flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-spinner fa-spin w-4 h-4"></i>
+                            <span id="loadingText">正在生成...</span>
+                        </div>
+                        <p class="text-slate-600 text-sm">使用 Promise.all 并行生成，多版本报告同步输出</p>
+                    </div>
+
+                    <!-- 报告列表 -->
+                    <div id="reportsList" class="space-y-4 hidden">
+                        <!-- 动态生成报告卡片 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 设置弹窗 ========== -->
+        <div id="settingsModal"
+            class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md border border-emerald-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800">全局设置</h3>
+                    <button id="btnCloseSettings" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-sm text-slate-600">DeepSeek API Key</label>
+                        <input type="password" id="inputApiKey" placeholder="sk-..."
+                            class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <button id="btnSaveConfig"
+                        class="w-full bg-emerald-500 text-white py-2.5 rounded-xl font-semibold hover:bg-emerald-600 transition">
+                        保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 提示词弹窗 ========== -->
+        <div id="promptModal"
+            class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl border border-emerald-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800">自定义提示词</h3>
+                    <button id="btnClosePrompt" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-sm text-slate-600">System Prompt</label>
+                        <textarea id="inputSystemPrompt" rows="3"
+                            class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label class="text-sm text-slate-600">User Prompt 模板</label>
+                        <textarea id="inputUserPrompt" rows="4"
+                            class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+                    </div>
+                    <div class="flex justify-between items-center gap-3">
+                        <button id="btnResetPrompt"
+                            class="px-3 py-2 rounded-lg text-sm bg-slate-100 text-slate-700 hover:bg-slate-200">
+                            恢复默认
+                        </button>
+                        <button id="btnSavePrompt"
+                            class="bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-600">
+                            保存提示词
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== Toast 容器 ========== -->
+        <div id="toastContainer" class="fixed bottom-6 right-6 z-50"></div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * 运营周报/月报生成器 - 原生 JavaScript 实现
+         * 采用分层架构：状态管理层 / 数据访问层 / 行为逻辑层 / 事件交互层 / UI展示层
+         * ============================================================================
+         */
+
+        // ============================================================================
+        // 第一层：状态管理层 (Store)
+        // 职责：存储应用状态，提供数据读写方法
+        // 规范：只包含数据定义和简单的 getter/setter，不调用 API，不操作 DOM
+        // ============================================================================
+        const Store = {
+            // ========== 配置状态 ==========
+            config: {
+                deepseekApiKey: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            // ========== 提示词状态 ==========
+            prompt: {
+                system: '你是资深运营负责人，擅长周报/月报/复盘写作，能用高层视角、业务视角、渠道视角总结问题并给出清晰的下一步行动和需要的支持。输出内容要结构化、可执行，保持数据真实性，先结论再原因。',
+                user: `请为{{project}}生成{{type}}，面向{{audience}}。报告时间范围：{{dateRange}}。
+核心指标与变化：{{metrics}}
+关键动作与亮点：{{highlights}}
+风险与阻塞：{{risks}}
+下期计划：{{nextPlan}}
+侧重点：{{focusAreas}}
+输出风格：{{style}}
+额外要求：{{extra}}
+请分段输出：1) 执行摘要/结论，2) 本期进展与数据，3) 问题与风险，4) 下周期计划与资源需求，5) 需要的管理层/跨部门支持。`
+            },
+
+            // ========== 默认提示词（用于恢复） ==========
+            defaultPrompt: {
+                system: '你是资深运营负责人，擅长周报/月报/复盘写作，能用高层视角、业务视角、渠道视角总结问题并给出清晰的下一步行动和需要的支持。输出内容要结构化、可执行，保持数据真实性，先结论再原因。',
+                user: `请为{{project}}生成{{type}}，面向{{audience}}。报告时间范围：{{dateRange}}。
+核心指标与变化：{{metrics}}
+关键动作与亮点：{{highlights}}
+风险与阻塞：{{risks}}
+下期计划：{{nextPlan}}
+侧重点：{{focusAreas}}
+输出风格：{{style}}
+额外要求：{{extra}}
+请分段输出：1) 执行摘要/结论，2) 本期进展与数据，3) 问题与风险，4) 下周期计划与资源需求，5) 需要的管理层/跨部门支持。`
+            },
+
+            // ========== 选项配置 ==========
+            options: {
+                reportTypes: ['日报', '周报', '月报'],
+                audiences: ['老板速览', '业务 VP', '运营总监', '跨部门协作'],
+                focusOptions: ['增长突破', '渠道复盘', '活动复盘', '用户运营', '产品增长', '投放优化', '售后体验'],
+                outputStyles: ['高层速览（结论先行）', '复盘型（原因+改进）', '项目进度汇报', '数据洞察解读']
+            },
+
+            // ========== 用户输入状态 ==========
+            input: {
+                project: '',
+                owner: '',
+                dateStart: '',
+                dateEnd: '',
+                selectedTypes: ['周报'],
+                selectedAudiences: ['老板速览'],
+                focusAreas: ['增长突破'],
+                metrics: '',
+                highlights: '',
+                risks: '',
+                nextPlan: '',
+                outputStyle: '高层速览（结论先行）',
+                needChartIdeas: true,
+                needActionList: true
+            },
+
+            // ========== 生成状态 ==========
+            generation: {
+                isGenerating: false,
+                reports: []  // { id, type, audience, content, reasoning, loading, error }
+            },
+
+            // ========== 状态更新方法 ==========
+
+            /**
+             * 设置 API 配置
+             * @param {string} key - API Key
+             */
+            setApiKey(key) {
+                this.config.deepseekApiKey = key;
+            },
+
+            /**
+             * 设置模型
+             * @param {string} model - 模型名称
+             */
+            setModel(model) {
+                this.config.model = model;
+            },
+
+            /**
+             * 设置自定义提示词
+             * @param {Object} prompt - { system, user }
+             */
+            setPrompt(prompt) {
+                if (prompt.system) this.prompt.system = prompt.system;
+                if (prompt.user) this.prompt.user = prompt.user;
+            },
+
+            /**
+             * 重置提示词为默认值
+             */
+            resetPrompt() {
+                this.prompt.system = this.defaultPrompt.system;
+                this.prompt.user = this.defaultPrompt.user;
+            },
+
+            /**
+             * 切换数组中的选项（用于多选按钮）
+             * @param {string} arrayName - 数组字段名
+             * @param {string} value - 要切换的值
+             */
+            toggleArrayItem(arrayName, value) {
+                const arr = this.input[arrayName];
+                const index = arr.indexOf(value);
+                if (index > -1) {
+                    arr.splice(index, 1);
+                } else {
+                    arr.push(value);
+                }
+            },
+
+            /**
+             * 设置单选值
+             * @param {string} field - 字段名
+             * @param {*} value - 值
+             */
+            setInputField(field, value) {
+                this.input[field] = value;
+            },
+
+            /**
+             * 设置生成状态
+             * @param {boolean} isGenerating - 是否正在生成
+             */
+            setGenerating(isGenerating) {
+                this.generation.isGenerating = isGenerating;
+            },
+
+            /**
+             * 设置报告列表
+             * @param {Array} reports - 报告数组
+             */
+            setReports(reports) {
+                this.generation.reports = reports;
+            },
+
+            /**
+             * 更新单个报告
+             * @param {string} reportId - 报告ID
+             * @param {Object} updates - 更新内容
+             */
+            updateReport(reportId, updates) {
+                const report = this.generation.reports.find(r => r.id === reportId);
+                if (report) {
+                    Object.assign(report, updates);
+                }
+            },
+
+            /**
+             * 获取日期范围标签
+             * @returns {string}
+             */
+            getDateRangeLabel() {
+                if (!this.input.dateStart || !this.input.dateEnd) {
+                    return '未设置时间范围';
+                }
+                return `${this.input.dateStart} 至 ${this.input.dateEnd}`;
+            }
+        };
+
+
+        // ============================================================================
+        // 第二层：数据访问层 (API)
+        // 职责：封装所有 HTTP 请求，返回统一格式
+        // 规范：不操作 Store，不操作 DOM，不包含业务判断
+        // ============================================================================
+        const Api = {
+            /**
+             * 调用 DeepSeek API（流式）
+             * @param {string} apiKey - API Key
+             * @param {string} model - 模型名称
+             * @param {string} systemPrompt - 系统提示词
+             * @param {string} userPrompt - 用户提示词
+             * @param {Function} onChunk - 接收流式数据的回调
+             * @returns {Promise<{success: boolean, error?: string}>}
+             */
+            async streamChat(apiKey, model, systemPrompt, userPrompt, onChunk) {
+                try {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            temperature: 0.4,
+                            stream: true
+                        })
+                    });
+
+                    if (!response.ok) {
+                        return {
+                            success: false,
+                            error: `API 请求失败: ${response.status} ${response.statusText}`
+                        };
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices?.[0]?.delta;
+
+                                    // 回调传递增量数据
+                                    if (delta?.reasoning_content || delta?.content) {
+                                        onChunk({
+                                            reasoning: delta.reasoning_content || '',
+                                            content: delta.content || ''
+                                        });
+                                    }
+                                } catch (e) {
+                                    // 忽略 JSON 解析错误，继续处理
+                                }
+                            }
+                        }
+                    }
+
+                    return { success: true };
+                } catch (error) {
+
+                    return { success: false, error: error.message };
+                }
+            }
+        };
+
+
+        // ============================================================================
+        // 第三层：事件交互层 (Events)
+        // 职责：组件间通信、UI 反馈、跨模块通知
+        // 规范：只负责事件分发和 UI 反馈，不包含业务逻辑
+        // ============================================================================
+        const Events = {
+            // 事件监听器存储
+            _listeners: new Map(),
+
+            // ========== 事件名称常量 ==========
+            EVENTS: {
+                CONFIG_SAVED: 'config:saved',
+                PROMPT_SAVED: 'prompt:saved',
+                PROMPT_RESET: 'prompt:reset',
+                GENERATION_START: 'generation:start',
+                GENERATION_COMPLETE: 'generation:complete',
+                REPORT_UPDATE: 'report:update',
+                REPORT_ERROR: 'report:error',
+                VALIDATION_ERROR: 'validation:error',
+                COPY_SUCCESS: 'copy:success',
+                EXPORT_SUCCESS: 'export:success'
+            },
+
+            /**
+             * 订阅事件
+             * @param {string} event - 事件名称
+             * @param {Function} callback - 回调函数
+             * @returns {Function} 取消订阅函数
+             */
+            on(event, callback) {
+                if (!this._listeners.has(event)) {
+                    this._listeners.set(event, []);
+                }
+                this._listeners.get(event).push(callback);
+                return () => this.off(event, callback);
+            },
+
+            /**
+             * 取消订阅
+             * @param {string} event - 事件名称
+             * @param {Function} callback - 回调函数
+             */
+            off(event, callback) {
+                if (this._listeners.has(event)) {
+                    const callbacks = this._listeners.get(event);
+                    const index = callbacks.indexOf(callback);
+                    if (index > -1) callbacks.splice(index, 1);
+                }
+            },
+
+            /**
+             * 发布事件
+             * @param {string} event - 事件名称
+             * @param {Object} data - 事件数据
+             */
+            emit(event, data = {}) {
+
+
+                // 触发订阅的回调
+                if (this._listeners.has(event)) {
+                    this._listeners.get(event).forEach(cb => cb(data));
+                }
+
+                // 自动处理 Toast 提示
+                this._handleToast(event, data);
+            },
+
+            /**
+             * 显示 Toast 提示
+             * @param {string} message - 提示消息
+             * @param {string} icon - 图标名称
+             * @param {number} duration - 显示时长（毫秒）
+             */
+            toast(message, icon = 'check', duration = 2300) {
+                const container = document.getElementById('toastContainer');
+
+                // 创建 Toast 元素
+                const toast = document.createElement('div');
+                toast.className = 'bg-slate-900 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 toast-enter';
+                toast.innerHTML = `
+                    <i class="${icon}" class="w-4 h-4"></i>
+                    <span class="text-sm">${message}</span>
+                `;
+
+                container.appendChild(toast);
+
+                // 自动移除
+                setTimeout(() => {
+                    toast.classList.remove('toast-enter');
+                    toast.classList.add('toast-leave');
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            },
+
+            /**
+             * 根据事件类型自动显示 Toast
+             * @private
+             */
+            _handleToast(event, data) {
+                const toastMap = {
+                    'config:saved': { message: '配置已保存', icon: 'fa-solid fa-check' },
+                    'prompt:saved': { message: '提示词已保存', icon: 'fa-solid fa-check' },
+                    'prompt:reset': { message: '已恢复默认提示词', icon: 'fa-solid fa-rotate-left' },
+                    'copy:success': { message: data.message || '已复制', icon: 'fa-regular fa-copy' },
+                    'export:success': { message: data.message || '导出成功', icon: 'fa-solid fa-download' },
+                    'validation:error': { message: data.message || '验证失败', icon: 'fa-solid fa-circle-exclamation' },
+                    'report:error': { message: data.message || '生成失败', icon: 'fa-solid fa-circle-exclamation' }
+                };
+
+                if (toastMap[event]) {
+                    this.toast(toastMap[event].message, toastMap[event].icon);
+                }
+            }
+        };
+
+
+        // ============================================================================
+        // 第四层：行为逻辑层 (Actions)
+        // 职责：业务逻辑处理，协调 API 和 Store
+        // 规范：包含业务校验、流程控制，调用 API 和 Store，不直接操作 DOM
+        // ============================================================================
+        const Actions = {
+            /**
+             * 加载保存的配置
+             */
+            loadConfig() {
+                // 从 localStorage 读取配置
+                const savedConfig = localStorage.getItem('global_llm_config');
+                if (savedConfig) {
+                    try {
+                        const parsed = JSON.parse(savedConfig);
+                        if (parsed.deepseek) Store.setApiKey(parsed.deepseek);
+                        if (parsed.model) Store.setModel(parsed.model);
+                    } catch (e) {
+
+                    }
+                }
+
+                // 读取自定义提示词
+                const savedPrompt = localStorage.getItem('ops_report_prompt');
+                if (savedPrompt) {
+                    try {
+                        const parsed = JSON.parse(savedPrompt);
+                        Store.setPrompt(parsed);
+                    } catch (e) {
+
+                    }
+                }
+            },
+
+            /**
+             * 保存 API 配置
+             * @param {string} apiKey - API Key
+             */
+            saveConfig(apiKey) {
+                Store.setApiKey(apiKey);
+
+                // 合并保存到 localStorage
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                localStorage.setItem('global_llm_config', JSON.stringify({
+                    ...current,
+                    deepseek: apiKey,
+                    model: Store.config.model
+                }));
+
+                Events.emit(Events.EVENTS.CONFIG_SAVED);
+            },
+
+            /**
+             * 保存自定义提示词
+             * @param {string} systemPrompt - 系统提示词
+             * @param {string} userPrompt - 用户提示词
+             */
+            savePrompt(systemPrompt, userPrompt) {
+                Store.setPrompt({ system: systemPrompt, user: userPrompt });
+                localStorage.setItem('ops_report_prompt', JSON.stringify({
+                    system: systemPrompt,
+                    user: userPrompt
+                }));
+                Events.emit(Events.EVENTS.PROMPT_SAVED);
+            },
+
+            /**
+             * 重置提示词
+             */
+            resetPrompt() {
+                Store.resetPrompt();
+                localStorage.removeItem('ops_report_prompt');
+                Events.emit(Events.EVENTS.PROMPT_RESET);
+            },
+
+            /**
+             * 构建用户提示词
+             * @param {string} type - 报告类型
+             * @param {string} audience - 汇报对象
+             * @returns {string}
+             */
+            buildUserPrompt(type, audience) {
+                const input = Store.input;
+                const extraReq = [
+                    input.needChartIdeas ? '给出适合的图表/数据透视建议' : '',
+                    input.needActionList ? '输出可执行的行动清单（负责人/时间）' : ''
+                ].filter(Boolean).join('；') || '保持简洁高层视角';
+
+                return Store.prompt.user
+                    .replace('{{project}}', input.project || '该项目')
+                    .replace('{{type}}', type)
+                    .replace('{{audience}}', audience)
+                    .replace('{{dateRange}}', Store.getDateRangeLabel())
+                    .replace('{{metrics}}', input.metrics || '未提供')
+                    .replace('{{highlights}}', input.highlights || '未提供')
+                    .replace('{{risks}}', input.risks || '未提供')
+                    .replace('{{nextPlan}}', input.nextPlan || '未提供')
+                    .replace('{{focusAreas}}', input.focusAreas.join('、') || '未设置')
+                    .replace('{{style}}', input.outputStyle)
+                    .replace('{{extra}}', extraReq);
+            },
+
+            /**
+             * 生成单个报告（流式）
+             * @param {Object} report - 报告对象
+             */
+            async generateSingleReport(report) {
+                const userPrompt = this.buildUserPrompt(report.type, report.audience);
+                let fullContent = '';
+                let fullReasoning = '';
+
+                // 节流更新配置
+                let lastUpdateTime = Date.now();
+                const UPDATE_INTERVAL = 100;
+
+                const result = await Api.streamChat(
+                    Store.config.deepseekApiKey,
+                    Store.config.model,
+                    Store.prompt.system,
+                    userPrompt,
+                    (chunk) => {
+                        // 累积内容
+                        if (chunk.reasoning) fullReasoning += chunk.reasoning;
+                        if (chunk.content) fullContent += chunk.content;
+
+                        // 节流更新 Store 和 UI
+                        const now = Date.now();
+                        if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+                            Store.updateReport(report.id, {
+                                content: fullContent,
+                                reasoning: fullReasoning
+                            });
+                            Events.emit(Events.EVENTS.REPORT_UPDATE, { reportId: report.id });
+                            lastUpdateTime = now;
+                        }
+                    }
+                );
+
+                // 最终更新
+                Store.updateReport(report.id, {
+                    content: fullContent,
+                    reasoning: fullReasoning,
+                    loading: false,
+                    error: result.success ? null : result.error
+                });
+
+                Events.emit(Events.EVENTS.REPORT_UPDATE, { reportId: report.id });
+
+                if (!result.success) {
+                    Events.emit(Events.EVENTS.REPORT_ERROR, {
+                        reportId: report.id,
+                        message: result.error
+                    });
+                }
+            },
+
+            /**
+             * 生成所有报告
+             */
+            async generateReports() {
+                // 校验 API Key
+                if (!Store.config.deepseekApiKey) {
+                    Events.emit(Events.EVENTS.VALIDATION_ERROR, {
+                        message: '请先配置 API Key'
+                    });
+                    return { success: false, needSettings: true };
+                }
+
+                // 校验选择
+                if (!Store.input.selectedTypes.length || !Store.input.selectedAudiences.length) {
+                    Events.emit(Events.EVENTS.VALIDATION_ERROR, {
+                        message: '请选择至少一个报告节奏和汇报对象'
+                    });
+                    return { success: false };
+                }
+
+                // 组合类型与对象
+                const combos = [];
+                Store.input.selectedTypes.forEach(type => {
+                    Store.input.selectedAudiences.forEach(audience => {
+                        combos.push({ type, audience });
+                    });
+                });
+
+                // 生成唯一 ID
+                const baseTimestamp = Date.now();
+                const randomSuffix = Math.random().toString(36).slice(2, 8);
+
+                // 创建报告对象
+                const newReports = combos.map((combo, index) => ({
+                    id: `${combo.type}-${combo.audience}-${baseTimestamp}-${randomSuffix}-${index}`,
+                    type: combo.type,
+                    audience: combo.audience,
+                    content: '',
+                    reasoning: '',
+                    loading: true,
+                    error: null
+                }));
+
+                // 更新状态
+                Store.setReports(newReports);
+                Store.setGenerating(true);
+                Events.emit(Events.EVENTS.GENERATION_START, {
+                    count: newReports.length,
+                    types: Store.input.selectedTypes,
+                    audiences: Store.input.selectedAudiences
+                });
+
+                // 并行生成
+                try {
+                    await Promise.all(newReports.map(report => this.generateSingleReport(report)));
+                } catch (err) {
+
+                }
+
+                Store.setGenerating(false);
+                Events.emit(Events.EVENTS.GENERATION_COMPLETE);
+
+                return { success: true };
+            },
+
+            /**
+             * 重试单个报告
+             * @param {string} reportId - 报告ID
+             */
+            async retryReport(reportId) {
+                const report = Store.generation.reports.find(r => r.id === reportId);
+                if (!report) return;
+
+                Store.updateReport(reportId, {
+                    content: '',
+                    reasoning: '',
+                    loading: true,
+                    error: null
+                });
+
+                Events.emit(Events.EVENTS.REPORT_UPDATE, { reportId });
+                await this.generateSingleReport(report);
+            },
+
+            /**
+             * 复制单个报告
+             * @param {string} reportId - 报告ID
+             */
+            async copySingleReport(reportId) {
+                const report = Store.generation.reports.find(r => r.id === reportId);
+                if (!report) return;
+
+                const text = `【${report.type}｜${report.audience}】${Store.getDateRangeLabel()}\n${report.content || ''}\n\n思考过程：\n${report.reasoning || ''}`;
+
+                try {
+                    await navigator.clipboard.writeText(text);
+                    Events.emit(Events.EVENTS.COPY_SUCCESS, { message: '已复制该报告' });
+                } catch (e) {
+
+                }
+            },
+
+            /**
+             * 复制所有报告
+             */
+            async copyAllReports() {
+                const reports = Store.generation.reports;
+                if (!reports.length) {
+                    Events.emit(Events.EVENTS.VALIDATION_ERROR, { message: '暂无可复制内容' });
+                    return;
+                }
+
+                const text = reports.map(r =>
+                    `【${r.type}｜${r.audience}】${Store.getDateRangeLabel()}\n${r.content || ''}\n\n思考过程：\n${r.reasoning || '无'}`
+                ).join('\n\n-----------------\n\n');
+
+                try {
+                    await navigator.clipboard.writeText(text);
+                    Events.emit(Events.EVENTS.COPY_SUCCESS, { message: '全部报告已复制' });
+                } catch (e) {
+
+                }
+            },
+
+            /**
+             * 导出单个报告
+             * @param {string} reportId - 报告ID
+             */
+            exportSingleReport(reportId) {
+                const report = Store.generation.reports.find(r => r.id === reportId);
+                if (!report) return;
+
+                const input = Store.input;
+                const content = `类型: ${report.type}\n对象: ${report.audience}\n时间: ${Store.getDateRangeLabel()}\n项目: ${input.project}\n侧重: ${input.focusAreas.join('、')}\n\n内容:\n${report.content}\n\n思考过程:\n${report.reasoning || '无'}`;
+
+                this._downloadFile(`运营${report.type}-${report.audience}.txt`, content, 'text/plain');
+                Events.emit(Events.EVENTS.EXPORT_SUCCESS, { message: '导出成功' });
+            },
+
+            /**
+             * 导出所有报告
+             * @param {string} format - 格式 ('txt' | 'csv')
+             */
+            exportAllReports(format = 'txt') {
+                const reports = Store.generation.reports;
+                if (!reports.length) {
+                    Events.emit(Events.EVENTS.VALIDATION_ERROR, { message: '暂无可导出内容' });
+                    return;
+                }
+
+                const input = Store.input;
+
+                if (format === 'txt') {
+                    const content = reports.map(r =>
+                        `类型: ${r.type}\n对象: ${r.audience}\n时间: ${Store.getDateRangeLabel()}\n项目: ${input.project}\n侧重: ${input.focusAreas.join('、')}\n\n内容:\n${r.content}\n\n思考过程:\n${r.reasoning || '无'}`
+                    ).join('\n\n====================\n\n');
+
+                    this._downloadFile('运营报告合集.txt', content, 'text/plain');
+                } else if (format === 'csv') {
+                    const headers = ['类型', '对象', '时间', '项目', '侧重', '内容', '思考过程'];
+                    const rows = reports.map(r => [
+                        r.type,
+                        r.audience,
+                        Store.getDateRangeLabel(),
+                        input.project,
+                        input.focusAreas.join('、'),
+                        (r.content || '').replace(/\n/g, ' '),
+                        (r.reasoning || '').replace(/\n/g, ' ')
+                    ]);
+                    const csv = [headers, ...rows]
+                        .map(row => row.map(col => `"${String(col || '').replace(/"/g, '""')}"`).join(','))
+                        .join('\n');
+
+                    this._downloadFile('运营报告合集.csv', csv, 'text/csv');
+                }
+
+                Events.emit(Events.EVENTS.EXPORT_SUCCESS, { message: '导出成功' });
+            },
+
+            /**
+             * 下载文件（内部方法）
+             * @private
+             */
+            _downloadFile(name, content, type) {
+                const blob = new Blob([content], { type });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        };
+
+
+        // ============================================================================
+        // 第五层：UI 展示层 (UI)
+        // 职责：DOM 渲染和更新，事件绑定
+        // 规范：只负责视觉渲染，事件处理只调用 Actions 方法
+        // ============================================================================
+        const UI = {
+            // DOM 元素缓存
+            elements: {},
+
+            /**
+             * 初始化 UI
+             */
+            init() {
+                // 缓存 DOM 元素
+                this._cacheElements();
+                // 渲染初始选项
+                this._renderOptions();
+                // 绑定事件
+                this._bindEvents();
+                // 从 Store 同步初始状态
+                this._syncFromStore();
+                // 刷新图标
+                this._refreshIcons();
+            },
+
+            /**
+             * 缓存 DOM 元素
+             * @private
+             */
+            _cacheElements() {
+                this.elements = {
+                    // 输入元素
+                    modelSelect: document.getElementById('modelSelect'),
+                    inputProject: document.getElementById('inputProject'),
+                    inputOwner: document.getElementById('inputOwner'),
+                    inputDateStart: document.getElementById('inputDateStart'),
+                    inputDateEnd: document.getElementById('inputDateEnd'),
+                    inputMetrics: document.getElementById('inputMetrics'),
+                    inputHighlights: document.getElementById('inputHighlights'),
+                    inputRisks: document.getElementById('inputRisks'),
+                    inputNextPlan: document.getElementById('inputNextPlan'),
+                    checkChartIdeas: document.getElementById('checkChartIdeas'),
+                    checkActionList: document.getElementById('checkActionList'),
+                    projectStatus: document.getElementById('projectStatus'),
+
+                    // 选项容器
+                    reportTypesContainer: document.getElementById('reportTypesContainer'),
+                    audiencesContainer: document.getElementById('audiencesContainer'),
+                    focusContainer: document.getElementById('focusContainer'),
+                    outputStyleContainer: document.getElementById('outputStyleContainer'),
+
+                    // 按钮
+                    btnGenerate: document.getElementById('btnGenerate'),
+                    btnShowSettings: document.getElementById('btnShowSettings'),
+                    btnShowPrompt: document.getElementById('btnShowPrompt'),
+                    btnCopyAll: document.getElementById('btnCopyAll'),
+                    btnExportTxt: document.getElementById('btnExportTxt'),
+                    btnExportCsv: document.getElementById('btnExportCsv'),
+
+                    // 设置弹窗
+                    settingsModal: document.getElementById('settingsModal'),
+                    btnCloseSettings: document.getElementById('btnCloseSettings'),
+                    inputApiKey: document.getElementById('inputApiKey'),
+                    btnSaveConfig: document.getElementById('btnSaveConfig'),
+
+                    // 提示词弹窗
+                    promptModal: document.getElementById('promptModal'),
+                    btnClosePrompt: document.getElementById('btnClosePrompt'),
+                    inputSystemPrompt: document.getElementById('inputSystemPrompt'),
+                    inputUserPrompt: document.getElementById('inputUserPrompt'),
+                    btnResetPrompt: document.getElementById('btnResetPrompt'),
+                    btnSavePrompt: document.getElementById('btnSavePrompt'),
+
+                    // 结果区域
+                    emptyState: document.getElementById('emptyState'),
+                    loadingState: document.getElementById('loadingState'),
+                    loadingText: document.getElementById('loadingText'),
+                    reportsList: document.getElementById('reportsList')
+                };
+            },
+
+            /**
+             * 渲染选项按钮
+             * @private
+             */
+            _renderOptions() {
+                // 报告类型按钮
+                this._renderButtonGroup(
+                    this.elements.reportTypesContainer,
+                    Store.options.reportTypes,
+                    Store.input.selectedTypes,
+                    'selectedTypes',
+                    { selectedBg: '#059669', normalBorder: 'emerald' },
+                    true  // 多选
+                );
+
+                // 汇报对象按钮
+                this._renderButtonGroup(
+                    this.elements.audiencesContainer,
+                    Store.options.audiences,
+                    Store.input.selectedAudiences,
+                    'selectedAudiences',
+                    { selectedBg: '#f59e0b', normalBorder: 'amber' },
+                    true  // 多选
+                );
+
+                // 侧重点按钮
+                this._renderButtonGroup(
+                    this.elements.focusContainer,
+                    Store.options.focusOptions,
+                    Store.input.focusAreas,
+                    'focusAreas',
+                    { selectedBg: '#0ea5e9', normalBorder: 'sky' },
+                    true  // 多选
+                );
+
+                // 输出风格按钮（单选）
+                this._renderButtonGroup(
+                    this.elements.outputStyleContainer,
+                    Store.options.outputStyles,
+                    [Store.input.outputStyle],
+                    'outputStyle',
+                    { selectedBg: '#059669', normalBorder: 'emerald' },
+                    false  // 单选
+                );
+            },
+
+            /**
+             * 渲染按钮组
+             * @private
+             */
+            _renderButtonGroup(container, options, selectedValues, storeField, colors, isMultiple) {
+                container.innerHTML = '';
+
+                options.forEach(option => {
+                    const btn = document.createElement('button');
+                    const isSelected = selectedValues.includes(option);
+
+                    btn.className = `px-3 py-1.5 rounded-full text-xs border transition ${isSelected
+                        ? `bg-[${colors.selectedBg}] text-white border-[${colors.selectedBg}]`
+                        : `bg-white text-slate-600 border-${colors.normalBorder}-200`
+                        }`;
+
+                    // 使用内联样式确保颜色正确显示
+                    if (isSelected) {
+                        btn.style.backgroundColor = colors.selectedBg;
+                        btn.style.borderColor = colors.selectedBg;
+                        btn.style.color = 'white';
+                    }
+
+                    btn.textContent = option;
+                    btn.dataset.value = option;
+                    btn.dataset.field = storeField;
+                    btn.dataset.multiple = isMultiple;
+
+                    btn.addEventListener('click', () => {
+                        if (isMultiple) {
+                            Store.toggleArrayItem(storeField, option);
+                        } else {
+                            Store.setInputField(storeField, option);
+                        }
+                        // 重新渲染该按钮组
+                        const newSelected = isMultiple ? Store.input[storeField] : [Store.input[storeField]];
+                        this._renderButtonGroup(container, options, newSelected, storeField, colors, isMultiple);
+                    });
+
+                    container.appendChild(btn);
+                });
+            },
+
+            /**
+             * 绑定事件
+             * @private
+             */
+            _bindEvents() {
+                const el = this.elements;
+
+                // 模型选择
+                el.modelSelect.addEventListener('change', (e) => {
+                    Store.setModel(e.target.value);
+                });
+
+                // 输入字段同步
+                el.inputProject.addEventListener('input', (e) => {
+                    Store.setInputField('project', e.target.value);
+                    el.projectStatus.textContent = e.target.value.trim() ? '已填写' : '未填写';
+                });
+
+                el.inputOwner.addEventListener('input', (e) => {
+                    Store.setInputField('owner', e.target.value);
+                });
+
+                el.inputDateStart.addEventListener('change', (e) => {
+                    Store.setInputField('dateStart', e.target.value);
+                });
+
+                el.inputDateEnd.addEventListener('change', (e) => {
+                    Store.setInputField('dateEnd', e.target.value);
+                });
+
+                el.inputMetrics.addEventListener('input', (e) => {
+                    Store.setInputField('metrics', e.target.value);
+                });
+
+                el.inputHighlights.addEventListener('input', (e) => {
+                    Store.setInputField('highlights', e.target.value);
+                });
+
+                el.inputRisks.addEventListener('input', (e) => {
+                    Store.setInputField('risks', e.target.value);
+                });
+
+                el.inputNextPlan.addEventListener('input', (e) => {
+                    Store.setInputField('nextPlan', e.target.value);
+                });
+
+                el.checkChartIdeas.addEventListener('change', (e) => {
+                    Store.setInputField('needChartIdeas', e.target.checked);
+                });
+
+                el.checkActionList.addEventListener('change', (e) => {
+                    Store.setInputField('needActionList', e.target.checked);
+                });
+
+                // 生成按钮
+                el.btnGenerate.addEventListener('click', async () => {
+                    const result = await Actions.generateReports();
+                    if (result && result.needSettings) {
+                        this.showSettingsModal();
+                    }
+                });
+
+                // 设置弹窗
+                el.btnShowSettings.addEventListener('click', () => this.showSettingsModal());
+                el.btnCloseSettings.addEventListener('click', () => this.hideSettingsModal());
+                el.btnSaveConfig.addEventListener('click', () => {
+                    Actions.saveConfig(el.inputApiKey.value);
+                    this.hideSettingsModal();
+                });
+
+                // 提示词弹窗
+                el.btnShowPrompt.addEventListener('click', () => this.showPromptModal());
+                el.btnClosePrompt.addEventListener('click', () => this.hidePromptModal());
+                el.btnSavePrompt.addEventListener('click', () => {
+                    Actions.savePrompt(el.inputSystemPrompt.value, el.inputUserPrompt.value);
+                    this.hidePromptModal();
+                });
+                el.btnResetPrompt.addEventListener('click', () => {
+                    Actions.resetPrompt();
+                    el.inputSystemPrompt.value = Store.prompt.system;
+                    el.inputUserPrompt.value = Store.prompt.user;
+                });
+
+                // 导出按钮
+                el.btnCopyAll.addEventListener('click', () => Actions.copyAllReports());
+                el.btnExportTxt.addEventListener('click', () => Actions.exportAllReports('txt'));
+                el.btnExportCsv.addEventListener('click', () => Actions.exportAllReports('csv'));
+
+                // 点击弹窗背景关闭
+                el.settingsModal.addEventListener('click', (e) => {
+                    if (e.target === el.settingsModal) this.hideSettingsModal();
+                });
+                el.promptModal.addEventListener('click', (e) => {
+                    if (e.target === el.promptModal) this.hidePromptModal();
+                });
+
+                // 订阅事件
+                Events.on(Events.EVENTS.GENERATION_START, (data) => this._onGenerationStart(data));
+                Events.on(Events.EVENTS.GENERATION_COMPLETE, () => this._onGenerationComplete());
+                Events.on(Events.EVENTS.REPORT_UPDATE, (data) => this._onReportUpdate(data));
+            },
+
+            /**
+             * 从 Store 同步状态到 UI
+             * @private
+             */
+            _syncFromStore() {
+                const el = this.elements;
+
+                // 同步配置
+                el.modelSelect.value = Store.config.model;
+                el.inputApiKey.value = Store.config.deepseekApiKey;
+
+                // 同步提示词
+                el.inputSystemPrompt.value = Store.prompt.system;
+                el.inputUserPrompt.value = Store.prompt.user;
+
+                // 同步 checkbox
+                el.checkChartIdeas.checked = Store.input.needChartIdeas;
+                el.checkActionList.checked = Store.input.needActionList;
+            },
+
+            /**
+             * 刷新 Lucide 图标 (已废弃，保留为空函数以兼容已有调用)
+             * @private
+             */
+            _refreshIcons() { },
+
+
+            /**
+             * 显示设置弹窗
+             */
+            showSettingsModal() {
+                this.elements.settingsModal.classList.remove('hidden');
+                this._refreshIcons();
+            },
+
+            /**
+             * 隐藏设置弹窗
+             */
+            hideSettingsModal() {
+                this.elements.settingsModal.classList.add('hidden');
+            },
+
+            /**
+             * 显示提示词弹窗
+             */
+            showPromptModal() {
+                this.elements.promptModal.classList.remove('hidden');
+                this._refreshIcons();
+            },
+
+            /**
+             * 隐藏提示词弹窗
+             */
+            hidePromptModal() {
+                this.elements.promptModal.classList.add('hidden');
+            },
+
+            /**
+             * 生成开始时的 UI 更新
+             * @private
+             */
+            _onGenerationStart(data) {
+                const el = this.elements;
+
+                // 更新按钮状态
+                el.btnGenerate.disabled = true;
+                el.btnGenerate.innerHTML = `
+                    <i class="fa-solid fa-spinner fa-spin w-5 h-5"></i>
+                    <span>多报告生成中...</span>
+                `;
+                this._refreshIcons();
+
+                // 显示加载状态
+                el.emptyState.classList.add('hidden');
+                el.loadingState.classList.remove('hidden');
+                el.loadingText.textContent = `正在生成 ${data.types.join('/')} x ${data.audiences.length} 个对象 ...`;
+
+                // 渲染报告卡片骨架
+                this._renderReportCards();
+            },
+
+            /**
+             * 生成完成时的 UI 更新
+             * @private
+             */
+            _onGenerationComplete() {
+                const el = this.elements;
+
+                // 恢复按钮状态
+                el.btnGenerate.disabled = false;
+                el.btnGenerate.innerHTML = `
+                    <i class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i>
+                    <span>✨ 生成运营日报/周报/月报</span>
+                `;
+                this._refreshIcons();
+
+                // 隐藏加载状态
+                el.loadingState.classList.add('hidden');
+
+                // 更新所有报告卡片
+                this._renderReportCards();
+            },
+
+            /**
+             * 报告更新时的 UI 更新
+             * @private
+             */
+            _onReportUpdate(data) {
+                this._updateReportCard(data.reportId);
+            },
+
+            /**
+             * 渲染所有报告卡片
+             * @private
+             */
+            _renderReportCards() {
+                const el = this.elements;
+                const reports = Store.generation.reports;
+
+                if (reports.length === 0) {
+                    el.reportsList.classList.add('hidden');
+                    el.emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                el.emptyState.classList.add('hidden');
+                el.reportsList.classList.remove('hidden');
+                el.reportsList.innerHTML = '';
+
+                reports.forEach(report => {
+                    const card = this._createReportCard(report);
+                    el.reportsList.appendChild(card);
+                });
+
+                this._refreshIcons();
+            },
+
+            /**
+             * 创建报告卡片 DOM
+             * @private
+             */
+            _createReportCard(report) {
+                const card = document.createElement('div');
+                card.id = `report-${report.id}`;
+                card.className = 'bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm card-hover animate-fade-in';
+
+                card.innerHTML = this._getReportCardHTML(report);
+
+                // 绑定按钮事件
+                setTimeout(() => {
+                    const copyBtn = card.querySelector('.btn-copy');
+                    const downloadBtn = card.querySelector('.btn-download');
+                    const retryBtn = card.querySelector('.btn-retry');
+
+                    if (copyBtn) {
+                        copyBtn.addEventListener('click', () => Actions.copySingleReport(report.id));
+                    }
+                    if (downloadBtn) {
+                        downloadBtn.addEventListener('click', () => Actions.exportSingleReport(report.id));
+                    }
+                    if (retryBtn) {
+                        retryBtn.addEventListener('click', () => Actions.retryReport(report.id));
+                    }
+                }, 0);
+
+                return card;
+            },
+
+            /**
+             * 获取报告卡片 HTML
+             * @private
+             */
+            _getReportCardHTML(report) {
+                const input = Store.input;
+                const dateRange = Store.getDateRangeLabel();
+
+                // 状态显示
+                let statusHTML = '';
+                if (report.loading) {
+                    statusHTML = `
+                        <span class="text-xs text-emerald-600 flex items-center gap-1">
+                            <i class="fa-solid fa-spinner fa-spin w-4 h-4"></i>
+                            生成中
+                        </span>
+                    `;
+                } else if (report.error) {
+                    statusHTML = `
+                        <span class="text-xs text-red-500 flex items-center gap-1">
+                            <i class="fa-solid fa-circle-exclamation w-4 h-4"></i>
+                            失败：${report.error}
+                        </span>
+                    `;
+                } else {
+                    statusHTML = `
+                        <span class="text-xs text-emerald-700 flex items-center gap-1">
+                            <i class="fa-solid fa-circle-check w-4 h-4"></i>
+                            完成
+                        </span>
+                    `;
+                }
+
+                // 思考过程
+                let reasoningHTML = '';
+                if (report.reasoning) {
+                    reasoningHTML = `
+                        <details class="bg-amber-50 border border-amber-100 rounded-xl p-3 group">
+                            <summary class="flex items-center gap-2 text-amber-700 text-sm font-semibold">
+                                <i class="fa-solid fa-chevron-right w-4 h-4 chevron-icon"></i>
+                                <i class="fa-solid fa-brain w-4 h-4"></i>
+                                深度思考过程 (V4 Pro)
+                                <span class="text-xs text-amber-500 font-normal ml-auto">点击展开</span>
+                            </summary>
+                            <pre class="whitespace-pre-wrap text-xs text-amber-800 mt-3 pt-3 border-t border-amber-200">${this._escapeHTML(report.reasoning)}</pre>
+                        </details>
+                    `;
+                }
+
+                // 内容
+                const contentHTML = marked.parse(report.content || '内容生成中...', { breaks: true });
+
+                return `
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                ${report.type}
+                            </span>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                                ${report.audience}
+                            </span>
+                            <span class="px-2.5 py-1 rounded-full text-xs bg-sky-50 text-sky-700 border border-sky-100">
+                                ${input.outputStyle}
+                            </span>
+                            <span class="px-2.5 py-1 rounded-full text-xs bg-slate-100 text-slate-700 border border-slate-200">
+                                ${dateRange}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${statusHTML}
+                            <button class="btn-copy text-slate-500 hover:text-emerald-600">
+                                <i class="fa-regular fa-copy w-4 h-4"></i>
+                            </button>
+                            <button class="btn-download text-slate-500 hover:text-emerald-600">
+                                <i class="fa-solid fa-download w-4 h-4"></i>
+                            </button>
+                            <button class="btn-retry text-slate-500 hover:text-emerald-600">
+                                <i class="fa-solid fa-rotate-left w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 text-xs text-slate-500 flex flex-wrap gap-2">
+                        <span class="flex items-center gap-1">
+                            <i class="fa-solid fa-hashtag w-3 h-3"></i>
+                            ${input.project || '未命名项目'}
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <i class="fa-solid fa-users w-3 h-3"></i>
+                            ${input.selectedAudiences.join(' / ') || '未选择对象'}
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <i class="fa-solid fa-layer-group w-3 h-3"></i>
+                            ${input.focusAreas.join(' / ') || '未设置侧重'}
+                        </span>
+                    </div>
+
+                    <div class="mt-4 space-y-3">
+                        ${reasoningHTML}
+                        <div class="prose prose-sm max-w-none text-slate-800 leading-relaxed">${contentHTML}</div>
+                    </div>
+                `;
+            },
+
+            /**
+             * 更新单个报告卡片
+             * @private
+             */
+            _updateReportCard(reportId) {
+                const report = Store.generation.reports.find(r => r.id === reportId);
+                if (!report) return;
+
+                const card = document.getElementById(`report-${reportId}`);
+                if (!card) return;
+
+                // 保存滚动位置
+                const scrollTop = card.closest('.overflow-y-auto')?.scrollTop;
+
+                // 更新内容
+                card.innerHTML = this._getReportCardHTML(report);
+
+                // 重新绑定事件
+                const copyBtn = card.querySelector('.btn-copy');
+                const downloadBtn = card.querySelector('.btn-download');
+                const retryBtn = card.querySelector('.btn-retry');
+
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', () => Actions.copySingleReport(reportId));
+                }
+                if (downloadBtn) {
+                    downloadBtn.addEventListener('click', () => Actions.exportSingleReport(reportId));
+                }
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', () => Actions.retryReport(reportId));
+                }
+
+                this._refreshIcons();
+
+                // 恢复滚动位置
+                if (scrollTop !== undefined) {
+                    card.closest('.overflow-y-auto').scrollTop = scrollTop;
+                }
+            },
+
+            /**
+             * HTML 转义
+             * @private
+             */
+            _escapeHTML(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+        };
+
+
+        // ============================================================================
+        // 应用初始化
+        // ============================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+
+
+            // 1. 加载配置
+            Actions.loadConfig();
+
+            // 2. 初始化 UI
+            UI.init();
+
+
+        });
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_tools_ops_report_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

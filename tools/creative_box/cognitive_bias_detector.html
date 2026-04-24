@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>认知偏差检测器 - AI 创意生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #6366f1;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-color: #1e293b;
+            --subtle-text: #64748b;
+            --border-color: #e2e8f0;
+            --warning-bg: #fffbeb;
+            --warning-border: #facc15;
+            --warning-text: #b45309;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+        }
+        .linear-gradient-bg {
+            background: linear-gradient(120deg, var(--primary-color), var(--secondary-color));
+        }
+        .main-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 24px;
+        }
+        .card {
+            background-color: var(--card-background);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--background-color);
+        }
+        .bias-card {
+            background-color: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            border-left-width: 4px;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .bias-card h3 {
+            color: var(--warning-text);
+            font-weight: 700;
+        }
+        .hidden { display: none; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #settings-panel {
+            position: fixed; top: 20px; right: -350px; width: 320px;
+            background: var(--card-background); padding: 20px;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+            border-radius: 8px 0 0 8px; transition: right 0.3s ease-in-out;
+            z-index: 1000;
+        }
+        #settings-panel.visible { right: 0; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div id="settings-toggle" class="fixed top-5 right-5 z-50 cursor-pointer bg-white p-3 rounded-full shadow-lg">
+        <i class="fa-solid fa-gear text-2xl text-gray-600"></i>
+    </div>
+
+    <div id="settings-panel">
+        <h3 class="text-lg font-bold mb-4">API 设置</h3>
+        <div class="space-y-4">
+            <div>
+                <label for="api-url" class="block text-sm font-medium">API URL</label>
+                <input type="text" id="api-url" class="input-field mt-1" value="https://api.deepseek.com/chat/completions">
+            </div>
+            <div>
+                <label for="api-key" class="block text-sm font-medium">API Key</label>
+                <input type="password" id="api-key" class="input-field mt-1" placeholder="留空使用默认Key">
+            </div>
+            <div>
+                <label for="api-model" class="block text-sm font-medium">模型选择</label>
+                <select id="api-model" class="input-field mt-1">
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                </select>
+            </div>
+            <button id="save-settings" class="btn btn-primary w-full">保存设置</button>
+        </div>
+    </div>
+
+    <header class="linear-gradient-bg text-white text-center py-12 px-4">
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">认知偏差检测器</h1>
+        <p class="mt-4 text-lg md:text-xl max-w-3xl mx-auto opacity-90">输入一段您的观点、判断或决策理由，AI将帮助您识别其中可能存在的认知偏差，并提供更客观的视角。</p>
+    </header>
+
+    <main class="main-container">
+        <div class="card p-8">
+            <div>
+                <label for="statement-input" class="block text-lg font-semibold mb-2">输入您的观点或决策理由</label>
+                <p class="text-sm text-slate-500 mb-3">例如："我肯定这次面试能过，因为我已经准备得很充分了。" 或者 "这个项目肯定会失败，因为上次那个类似的项目就失败了。"</p>
+                <textarea id="statement-input" class="input-field" rows="4" placeholder="在此输入您的文本..."></textarea>
+            </div>
+            <div class="mt-6 text-center">
+                <button id="generate-btn" class="btn btn-primary text-lg px-8 py-3">
+                    <i class="fas fa-balance-scale-right mr-2"></i> 开始检测
+                </button>
+            </div>
+        </div>
+
+        <div id="loading-indicator" class="text-center py-8 hidden">
+             <div class="loader"></div>
+             <p class="text-slate-500">正在审视您的逻辑链条，请稍候...</p>
+        </div>
+        
+        <div id="result-container" class="mt-8 hidden">
+             <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold">认知偏差分析报告</h2>
+                 <div class="space-x-2">
+                    <button id="copy-btn" class="btn btn-secondary text-sm" title="复制报告">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                    <button id="download-btn" class="btn btn-secondary text-sm" title="下载为Markdown">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="biases-container">
+                <!-- Detected biases will be shown here -->
+            </div>
+            <div class="card p-6 mt-6">
+                <h3 class="text-xl font-bold text-primary-color mb-2"><i class="fas fa-lightbulb mr-2"></i>总结与反思建议</h3>
+                <div id="summary-output" class="prose max-w-none"></div>
+            </div>
+        </div>
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const statementInput = document.getElementById('statement-input');
+            const generateBtn = document.getElementById('generate-btn');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const resultContainer = document.getElementById('result-container');
+            const biasesContainer = document.getElementById('biases-container');
+            const summaryOutput = document.getElementById('summary-output');
+            const copyBtn = document.getElementById('copy-btn');
+            const downloadBtn = document.getElementById('download-btn');
+
+            // --- API Settings Elements ---
+            const settingsToggle = document.getElementById('settings-toggle');
+            const settingsPanel = document.getElementById('settings-panel');
+            const saveSettingsBtn = document.getElementById('save-settings');
+            const apiUrlInput = document.getElementById('api-url');
+            const apiKeyInput = document.getElementById('api-key');
+            const apiModelSelect = document.getElementById('api-model');
+            const DEFAULT_API_KEY = "";
+
+            // 获取全局 DeepSeek Key
+            function getGlobalDeepSeekKey() {
+                try {
+                    const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    return config.deepseek || '';
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            // --- Functions ---
+            function loadSettings() {
+                apiUrlInput.value = localStorage.getItem('api_url') || 'https://api.deepseek.com/chat/completions';
+                apiKeyInput.value = localStorage.getItem('api_key') || '';
+                apiModelSelect.value = localStorage.getItem('api_model') || 'deepseek-v4-flash';
+            }
+
+            function getApiUrl() { return apiUrlInput.value || 'https://api.deepseek.com/chat/completions'; }
+            // 优先使用本地自定义 key，否则使用全局 key
+            function getApiKey() { return apiKeyInput.value || getGlobalDeepSeekKey(); }
+            function getModel() { return apiModelSelect.value; }
+
+            function showLoading(isLoading) {
+                loadingIndicator.classList.toggle('hidden', !isLoading);
+                generateBtn.disabled = isLoading;
+                generateBtn.classList.toggle('opacity-50', isLoading);
+            }
+
+            function getPrompt(statement) {
+                return `
+你是一位专攻认知偏差的心理学家。你的任务是分析用户提供的文本，识别其中可能存在的一个或多个认知偏差。
+
+用户的文本是：
+「${statement}」
+
+请仔细分析，并严格按照以下JSON格式返回你的发现。如果未发现明显偏差，请在biases数组中返回一个空数组，并在summary中说明该观点逻辑严谨。
+
+{
+  "detected_biases": [
+    {
+      "bias_name": " [识别出的认知偏差名称，例如：确认偏误 (Confirmation Bias)] ",
+      "explanation": " [对该认知偏差的简要定义] ",
+      "quote": " [从用户文本中精准引述最能体现该偏差的一句话] ",
+      "analysis": " [详细分析为什么这句话体现了该偏差，以及它可能如何影响判断] "
+    }
+  ],
+  "summary": " [一段综合性的总结，为用户提供反思的角度和建议，帮助他们建立更客观的视角] "
+}
+`;
+            }
+
+            async function generateAnalysis() {
+                const statement = statementInput.value.trim();
+                if (!statement) {
+                    alert('请输入您的观点或决策理由。');
+                    return;
+                }
+
+                showLoading(true);
+                resultContainer.classList.add('hidden');
+                const prompt = getPrompt(statement);
+
+                try {
+                    const response = await fetch(getApiUrl(), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getApiKey() },
+                        body: JSON.stringify({
+                            model: getModel(),
+                            messages: [
+                                { role: 'system', content: '你是一位认知偏差专家，能根据用户输入分析其逻辑，并以特定JSON格式返回报告。' },
+                                { role: 'user', content: prompt }
+                            ],
+                            stream: false
+                        })
+                    });
+                    if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+                    const data = await response.json();
+                    const content = data.choices[0].message.content;
+                    const jsonMatch = content.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error("返回的不是有效的JSON格式。");
+                    
+                    renderResult(JSON.parse(jsonMatch[0]));
+
+                } catch (error) {
+                    console.error("生成失败:", error);
+                    alert(`生成失败: ${error.message}`);
+                } finally {
+                    showLoading(false);
+                }
+            }
+
+            function renderResult(data) {
+                biasesContainer.innerHTML = ''; // Clear previous results
+
+                if (data.detected_biases && data.detected_biases.length > 0) {
+                    data.detected_biases.forEach(bias => {
+                        const biasCard = `
+                        <div class="bias-card">
+                            <h3 class="text-lg mb-2"><i class="fas fa-brain mr-2"></i>${bias.bias_name}</h3>
+                            <p class="text-sm text-gray-600 mb-3">${bias.explanation}</p>
+                            <blockquote class="border-l-4 border-yellow-500 pl-4 italic my-2">
+                                "${bias.quote}"
+                            </blockquote>
+                            <p class="text-slate-800">${bias.analysis}</p>
+                        </div>
+                        `;
+                        biasesContainer.innerHTML += biasCard;
+                    });
+                } else {
+                    biasesContainer.innerHTML = `<div class="card p-4 text-center"><p class="text-green-600 font-semibold">未检测到明显的认知偏差，您的观点逻辑较为严谨。</p></div>`;
+                }
+
+                summaryOutput.innerHTML = `<p>${data.summary.replace(/\n/g, '</p><p>')}</p>`;
+                resultContainer.classList.remove('hidden');
+            }
+            
+            function getFullReportText() {
+                let report = `# 认知偏差分析报告\n\n`;
+                report += `## 您的观点\n\n> ${statementInput.value.trim()}\n\n`;
+                
+                const cards = biasesContainer.querySelectorAll('.bias-card');
+                if (cards.length > 0) {
+                    report += `## 检测到的潜在认知偏差\n\n`;
+                    cards.forEach(card => {
+                        const title = card.querySelector('h3').innerText;
+                        const explanation = card.querySelector('p:first-of-type').innerText;
+                        const quote = card.querySelector('blockquote').innerText;
+                        const analysis = card.querySelector('blockquote + p').innerText;
+                        report += `### ${title}\n\n`;
+                        report += `**定义:** ${explanation}\n\n`;
+                        report += `**相关表述:**\n>${quote}\n\n`;
+                        report += `**分析:**\n${analysis}\n\n---\n\n`;
+                    });
+                } else {
+                    report += `## 检测结果\n\n未检测到明显的认知偏差。\n\n`;
+                }
+                
+                report += `## 总结与反思建议\n\n${summaryOutput.innerText}\n`;
+                return report;
+            }
+
+            // --- Event Listeners ---
+            generateBtn.addEventListener('click', generateAnalysis);
+
+            settingsToggle.addEventListener('click', () => settingsPanel.classList.toggle('visible'));
+            saveSettingsBtn.addEventListener('click', () => {
+                localStorage.setItem('api_url', apiUrlInput.value);
+                localStorage.setItem('api_key', apiKeyInput.value);
+                localStorage.setItem('api_model', apiModelSelect.value);
+                settingsPanel.classList.remove('visible');
+                alert('设置已保存！');
+            });
+            
+            copyBtn.addEventListener('click', () => {
+                 navigator.clipboard.writeText(getFullReportText())
+                    .then(() => alert('分析报告已复制到剪贴板！'))
+                    .catch(err => alert('复制失败: ' + err));
+            });
+
+            downloadBtn.addEventListener('click', () => {
+                const blob = new Blob([getFullReportText()], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.download = `认知偏差分析报告.md`;
+                a.href = url;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // --- Init ---
+            loadSettings();
+        });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_cognitive_bias_detector.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html> 

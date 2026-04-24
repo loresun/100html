@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>赛博扎小人画板 · 武侠战斗播报</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <style>
+    /**
+     * 赛博扎小人：深红暗色江湖氛围
+     */
+    [x-cloak] {
+      display: none !important;
+    }
+
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      min-height: 100vh;
+      color: #fde8e8;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(185, 28, 28, 0.35) 0%, transparent 55%),
+        linear-gradient(165deg, #140606 0%, #1f0a0a 40%, #0d0404 100%);
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #7f1d1d, #450a0a);
+      border-radius: 4px;
+    }
+
+    /** HP 条：红色金属渐变 */
+    .hp-bar-fill {
+      background: linear-gradient(90deg, #7f1d1d 0%, #ef4444 45%, #fca5a5 100%);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.65);
+      transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /** Canvas 外圈：红色光晕 */
+    .canvas-glow-wrap {
+      box-shadow:
+        0 0 0 1px rgba(248, 113, 113, 0.35),
+        0 0 32px rgba(220, 38, 38, 0.55),
+        0 0 64px rgba(127, 29, 29, 0.45);
+      border-radius: 1rem;
+    }
+
+    /** 受击震动：横向快速位移 */
+    @keyframes voodoo-shake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      12% { transform: translate(-6px, 2px) rotate(-1deg); }
+      25% { transform: translate(7px, -2px) rotate(1deg); }
+      38% { transform: translate(-5px, 3px) rotate(-0.5deg); }
+      50% { transform: translate(6px, -1px) rotate(0.8deg); }
+      62% { transform: translate(-4px, 2px) rotate(-0.3deg); }
+      75% { transform: translate(4px, -2px) rotate(0.3deg); }
+    }
+
+    .canvas-shake-active {
+      animation: voodoo-shake 0.55s ease-in-out;
+    }
+
+    /** 闪烁遮罩 */
+    @keyframes voodoo-flash {
+      0% { opacity: 0.85; }
+      100% { opacity: 0; }
+    }
+
+    .flash-overlay {
+      pointer-events: none;
+      animation: voodoo-flash 0.35s ease-out forwards;
+    }
+
+    /** 卷轴/战报区：仿古纸纹 */
+    .scroll-panel {
+      background:
+        linear-gradient(180deg, rgba(60, 20, 20, 0.5) 0%, rgba(40, 10, 10, 0.65) 100%),
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 0, 0, 0.04) 2px,
+          rgba(0, 0, 0, 0.04) 4px
+        ),
+        linear-gradient(145deg, #3f1a1a 0%, #2a0f0f 50%, #1c0808 100%);
+      border: 2px solid rgba(248, 113, 113, 0.35);
+      border-radius: 0.5rem 0.5rem 1.25rem 1.25rem;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 200, 200, 0.12),
+        0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .scroll-panel::before {
+      content: '';
+      display: block;
+      height: 10px;
+      margin: -2px -2px 0 -2px;
+      border-radius: 0.5rem 0.5rem 0 0;
+      background: linear-gradient(90deg, #7f1d1d, #b91c1c, #7f1d1d);
+      opacity: 0.9;
+    }
+
+    /** 武器大按钮：悬停微光 */
+    .weapon-btn {
+      transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s;
+    }
+
+    .weapon-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35);
+    }
+
+    .weapon-btn.active {
+      border-color: rgba(252, 165, 165, 0.95) !important;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+      background: linear-gradient(145deg, rgba(127, 29, 29, 0.9), rgba(69, 10, 10, 0.95));
+    }
+
+    .prose-battle :where(h1, h2, h3) {
+      color: #fecaca;
+      font-weight: 800;
+    }
+
+    .prose-battle a {
+      color: #fca5a5;
+    }
+
+    .prose-battle p,
+    .prose-battle li {
+      color: #fee2e2;
+    }
+
+    .prose-battle strong {
+      color: #fff;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+  <!--
+    赛博扎小人画板
+    - Canvas 火柴人 + 武器选择 + DeepSeek 流式武侠战报
+    - 配置：global_llm_config 合并读写
+  -->
+  <div x-data="voodooDollApp()" x-cloak class="min-h-screen flex flex-col">
+
+    <!-- 顶栏：返回首页 + 设置 -->
+    <nav class="sticky top-0 z-50 border-b border-red-900/60 bg-black/40 backdrop-blur-md">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-2 cursor-pointer hover:opacity-90 transition"
+          onclick="location.href='../../index.html'">
+          <i data-lucide="skull" class="text-red-500 h-6 w-6"></i>
+          <span class="font-bold text-lg text-red-100 tracking-tight">赛博扎小人画板</span>
+        </div>
+        <button type="button" @click="showSettings = true"
+          class="flex items-center gap-1.5 text-sm text-red-200/80 hover:text-red-100 px-3 py-1.5 rounded-lg hover:bg-red-950/50 border border-red-900/40">
+          <i data-lucide="settings" class="h-4 w-4"></i>
+          API 设置
+        </button>
+      </div>
+    </nav>
+
+    <!-- HP 条（全宽，红色渐变） -->
+    <div class="px-4 pt-3 pb-1 max-w-7xl mx-auto w-full">
+      <div class="flex items-center justify-between text-xs text-red-200/90 mb-1">
+        <span>对方气血</span>
+        <span>
+          <span x-text="targetName || '无名氏'"></span>
+          · HP <span class="font-mono font-bold text-red-100" x-text="hp"></span> / 100
+        </span>
+      </div>
+      <div class="h-3 rounded-full bg-red-950/80 border border-red-800/60 overflow-hidden">
+        <div class="hp-bar-fill h-full rounded-full" :style="'width:' + hp + '%'"></div>
+      </div>
+      <p x-show="hp <= 0" class="text-center text-amber-300 text-sm font-bold mt-2 animate-pulse">
+        敌酋已溃 — 可点「满血复活」再战江湖
+      </p>
+    </div>
+
+    <!-- 主区：左画板 / 右武器与战报 -->
+    <div class="flex-1 flex flex-col lg:flex-row gap-4 p-4 max-w-7xl mx-auto w-full min-h-0">
+
+      <!-- 左侧：火柴人画布 + 取名 -->
+      <div class="w-full lg:w-[42%] flex flex-col gap-3 min-h-0">
+        <label class="text-sm text-red-200/80 font-medium">给火柴人起名（代称）</label>
+        <input type="text" x-model="targetName" maxlength="24" placeholder="例如：隔壁工位老王"
+          class="w-full rounded-xl bg-red-950/40 border border-red-800/50 text-red-50 placeholder-red-400/40 px-4 py-2.5 focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none" />
+
+        <div class="relative flex-1 min-h-[280px] lg:min-h-[420px]">
+          <div class="canvas-glow-wrap bg-gradient-to-b from-red-950/80 to-black/60 p-3 h-full">
+            <div class="relative h-full rounded-lg overflow-hidden bg-[#0f0303] border border-red-900/50"
+              :class="shakeClass">
+              <canvas x-ref="board" class="w-full h-full block touch-none"></canvas>
+              <!-- 受击闪烁层 -->
+              <div x-show="flashOn" x-transition.opacity.duration.100ms
+                class="flash-overlay absolute inset-0 bg-gradient-to-b from-red-500/90 to-amber-500/40 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" @click="fullRevive()"
+          class="w-full py-3 rounded-xl font-bold text-red-950 bg-gradient-to-r from-amber-200 via-red-200 to-amber-100 hover:brightness-110 border border-amber-300/50 shadow-lg">
+          满血复活
+        </button>
+      </div>
+
+      <!-- 右侧：武器 + 攻击 + 战报卷轴 -->
+      <div class="w-full lg:flex-1 flex flex-col gap-4 min-h-0">
+        <div>
+          <h2 class="text-sm font-bold text-red-300 mb-3 flex items-center gap-2">
+            <i data-lucide="swords" class="w-4 h-4"></i>
+            选择兵器
+          </h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <template x-for="w in weapons" :key="w.id">
+              <button type="button" @click="selectedWeaponId = w.id"
+                class="weapon-btn flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 border-red-800/60 bg-red-950/50 text-red-100"
+                :class="{ 'active': selectedWeaponId === w.id }">
+                <span class="text-3xl leading-none" x-text="w.emoji"></span>
+                <i :data-lucide="w.lucide" class="w-6 h-6 text-red-300"></i>
+                <span class="text-sm font-bold" x-text="w.label"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <button type="button" @click="launchAttack()"
+          :disabled="!canAttack"
+          class="w-full py-4 rounded-2xl text-lg font-black tracking-widest transition
+            bg-gradient-to-r from-red-700 via-red-600 to-rose-600 text-white shadow-lg shadow-red-900/50
+            disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 border border-red-400/30">
+          发动攻击！
+        </button>
+
+        <p x-show="errorMsg" class="text-sm text-red-400" x-text="errorMsg"></p>
+
+        <!-- V4 Pro 推理折叠 -->
+        <details x-show="reasoningBuffer" class="text-xs text-red-300/70 border border-red-900/40 rounded-lg p-2">
+          <summary class="cursor-pointer font-medium">🧠 模型推理过程（点击展开）</summary>
+          <pre class="mt-2 whitespace-pre-wrap text-red-200/60 max-h-32 overflow-y-auto" x-text="reasoningBuffer"></pre>
+        </details>
+
+        <!-- 卷轴战报 -->
+        <div class="scroll-panel flex-1 min-h-[200px] flex flex-col p-4 pt-3 overflow-hidden">
+          <div class="flex items-center justify-between mb-2 border-b border-red-800/40 pb-2">
+            <span class="text-sm font-bold text-amber-200/90 flex items-center gap-2">
+              <i data-lucide="scroll-text" class="w-4 h-4"></i>
+              江湖快报 · 战斗播报
+            </span>
+            <span x-show="isAiLoading" class="text-xs text-red-300 flex items-center gap-1">
+              <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+              运功挥毫中…
+            </span>
+          </div>
+          <div class="flex-1 overflow-y-auto prose prose-sm prose-invert max-w-none prose-battle pr-1"
+            x-html="renderedBattle">
+          </div>
+          <p x-show="!battleMarkdown && !isAiLoading" class="text-red-400/50 text-sm mt-2">
+            选定兵器后点击「发动攻击！」，AI 将以武侠笔法现场解说这一击。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div x-show="showSettings"
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      x-transition.opacity>
+      <div @click.away="showSettings = false"
+        class="bg-gradient-to-b from-red-950 to-black border border-red-700/50 rounded-2xl shadow-2xl w-full max-w-md p-6 text-red-100">
+        <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+          <i data-lucide="key-round" class="w-5 h-5 text-red-400"></i>
+          DeepSeek API
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-red-200/80 mb-1">API Key</label>
+            <input type="password" x-model="apiConfig.deepseek"
+              class="w-full rounded-lg bg-black/40 border border-red-800/60 px-3 py-2 text-sm focus:ring-2 focus:ring-red-600 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm text-red-200/80 mb-1">模型</label>
+            <select x-model="apiConfig.model"
+              class="w-full rounded-lg bg-black/40 border border-red-800/60 px-3 py-2 text-sm focus:ring-2 focus:ring-red-600 outline-none">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" @click="showSettings = false"
+            class="px-4 py-2 rounded-lg text-red-300 hover:bg-red-950/80">取消</button>
+          <button type="button" @click="saveConfig()"
+            class="px-4 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-500">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      /**
+       * 赛博扎小人：状态与 Canvas 绘制、DeepSeek 流式战报
+       */
+      Alpine.data('voodooDollApp', () => ({
+        /** 对方姓名（空则显示无名氏） */
+        targetName: '',
+        /** 当前气血 0～100 */
+        hp: 100,
+        /** 已选武器 id */
+        selectedWeaponId: '',
+        /** 受击闪烁开关 */
+        flashOn: false,
+        /** Canvas 震动 class */
+        shakeClass: '',
+
+        /** 武器列表：emoji + Lucide + 文案 id（供提示词与随机伤区间） */
+        weapons: [
+          { id: 'hammer', emoji: '🔨', label: '千斤锤', lucide: 'hammer', dmgMin: 8, dmgMax: 18 },
+          { id: 'lightning', emoji: '⚡', label: '九天雷殛', lucide: 'zap', dmgMin: 10, dmgMax: 22 },
+          { id: 'ice', emoji: '❄️', label: '玄冰刺骨', lucide: 'snowflake', dmgMin: 6, dmgMax: 16 },
+          { id: 'fire', emoji: '🔥', label: '赤焰焚心', lucide: 'flame', dmgMin: 12, dmgMax: 24 },
+          { id: 'dagger', emoji: '🗡️', label: '暗器追魂', lucide: 'sword', dmgMin: 9, dmgMax: 20 },
+          { id: 'ultimate', emoji: '💥', label: '终极大招', lucide: 'bomb', dmgMin: 28, dmgMax: 52 }
+        ],
+
+        /** API：合并 global_llm_config */
+        apiConfig: {
+          deepseek: '',
+          model: 'deepseek-v4-flash'
+        },
+        showSettings: false,
+
+        battleMarkdown: '',
+        renderedBattle: '',
+        reasoningBuffer: '',
+        isAiLoading: false,
+        errorMsg: '',
+
+        /** resize 监听句柄（便于理解；单页工具可不卸载） */
+        _onResize: null,
+
+        get canAttack() {
+          if (this.hp <= 0 || this.isAiLoading) return false;
+          return !!this.selectedWeaponId;
+        },
+
+        init() {
+          this.loadConfig();
+          this.$watch('battleMarkdown', (v) => {
+            this.renderedBattle = this.safeMarkdown(v);
+          });
+          this._onResize = () => this.drawStickFigure();
+          window.addEventListener('resize', this._onResize);
+          this.$nextTick(() => {
+            this.drawStickFigure();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 从 localStorage 合并加载配置 */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /** 保存配置：禁止覆盖其它工具字段 */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showSettings = false;
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 在 Canvas 上绘制简单火柴人（圆头 + 线条躯干四肢）
+         * 使用 devicePixelRatio 保证视网膜屏清晰
+         */
+        drawStickFigure() {
+          const canvas = this.$refs.board;
+          if (!canvas) return;
+          const parent = canvas.parentElement;
+          const rect = parent.getBoundingClientRect();
+          const w = Math.max(200, rect.width);
+          const h = Math.max(200, rect.height);
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = Math.floor(w * dpr);
+          canvas.height = Math.floor(h * dpr);
+          canvas.style.width = w + 'px';
+          canvas.style.height = h + 'px';
+
+          const ctx = canvas.getContext('2d');
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.clearRect(0, 0, w, h);
+
+          /** 背景微噪：赛博祭坛感 */
+          const g = ctx.createRadialGradient(w * 0.5, h * 0.35, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.6);
+          g.addColorStop(0, 'rgba(127, 29, 29, 0.25)');
+          g.addColorStop(1, 'rgba(20, 5, 5, 0.95)');
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, w, h);
+
+          const cx = w * 0.5;
+          const cy = h * 0.42;
+          ctx.strokeStyle = this.hp <= 0 ? 'rgba(100,100,100,0.85)' : 'rgba(254, 202, 202, 0.95)';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          /** 头部 */
+          ctx.beginPath();
+          ctx.arc(cx, cy - 58, 22, 0, Math.PI * 2);
+          ctx.stroke();
+
+          /** 躯干 */
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - 36);
+          ctx.lineTo(cx, cy + 38);
+          ctx.stroke();
+
+          /** 手臂 */
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - 8);
+          ctx.lineTo(cx - 48, cy + 12);
+          ctx.moveTo(cx, cy - 8);
+          ctx.lineTo(cx + 48, cy + 12);
+          ctx.stroke();
+
+          /** 腿（HP 归零时叉开倒地感：略倾斜） */
+          const legTilt = this.hp <= 0 ? 0.35 : 0;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy + 38);
+          ctx.lineTo(cx - 38 + legTilt * 20, cy + 105);
+          ctx.moveTo(cx, cy + 38);
+          ctx.lineTo(cx + 38 - legTilt * 20, cy + 105);
+          ctx.stroke();
+
+          /** 脚下阴影 */
+          ctx.fillStyle = 'rgba(0,0,0,0.35)';
+          ctx.beginPath();
+          ctx.ellipse(cx, cy + 118, 40, 10, 0, 0, Math.PI * 2);
+          ctx.fill();
+        },
+
+        /** 区间内随机整数（含端点） */
+        randomDamage(min, max) {
+          return Math.floor(Math.random() * (max - min + 1)) + min;
+        },
+
+        /** 播放受击：震动 CSS + 闪烁层 + 重绘姿态 */
+        playHitFx() {
+          this.flashOn = true;
+          this.shakeClass = 'canvas-shake-active';
+          this.drawStickFigure();
+          setTimeout(() => { this.flashOn = false; }, 380);
+          setTimeout(() => { this.shakeClass = ''; }, 600);
+        },
+
+        /**
+         * 发动攻击：结算伤害 → 动画 → 流式请求战报
+         */
+        async launchAttack() {
+          this.errorMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先配置 DeepSeek API Key';
+            return;
+          }
+          if (!this.canAttack) return;
+
+          const weapon = this.weapons.find((x) => x.id === this.selectedWeaponId);
+          if (!weapon) return;
+
+          const dmg = this.randomDamage(weapon.dmgMin, weapon.dmgMax);
+          const hpBefore = this.hp;
+          const hpAfter = Math.max(0, hpBefore - dmg);
+          this.hp = hpAfter;
+
+          this.playHitFx();
+          setTimeout(() => this.drawStickFigure(), 520);
+
+          await this.streamBattleReport({
+            weapon,
+            dmg,
+            hpBefore,
+            hpAfter,
+            isFinishing: hpAfter === 0
+          });
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * DeepSeek 流式：武侠战斗播报
+         * @param {{ weapon: object, dmg: number, hpBefore: number, hpAfter: number, isFinishing: boolean }} ctx
+         */
+        async streamBattleReport(ctx) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          const name = (this.targetName || '').trim() || '无名氏';
+          /** 当前回合兵器（先于 user 提示词使用） */
+          const weapon = ctx.weapon;
+
+          this.isAiLoading = true;
+          this.battleMarkdown = '';
+          this.reasoningBuffer = '';
+
+          const system = `你是「赛博扎小人画板」的江湖说书人，用极度夸张、武侠小说的笔法描写一场荒诞的「意念械斗」。
+要求：
+1. 全中文，可使用 Markdown（小标题、加粗），语气诙谐、脑洞大，但不要渲染自残教程、违法、仇恨或针对真实群体的歧视。
+2. 必须紧扣用户选定的兵器，描写如何「痛击」对方（虚构、娱乐向）。
+3. 文中需明确写出：本回合造成的伤害数值、受伤前的 HP、受伤后的 HP（与用户给出的数字完全一致）。
+4. 段落末尾用一行加粗小结：**本回合伤害：X｜气血 Y → Z**
+5. 若本回合后对方 HP 已为 0：在文末追加独立一节「## 胜利宣言」，3～5 句，宣告侠者大获全胜，风格依旧武侠夸张。`;
+
+          const user = `对手代称：${name}
+选定兵器：${weapon.emoji} ${weapon.label}（id: ${weapon.id}）
+本回合系统结算伤害：${ctx.dmg}
+受伤前 HP：${ctx.hpBefore}
+受伤后 HP：${ctx.hpAfter}
+是否本局终结（HP 归零）：${ctx.isFinishing ? '是' : '否'}
+
+请输出战斗播报。若未终结，可略带一句「且看下一式」；若已终结，必须含「## 胜利宣言」。`;
+
+          try {
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + key
+              },
+              body: JSON.stringify({
+                model: this.apiConfig.model || 'deepseek-v4-flash',
+                messages: [
+                  { role: 'system', content: system },
+                  { role: 'user', content: user }
+                ],
+                stream: true,
+                temperature: 0.92,
+                max_tokens: 2000
+              })
+            });
+
+            if (!res.ok) {
+              const errText = await res.text().catch(() => '');
+              throw new Error('API 错误 ' + res.status + (errText ? ': ' + errText.slice(0, 160) : ''));
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const t = line.trim();
+                if (!t.startsWith('data:')) continue;
+                const data = t.slice(5).trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta;
+                  if (!delta) continue;
+                  if (delta.reasoning_content) {
+                    this.reasoningBuffer += delta.reasoning_content;
+                  }
+                  if (delta.content) {
+                    this.battleMarkdown += delta.content;
+                  }
+                } catch (parseErr) {
+                  console.warn('流式 JSON 解析跳过:', parseErr);
+                }
+              }
+            }
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败，请重试';
+            this.battleMarkdown =
+              '**传书失败**：' + this.errorMsg + '\n\n*少侠可检查网络与 API Key，再试一式。*\n\n' +
+              `**本回合伤害：${ctx.dmg}｜气血 ${ctx.hpBefore} → ${ctx.hpAfter}**`;
+          } finally {
+            this.isAiLoading = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /** 满血复活：重置 HP 与战报区 */
+        fullRevive() {
+          this.hp = 100;
+          this.battleMarkdown = '';
+          this.reasoningBuffer = '';
+          this.errorMsg = '';
+          this.drawStickFigure();
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /** Markdown 安全渲染 */
+        safeMarkdown(md) {
+          const raw = (md || '').trim();
+          if (!raw) return '';
+          if (typeof marked === 'undefined') return this.escapeHtml(raw);
+          const html = marked.parse(raw, { breaks: true });
+          if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+          return html;
+        },
+
+        escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

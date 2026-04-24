@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>带薪拉屎计算器 - 如厕赋</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /**
+     * 页面基底：金黄渐变，暗示「真金白银」
+     */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(165deg, #fffbeb 0%, #fde68a 35%, #fbbf24 70%, #d97706 100%);
+      min-height: 100vh;
+    }
+
+    [x-cloak] { display: none !important; }
+
+    /**
+     * 马桶造型容器：上方水箱 + 下方碗状主体（纯 CSS 简化示意）
+     */
+    .toilet-shell {
+      position: relative;
+      max-width: 22rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .toilet-tank {
+      width: 52%;
+      height: 3.25rem;
+      margin: 0 auto;
+      background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+      border: 3px solid #94a3b8;
+      border-radius: 0.75rem 0.75rem 0.25rem 0.25rem;
+      box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.65), 0 4px 12px rgba(15, 23, 42, 0.12);
+    }
+    .toilet-bowl {
+      margin-top: -2px;
+      padding: 1.75rem 1.25rem 2rem;
+      background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 55%, #cbd5e1 100%);
+      border: 3px solid #64748b;
+      border-radius: 50% 50% 42% 42% / 38% 38% 48% 48%;
+      box-shadow:
+        inset 0 -8px 20px rgba(15, 23, 42, 0.08),
+        0 12px 28px rgba(120, 53, 15, 0.15);
+    }
+    .toilet-inner {
+      border-radius: 9999px;
+      border: 2px dashed rgba(245, 158, 11, 0.45);
+      background: rgba(255, 251, 235, 0.85);
+      padding: 1rem 0.75rem;
+    }
+
+    /**
+     * 金额数字：轻微缩放跳动，强调「实时入账」
+     */
+    @keyframes money-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.035); }
+    }
+    .money-tick {
+      animation: money-pulse 0.85s ease-in-out infinite;
+      text-shadow: 0 2px 0 rgba(180, 83, 9, 0.25), 0 0 24px rgba(251, 191, 36, 0.45);
+    }
+
+    /**
+     * 超大计时数字
+     */
+    .timer-mega {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.06em;
+      line-height: 1.05;
+    }
+
+    /**
+     * 结束时的金币雨：多枚圆形元素自上而下飘落
+     */
+    .coin-rain {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      overflow: hidden;
+    }
+    .coin-rain .coin {
+      position: absolute;
+      top: -12%;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fef9c3, #eab308 45%, #a16207);
+      box-shadow: 0 0 6px rgba(234, 179, 8, 0.9);
+      opacity: 0;
+      animation: coin-fall 2.4s ease-in forwards;
+    }
+    @keyframes coin-fall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+      8% { opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0.85; }
+    }
+
+    /**
+     * 古风卷轴：赋文展示区
+     */
+    .scroll-parchment {
+      background:
+        linear-gradient(90deg, rgba(254, 243, 199, 0.35) 0%, transparent 8%, transparent 92%, rgba(254, 243, 199, 0.35) 100%),
+        repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(180, 83, 9, 0.06) 28px),
+        linear-gradient(180deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%);
+      border: 3px solid #b45309;
+      border-radius: 4px;
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+        0 8px 32px rgba(120, 53, 15, 0.2);
+      position: relative;
+    }
+    .scroll-parchment::before,
+    .scroll-parchment::after {
+      content: '';
+      position: absolute;
+      top: -6px;
+      width: 18px;
+      height: calc(100% + 12px);
+      background: linear-gradient(90deg, #92400e, #b45309, #92400e);
+      border-radius: 4px;
+      box-shadow: 2px 0 6px rgba(0, 0, 0, 0.15);
+    }
+    .scroll-parchment::before { left: -10px; }
+    .scroll-parchment::after { right: -10px; }
+
+    .scroll-prose {
+      color: #422006;
+    }
+    .scroll-prose :where(h1, h2, h3) {
+      color: #78350f;
+      font-weight: 800;
+      margin-top: 0.75rem;
+      margin-bottom: 0.4rem;
+    }
+    .scroll-prose p { margin: 0.35rem 0; line-height: 1.75; }
+    .scroll-prose strong { color: #92400e; }
+
+    .scroll-inner {
+      max-height: min(52vh, 420px);
+      overflow-y: auto;
+      padding: 1rem 1.75rem;
+    }
+    .scroll-inner::-webkit-scrollbar { width: 6px; }
+    .scroll-inner::-webkit-scrollbar-thumb {
+      background: rgba(180, 83, 9, 0.35);
+      border-radius: 3px;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-amber-950">
+  <div x-data="poopCalculator()" x-init="init()" class="min-h-screen flex flex-col pb-10 relative" x-cloak>
+
+    <!-- 金币雨层：结束时触发 -->
+    <div class="coin-rain" x-show="showCoinRain" x-transition.opacity>
+      <template x-for="(c, i) in coinItems" :key="i">
+        <span class="coin" :style="'left:' + c.left + '%;animation-delay:' + c.delay + 's;animation-duration:' + c.dur + 's'"></span>
+      </template>
+    </div>
+
+    <nav class="relative z-50 bg-amber-100/85 backdrop-blur-md sticky top-0 border-b border-amber-300/80 shadow-sm">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer shrink-0" onclick="location.href='../../index.html'">
+          <i data-lucide="coins" class="text-amber-600 h-7 w-7"></i>
+          <span class="font-black text-lg sm:text-xl text-amber-950 tracking-tight">带薪拉屎计算器</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="hidden sm:flex bg-amber-200/90 rounded-lg p-0.5 text-xs border border-amber-400/60">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-amber-600 text-white shadow' : 'text-amber-900/80'"
+              class="px-2 py-1 rounded-md transition font-bold">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-amber-600 text-white shadow' : 'text-amber-900/80'"
+              class="px-2 py-1 rounded-md transition font-bold">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-amber-800 hover:bg-amber-200/80" title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-6 space-y-6">
+
+      <!-- 月薪输入 -->
+      <section class="bg-white/75 backdrop-blur rounded-2xl border-2 border-amber-300/80 shadow-lg p-5 space-y-4">
+        <h2 class="text-base font-black text-amber-950 flex items-center gap-2">
+          <i data-lucide="wallet" class="w-5 h-5 text-amber-600"></i>
+          月薪设定
+        </h2>
+        <p class="text-xs text-amber-800/80 leading-relaxed">
+          按劳动法常用口径折算：<strong>21.75 个工作日 × 8 小时</strong> 计为月计薪时长，用于换算秒薪与时薪（仅供娱乐估算）。
+        </p>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="flex-1 space-y-2">
+            <label class="flex justify-between text-sm font-bold text-amber-900">
+              <span>月薪（元）</span>
+              <span class="tabular-nums text-amber-700" x-text="formatMoneyInt(monthlySalary)"></span>
+            </label>
+            <input type="range" min="5000" max="100000" step="500" x-model.number="monthlySalary"
+              class="w-full h-2 rounded-full appearance-none bg-amber-200 accent-amber-600 cursor-pointer">
+          </div>
+          <div class="w-full sm:w-40">
+            <label class="text-xs font-bold text-amber-800 block mb-1">精确输入</label>
+            <input type="number" min="5000" max="100000" step="100" x-model.number="monthlySalary"
+              class="w-full rounded-xl border-2 border-amber-300 bg-amber-50/90 px-3 py-2 text-sm font-bold text-amber-950 tabular-nums focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+        <p class="text-sm text-amber-900/90">
+          当前等价时薪约 <strong class="text-amber-700 tabular-nums" x-text="formatMoney2(getHourlyYuan())"></strong> 元/小时
+        </p>
+      </section>
+
+      <div class="grid lg:grid-cols-[1fr_1.05fr] gap-6 items-start">
+
+        <!-- 马桶计时区 -->
+        <section class="space-y-4">
+          <div class="toilet-shell">
+            <div class="toilet-tank" aria-hidden="true"></div>
+            <div class="toilet-bowl">
+              <div class="toilet-inner text-center">
+                <p class="text-xs font-bold text-amber-800/90 uppercase tracking-widest mb-1">已蹲时长</p>
+                <div class="timer-mega text-5xl sm:text-6xl font-black text-slate-800 tabular-nums" x-text="timeLabel">0:00</div>
+                <p class="mt-3 text-xs font-semibold text-amber-900/80">本轮已赚（元）</p>
+                <p class="money-tick text-3xl sm:text-4xl font-black text-amber-700 tabular-nums mt-0.5" x-text="earnedFormatted">0.00</p>
+                <p class="mt-2 text-xs text-slate-600">
+                  时薪换算 <span class="font-bold tabular-nums text-slate-800" x-text="formatMoney2(getHourlyYuan())"></span> 元/h
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <button type="button" @click="startTimer()"
+              :disabled="isRunning || isGeneratingFu"
+              class="flex-1 sm:flex-none min-h-[52px] px-8 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-black text-lg shadow-lg shadow-emerald-900/25 border-2 border-emerald-400/80 disabled:opacity-45 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              <i data-lucide="play" class="w-6 h-6"></i>
+              开始计时
+            </button>
+            <button type="button" @click="stopTimer()"
+              :disabled="!isRunning"
+              class="flex-1 sm:flex-none min-h-[52px] px-8 rounded-2xl bg-gradient-to-b from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-black text-lg shadow-lg border-2 border-rose-300/70 disabled:opacity-45 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              <i data-lucide="square" class="w-5 h-5"></i>
+              结束
+            </button>
+          </div>
+
+          <div class="bg-white/70 rounded-xl border border-amber-200 px-4 py-3 text-center">
+            <p class="text-sm font-bold text-amber-950 flex items-center justify-center gap-2">
+              <i data-lucide="piggy-bank" class="w-4 h-4 text-amber-600"></i>
+              历史累计「带薪如厕」收入
+            </p>
+            <p class="text-2xl font-black text-amber-700 tabular-nums mt-1" x-text="formatMoney2(cumulativeYuan)"></p>
+          </div>
+        </section>
+
+        <!-- 收益单 + 卷轴赋文 -->
+        <section class="space-y-4">
+          <div class="bg-white/80 backdrop-blur rounded-2xl border-2 border-amber-300 p-5 shadow-md">
+            <h3 class="text-base font-black text-amber-950 flex items-center gap-2 mb-3">
+              <i data-lucide="receipt" class="w-5 h-5 text-amber-600"></i>
+              本次厕所收益单
+            </h3>
+            <p x-show="!lastSession" class="text-sm text-amber-800/70">结束一次计时后，将在此生成收益明细与 AI《如厕赋》。</p>
+            <div x-show="lastSession" class="space-y-2 text-sm">
+              <div class="flex justify-between border-b border-amber-200/80 pb-2">
+                <span class="text-amber-800">蹲坑时长</span>
+                <span class="font-bold tabular-nums" x-text="lastSession ? lastSession.timeLabel : ''"></span>
+              </div>
+              <div class="flex justify-between border-b border-amber-200/80 pb-2">
+                <span class="text-amber-800">本次收入</span>
+                <span class="font-black text-amber-700 tabular-nums" x-text="lastSession ? formatMoney2(lastSession.earnedYuan) + ' 元' : ''"></span>
+              </div>
+              <div class="flex justify-between text-xs text-amber-700/90">
+                <span>参考月薪</span>
+                <span class="tabular-nums" x-text="lastSession ? formatMoneyInt(lastSession.salarySnap) + ' 元' : ''"></span>
+              </div>
+              <div class="flex flex-wrap gap-2 pt-3">
+                <button type="button" @click="copyReceipt()" :disabled="!lastSession"
+                  class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-500 disabled:opacity-40">
+                  <i data-lucide="copy" class="w-4 h-4"></i>
+                  复制收益单
+                </button>
+                <button type="button" @click="shareReceipt()" :disabled="!lastSession"
+                  class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-amber-500 text-amber-900 text-xs font-bold hover:bg-amber-100 disabled:opacity-40">
+                  <i data-lucide="share-2" class="w-4 h-4"></i>
+                  分享
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="scroll-parchment">
+            <div class="scroll-inner">
+              <h3 class="text-center text-lg font-black text-amber-950 mb-2 tracking-widest">如厕赋</h3>
+              <p class="text-center text-xs text-amber-800/80 mb-3">由 DeepSeek 根据本次时长自动生成 · 流式呈现</p>
+
+              <details x-show="reasoningText" class="mb-3 border border-amber-600/40 rounded-lg bg-amber-100/50 px-2 py-2 text-xs text-amber-900">
+                <summary class="cursor-pointer font-bold select-none">🧠 深度思考（V4 Pro，点击展开）</summary>
+                <pre class="mt-2 whitespace-pre-wrap max-h-36 overflow-y-auto" x-text="reasoningText"></pre>
+              </details>
+
+              <div x-show="isGeneratingFu" class="flex items-center gap-2 text-amber-800 text-sm mb-2">
+                <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                挥毫泼墨中…
+              </div>
+              <div x-show="fuHtml" class="scroll-prose prose prose-sm max-w-none text-sm sm:text-base" x-html="fuHtml"></div>
+              <p x-show="!fuHtml && !isGeneratingFu" class="text-center text-amber-700/70 text-sm py-8">赋文将在你结束计时后出现</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- API 设置 -->
+    <div x-show="showSettings" x-transition.opacity
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/45"
+      @keydown.escape.window="showSettings = false">
+      <div @click.away="showSettings = false" class="bg-amber-50 border-2 border-amber-400 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 text-amber-950">
+        <h3 class="text-lg font-black text-amber-900">API 配置</h3>
+        <p class="text-xs text-amber-800/90 leading-relaxed">
+          密钥保存在浏览器本地，与其他工具共用 <code class="bg-amber-200/80 px-1 rounded">global_llm_config</code>；保存时<strong>合并</strong>已有字段，不会覆盖 Tavily 等其它配置。
+        </p>
+        <div>
+          <label class="block text-sm font-bold text-amber-900 mb-1">DeepSeek API Key</label>
+          <input type="password" x-model="apiConfig.deepseek"
+            class="w-full rounded-xl border-2 border-amber-300 bg-white p-2.5 text-sm" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-amber-900 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-xl border-2 border-amber-300 bg-white p-2.5 text-sm font-medium">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-xl text-amber-800 hover:bg-amber-200/80 font-bold">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-xl bg-amber-600 text-white font-black hover:bg-amber-500">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl bg-amber-950 text-amber-50 text-sm shadow-xl flex items-center gap-2 border border-amber-500/40">
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    /** localStorage：累计收入与可选最近会话摘要 */
+    const POOP_STORAGE_KEY = 'poop_calculator_stats';
+
+    /**
+     * HTML 转义，配合 marked 输出防 XSS
+     * @param {string} s
+     */
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('poopCalculator', () => ({
+        /** 月薪（元），与滑块/输入双向绑定 */
+        monthlySalary: 15000,
+        /** 是否正在计时 */
+        isRunning: false,
+        /** 本轮开始时间戳（performance 用 Date.now） */
+        startTime: null,
+        /** 请求动画帧 / setInterval 句柄 */
+        tickHandle: null,
+        /** 已过去秒数（浮点，用于金额） */
+        elapsedSec: 0,
+        /** 展示用分:秒 */
+        timeLabel: '0:00',
+        /** 本轮已赚（元） */
+        earnedYuan: 0,
+        /** 格式化后的金额字符串（分位） */
+        earnedFormatted: '0.00',
+        /** 历史累计（元） */
+        cumulativeYuan: 0,
+        /** 最近一次完成的会话 */
+        lastSession: null,
+        /** AI 赋文（Markdown 原文） */
+        fuMarkdown: '',
+        /** 赋文渲染 HTML */
+        fuHtml: '',
+        reasoningText: '',
+        isGeneratingFu: false,
+        showSettings: false,
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+        /** 金币雨开关与粒子参数 */
+        showCoinRain: false,
+        coinItems: [],
+        /** 中国劳动法常见月计薪小时：21.75 × 8 */
+        MONTHLY_HOURS: 21.75 * 8,
+
+        init() {
+          this.loadConfig();
+          this.loadPoopStats();
+          this.clampSalary();
+          if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true });
+          }
+          this.$watch('monthlySalary', () => this.clampSalary());
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 约束月薪在 5000～100000 */
+        clampSalary() {
+          let v = Number(this.monthlySalary);
+          if (Number.isNaN(v)) v = 5000;
+          v = Math.min(100000, Math.max(5000, v));
+          this.monthlySalary = v;
+        },
+
+        /** 从 global_llm_config 合并加载 */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存 API 配置（合并策略）
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        /** 读取带薪拉屎累计数据 */
+        loadPoopStats() {
+          try {
+            const raw = localStorage.getItem(POOP_STORAGE_KEY);
+            if (!raw) return;
+            const o = JSON.parse(raw);
+            if (typeof o.cumulativeYuan === 'number' && o.cumulativeYuan >= 0) {
+              this.cumulativeYuan = o.cumulativeYuan;
+            }
+          } catch (e) {
+            console.error('读取 poop 统计失败:', e);
+          }
+        },
+
+        /**
+         * 持久化累计收入
+         * @param {number} addYuan 本轮新增
+         */
+        persistCumulative(addYuan) {
+          this.cumulativeYuan = Math.round((this.cumulativeYuan + addYuan) * 100) / 100;
+          try {
+            localStorage.setItem(POOP_STORAGE_KEY, JSON.stringify({
+              cumulativeYuan: this.cumulativeYuan,
+              updatedAt: new Date().toISOString()
+            }));
+          } catch (e) {
+            console.error('写入 poop 统计失败:', e);
+          }
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+          setTimeout(() => { this.toast.show = false; }, 2600);
+        },
+
+        /**
+         * 时薪（元/小时），随月薪变化
+         * @returns {number}
+         */
+        getHourlyYuan() {
+          return this.monthlySalary / this.MONTHLY_HOURS;
+        },
+
+        /**
+         * 秒薪（元/秒）
+         * @returns {number}
+         */
+        getYuanPerSecond() {
+          return this.monthlySalary / (this.MONTHLY_HOURS * 3600);
+        },
+
+        formatMoney2(n) {
+          const x = Number(n);
+          if (Number.isNaN(x)) return '0.00';
+          return x.toFixed(2);
+        },
+
+        formatMoneyInt(n) {
+          const x = Math.round(Number(n));
+          if (Number.isNaN(x)) return '0';
+          return x.toLocaleString('zh-CN');
+        },
+
+        /**
+         * 将秒数格式化为 m:ss
+         * @param {number} sec
+         */
+        formatDurationLabel(sec) {
+          const s = Math.max(0, Math.floor(sec));
+          const m = Math.floor(s / 60);
+          const r = s % 60;
+          return m + ':' + String(r).padStart(2, '0');
+        },
+
+        /**
+         * 根据已过去秒数刷新显示（计时循环调用）
+         */
+        refreshTick() {
+          if (!this.isRunning || this.startTime == null) return;
+          this.elapsedSec = (Date.now() - this.startTime) / 1000;
+          const s = Math.floor(this.elapsedSec);
+          const m = Math.floor(s / 60);
+          const r = s % 60;
+          this.timeLabel = m + ':' + String(r).padStart(2, '0');
+          this.earnedYuan = this.elapsedSec * this.getYuanPerSecond();
+          this.earnedFormatted = this.earnedYuan.toFixed(2);
+        },
+
+        /**
+         * 开始计时：清空本轮赋文，启动高频刷新
+         */
+        startTimer() {
+          this.clampSalary();
+          if (this.isRunning) return;
+          this.fuMarkdown = '';
+          this.fuHtml = '';
+          this.reasoningText = '';
+          this.startTime = Date.now();
+          this.isRunning = true;
+          this.elapsedSec = 0;
+          this.timeLabel = '0:00';
+          this.earnedFormatted = '0.00';
+          this.earnedYuan = 0;
+          if (this.tickHandle) clearInterval(this.tickHandle);
+          this.tickHandle = setInterval(() => this.refreshTick(), 80);
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /**
+         * 结束计时：停表、加累计、播金币雨、请求 AI 赋文
+         */
+        async stopTimer() {
+          if (!this.isRunning) return;
+          this.refreshTick();
+          if (this.tickHandle) {
+            clearInterval(this.tickHandle);
+            this.tickHandle = null;
+          }
+          this.isRunning = false;
+          const durationSec = this.elapsedSec;
+          const earned = durationSec * this.getYuanPerSecond();
+          const snapSalary = this.monthlySalary;
+
+          if (durationSec < 0.5) {
+            this.showToast('时间太短，未计入统计', 'info');
+            this.startTime = null;
+            return;
+          }
+
+          this.persistCumulative(earned);
+          this.triggerCoinRain();
+
+          const timeLbl = this.formatDurationLabel(durationSec);
+          this.lastSession = {
+            timeLabel: timeLbl,
+            durationSec,
+            earnedYuan: earned,
+            salarySnap: snapSalary,
+            dateStr: new Date().toLocaleString('zh-CN')
+          };
+
+          await this.generateFu(durationSec, earned, timeLbl, snapSalary);
+          this.startTime = null;
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /**
+         * 生成金币雨粒子（固定数量，随机水平位置与延迟）
+         */
+        triggerCoinRain() {
+          const n = 36;
+          this.coinItems = Array.from({ length: n }, () => ({
+            left: Math.random() * 100,
+            delay: Math.random() * 0.35,
+            dur: 2 + Math.random() * 0.9
+          }));
+          this.showCoinRain = true;
+          setTimeout(() => { this.showCoinRain = false; }, 3200);
+        },
+
+        /**
+         * 根据蹲坑时长决定赋文体量提示（5 分钟短篇，20 分钟史诗）
+         * @param {number} sec
+         */
+        getFuLengthInstruction(sec) {
+          if (sec < 60) return '极短篇：约 80～150 字，三两句骈散结合即可，点题「金分秒秒皆薪俸」。';
+          if (sec < 300) return '短篇：约 200～400 字，有小起承转合，气势渐起。';
+          if (sec < 1200) return '中长篇：约 500～900 字，多段铺陈，用典可稍多。';
+          return '史诗级长篇：约 1000～2000 字，结构宏大，可分多节小标题，辞藻华丽而不失幽默，展现「久坐成赋」的荒诞与豪迈。';
+        },
+
+        /**
+         * 流式调用 DeepSeek
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.85
+            })
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || ('HTTP ' + response.status));
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) onReasoning(delta.reasoning_content);
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /**
+         * 生成《如厕赋》并渲染 Markdown
+         */
+        async generateFu(durationSec, earnedYuan, timeLabel, salarySnap) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.fuMarkdown = '（未配置 API，无法生成赋文。请在右上角设置中填写 DeepSeek Key。）';
+            this.fuHtml = '<p class="text-amber-800">' + escapeHtml(this.fuMarkdown) + '</p>';
+            this.showToast('请先配置 API Key', 'alert-circle');
+            return;
+          }
+
+          const lenHint = this.getFuLengthInstruction(durationSec);
+          const system = `你是中文古文与骈文高手，也懂网络梗。用户在进行「带薪拉屎」趣味计时，请你写一篇气势磅礴又幽默的《如厕赋》。
+要求：
+1. 全程中文，使用赋体（可骈散结合），气势恢宏，可自嘲、可讽喻职场，但不要低俗脏字与人身攻击。
+2. 文中自然融入：蹲坑时长、本次「赚到」的人民币数额（约 ${earnedYuan.toFixed(2)} 元）、月薪背景（${salarySnap} 元）、秒薪/时薪意象。
+3. 篇幅严格按用户消息中的「篇幅指令」执行。
+4. 可用 Markdown：标题用 #、##，正文分段。不要输出代码块包裹全文。`;
+
+          const user = `【本次数据】
+- 蹲坑时长：${timeLabel}（约 ${durationSec.toFixed(1)} 秒）
+- 按 21.75×8 小时折算本次如厕收入：约 ${earnedYuan.toFixed(2)} 元
+- 当时月薪设定：${salarySnap} 元
+
+【篇幅指令】
+${lenHint}
+
+请直接输出《如厕赋》正文（可加副标题）。`;
+
+          this.isGeneratingFu = true;
+          this.fuMarkdown = '';
+          this.reasoningText = '';
+          this.fuHtml = '';
+
+          const renderFu = () => {
+            if (typeof marked !== 'undefined' && this.fuMarkdown) {
+              this.fuHtml = marked.parse(this.fuMarkdown, { breaks: true });
+            }
+          };
+
+          try {
+            await this.streamDeepSeek(
+              [
+                { role: 'system', content: system },
+                { role: 'user', content: user }
+              ],
+              (chunk) => {
+                this.fuMarkdown += chunk;
+                renderFu();
+              },
+              (r) => { this.reasoningText += r; }
+            );
+            renderFu();
+            this.showToast('如厕赋已生成', 'scroll-text');
+          } catch (e) {
+            console.error(e);
+            this.fuMarkdown = '生成失败：' + (e.message || String(e));
+            this.fuHtml = '<p class="text-red-800">' + escapeHtml(this.fuMarkdown) + '</p>';
+            this.showToast('赋文生成失败', 'alert-circle');
+          } finally {
+            this.isGeneratingFu = false;
+            this.$nextTick(() => {
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            });
+          }
+        },
+
+        /**
+         * 组装纯文本收益单并复制
+         */
+        buildReceiptText() {
+          if (!this.lastSession) return '';
+          const fu = this.fuMarkdown || '（赋文未生成）';
+          return [
+            '════════ 厕所收益单 ════════',
+            '蹲坑时长：' + this.lastSession.timeLabel,
+            '本次收入：' + this.formatMoney2(this.lastSession.earnedYuan) + ' 元',
+            '参考月薪：' + this.formatMoneyInt(this.lastSession.salarySnap) + ' 元',
+            '记录时间：' + this.lastSession.dateStr,
+            '',
+            '──────── 《如厕赋》 ────────',
+            fu,
+            '',
+            '──────── 历史累计 ────────',
+            '累计带薪如厕收入：' + this.formatMoney2(this.cumulativeYuan) + ' 元'
+          ].join('\n');
+        },
+
+        async copyReceipt() {
+          const text = this.buildReceiptText();
+          if (!text) {
+            this.showToast('暂无收益单', 'alert-circle');
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('收益单已复制', 'copy');
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('已复制', 'copy');
+          }
+        },
+
+        /**
+         * 调用系统分享或退回复制
+         */
+        async shareReceipt() {
+          const text = this.buildReceiptText();
+          if (!text) return;
+          const title = '带薪拉屎收益单';
+          if (navigator.share) {
+            try {
+              await navigator.share({ title, text });
+              this.showToast('已唤起分享', 'share-2');
+              return;
+            } catch (e) {
+              if (e && e.name === 'AbortError') return;
+            }
+          }
+          await this.copyReceipt();
+          this.showToast('已复制（当前环境不支持系统分享）', 'copy');
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

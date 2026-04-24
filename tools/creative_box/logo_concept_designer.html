@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logo概念设计师 - AI 创意生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #f7f8fa; }
+        .linear-button { background-color: #5E6AD2; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 500; transition: background-color 0.2s; }
+        .linear-button:hover { background-color: #4a54a8; }
+        .linear-button:disabled { background-color: #a5b4fc; cursor: not-allowed; }
+        .secondary-button { background-color: transparent; color: #5E6AD2; border: 1px solid #5E6AD2; padding: 8px 16px; border-radius: 8px; font-weight: 500; transition: background-color 0.2s, color 0.2s; }
+        .secondary-button:hover { background-color: #5E6AD2; color: white; }
+        .input-field { border: 1px solid #E1E5E9; border-radius: 8px; padding: 12px 16px; width: 100%; transition: border-color 0.2s, box-shadow 0.2s; }
+        .input-field:focus { outline: none; border-color: #5E6AD2; box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.2); }
+        .result-card { background-color: white; border: 1px solid #F1F3F5; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: box-shadow 0.2s; }
+        .result-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        #settings-panel { transition: transform 0.3s ease-in-out; transform: translateX(100%); }
+        #settings-panel.open { transform: translateX(0); }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #5E6AD2; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 10px 20px; border-radius: 8px; z-index: 1000; opacity: 0; transition: opacity 0.3s, transform 0.3s; }
+        .toast.show { opacity: 1; transform: translate(-50%, -10px); }
+        .color-swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 1px rgba(0,0,0,0.1); }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">
+                <i class="fa-solid fa-lightbulb text-indigo-500"></i>
+                Logo 概念设计师
+            </h1>
+            <button id="settings-btn" class="text-gray-600 hover:text-indigo-500 transition-colors">
+                <i class="fa-solid fa-gear fa-2x"></i>
+            </button>
+        </header>
+
+        <!-- Input Section -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
+            <h2 class="text-xl font-bold mb-4 text-gray-700">描述你的品牌或公司理念</h2>
+            <textarea id="brand-desc" rows="6" placeholder="例如：我们是一个面向年轻人的科技教育品牌，致力于通过有趣的游戏化学习，让编程变得简单、好玩。我们的核心理念是"探索、创造、分享"。我们希望品牌形象是现代、友好、充满活力的。" class="input-field"></textarea>
+            <div class="mt-4 flex justify-end">
+                <button id="generate-btn" class="linear-button text-lg">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>生成3个设计概念
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-container" class="space-y-6">
+            <!-- Placeholder -->
+            <div id="placeholder" class="text-center text-gray-500 py-20 border-2 border-dashed border-gray-300 rounded-xl">
+                <i class="fa-solid fa-palette fa-3x mb-4"></i>
+                <p>你的Logo设计概念将在这里展示</p>
+            </div>
+            <!-- Loading Spinner -->
+            <div id="loader" class="text-center py-20 hidden">
+                <div class="spinner mx-auto"></div>
+                <p class="mt-4 text-gray-600">AI设计师正在构思中...</p>
+            </div>
+            <!-- Results will be injected here -->
+        </div>
+         <div id="download-container" class="mt-6 text-center hidden">
+            <button id="download-btn" class="secondary-button">
+                <i class="fa-solid fa-download mr-2"></i>下载全部概念
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Panel (Identical to other tools) -->
+    <div id="settings-panel" class="fixed top-0 right-0 h-full w-96 bg-white shadow-lg p-6 z-50">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">API 设置</h2>
+            <button id="close-settings-btn" class="text-gray-500 hover:text-gray-800"><i class="fa-solid fa-xmark fa-2x"></i></button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label for="api-url" class="font-medium text-gray-700">API URL</label>
+                <input type="text" id="api-url" class="input-field mt-1">
+            </div>
+            <div>
+                <label for="api-key" class="font-medium text-gray-700">API Key</label>
+                <input type="password" id="api-key" class="input-field mt-1" placeholder="留空使用默认Key">
+            </div>
+            <div>
+                <label for="api-model" class="font-medium text-gray-700">模型选择</label>
+                <select id="api-model" class="input-field mt-1">
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    <option value="doubao-seed-1-6-thinking-250615">doubao-seed-1-6-thinking-250615</option>
+                    <option value="doubao-seed-1-6-250615">doubao-seed-1-6-250615</option>
+                </select>
+            </div>
+            <button id="save-settings-btn" class="linear-button w-full mt-4">保存设置</button>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+<script>
+        // 获取全局 DeepSeek Key
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+    // --- DOM Elements ---
+    const generateBtn = document.getElementById('generate-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const downloadContainer = document.getElementById('download-container');
+    const brandDescInput = document.getElementById('brand-desc');
+    const resultsContainer = document.getElementById('results-container');
+    const placeholder = document.getElementById('placeholder');
+    const loader = document.getElementById('loader');
+
+    const settingsBtn = document.getElementById('settings-btn');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    
+    const apiUrlInput = document.getElementById('api-url');
+    const apiKeyInput = document.getElementById('api-key');
+    const apiModelInput = document.getElementById('api-model');
+    const toast = document.getElementById('toast');
+
+    // --- State & Defaults ---
+    const DEFAULT_API_KEY = "";
+    let conceptsData = [];
+
+    // --- Settings Logic ---
+    function loadSettings() {
+        apiUrlInput.value = localStorage.getItem('apiUrl') || 'https://api.deepseek.com/chat/completions';
+        apiKeyInput.value = localStorage.getItem('apiKey') || '';
+        apiModelInput.value = localStorage.getItem('apiModel') || 'deepseek-v4-flash';
+    }
+
+    function saveSettings() {
+        localStorage.setItem('apiUrl', apiUrlInput.value);
+        localStorage.setItem('apiKey', apiKeyInput.value);
+        localStorage.setItem('apiModel', apiModelInput.value);
+        showToast('设置已保存！');
+        settingsPanel.classList.remove('open');
+    }
+    
+    function getApiKey() { return apiKeyInput.value.trim() || getGlobalDeepSeekKey(); }
+    function getApiUrl() { return apiUrlInput.value.trim(); }
+    function getModel() { return apiModelInput.value; }
+
+    function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // --- UI Logic ---
+    function setUIState(state) {
+        if (state === 'loading') {
+            loader.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            resultsContainer.innerHTML = ''; // Clear previous results
+            resultsContainer.appendChild(loader);
+            downloadContainer.classList.add('hidden');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>生成中...';
+        } else { // 'idle'
+            loader.classList.add('hidden');
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>生成3个设计概念';
+            if (resultsContainer.childElementCount === 0) {
+                 placeholder.classList.remove('hidden');
+                 resultsContainer.appendChild(placeholder);
+            }
+        }
+    }
+
+    // --- Core API & Rendering Logic ---
+    function buildPrompt() {
+        const brandDesc = brandDescInput.value;
+        return `
+你是一个顶级的品牌和Logo设计师。请根据以下品牌理念，为我设计3个不同风格的Logo概念。
+
+品牌理念: "${brandDesc}"
+
+请严格按照以下格式为每个概念生成详细的文字描述，并使用 "---" 将三个概念完全分开。
+
+[概念标题]
+形状: [详细描述Logo的形状和构成元素]
+颜色: [描述主要颜色和辅助色，并提供对应的HEX色号，例如：活力橙 (#FF7F50), 科技蓝 (#0052CC)]
+字体: [描述推荐的字体风格、名称或特征]
+寓意: [详细解释Logo设计背后的寓意和象征意义]
+
+请直接开始输出第一个概念，不要有任何前言或总结。
+        `;
+    }
+
+    async function handleGenerate() {
+        const brandDesc = brandDescInput.value.trim();
+        if (!brandDesc) {
+            showToast('请输入品牌或公司理念');
+            return;
+        }
+
+        setUIState('loading');
+        const prompt = buildPrompt();
+        const messages = [
+            { role: "system", content: "你是一个富有创意的品牌策略师和logo设计师。你的任务是基于用户提供的品牌理念，构思出结构完整、细节丰富、寓意深刻的Logo设计概念。" },
+            { role: "user", content: prompt }
+        ];
+
+        try {
+            const response = await fetch(getApiUrl(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getApiKey()}` },
+                body: JSON.stringify({ model: getModel(), messages: messages, temperature: 0.7 })
+            });
+
+            if (!response.ok) throw new Error((await response.json()).error.message || `API 请求失败: ${response.status}`);
+            
+            const data = await response.json();
+            const content = data.choices[0].message.content;
+            
+            conceptsData = parseAIResponse(content);
+            renderResults();
+
+        } catch (error) {
+            console.error("API Error:", error);
+            displayError(error.message);
+        } finally {
+            setUIState('idle');
+        }
+    }
+
+    function parseAIResponse(responseText) {
+        const concepts = responseText.split('---').filter(c => c.trim());
+        return concepts.map(conceptStr => {
+            const lines = conceptStr.trim().split('\n');
+            const conceptData = {};
+            conceptData.title = lines[0].replace('[', '').replace(']', '').trim();
+            lines.slice(1).forEach(line => {
+                const [key, ...valueParts] = line.split(':');
+                if (key && valueParts.length > 0) {
+                    const value = valueParts.join(':').trim();
+                    if (key.trim().toLowerCase() === '形状') conceptData.shape = value;
+                    else if (key.trim().toLowerCase() === '颜色') conceptData.color = value;
+                    else if (key.trim().toLowerCase() === '字体') conceptData.font = value;
+                    else if (key.trim().toLowerCase() === '寓意') conceptData.meaning = value;
+                }
+            });
+            return conceptData;
+        });
+    }
+
+    function extractHexColors(colorString) {
+        if (!colorString) return [];
+        const hexRegex = /#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/g;
+        return colorString.match(hexRegex) || [];
+    }
+    
+    function renderResults() {
+        resultsContainer.innerHTML = '';
+        if (conceptsData.length === 0) {
+            displayError("未能解析AI返回的概念，请尝试调整描述或重试。");
+            return;
+        }
+
+        conceptsData.forEach((concept, index) => {
+            const card = document.createElement('div');
+            card.className = 'result-card relative';
+
+            const hexColors = extractHexColors(concept.color);
+            const swatches = hexColors.map(hex => `<div class="color-swatch" style="background-color: ${hex};"></div>`).join('');
+
+            card.innerHTML = `
+                <button class="absolute top-4 right-4 text-gray-400 hover:text-indigo-500 transition-colors" onclick="copyConcept(${index})">
+                    <i class="fa-solid fa-copy"></i>
+                </button>
+                <h3 class="text-xl font-bold text-indigo-600 mb-4">${concept.title || `概念 ${index + 1}`}</h3>
+                <div class="space-y-3 text-gray-700">
+                    <div>
+                        <strong class="font-semibold">形状:</strong>
+                        <p class="pl-2">${concept.shape || '未提供'}</p>
+                    </div>
+                    <div>
+                        <strong class="font-semibold">颜色:</strong>
+                        <div class="flex items-center gap-2 mt-1">
+                            <div class="flex -space-x-2">${swatches}</div>
+                            <p class="pl-2 flex-1">${concept.color || '未提供'}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <strong class="font-semibold">字体:</strong>
+                        <p class="pl-2">${concept.font || '未提供'}</p>
+                    </div>
+                    <div>
+                        <strong class="font-semibold">寓意:</strong>
+                        <p class="pl-2">${concept.meaning || '未提供'}</p>
+                    </div>
+                </div>
+            `;
+            resultsContainer.appendChild(card);
+        });
+        downloadContainer.classList.remove('hidden');
+    }
+
+    function displayError(errorMessage) {
+        resultsContainer.innerHTML = '';
+        const errorCard = document.createElement('div');
+        errorCard.className = 'result-card bg-red-50 border-red-200';
+        errorCard.innerHTML = `<h3 class="text-red-800 font-bold text-lg mb-2"><i class="fa-solid fa-circle-exclamation mr-2"></i>出错了</h3><p class="text-red-700">${errorMessage}</p>`;
+        resultsContainer.appendChild(errorCard);
+        downloadContainer.classList.add('hidden');
+    }
+
+    function copyConcept(index) {
+        const concept = conceptsData[index];
+        const textToCopy = `
+概念: ${concept.title}
+形状: ${concept.shape}
+颜色: ${concept.color}
+字体: ${concept.font}
+寓意: ${concept.meaning}
+        `.trim();
+        navigator.clipboard.writeText(textToCopy);
+        showToast(`概念 ${index + 1} 已复制`);
+    }
+
+    function downloadAllConcepts() {
+        const textToDownload = conceptsData.map((concept, index) => `
+--- 概念 ${index + 1}: ${concept.title} ---
+
+形状:
+${concept.shape}
+
+颜色:
+${concept.color}
+
+字体:
+${concept.font}
+
+寓意:
+${concept.meaning}
+        `).join('\n\n');
+        
+        const blob = new Blob([textToDownload.trim()], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Logo设计概念-${new Date().toISOString().slice(0,10)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // --- Event Listeners ---
+    generateBtn.addEventListener('click', handleGenerate);
+    downloadBtn.addEventListener('click', downloadAllConcepts);
+    settingsBtn.addEventListener('click', () => settingsPanel.classList.add('open'));
+    closeSettingsBtn.addEventListener('click', () => settingsPanel.classList.remove('open'));
+    saveSettingsBtn.addEventListener('click', saveSettings);
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', loadSettings);
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_logo_concept_designer.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html> 

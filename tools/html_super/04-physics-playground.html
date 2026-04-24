@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics UI / HTML_SUPER</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+            font-family: 'Space Grotesk', sans-serif;
+            color: #fff;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Overlay UI */
+        .ui {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to physics */
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            line-height: 1;
+            text-transform: uppercase;
+            mix-blend-mode: exclusion;
+        }
+
+        .instruction {
+            margin-top: 10px;
+            font-size: 1rem;
+            color: #888;
+        }
+        
+        .nav { pointer-events: auto; }
+        a { color: #fff; text-decoration: none; border-bottom: 1px solid #fff; }
+
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+
+    <div class="ui">
+        <div class="nav"><a href="index.html">← BACK</a></div>
+        <h1>Physical<br>Interface</h1>
+        <p class="instruction">Drag shapes. Smash them. Scroll to spawn more.</p>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        // Module aliases
+        var Engine = Matter.Engine,
+            Render = Matter.Render,
+            Runner = Matter.Runner,
+            Bodies = Matter.Bodies,
+            Composite = Matter.Composite,
+            Mouse = Matter.Mouse,
+            MouseConstraint = Matter.MouseConstraint,
+            Events = Matter.Events;
+
+        // Create an engine
+        var engine = Engine.create();
+        var world = engine.world;
+        
+        // Add some gravity variety
+        engine.gravity.y = 1;
+
+        // Create a renderer
+        var render = Render.create({
+            element: document.getElementById('canvas-container'),
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                background: '#111',
+                wireframes: false,
+                pixelRatio: window.devicePixelRatio
+            }
+        });
+
+        // Create bounds
+        var ground = Bodies.rectangle(window.innerWidth / 2, window.innerHeight + 50, window.innerWidth, 100, { isStatic: true, render: { fillStyle: '#333' } });
+        var wallLeft = Bodies.rectangle(-50, window.innerHeight / 2, 100, window.innerHeight, { isStatic: true });
+        var wallRight = Bodies.rectangle(window.innerWidth + 50, window.innerHeight / 2, 100, window.innerHeight, { isStatic: true });
+        
+        Composite.add(world, [ground, wallLeft, wallRight]);
+
+        // Helper to Create Cool Shapes
+        function createShape(x, y) {
+            const types = ['rectangle', 'circle', 'polygon'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const color = ['#ff0055', '#00ffaa', '#ffff00', '#5500ff'][Math.floor(Math.random() * 4)];
+            const size = 40 + Math.random() * 60;
+
+            let body;
+            if (type === 'rectangle') {
+                body = Bodies.rectangle(x, y, size, size, {
+                    render: { fillStyle: color, strokeStyle: '#fff', lineWidth: 2 },
+                    restitution: 0.8
+                });
+            } else if (type === 'circle') {
+                body = Bodies.circle(x, y, size / 2, {
+                    render: { fillStyle: color, strokeStyle: '#fff', lineWidth: 2 },
+                    restitution: 0.9
+                });
+            } else {
+                 body = Bodies.polygon(x, y, 3 + Math.floor(Math.random()*5), size / 2, {
+                    render: { fillStyle: color, strokeStyle: '#fff', lineWidth: 2 },
+                    restitution: 0.7
+                });
+            }
+            return body;
+        }
+
+        // Initial Batch
+        for (let i = 0; i < 20; i++) {
+            Composite.add(world, createShape(Math.random() * window.innerWidth, -Math.random() * 1000));
+        }
+
+        // Mouse Control
+        var mouse = Mouse.create(render.canvas),
+            mouseConstraint = MouseConstraint.create(engine, {
+                mouse: mouse,
+                constraint: {
+                    stiffness: 0.2,
+                    render: {
+                        visible: false
+                    }
+                }
+            });
+
+        Composite.add(world, mouseConstraint);
+
+        // Keep the mouse in sync with rendering
+        render.mouse = mouse;
+
+        // Run the renderer
+        Render.run(render);
+
+        // Create runner
+        var runner = Runner.create();
+        Runner.run(runner, engine);
+
+        // Responsive
+        window.addEventListener('resize', () => {
+            render.canvas.width = window.innerWidth;
+            render.canvas.height = window.innerHeight;
+            
+            // Reposition ground
+            Matter.Body.setPosition(ground, { x: window.innerWidth / 2, y: window.innerHeight + 50 });
+            Matter.Body.setPosition(wallRight, { x: window.innerWidth + 50, y: window.innerHeight / 2 });
+        });
+
+        // Spawn on Scroll / Click
+        document.addEventListener('click', (e) => {
+             // Avoid spawning if clicking UI
+             if(e.target.tagName === 'A') return;
+             Composite.add(world, createShape(e.clientX, e.clientY));
+        });
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

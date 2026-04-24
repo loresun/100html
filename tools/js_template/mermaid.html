@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mermaid 流程图</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f0fdf4; color: #14532d; }
+    .glass { background: white; border: 1px solid #bbf7d0; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.05); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-green-900">🧜‍♀️ Mermaid</h1>
+    <p class="text-green-800/60 mt-2 text-lg">基于 Markdown 语法的图表绘制工具</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-green-200 text-green-800 rounded-lg hover:bg-green-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+
+  <!-- 编辑器 -->
+  <div class="flex flex-col h-[600px]">
+    <div class="bg-white border border-green-200 rounded-t-xl p-4 flex justify-between items-center">
+      <h3 class="font-bold text-green-900">✏️ 编辑代码</h3>
+      <div class="flex gap-2">
+        <button onclick="loadTemplate('graph')" class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">流程图</button>
+        <button onclick="loadTemplate('sequence')" class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">时序图</button>
+        <button onclick="loadTemplate('gantt')" class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">甘特图</button>
+      </div>
+    </div>
+    <textarea id="source" class="flex-1 p-4 font-mono text-sm bg-slate-900 text-green-400 outline-none resize-none rounded-b-xl leading-relaxed" spellcheck="false">graph TD
+  A[开始] --> B{是否完成?}
+  B -- 是 --> C[提交代码]
+  B -- 否 --> D[继续修改]
+  D --> B
+  C --> E[结束]</textarea>
+  </div>
+
+  <!-- 预览区 -->
+  <div class="flex flex-col h-[600px]">
+    <div class="bg-white border border-green-200 rounded-t-xl p-4 flex justify-between items-center">
+      <h3 class="font-bold text-green-900">👁️ 实时预览</h3>
+      <button onclick="render()" class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700">渲染</button>
+    </div>
+    <div class="flex-1 bg-white border border-t-0 border-green-200 rounded-b-xl overflow-auto p-4 flex items-center justify-center">
+      <div id="preview" class="mermaid w-full text-center">
+        <!-- 图表将在这里生成 -->
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ 
+    startOnLoad: false,
+    theme: 'success', // 使用绿色系主题适配页面
+    securityLevel: 'loose'
+  });
+
+  const source = document.getElementById('source');
+  const preview = document.getElementById('preview');
+
+  const templates = {
+    graph: `graph TD
+  A[开始] --> B{用户输入}
+  B --> C[验证数据]
+  C -->|通过| D[保存]
+  C -->|失败| E[报错]
+  D --> F[结束]`,
+    
+    sequence: `sequenceDiagram
+  participant User
+  participant System
+  User->>System: 登录请求
+  System-->>User: 返回 Token
+  User->>System: 获取数据 (Token)
+  System-->>User: 返回数据`,
+    
+    gantt: `gantt
+  title 项目进度表
+  dateFormat  YYYY-MM-DD
+  section 设计
+  原型设计 :done, des1, 2024-01-01, 3d
+  UI 设计 :active, des2, after des1, 5d
+  section 开发
+  后端开发 :crit, active, 2024-01-06, 7d
+  前端开发 :2024-01-08, 7d`
+  };
+
+  function loadTemplate(name) {
+    source.value = templates[name];
+    render();
+  }
+
+  async function render() {
+    const code = source.value;
+    preview.innerHTML = ''; // 清空
+    
+    try {
+      // mermaid.renderAsync is the modern way but sometimes tricky with DOM
+      // Using mermaid.render
+      const { svg } = await mermaid.render('mermaid-svg-' + Date.now(), code);
+      preview.innerHTML = svg;
+    } catch (error) {
+      preview.innerHTML = `<div class="text-red-500 font-mono text-sm p-4 text-left">
+        <strong>Syntax Error:</strong><br>
+        ${error.message}
+      </div>`;
+    }
+  }
+
+  // 初始渲染
+  render();
+
+  // 简单的防抖输入监听
+  let timeout;
+  source.addEventListener('input', () => {
+    clearTimeout(timeout);
+    timeout = setTimeout(render, 1000);
+  });
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>错题分析师 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 50%, #fef2f2 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e11d48; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spin-slow { animation: spin-slow 2s linear infinite; }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+        .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .toast-enter { animation: fadeInUp 0.3s ease-out; }
+
+        .prose h1 { font-size: 1.25rem; font-weight: 700; margin: 1em 0 0.5em; }
+        .prose h2 { font-size: 1.125rem; font-weight: 700; margin: 1em 0 0.5em; }
+        .prose h3 { font-size: 1rem; font-weight: 600; margin: 0.8em 0 0.4em; }
+        .prose p { margin: 0.5em 0; line-height: 1.75; }
+        .prose ul, .prose ol { margin: 0.5em 0; padding-left: 1.5em; }
+        .prose li { margin: 0.25em 0; line-height: 1.7; }
+        .prose code { background: #fff1f2; color: #e11d48; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; }
+        .prose pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 12px; overflow-x: auto; margin: 0.8em 0; }
+        .prose pre code { background: none; color: inherit; padding: 0; }
+        .prose blockquote { border-left: 3px solid #e11d48; padding-left: 1em; color: #64748b; margin: 0.8em 0; }
+        .prose strong { color: #1e293b; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 0.8em 0; }
+        .prose th, .prose td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+        .prose th { background: #fff1f2; font-weight: 600; }
+
+        .severity-high { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+        .severity-medium { background: #fffbeb; border-color: #fde68a; color: #d97706; }
+        .severity-low { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+
+        .error-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+    </style>
+
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#e11d48',
+                    'primary-light': '#fb7185',
+                    'primary-dark': '#be123c',
+                }
+            }
+        }
+    }
+    </script>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+<div x-data="errorAnalyzerApp()" x-init="init()" class="min-h-screen">
+
+    <!-- 导航栏 -->
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-rose-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                <i data-lucide="search" class="text-primary h-6 w-6"></i>
+                <span class="font-bold text-xl text-slate-900">错题分析师</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="hidden sm:inline text-xs text-slate-400">教育培训 · 错题分析</span>
+                <button @click="showSettings = true"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-rose-50 text-slate-600 transition-colors text-sm">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">设置</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 步骤进度条 -->
+        <div class="mb-10">
+            <div class="flex items-center justify-between max-w-3xl mx-auto">
+                <template x-for="(s, idx) in steps" :key="idx">
+                    <div class="flex items-center" :class="idx < steps.length - 1 ? 'flex-1' : ''">
+                        <div class="flex flex-col items-center relative">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300"
+                                :class="currentStep > idx + 1 ? 'bg-primary text-white shadow-lg shadow-rose-200' :
+                                         currentStep === idx + 1 ? 'bg-primary text-white shadow-lg shadow-rose-200 ring-4 ring-rose-100' :
+                                         'bg-white text-slate-400 border-2 border-slate-200'"
+                                x-text="currentStep > idx + 1 ? '✓' : idx + 1">
+                            </div>
+                            <span class="absolute -bottom-6 whitespace-nowrap text-xs font-medium"
+                                :class="currentStep >= idx + 1 ? 'text-primary' : 'text-slate-400'"
+                                x-text="s"></span>
+                        </div>
+                        <div x-show="idx < steps.length - 1"
+                            class="flex-1 h-1 mx-3 rounded-full bg-slate-200 overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500"
+                                :class="currentStep > idx + 1 ? 'bg-primary w-full' : 'bg-slate-200 w-0'"
+                                :style="currentStep === idx + 2 ? 'width: 50%; background: #e11d48;' :
+                                         currentStep > idx + 1 ? 'width: 100%;' : 'width: 0;'">
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ======================== 步骤 1: 错题录入 ======================== -->
+        <div x-show="currentStep === 1" x-transition:enter="animate-fade-in" class="mt-8">
+            <div class="glass-card rounded-2xl shadow-lg p-6 sm:p-8 border border-rose-100">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="p-2.5 bg-rose-100 rounded-xl">
+                        <i data-lucide="pencil-line" class="w-5 h-5 text-primary"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">错题录入</h2>
+                        <p class="text-sm text-slate-500">输入科目信息和错题内容，AI 将帮你精准诊断薄弱环节</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- 科目 -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">科目 <span class="text-red-400">*</span></label>
+                        <input type="text" x-model="form.subject"
+                            placeholder="例如：数学、物理、英语、化学..."
+                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-rose-300 focus:border-rose-400 outline-none transition-all">
+                    </div>
+
+                    <!-- 年级 -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">年级 <span class="text-red-400">*</span></label>
+                        <select x-model="form.grade"
+                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-rose-300 focus:border-rose-400 outline-none transition-all bg-white">
+                            <option value="">请选择年级</option>
+                            <option value="小学">小学</option>
+                            <option value="初中">初中</option>
+                            <option value="高中">高中</option>
+                            <option value="大学">大学</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+
+                    <!-- 错题内容 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">错题内容 <span class="text-red-400">*</span></label>
+                        <textarea x-model="form.questions" rows="6"
+                            placeholder="粘贴你的错题，包含题目原文。可以一次输入多道题，每道题之间空一行分隔。&#10;&#10;例如：&#10;1. 已知 f(x) = x² - 2x + 1，求 f(x) 的最小值。&#10;&#10;2. 一个物体从高处自由落下，经过 2 秒后速度为多少？"
+                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-rose-300 focus:border-rose-400 outline-none transition-all resize-none"></textarea>
+                    </div>
+
+                    <!-- 我的错误答案 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">我的错误答案 <span class="text-red-400">*</span></label>
+                        <textarea x-model="form.wrongAnswers" rows="4"
+                            placeholder="写下你当时的错误答案和解题过程（如果记得的话），这有助于 AI 精准分析你的错误类型。&#10;&#10;例如：&#10;1. 我算出 f(x) 最小值是 -1，用的配方法但算错了。&#10;2. 我算的是 10 m/s，忘记用 g=9.8 了。"
+                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-rose-300 focus:border-rose-400 outline-none transition-all resize-none"></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button @click="diagnosisWeakPoints()"
+                        :disabled="!canProceedStep1 || loading"
+                        class="px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-lg shadow-rose-200">
+                        <template x-if="loading">
+                            <i data-lucide="loader-2" class="w-4 h-4 spin-slow"></i>
+                        </template>
+                        <template x-if="!loading">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </template>
+                        <span x-text="loading ? 'AI 正在诊断...' : '开始诊断'"></span>
+                        <i data-lucide="arrow-right" class="w-4 h-4" x-show="!loading"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== 步骤 2: AI 诊断薄弱点 ======================== -->
+        <div x-show="currentStep === 2" x-transition:enter="animate-fade-in" class="mt-8">
+            <div class="glass-card rounded-2xl shadow-lg p-6 sm:p-8 border border-rose-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-rose-100 rounded-xl">
+                            <i data-lucide="activity" class="w-5 h-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">诊断结果</h2>
+                            <p class="text-sm text-slate-500">AI 已分析你的错题，以下是薄弱环节诊断</p>
+                        </div>
+                    </div>
+                    <button @click="currentStep = 1"
+                        class="text-sm text-slate-500 hover:text-primary transition-colors flex items-center gap-1">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回修改
+                    </button>
+                </div>
+
+                <!-- 诊断总结 -->
+                <div x-show="diagnosisSummary" class="mb-6 p-4 bg-rose-50 rounded-xl border border-rose-200">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="clipboard-list" class="w-4 h-4 text-primary"></i>
+                        <span class="text-sm font-bold text-slate-800">诊断总结</span>
+                    </div>
+                    <p class="text-sm text-slate-700 leading-relaxed" x-text="diagnosisSummary"></p>
+                </div>
+
+                <!-- 诊断卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <template x-for="(item, idx) in diagnosisItems" :key="idx">
+                        <div class="bg-white rounded-xl border-2 p-5 transition-all hover:shadow-md"
+                            :class="item.severity === '高' ? 'border-red-200 hover:border-red-300' :
+                                     item.severity === '中' ? 'border-amber-200 hover:border-amber-300' :
+                                     'border-green-200 hover:border-green-300'">
+                            <!-- 头部: 错误类型 + 严重程度 -->
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="error-badge"
+                                    :class="getErrorTypeClass(item.error_type)">
+                                    <span x-text="item.error_type"></span>
+                                </span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-medium"
+                                        :class="item.severity === '高' ? 'text-red-600' :
+                                                 item.severity === '中' ? 'text-amber-600' : 'text-green-600'">
+                                        严重程度:
+                                    </span>
+                                    <div class="flex gap-0.5">
+                                        <template x-for="i in 3">
+                                            <div class="w-2.5 h-2.5 rounded-full"
+                                                :class="(item.severity === '高' && i <= 3) ? 'bg-red-500' :
+                                                         (item.severity === '中' && i <= 2) ? 'bg-amber-500' :
+                                                         (item.severity === '低' && i <= 1) ? 'bg-green-500' :
+                                                         'bg-slate-200'">
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 涉及题目 -->
+                            <div class="mb-2">
+                                <span class="text-xs text-slate-500">涉及题目: </span>
+                                <span class="text-xs font-medium text-slate-700" x-text="item.related_questions"></span>
+                            </div>
+                            <!-- 知识点 -->
+                            <h4 class="font-bold text-slate-900 mb-1" x-text="item.knowledge_point"></h4>
+                            <!-- 分析描述 -->
+                            <p class="text-sm text-slate-600 leading-relaxed" x-text="item.description"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- 下一步按钮 -->
+                <div class="mt-6 flex justify-end">
+                    <button @click="generateExplanations()"
+                        :disabled="loading || diagnosisItems.length === 0"
+                        class="px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-lg shadow-rose-200">
+                        <template x-if="loading">
+                            <i data-lucide="loader-2" class="w-4 h-4 spin-slow"></i>
+                        </template>
+                        <template x-if="!loading">
+                            <i data-lucide="book-open" class="w-4 h-4"></i>
+                        </template>
+                        <span x-text="loading ? '正在生成讲解...' : '知识点讲解'"></span>
+                        <i data-lucide="arrow-right" class="w-4 h-4" x-show="!loading"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== 步骤 3: 知识点讲解 ======================== -->
+        <div x-show="currentStep === 3" x-transition:enter="animate-fade-in" class="mt-8">
+            <div class="glass-card rounded-2xl shadow-lg p-6 sm:p-8 border border-rose-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-rose-100 rounded-xl">
+                            <i data-lucide="book-open" class="w-5 h-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">知识点讲解</h2>
+                            <p class="text-sm text-slate-500">针对你的薄弱环节，AI 提供详细讲解和例题</p>
+                        </div>
+                    </div>
+                    <button @click="currentStep = 2"
+                        class="text-sm text-slate-500 hover:text-primary transition-colors flex items-center gap-1">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回诊断
+                    </button>
+                </div>
+
+                <!-- 讲解内容 (流式渲染) -->
+                <div x-show="loading" class="flex items-center gap-3 mb-4 p-4 bg-rose-50 rounded-xl">
+                    <div class="flex gap-1">
+                        <div class="w-2 h-2 bg-primary rounded-full pulse-dot"></div>
+                        <div class="w-2 h-2 bg-primary rounded-full pulse-dot" style="animation-delay: 0.2s;"></div>
+                        <div class="w-2 h-2 bg-primary rounded-full pulse-dot" style="animation-delay: 0.4s;"></div>
+                    </div>
+                    <span class="text-sm text-slate-600">AI 正在为你整理知识点讲解...</span>
+                </div>
+
+                <div x-show="explanationContent" class="prose max-w-none text-sm text-slate-700" x-html="renderMarkdown(explanationContent)"></div>
+
+                <!-- 思考过程 (V4 Pro) -->
+                <details x-show="explanationReasoning" class="mt-4">
+                    <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-primary transition-colors">
+                        🧠 深度思考过程 (点击展开)
+                    </summary>
+                    <div class="mt-2 p-4 bg-slate-50 rounded-xl text-xs text-slate-500 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto" x-text="explanationReasoning"></div>
+                </details>
+
+                <!-- 下一步按钮 -->
+                <div class="mt-6 flex justify-end">
+                    <button @click="generatePractice()"
+                        :disabled="loading || !explanationContent"
+                        class="px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-lg shadow-rose-200">
+                        <template x-if="loading">
+                            <i data-lucide="loader-2" class="w-4 h-4 spin-slow"></i>
+                        </template>
+                        <template x-if="!loading">
+                            <i data-lucide="dumbbell" class="w-4 h-4"></i>
+                        </template>
+                        <span x-text="loading ? '正在生成练习...' : '生成巩固练习'"></span>
+                        <i data-lucide="arrow-right" class="w-4 h-4" x-show="!loading"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== 步骤 4: 巩固练习 ======================== -->
+        <div x-show="currentStep === 4" x-transition:enter="animate-fade-in" class="mt-8">
+            <div class="glass-card rounded-2xl shadow-lg p-6 sm:p-8 border border-rose-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-rose-100 rounded-xl">
+                            <i data-lucide="dumbbell" class="w-5 h-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">巩固练习</h2>
+                            <p class="text-sm text-slate-500">针对薄弱点生成的练习题，含详细答案</p>
+                        </div>
+                    </div>
+                    <button @click="currentStep = 3"
+                        class="text-sm text-slate-500 hover:text-primary transition-colors flex items-center gap-1">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回讲解
+                    </button>
+                </div>
+
+                <!-- 练习内容 (流式渲染) -->
+                <div x-show="loading" class="flex items-center gap-3 mb-4 p-4 bg-rose-50 rounded-xl">
+                    <div class="flex gap-1">
+                        <div class="w-2 h-2 bg-primary rounded-full pulse-dot"></div>
+                        <div class="w-2 h-2 bg-primary rounded-full pulse-dot" style="animation-delay: 0.2s;"></div>
+                        <div class="w-2 h-2 bg-primary rounded-full pulse-dot" style="animation-delay: 0.4s;"></div>
+                    </div>
+                    <span class="text-sm text-slate-600">AI 正在生成巩固练习题...</span>
+                </div>
+
+                <div x-show="practiceContent" class="prose max-w-none text-sm text-slate-700" x-html="renderMarkdown(practiceContent)"></div>
+
+                <!-- 思考过程 (V4 Pro) -->
+                <details x-show="practiceReasoning" class="mt-4">
+                    <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-primary transition-colors">
+                        🧠 深度思考过程 (点击展开)
+                    </summary>
+                    <div class="mt-2 p-4 bg-slate-50 rounded-xl text-xs text-slate-500 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto" x-text="practiceReasoning"></div>
+                </details>
+
+                <!-- 操作按钮 -->
+                <div class="mt-6 flex flex-wrap gap-3 justify-end">
+                    <button @click="copyAll()"
+                        class="px-5 py-2.5 rounded-xl text-sm font-medium border-2 border-rose-200 text-primary hover:bg-rose-50 transition-all flex items-center gap-2">
+                        <i data-lucide="copy" class="w-4 h-4"></i> 复制全部
+                    </button>
+                    <button @click="exportMarkdown()"
+                        class="px-5 py-2.5 rounded-xl text-sm font-medium border-2 border-rose-200 text-primary hover:bg-rose-50 transition-all flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> 导出 Markdown
+                    </button>
+                    <button @click="resetAll()"
+                        class="px-5 py-2.5 rounded-xl text-sm font-medium bg-primary text-white hover:bg-primary-dark transition-all flex items-center gap-2 shadow-lg shadow-rose-200">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重新开始
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ======================== 设置弹窗 ======================== -->
+    <div x-show="showSettings" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-slate-900">API 配置</h3>
+                <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                    <input type="password" x-model="apiConfig.deepseek"
+                        placeholder="sk-..."
+                        class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-300 focus:border-rose-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                    <select x-model="apiConfig.model"
+                        class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-300 focus:border-rose-400 outline-none bg-white">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button @click="showSettings = false"
+                    class="px-4 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 transition-colors">
+                    取消
+                </button>
+                <button @click="saveConfig()"
+                    class="px-5 py-2 rounded-xl text-sm font-medium bg-primary text-white hover:bg-primary-dark transition-colors shadow-lg shadow-rose-200">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div x-show="toast.show" x-transition:enter="toast-enter" x-transition:leave="transition ease-in duration-150 opacity-0"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-xl shadow-2xl text-sm font-medium"
+        :class="toast.type === 'success' ? 'bg-green-600 text-white' : toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-800 text-white'">
+        <span x-text="toast.message"></span>
+    </div>
+
+</div>
+
+<script>
+function errorAnalyzerApp() {
+    return {
+        /* ============ 状态 ============ */
+        currentStep: 1,
+        steps: ['错题录入', 'AI诊断', '知识讲解', '巩固练习'],
+        loading: false,
+        showSettings: false,
+
+        /* 表单输入 */
+        form: {
+            subject: '',
+            grade: '',
+            questions: '',
+            wrongAnswers: ''
+        },
+
+        /* 诊断结果 (步骤2) */
+        diagnosisSummary: '',
+        diagnosisItems: [],
+
+        /* 知识讲解 (步骤3) */
+        explanationContent: '',
+        explanationReasoning: '',
+
+        /* 巩固练习 (步骤4) */
+        practiceContent: '',
+        practiceReasoning: '',
+
+        /* API 配置 */
+        apiConfig: {
+            deepseek: '',
+            model: 'deepseek-v4-flash'
+        },
+
+        /* Toast */
+        toast: { show: false, message: '', type: 'success' },
+
+        /* ============ 计算属性 ============ */
+        get canProceedStep1() {
+            return this.form.subject.trim() && this.form.grade && this.form.questions.trim() && this.form.wrongAnswers.trim();
+        },
+
+        /* ============ 初始化 ============ */
+        init() {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    this.apiConfig = { ...this.apiConfig, ...parsed };
+                } catch (e) { /* 忽略解析错误 */ }
+            }
+            this.$nextTick(() => lucide.createIcons());
+        },
+
+        /* ============ 配置保存 (合并策略) ============ */
+        saveConfig() {
+            const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+            localStorage.setItem('global_llm_config', JSON.stringify({
+                ...current,
+                deepseek: this.apiConfig.deepseek,
+                model: this.apiConfig.model
+            }));
+            this.showSettings = false;
+            this.showToast('配置已保存', 'success');
+        },
+
+        /* ============ Markdown 渲染 ============ */
+        renderMarkdown(text) {
+            if (!text) return '';
+            try { return marked.parse(text); }
+            catch (e) { return text; }
+        },
+
+        /* ============ 步骤 2: 诊断薄弱点 (JSON 模式) ============ */
+        async diagnosisWeakPoints() {
+            if (!this.apiConfig.deepseek) {
+                this.showSettings = true;
+                return;
+            }
+            this.loading = true;
+            this.diagnosisSummary = '';
+            this.diagnosisItems = [];
+
+            const systemPrompt = `你是一位资深教育诊断专家，擅长分析学生的错题，精准定位知识薄弱环节。
+请严格以 JSON 格式返回分析结果。
+
+错误类型必须从以下5种中选择：
+- 概念理解错误
+- 计算失误
+- 审题不清
+- 方法选择错误
+- 知识遗忘
+
+严重程度从以下3种中选择：高、中、低
+
+输出 JSON 格式如下：
+{
+  "summary": "总体诊断总结，一段话概述学生的主要问题",
+  "items": [
+    {
+      "error_type": "错误类型",
+      "severity": "高/中/低",
+      "knowledge_point": "具体的薄弱知识点",
+      "related_questions": "涉及的题目编号，如第1、3题",
+      "description": "详细分析：为什么会犯这个错误，根本原因是什么"
+    }
+  ]
+}`;
+
+            const userPrompt = `科目：${this.form.subject}
+年级：${this.form.grade}
+
+【错题内容】
+${this.form.questions}
+
+【我的错误答案】
+${this.form.wrongAnswers}
+
+请分析以上错题，诊断我的薄弱环节，给出 JSON 格式的诊断报告。`;
+
+            try {
+                const responseText = await this._callAPINonStream(systemPrompt, userPrompt);
+                const result = JSON.parse(responseText);
+                this.diagnosisSummary = result.summary || '';
+                this.diagnosisItems = result.items || [];
+                this.currentStep = 2;
+                this.$nextTick(() => lucide.createIcons());
+            } catch (e) {
+                console.error('诊断失败:', e);
+                this.showToast('诊断失败: ' + (e.message || '请重试'), 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        /* ============ 步骤 3: 知识点讲解 (流式) ============ */
+        async generateExplanations() {
+            if (!this.apiConfig.deepseek) {
+                this.showSettings = true;
+                return;
+            }
+            this.loading = true;
+            this.explanationContent = '';
+            this.explanationReasoning = '';
+            this.currentStep = 3;
+            this.$nextTick(() => lucide.createIcons());
+
+            const weakPoints = this.diagnosisItems.map(item =>
+                `- 【${item.error_type}】${item.knowledge_point}（严重程度: ${item.severity}）: ${item.description}`
+            ).join('\n');
+
+            const systemPrompt = `你是一位经验丰富的${this.form.subject}老师，擅长用通俗易懂的方式讲解知识点。
+针对学生的薄弱环节，请提供：
+1. 每个薄弱知识点的详细讲解，从基础概念讲起
+2. 关键公式或定理的推导/记忆方法
+3. 每个知识点配一道典型例题，并给出详细的解题过程
+4. 常见易错点提醒
+
+请用清晰的 Markdown 格式，使用标题分层组织内容。每个知识点用 ## 标题，例题用 > 引用块标注。`;
+
+            const userPrompt = `科目：${this.form.subject}
+年级：${this.form.grade}
+
+【诊断出的薄弱环节】
+${weakPoints}
+
+【原始错题】
+${this.form.questions}
+
+请针对以上薄弱环节，逐一进行详细讲解。`;
+
+            try {
+                await this._callAPIStream(systemPrompt, userPrompt, 'explanation');
+            } catch (e) {
+                console.error('讲解生成失败:', e);
+                this.showToast('讲解生成失败: ' + (e.message || '请重试'), 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        /* ============ 步骤 4: 生成练习题 (流式) ============ */
+        async generatePractice() {
+            if (!this.apiConfig.deepseek) {
+                this.showSettings = true;
+                return;
+            }
+            this.loading = true;
+            this.practiceContent = '';
+            this.practiceReasoning = '';
+            this.currentStep = 4;
+            this.$nextTick(() => lucide.createIcons());
+
+            const weakPoints = this.diagnosisItems.map(item =>
+                `- 【${item.error_type}】${item.knowledge_point}（严重程度: ${item.severity}）`
+            ).join('\n');
+
+            const systemPrompt = `你是一位资深出题教师，请根据学生的薄弱环节，生成针对性的巩固练习题。
+
+要求：
+1. 生成 5-10 道练习题，难度递进（从基础到提高）
+2. 每道题必须明确对应某个薄弱知识点
+3. 题目类型可以多样化（选择题、填空题、解答题等）
+4. 每道题后附有详细答案和解析
+5. 答案解析要点明关键步骤和易错点
+
+输出格式（Markdown）：
+## 巩固练习
+
+### 第 1 题（对应薄弱点：xxx）
+**题目：**
+（题目内容）
+
+**答案与解析：**
+（详细解答过程）
+
+---
+（下一题）`;
+
+            const userPrompt = `科目：${this.form.subject}
+年级：${this.form.grade}
+
+【薄弱环节】
+${weakPoints}
+
+【原始错题供参考】
+${this.form.questions}
+
+请生成 5-10 道巩固练习题，含详细答案和解析。`;
+
+            try {
+                await this._callAPIStream(systemPrompt, userPrompt, 'practice');
+            } catch (e) {
+                console.error('练习生成失败:', e);
+                this.showToast('练习生成失败: ' + (e.message || '请重试'), 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        /* ============ API 调用: 非流式 (JSON模式) ============ */
+        async _callAPINonStream(systemPrompt, userPrompt) {
+            const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                },
+                body: JSON.stringify({
+                    model: this.apiConfig.model,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    temperature: 0.7,
+                    response_format: { type: 'json_object' }
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error?.message || `HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
+        },
+
+        /* ============ API 调用: 流式输出 ============ */
+        async _callAPIStream(systemPrompt, userPrompt, target) {
+            const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                },
+                body: JSON.stringify({
+                    model: this.apiConfig.model,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    stream: true,
+                    temperature: 0.7
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error?.message || `HTTP ${response.status}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
+
+                        try {
+                            const parsed = JSON.parse(data);
+                            const delta = parsed.choices[0].delta;
+
+                            if (delta.reasoning_content) {
+                                if (target === 'explanation') {
+                                    this.explanationReasoning += delta.reasoning_content;
+                                } else if (target === 'practice') {
+                                    this.practiceReasoning += delta.reasoning_content;
+                                }
+                            }
+
+                            if (delta.content) {
+                                if (target === 'explanation') {
+                                    this.explanationContent += delta.content;
+                                } else if (target === 'practice') {
+                                    this.practiceContent += delta.content;
+                                }
+                            }
+                        } catch (e) { /* 忽略解析错误 */ }
+                    }
+                }
+            }
+        },
+
+        /* ============ 错误类型样式映射 ============ */
+        getErrorTypeClass(type) {
+            const map = {
+                '概念理解错误': 'bg-purple-100 text-purple-700',
+                '计算失误': 'bg-blue-100 text-blue-700',
+                '审题不清': 'bg-amber-100 text-amber-700',
+                '方法选择错误': 'bg-rose-100 text-rose-700',
+                '知识遗忘': 'bg-slate-100 text-slate-700'
+            };
+            return map[type] || 'bg-slate-100 text-slate-700';
+        },
+
+        /* ============ 复制全部内容 ============ */
+        async copyAll() {
+            const content = this._buildFullMarkdown();
+            try {
+                await navigator.clipboard.writeText(content);
+                this.showToast('已复制到剪贴板', 'success');
+            } catch (err) {
+                const textarea = document.createElement('textarea');
+                textarea.value = content;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                this.showToast('已复制到剪贴板', 'success');
+            }
+        },
+
+        /* ============ 导出 Markdown ============ */
+        exportMarkdown() {
+            const content = this._buildFullMarkdown();
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `错题分析_${this.form.subject}_${new Date().toISOString().slice(0, 10)}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            this.showToast('已导出 Markdown 文件', 'success');
+        },
+
+        /* ============ 构建完整 Markdown 内容 ============ */
+        _buildFullMarkdown() {
+            let md = `# 错题分析报告\n\n`;
+            md += `- **科目**: ${this.form.subject}\n`;
+            md += `- **年级**: ${this.form.grade}\n`;
+            md += `- **生成时间**: ${new Date().toLocaleString('zh-CN')}\n\n`;
+
+            md += `---\n\n`;
+            md += `## 一、错题原文\n\n${this.form.questions}\n\n`;
+            md += `## 二、我的错误答案\n\n${this.form.wrongAnswers}\n\n`;
+
+            md += `---\n\n`;
+            md += `## 三、诊断结果\n\n`;
+            if (this.diagnosisSummary) {
+                md += `> ${this.diagnosisSummary}\n\n`;
+            }
+            this.diagnosisItems.forEach((item, idx) => {
+                md += `### ${idx + 1}. ${item.knowledge_point}\n\n`;
+                md += `- **错误类型**: ${item.error_type}\n`;
+                md += `- **严重程度**: ${item.severity}\n`;
+                md += `- **涉及题目**: ${item.related_questions}\n`;
+                md += `- **分析**: ${item.description}\n\n`;
+            });
+
+            if (this.explanationReasoning) {
+                md += `---\n\n## 四、深度思考过程\n\n${this.explanationReasoning}\n\n`;
+            }
+
+            if (this.explanationContent) {
+                md += `---\n\n## ${this.explanationReasoning ? '五' : '四'}、知识点讲解\n\n${this.explanationContent}\n\n`;
+            }
+
+            if (this.practiceContent) {
+                md += `---\n\n## ${this.explanationReasoning ? '六' : '五'}、巩固练习\n\n${this.practiceContent}\n\n`;
+            }
+
+            return md;
+        },
+
+        /* ============ 重置 ============ */
+        resetAll() {
+            this.currentStep = 1;
+            this.form = { subject: '', grade: '', questions: '', wrongAnswers: '' };
+            this.diagnosisSummary = '';
+            this.diagnosisItems = [];
+            this.explanationContent = '';
+            this.explanationReasoning = '';
+            this.practiceContent = '';
+            this.practiceReasoning = '';
+            this.$nextTick(() => lucide.createIcons());
+        },
+
+        /* ============ Toast 提示 ============ */
+        showToast(message, type = 'success') {
+            this.toast = { show: true, message, type };
+            setTimeout(() => { this.toast.show = false; }, 2500);
+        }
+    };
+}
+</script>
+
+</body>
+</html>

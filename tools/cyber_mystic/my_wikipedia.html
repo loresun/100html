@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的维基百科词条 - 赛博神秘学</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /**
+     * 页面工具区与「伪维基」预览区的分界：预览区单独使用百科视觉
+     */
+    [x-cloak] {
+      display: none !important;
+    }
+
+    /**
+     * 仿中文维基百科阅读页：白底、蓝链、灰框目录与信息框
+     * 参考 Vector 皮肤常见配色（#0645ad 链接色等）
+     */
+    .wiki-skin {
+      --wiki-link: #0645ad;
+      --wiki-link-visited: #0b0080;
+      --wiki-border: #a2a9b1;
+      --wiki-muted-bg: #f8f9fa;
+      --wiki-text: #202122;
+      --wiki-heading: #000;
+      font-family: 'Linux Libertine', 'Georgia', 'Times New Roman', 'Songti SC', 'SimSun', serif;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: var(--wiki-text);
+      background: #fff;
+      border: 1px solid var(--wiki-border);
+      padding: 1rem 1.25rem 1.5rem;
+    }
+
+    .wiki-skin a {
+      color: var(--wiki-link);
+      text-decoration: none;
+    }
+
+    .wiki-skin a:visited {
+      color: var(--wiki-link-visited);
+    }
+
+    .wiki-skin a:hover {
+      text-decoration: underline;
+    }
+
+    .wiki-skin .wiki-title {
+      font-family: 'Linux Libertine', 'Georgia', 'Times New Roman', 'Songti SC', serif;
+      font-size: 1.75rem;
+      font-weight: 400;
+      color: var(--wiki-heading);
+      border-bottom: 1px solid var(--wiki-border);
+      padding-bottom: 0.15em;
+      margin: 0 0 0.25em;
+    }
+
+    .wiki-skin .wiki-subtitle {
+      font-size: 0.8rem;
+      color: #54595d;
+      margin: 0 0 0.75rem;
+    }
+
+    .wiki-skin .wiki-float-wrap::after {
+      content: '';
+      display: table;
+      clear: both;
+    }
+
+    .wiki-skin .wiki-infobox {
+      float: right;
+      clear: right;
+      width: 22rem;
+      max-width: 100%;
+      margin: 0 0 0.75rem 1rem;
+      border: 1px solid var(--wiki-border);
+      background: var(--wiki-muted-bg);
+      font-size: 0.8rem;
+      border-collapse: collapse;
+    }
+
+    .wiki-skin .wiki-infobox th,
+    .wiki-skin .wiki-infobox td {
+      border: 1px solid var(--wiki-border);
+      padding: 0.35rem 0.5rem;
+      vertical-align: top;
+    }
+
+    .wiki-skin .wiki-infobox th {
+      text-align: center;
+      background: #eaecf0;
+      font-weight: 600;
+    }
+
+    .wiki-skin .wiki-infobox .wiki-infobox-title {
+      font-size: 1rem;
+      text-align: center;
+      background: #eaecf0;
+    }
+
+    .wiki-skin .wiki-toc {
+      display: table;
+      border: 1px solid var(--wiki-border);
+      background: var(--wiki-muted-bg);
+      padding: 0.5rem 0.75rem 0.65rem;
+      margin: 0.75rem 0 1rem;
+      font-size: 0.8rem;
+    }
+
+    .wiki-skin .wiki-toc .toctitle {
+      text-align: center;
+      font-weight: 600;
+      padding: 0.2rem 0 0.35rem;
+    }
+
+    .wiki-skin .wiki-toc ul {
+      list-style: none;
+      margin: 0;
+      padding: 0 0 0 0.5rem;
+    }
+
+    .wiki-skin .wiki-toc li {
+      margin: 0.15rem 0;
+    }
+
+    .wiki-skin h2 {
+      font-size: 1.35rem;
+      font-weight: 400;
+      border-bottom: 1px solid var(--wiki-border);
+      margin: 1.1em 0 0.35em;
+      padding-bottom: 0.1em;
+      color: var(--wiki-heading);
+    }
+
+    .wiki-skin h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0.9em 0 0.3em;
+      color: var(--wiki-heading);
+    }
+
+    .wiki-skin p {
+      margin: 0.5em 0;
+    }
+
+    .wiki-skin .wiki-reflist {
+      font-size: 0.8rem;
+      margin: 0.5em 0 1em 2em;
+    }
+
+    .wiki-skin .wiki-categories {
+      margin-top: 1.25rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--wiki-border);
+      font-size: 0.8rem;
+    }
+
+    .wiki-skin .wiki-categories a {
+      margin-right: 0.35rem;
+    }
+
+    .wiki-skin sup {
+      font-size: 0.7em;
+      line-height: 0;
+    }
+
+    @media (max-width: 1023px) {
+      .wiki-skin .wiki-infobox {
+        float: none;
+        width: 100%;
+        margin: 0 0 1rem;
+      }
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen m-0 bg-slate-100 text-slate-900">
+  <div x-data="myWikipedia()" x-init="init()" class="min-h-screen flex flex-col">
+
+    <!-- 顶栏：Tailwind 风格，与工具区一致 -->
+    <nav class="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 cursor-pointer min-w-0" onclick="location.href='../../index.html'">
+          <i data-lucide="book-open" class="text-blue-700 h-6 w-6 shrink-0"></i>
+          <span class="font-bold text-base sm:text-lg truncate text-slate-900">我的维基百科词条</span>
+        </div>
+        <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 shrink-0"
+          title="API 设置">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </nav>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- 左侧：表单 -->
+      <section class="lg:col-span-4 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-4">
+          <div class="flex items-center gap-2 text-slate-800">
+            <i data-lucide="user-pen" class="w-5 h-5 text-blue-600"></i>
+            <h2 class="font-bold text-sm sm:text-base">个人信息（仅供娱乐生成）</h2>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">姓名</label>
+            <input type="text" x-model="form.name" maxlength="80"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
+              placeholder="例如：张三">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">出生年份</label>
+            <input type="text" x-model="form.birthYear" maxlength="20"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
+              placeholder="例如：1995">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">职业</label>
+            <input type="text" x-model="form.occupation" maxlength="120"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
+              placeholder="例如：产品经理">
+          </div>
+
+          <div class="space-y-2">
+            <p class="text-xs font-medium text-slate-600">三件人生大事（自由填写）</p>
+            <input type="text" x-model="form.event1" maxlength="200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="大事 1">
+            <input type="text" x-model="form.event2" maxlength="200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="大事 2">
+            <input type="text" x-model="form.event3" maxlength="200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="大事 3">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">一句座右铭</label>
+            <input type="text" x-model="form.motto" maxlength="200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="例如：再睡一回合就好">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">性格关键词（2～3 个，顿号或逗号分隔）</label>
+            <input type="text" x-model="form.personality" maxlength="80"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="例如：谨慎、拖延、乐观">
+          </div>
+
+          <button type="button" @click="generate()"
+            :disabled="isLoading"
+            class="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
+            <i data-lucide="sparkles" class="w-5 h-5" :class="{ 'animate-pulse': isLoading }"></i>
+            <span x-text="isLoading ? '正在撰写词条…' : '生成词条'"></span>
+          </button>
+
+          <p class="text-[11px] text-slate-500 leading-relaxed">
+            生成内容为 AI 虚构的百科体娱乐文案，并非真实维基百科条目；请勿用于冒充或误导。
+          </p>
+        </div>
+
+        <p x-show="errorMsg" x-cloak class="text-sm text-red-800 bg-red-50 border border-red-200 rounded-xl px-3 py-2"
+          x-text="errorMsg"></p>
+
+        <!-- V4 Pro 推理过程 -->
+        <details x-show="reasoningBuffer" x-cloak class="bg-white border border-slate-200 rounded-xl p-3 text-sm">
+          <summary class="cursor-pointer font-semibold text-slate-700">🧠 深度思考（点击展开）</summary>
+          <pre class="mt-2 text-slate-600 whitespace-pre-wrap text-xs leading-relaxed" x-text="reasoningBuffer"></pre>
+        </details>
+      </section>
+
+      <!-- 右侧：伪维基预览 -->
+      <section class="lg:col-span-8 flex flex-col gap-3 min-h-[320px]">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+            <i data-lucide="layout-template" class="w-4 h-4 text-blue-600"></i>
+            预览（维基百科风格）
+          </h3>
+          <div class="flex flex-wrap gap-2" x-show="result" x-cloak>
+            <button type="button" @click="downloadHtml()"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-300 bg-white hover:bg-slate-50">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              下载 HTML
+            </button>
+            <button type="button" @click="sharePage()"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-300 bg-white hover:bg-slate-50">
+              <i data-lucide="share-2" class="w-4 h-4"></i>
+              分享
+            </button>
+          </div>
+        </div>
+
+        <!-- 流式阶段简要提示 -->
+        <div x-show="isLoading && streamPreview" x-cloak
+          class="text-xs text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-2 font-mono truncate"
+          x-text="streamPreview"></div>
+
+        <!-- 空状态 -->
+        <div x-show="!result && !isLoading" x-cloak
+          class="flex-1 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 text-slate-400 p-8 text-center">
+          <i data-lucide="globe" class="w-14 h-14 mb-3 opacity-40"></i>
+          <p class="text-sm">填写左侧信息，点击「生成词条」</p>
+          <p class="text-xs mt-2 max-w-sm">AI 将以第三人称、严肃客观的百科语气描写你的日常，并附带目录、脚注与分类。</p>
+        </div>
+
+        <!-- 百科预览主体：由 AI 返回的 HTML 片段注入 -->
+        <article x-show="result" x-cloak class="wiki-skin rounded-lg shadow-sm min-h-[200px]">
+          <h1 class="wiki-title" x-text="result?.page_title || ''"></h1>
+          <p class="wiki-subtitle" x-show="result?.disambiguation" x-text="result?.disambiguation"></p>
+          <div class="wiki-float-wrap">
+            <div class="wiki-infobox-host" x-html="result?.infobox_html || ''"></div>
+            <div class="wiki-body-host" x-html="result?.body_html || ''"></div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <!-- 轻提示 -->
+    <div x-show="toastMsg" x-cloak x-transition
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-4 py-2 rounded-full bg-slate-900 text-white text-sm shadow-lg"
+      x-text="toastMsg"></div>
+
+    <!-- API 设置弹窗 -->
+    <div x-show="showSettings" x-cloak
+      class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+      @keydown.escape.window="showSettings = false">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" @click.stop>
+        <h3 class="text-lg font-bold mb-4 text-slate-900">API 配置</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+            <input type="password" x-model="apiConfig.deepseek"
+              class="w-full rounded-lg border border-slate-300 p-2 text-sm" placeholder="sk-...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+            <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-300 p-2 text-sm">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" @click="showSettings = false"
+            class="px-4 py-2 rounded-lg hover:bg-slate-100 text-slate-700">取消</button>
+          <button type="button" @click="saveConfig()"
+            class="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 「我的维基百科词条」Alpine 数据工厂
+     * 负责：读取/合并 global_llm_config、流式调用 DeepSeek、解析 JSON、下载与分享
+     */
+    function myWikipedia() {
+      return {
+        form: {
+          name: '',
+          birthYear: '',
+          occupation: '',
+          event1: '',
+          event2: '',
+          event3: '',
+          motto: '',
+          personality: ''
+        },
+        apiConfig: {
+          deepseek: '',
+          model: 'deepseek-v4-flash'
+        },
+        showSettings: false,
+        isLoading: false,
+        errorMsg: '',
+        toastMsg: '',
+        reasoningBuffer: '',
+        streamPreview: '',
+        /** @type {{ page_title: string, disambiguation?: string, infobox_html: string, body_html: string } | null} */
+        result: null,
+
+        init() {
+          this.loadConfig();
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 从 localStorage 合并加载，避免覆盖本工具默认值以外的字段 */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存配置：合并写入 localStorage，禁止整表覆盖其他工具字段
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showSettings = false;
+          this.toastMsg = '已保存';
+          setTimeout(() => { this.toastMsg = ''; }, 2000);
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        /**
+         * 构造 system prompt：强制百科语气 + 输出 JSON 结构说明
+         */
+        buildSystemPrompt() {
+          return `你是「中文维基百科」风格的词条编辑助手（虚构娱乐用途）。写作要求：
+
+【语气与视角】
+- 全程第三人称，极度严肃、客观、中性，避免感叹与口语。
+- 使用学术化、百科化的连接词与句式（如「据观察」「一般而言」「有观点认为」）。
+- 内容必须围绕用户提供的平凡日常与小事，通过「过度正式」的叙述制造反差幽默，但不得人身攻击、歧视、色情或宣扬暴力。
+
+【版面与 HTML 要求 — 必须遵守】
+1. 只输出一个 JSON 对象，不要 markdown 代码围栏，不要额外说明文字。
+2. JSON 键必须且仅为：page_title、disambiguation、infobox_html、body_html。
+3. page_title：词条标题字符串（可用中文姓名，可加括号消歧义如「张三（产品经理）」）。
+4. disambiguation：一行短说明，可为空字符串；非空时显示为标题下灰色副标题。
+5. infobox_html：一段完整的 HTML 片段，仅包含一个 table，且 table 必须有 class="wiki-infobox"。
+   - 表头一行写人物/主题名（th  colspan="2" class="wiki-infobox-title"）。
+   - 行示例：中文名、出生、职业、国籍（可写「据自述」类模糊表述）、知名于、格言、性格特征 等。
+6. body_html：正文 HTML 片段（不要包含 h1 标题，因页面已单独渲染标题）。必须包含：
+   - 开头导语 1～2 段（概述「人物」为何「值得关注」的荒诞一本正经理由）。
+   - 一个目录区块：外层 div 必须有 class="wiki-toc"，内含 class="toctitle" 写「目录」，下面用 ul > li > a 链接到各节；每个 h2 必须有唯一 id 与目录对应。
+   - 二级标题（h2）依次包含且 id 固定为：早年生活、职业生涯、个人生活、主要成就、争议、参考资料。
+   - 「争议」一节必须写 1～2 段明显虚构、无害的趣味争议（如外卖选择、拖延症归属等），仍保持百科语气。
+   - 正文叙述中至少插入 4 处引用标记：使用 <sup class="reference"><a href="#cite_note-n">[n]</a></sup>，n 从 1 递增。
+   - 「参考资料」一节下用 <ol class="wiki-reflist" id="refs">，每一项 <li id="cite_note-n"> 对应脚注，内容胡编但语气像来源（如「家庭厨房田野笔记」「室友口述史」）。
+   - 文末追加 <div class="wiki-categories"><strong>分类：</strong> 多个 <a href="#">分类名</a>，至少 5 个，风格仿维基分类（如「21世纪拖延现象」「都市通勤人类学」等虚构分类）。
+
+【安全】
+- 不要输出 <script>、onerror=、javascript: 等可执行内容。
+- 若用户输入明显违法或恶意，改为输出温和幽默的拒绝导语，其余字段仍可给占位表格与分类。`;
+        },
+
+        /**
+         * 将表单拼接为用户消息
+         */
+        buildUserPrompt() {
+          const lines = [
+            '请根据以下真实用户自述，生成虚构的维基百科体词条（JSON）：',
+            '',
+            `姓名：${(this.form.name || '').trim() || '（未填写）'}`,
+            `出生年份：${(this.form.birthYear || '').trim() || '（未填写）'}`,
+            `职业：${(this.form.occupation || '').trim() || '（未填写）'}`,
+            `人生大事 1：${(this.form.event1 || '').trim() || '（未填写）'}`,
+            `人生大事 2：${(this.form.event2 || '').trim() || '（未填写）'}`,
+            `人生大事 3：${(this.form.event3 || '').trim() || '（未填写）'}`,
+            `座右铭：${(this.form.motto || '').trim() || '（未填写）'}`,
+            `性格关键词：${(this.form.personality || '').trim() || '（未填写）'}`
+          ];
+          return lines.join('\n');
+        },
+
+        /** 校验最小输入：至少姓名或职业其一 */
+        validateForm() {
+          const n = (this.form.name || '').trim();
+          const o = (this.form.occupation || '').trim();
+          if (!n && !o) {
+            this.errorMsg = '请至少填写「姓名」或「职业」之一。';
+            return false;
+          }
+          this.errorMsg = '';
+          return true;
+        },
+
+        /**
+         * 触发生成：流式 JSON，结束后解析
+         */
+        async generate() {
+          this.toastMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先配置 DeepSeek API Key。';
+            return;
+          }
+          if (!this.validateForm()) return;
+
+          this.isLoading = true;
+          this.result = null;
+          this.reasoningBuffer = '';
+          this.streamPreview = '';
+          this.$nextTick(() => lucide.createIcons());
+
+          const messages = [
+            { role: 'system', content: this.buildSystemPrompt() },
+            { role: 'user', content: this.buildUserPrompt() }
+          ];
+
+          try {
+            const full = await this.streamDeepSeekJson(messages);
+            const obj = this.safeParseJson(full);
+            if (obj && obj.page_title && obj.infobox_html && obj.body_html) {
+              this.result = {
+                page_title: String(obj.page_title).trim(),
+                disambiguation: obj.disambiguation != null ? String(obj.disambiguation).trim() : '',
+                infobox_html: String(obj.infobox_html),
+                body_html: String(obj.body_html)
+              };
+            } else {
+              throw new Error('AI 返回格式异常：缺少 page_title / infobox_html / body_html');
+            }
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败，请重试';
+            this.result = null;
+          } finally {
+            this.isLoading = false;
+            this.streamPreview = '';
+            this.$nextTick(() => lucide.createIcons());
+          }
+        },
+
+        /**
+         * 尝试解析 JSON；支持去掉 markdown 围栏与截取首尾大括号
+         * @param {string} text
+         * @returns {object|null}
+         */
+        safeParseJson(text) {
+          let t = (text || '').trim();
+          const fence = /^```(?:json)?\s*([\s\S]*?)```$/m.exec(t);
+          if (fence) t = fence[1].trim();
+          try {
+            return JSON.parse(t);
+          } catch (e) {
+            const start = t.indexOf('{');
+            const end = t.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+              try {
+                return JSON.parse(t.slice(start, end + 1));
+              } catch (e2) {
+                console.warn('JSON 二次解析失败', e2);
+              }
+            }
+            return null;
+          }
+        },
+
+        /**
+         * DeepSeek 流式请求（JSON Object 模式），累积 reasoning 与正文
+         * @param {Array<{role:string,content:string}>} messages
+         * @returns {Promise<string>}
+         */
+        async streamDeepSeekJson(messages) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.85,
+              max_tokens: 8192,
+              response_format: { type: 'json_object' }
+            })
+          });
+
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || 'HTTP ' + response.status);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let full = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content) this.reasoningBuffer += delta.reasoning_content;
+                if (delta.content) {
+                  full += delta.content;
+                  this.streamPreview = this.prettyStreamPreview(full);
+                }
+              } catch (err) {
+                console.warn('SSE 跳过', err);
+              }
+            }
+          }
+          return full;
+        },
+
+        /** 流式阶段展示截断 JSON 预览 */
+        prettyStreamPreview(raw) {
+          const s = raw.replace(/\s+/g, ' ').trim();
+          if (s.length > 220) return s.slice(0, 220) + '…';
+          return s || '……';
+        },
+
+        /**
+         * 内联样式表：供下载的独立 HTML 使用（与页面 .wiki-skin 保持一致）
+         */
+        getStandaloneWikiCss() {
+          return `
+    body { margin:0; background:#f8f9fa; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .wiki-skin {
+      --wiki-link: #0645ad;
+      --wiki-link-visited: #0b0080;
+      --wiki-border: #a2a9b1;
+      --wiki-muted-bg: #f8f9fa;
+      --wiki-text: #202122;
+      --wiki-heading: #000;
+      font-family: 'Linux Libertine','Georgia','Times New Roman','Songti SC','SimSun',serif;
+      font-size: 14px; line-height: 1.6; color: var(--wiki-text);
+      background: #fff; border: 1px solid var(--wiki-border); padding: 16px 20px 24px;
+    }
+    .wiki-skin a { color: var(--wiki-link); text-decoration: none; }
+    .wiki-skin a:visited { color: var(--wiki-link-visited); }
+    .wiki-skin a:hover { text-decoration: underline; }
+    .wiki-skin .wiki-title {
+      font-size: 28px; font-weight: 400; color: var(--wiki-heading);
+      border-bottom: 1px solid var(--wiki-border); padding-bottom: 0.15em; margin: 0 0 0.25em;
+    }
+    .wiki-skin .wiki-subtitle { font-size: 12px; color: #54595d; margin: 0 0 12px; }
+    .wiki-skin .wiki-float-wrap::after { content:''; display:table; clear:both; }
+    .wiki-skin .wiki-infobox {
+      float: right; clear: right; width: 352px; max-width: 100%;
+      margin: 0 0 12px 16px; border: 1px solid var(--wiki-border);
+      background: var(--wiki-muted-bg); font-size: 12.5px; border-collapse: collapse;
+    }
+    .wiki-skin .wiki-infobox th, .wiki-skin .wiki-infobox td {
+      border: 1px solid var(--wiki-border); padding: 6px 8px; vertical-align: top;
+    }
+    .wiki-skin .wiki-infobox th { text-align: center; background: #eaecf0; font-weight: 600; }
+    .wiki-skin .wiki-infobox .wiki-infobox-title { font-size: 16px; text-align: center; background: #eaecf0; }
+    .wiki-skin .wiki-toc {
+      display: table; border: 1px solid var(--wiki-border); background: var(--wiki-muted-bg);
+      padding: 8px 12px 10px; margin: 12px 0 16px; font-size: 12.5px;
+    }
+    .wiki-skin .wiki-toc .toctitle { text-align: center; font-weight: 600; padding: 3px 0 6px; }
+    .wiki-skin .wiki-toc ul { list-style: none; margin: 0; padding: 0 0 0 8px; }
+    .wiki-skin .wiki-toc li { margin: 2px 0; }
+    .wiki-skin h2 {
+      font-size: 21px; font-weight: 400; border-bottom: 1px solid var(--wiki-border);
+      margin: 1.1em 0 0.35em; padding-bottom: 0.1em; color: var(--wiki-heading);
+    }
+    .wiki-skin h3 { font-size: 17px; font-weight: 600; margin: 0.9em 0 0.3em; color: var(--wiki-heading); }
+    .wiki-skin p { margin: 0.5em 0; }
+    .wiki-skin .wiki-reflist { font-size: 12.5px; margin: 0.5em 0 1em 2em; }
+    .wiki-skin .wiki-categories {
+      margin-top: 20px; padding-top: 8px; border-top: 1px solid var(--wiki-border); font-size: 12.5px;
+    }
+    .wiki-skin .wiki-categories a { margin-right: 6px; }
+    .wiki-skin sup { font-size: 0.7em; line-height: 0; }
+    @media (max-width: 720px) {
+      .wiki-skin .wiki-infobox { float: none; width: 100%; margin: 0 0 16px; }
+    }
+  `;
+        },
+
+        /**
+         * 下载当前预览为独立 HTML 文件（含内联样式）
+         */
+        downloadHtml() {
+          if (!this.result) return;
+          const title = this.escapeHtml(this.result.page_title || '我的维基百科词条');
+          const sub = this.result.disambiguation
+            ? `<p class="wiki-subtitle">${this.escapeHtml(this.result.disambiguation)}</p>` : '';
+          const inner = `
+  <div class="wrap">
+    <article class="wiki-skin">
+      <h1 class="wiki-title">${title}</h1>
+      ${sub}
+      <div class="wiki-float-wrap">
+        ${this.result.infobox_html}
+        ${this.result.body_html}
+      </div>
+    </article>
+  </div>`;
+          const doc = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>${this.getStandaloneWikiCss()}</style>
+</head>
+<body>
+${inner}
+  <footer class="wrap" style="text-align:center;font-size:12px;color:#72777d;padding:12px;">
+    本页由「我的维基百科词条」工具生成，仅供娱乐，非维基媒体基金会内容。
+  </footer>
+</body>
+</html>`;
+          const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `wiki-style-${(this.form.name || 'entry').replace(/\s+/g, '_')}.html`;
+          a.click();
+          URL.revokeObjectURL(url);
+          this.toastMsg = '已开始下载';
+          setTimeout(() => { this.toastMsg = ''; }, 2000);
+        },
+
+        escapeHtml(str) {
+          const d = document.createElement('div');
+          d.textContent = str;
+          return d.innerHTML;
+        },
+
+        /**
+         * 分享：优先 Web Share API，否则复制当前页链接
+         */
+        async sharePage() {
+          const title = this.result?.page_title || '我的维基百科词条';
+          const text = '我用 AI 生成了维基百科风格的个人词条（娱乐向）';
+          const url = window.location.href;
+          if (navigator.share) {
+            try {
+              await navigator.share({ title, text, url });
+              this.toastMsg = '已唤起分享';
+            } catch (e) {
+              if (e && e.name !== 'AbortError') {
+                await this.fallbackCopyLink(url);
+              }
+            }
+          } else {
+            await this.fallbackCopyLink(url);
+          }
+          setTimeout(() => { this.toastMsg = ''; }, 2500);
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        async fallbackCopyLink(url) {
+          try {
+            await navigator.clipboard.writeText(url);
+            this.toastMsg = '链接已复制到剪贴板';
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.toastMsg = '链接已复制到剪贴板';
+          }
+        }
+      };
+    }
+  </script>
+</body>
+
+</html>

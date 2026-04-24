@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ECharts 数据可视化</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://fastly.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fdf4f6; color: #881337; } /* Rose-ish background */
+    .glass { background: white; border: 1px solid #fecdd3; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.05); }
+    .chart-box { width: 100%; height: 400px; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-rose-900">📈 Apache ECharts</h1>
+    <p class="text-rose-800/60 mt-2 text-lg">百度开源的强大商业级数据可视化图表库</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-rose-200 text-rose-800 rounded-lg hover:bg-rose-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto space-y-8">
+
+  <!-- 1. 动态排序柱状图 (Bar Race) -->
+  <div class="glass p-6 rounded-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-bold text-xl text-rose-900">🏆 动态排序 (Dynamic Bar Race)</h3>
+      <button onclick="runRace()" class="px-4 py-2 bg-rose-500 text-white text-sm rounded hover:bg-rose-600 transition">重新开始</button>
+    </div>
+    <div id="chart-race" class="chart-box"></div>
+  </div>
+
+  <!-- 2. 桑基图 (Sankey) -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-xl text-rose-900 mb-4">🌊 能量流动桑基图 (Sankey)</h3>
+    <div id="chart-sankey" class="chart-box" style="height: 500px;"></div>
+  </div>
+
+  <!-- 3. 复杂关系图 (Graph) -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-xl text-rose-900 mb-4">🕸️ 关系网络 (Graph Force)</h3>
+    <div id="chart-graph" class="chart-box"></div>
+  </div>
+
+</main>
+
+<script>
+  // 通用主题颜色
+  const colors = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6'];
+
+  // 1. Bar Race Logic
+  const chartRace = echarts.init(document.getElementById('chart-race'));
+  
+  function runRace() {
+    const data = [];
+    for (let i = 0; i < 5; i++) {
+      data.push(Math.round(Math.random() * 200));
+    }
+    
+    // 初始化配置
+    const option = {
+      xAxis: { max: 'dataMax' },
+      yAxis: {
+        type: 'category',
+        data: ['A', 'B', 'C', 'D', 'E'],
+        inverse: true,
+        animationDuration: 300,
+        animationDurationUpdate: 300,
+        max: 4 // 只显示前5个
+      },
+      series: [{
+        realtimeSort: true, // 开启实时排序
+        name: 'Score',
+        type: 'bar',
+        data: data,
+        label: { show: true, position: 'right', valueAnimation: true },
+        itemStyle: {
+          color: (param) => colors[param.dataIndex % colors.length],
+          borderRadius: [0, 4, 4, 0]
+        }
+      }],
+      animationDuration: 0,
+      animationDurationUpdate: 1500,
+      animationEasing: 'linear',
+      animationEasingUpdate: 'linear'
+    };
+    chartRace.setOption(option);
+    
+    // 模拟数据动态更新
+    let timer = setInterval(function () {
+      const data = option.series[0].data;
+      for (let i = 0; i < data.length; ++i) {
+        if (Math.random() > 0.9) {
+          data[i] += Math.round(Math.random() * 2000);
+        } else {
+          data[i] += Math.round(Math.random() * 200);
+        }
+      }
+      chartRace.setOption(option);
+    }, 1500);
+
+    // Stop after specific time for demo
+    setTimeout(() => clearInterval(timer), 20000);
+  }
+  runRace();
+
+  // 2. Sankey Chart
+  const chartSankey = echarts.init(document.getElementById('chart-sankey'));
+  const sankeyOption = {
+    tooltip: { trigger: 'item', triggerOn: 'mousemove' },
+    series: [
+      {
+        type: 'sankey',
+        data: [
+          { name: 'Total Energy' },
+          { name: 'Solar' }, { name: 'Wind' }, { name: 'Fossil' },
+          { name: 'Industry' }, { name: 'Transport' }, { name: 'Residential' },
+          { name: 'Loss' }
+        ],
+        links: [
+          { source: 'Total Energy', target: 'Solar', value: 30 },
+          { source: 'Total Energy', target: 'Wind', value: 20 },
+          { source: 'Total Energy', target: 'Fossil', value: 50 },
+          { source: 'Solar', target: 'Residential', value: 20 },
+          { source: 'Solar', target: 'Loss', value: 10 },
+          { source: 'Wind', target: 'Industry', value: 15 },
+          { source: 'Wind', target: 'Loss', value: 5 },
+          { source: 'Fossil', target: 'Transport', value: 30 },
+          { source: 'Fossil', target: 'Industry', value: 20 },
+        ],
+        emphasis: { focus: 'adjacency' },
+        lineStyle: { color: 'gradient', curveness: 0.5 },
+        itemStyle: { color: '#fb7185', borderColor: '#881337' } // Rose
+      }
+    ]
+  };
+  chartSankey.setOption(sankeyOption);
+
+  // 3. Graph Chart
+  const chartGraph = echarts.init(document.getElementById('chart-graph'));
+  
+  // 生成一些随机节点
+  const nodes = [];
+  const links = [];
+  const nodeCount = 30;
+  for(let i=0; i<nodeCount; i++){
+      nodes.push({
+          id: i,
+          name: 'Node ' + i,
+          symbolSize: Math.random() * 20 + 10,
+          itemStyle: { color: colors[i % colors.length] },
+          value: Math.random() * 100
+      });
+      if(i > 0) {
+          links.push({ source: i, target: Math.floor(Math.random() * i) });
+          if(Math.random() > 0.5) links.push({ source: i, target: Math.floor(Math.random() * i) });
+      }
+  }
+
+  const graphOption = {
+      tooltip: {},
+      series: [
+          {
+              type: 'graph',
+              layout: 'force',
+              data: nodes,
+              links: links,
+              roam: true,
+              label: { show: true, position: 'right' },
+              force: { repulsion: 100, edgeLength: 50 },
+              lineStyle: { color: '#fbcfe8' }
+          }
+      ]
+  };
+  chartGraph.setOption(graphOption);
+
+  // 响应式
+  window.addEventListener('resize', () => {
+    chartRace.resize();
+    chartSankey.resize();
+    chartGraph.resize();
+  });
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

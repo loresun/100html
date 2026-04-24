@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能文档摘要器 (DeepSeek V4 Pro)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        [v-cloak] { display: none; }
+        .bg-indigo-600 { background-color: #4f46e5; }
+        .text-indigo-600 { color: #4f46e5; }
+        .border-indigo-600 { border-color: #4f46e5; }
+        .hover\:bg-indigo-700:hover { background-color: #4338ca; }
+        /* Markdown 渲染样式 */
+        .prose .inline-code {
+            background-color: #eef2ff;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            color: #4f46e5;
+        }
+        .prose pre {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+        }
+        .prose pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        .prose blockquote {
+            border-left: 4px solid #818cf8;
+            padding-left: 1rem;
+            color: #6b7280;
+            font-style: italic;
+        }
+        .prose h1, .prose h2, .prose h3, .prose h4 {
+            color: #1e293b;
+            font-weight: 700;
+        }
+        .prose a {
+            color: #4f46e5;
+            text-decoration: underline;
+        }
+        .prose-prose-indigo {
+            --tw-prose-links: #4f46e5;
+            --tw-prose-bold: #1e293b;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="bg-slate-50 min-h-screen">
+    <div id="app" v-cloak class="max-w-5xl mx-auto px-4 py-8">
+        <!-- 头部 -->
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-all duration-300">
+                    <i class="fa-solid fa-wand-magic-sparkles text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">AI 智能文档摘要器</h1>
+                    <p class="text-slate-500 text-sm">DeepSeek V4 Pro 深度思考版</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="showSettings = true" class="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors" title="Settings">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+                <div class="relative">
+                    <a href="../../index.html" class="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors inline-block" title="Back to Home">
+                        <i class="fa-solid fa-arrow-left text-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要区域 -->
+        <main class="grid lg:grid-cols-2 gap-6">
+            <!-- 左侧：输入区 -->
+            <section class="flex flex-col gap-4">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-1 flex-1 flex flex-col h-[600px]">
+                    <div class="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 rounded-t-xl">
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <i class="fa-solid fa-keyboard"></i>
+                            输入文档内容
+                        </span>
+                        <div class="flex gap-2">
+                            <label class="cursor-pointer text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1 px-2 py-1 hover:bg-indigo-50 rounded transition-colors">
+                                <i class="fa-solid fa-upload"></i>
+                                上传文件
+                                <input type="file" @change="handleFileUpload" class="hidden" accept=".txt,.md,.json">
+                            </label>
+                            <button @click="clearInput" class="text-xs font-medium text-slate-400 hover:text-red-500 flex items-center gap-1 px-2 py-1 hover:bg-red-50 rounded transition-colors">
+                                <i class="fa-solid fa-trash"></i>
+                                清空
+                            </button>
+                        </div>
+                    </div>
+                    <textarea 
+                        v-model="inputText" 
+                        class="flex-1 w-full p-4 resize-none outline-none text-slate-700 text-sm leading-relaxed font-mono custom-scrollbar"
+                        placeholder="在此粘贴长文档，或点击上方按钮上传 txt/md 文件..."></textarea>
+                    
+                    <div class="p-4 border-t border-slate-100 bg-white rounded-b-xl">
+                        <div class="flex items-center gap-3 mb-4">
+                            <label class="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                <i class="fa-solid fa-file-lines text-slate-400"></i>
+                                摘要类型:
+                            </label>
+                            <select v-model="summaryType" class="text-sm border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-1.5 px-3 bg-slate-50 hover:bg-white transition-colors cursor-pointer">
+                                <option value="standard">📋 标准摘要 (适合通用)</option>
+                                <option value="bullets">🔹 关键点列表 (适合快速阅读)</option>
+                                <option value="eli5">👶 简单易懂 (适合入门)</option>
+                                <option value="academic">🎓 学术风格 (适合论文)</option>
+                                <option value="action_items">✅ 行动项提取 (适合会议纪要)</option>
+                            </select>
+                        </div>
+                        <button 
+                            @click="generateSummary" 
+                            :disabled="isLoading || !inputText"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-indigo-200 transform hover:-translate-y-0.5 active:translate-y-0">
+                            <span v-if="isLoading" class="flex items-center gap-2">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span class="animate-pulse">正在深入思考...</span>
+                            </span>
+                            <span v-else class="flex items-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                开始生成摘要
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧：输出区 -->
+            <section class="flex flex-col h-[600px]">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden relative">
+                     <!-- 思考过程折叠面板 -->
+                     <div v-if="reasoningContent" class="border-b border-indigo-100 bg-indigo-50/50">
+                        <button @click="isReasoningExpanded = !isReasoningExpanded" 
+                            class="w-full px-4 py-2 flex items-center justify-between text-xs font-medium text-indigo-800 hover:bg-indigo-100/50 transition-colors">
+                            <span class="flex items-center gap-2">
+                                <i class="fa-solid fa-brain"></i>
+                                深度思考过程 ({{ reasoningTime }}s)
+                            </span>
+                            <i class="fa-solid fa-chevron-down transition-transform duration-300" :class="{ 'rotate-180': isReasoningExpanded }"></i>
+                        </button>
+                        <div v-show="isReasoningExpanded" class="px-4 py-3 text-xs text-slate-600 font-mono bg-slate-50 max-h-48 overflow-y-auto border-t border-indigo-100">
+                            <div class="whitespace-pre-wrap">{{ reasoningContent }}</div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <i class="fa-solid fa-file-pen"></i>
+                            摘要结果
+                        </span>
+                        <!-- 显示模式切换 -->
+                        <div v-if="summaryResult" class="flex items-center gap-2">
+                            <button @click="displayMode = 'rendered'" 
+                                :class="['text-xs px-2 py-1 rounded-md transition-colors', displayMode === 'rendered' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600']">
+                                <i class="fa-solid fa-eye mr-1"></i>渲染
+                            </button>
+                            <button @click="displayMode = 'text'" 
+                                :class="['text-xs px-2 py-1 rounded-md transition-colors', displayMode === 'text' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600']">
+                                <i class="fa-solid fa-file-lines mr-1"></i>原文
+                            </button>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="copyResult" :disabled="!summaryResult" class="text-xs font-medium text-slate-400 hover:text-indigo-600 flex items-center gap-1 px-2 py-1 hover:bg-indigo-50 rounded transition-colors disabled:opacity-30">
+                                <i class="fa-solid fa-copy"></i>
+                                复制
+                            </button>
+                            <button @click="downloadResult" :disabled="!summaryResult" class="text-xs font-medium text-slate-400 hover:text-indigo-600 flex items-center gap-1 px-2 py-1 hover:bg-indigo-50 rounded transition-colors disabled:opacity-30">
+                                <i class="fa-solid fa-download"></i>
+                                下载
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto p-6 md-preview custom-scrollbar relative">
+                        <div v-if="!summaryResult && !isLoading" class="h-full flex flex-col items-center justify-center text-slate-300">
+                            <i class="fa-solid fa-file-invoice text-5xl mb-4 opacity-50"></i>
+                            <p class="text-sm">摘要结果将显示在这里</p>
+                        </div>
+                        <div v-else class="prose prose-sm prose-slate max-w-none prose-indigo">
+                            <!-- 渲染模式 -->
+                            <div v-if="displayMode === 'rendered'" v-html="renderedMarkdown"></div>
+                            <!-- 原文模式 -->
+                            <div v-else class="prose prose-sm prose-slate max-w-none">
+                                <pre class="whitespace-pre-wrap text-sm font-mono text-slate-600 bg-slate-50 p-4 rounded-xl">{{ summaryResult }}</pre>
+                            </div>
+                            <!-- 加载超时提示 -->
+                            <div v-if="isLoading" class="mt-4 flex items-center gap-2 text-amber-600 text-sm">
+                                <i class="fa-solid fa-clock"></i>
+                                <span>正在生成中，请稍候...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 设置模态框 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-600"></i>
+                        模型设置
+                    </h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            DeepSeek API Key
+                             <span class="text-xs text-slate-400 font-normal ml-1">(本地存储，安全)</span>
+                        </label>
+                        <input type="password" v-model="apiKey" placeholder="sk-..." class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                        <p class="mt-2 text-xs text-slate-500">
+                            还没有 Key？<a href="https://platform.deepseek.com/" target="_blank" class="text-indigo-600 hover:underline">点击申请 DeepSeek API Key</a>
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">模型选择</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-all" :class="model === 'deepseek-v4-pro' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600'">
+                                <input type="radio" v-model="model" value="deepseek-v4-pro" class="absolute opacity-0 w-full h-full cursor-pointer">
+                                <div class="text-center">
+                                    <div class="font-semibold text-sm">DeepSeek V4 Pro</div>
+                                    <div class="text-[10px] opacity-80 mt-0.5">超强推理 (推荐)</div>
+                                </div>
+                            </label>
+                            <label class="relative flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-all" :class="model === 'deepseek-v4-flash' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600'">
+                                <input type="radio" v-model="model" value="deepseek-v4-flash" class="absolute opacity-0 w-full h-full cursor-pointer">
+                                <div class="text-center">
+                                    <div class="font-semibold text-sm">DeepSeek V4 Flash</div>
+                                    <div class="text-[10px] opacity-80 mt-0.5">快速响应</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50 flex justify-end">
+                    <button @click="saveSettings" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                        保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                // State
+                const inputText = ref('');
+                const summaryResult = ref('');
+                const reasoningContent = ref('');
+                const isLoading = ref(false);
+                const showSettings = ref(false);
+                const summaryType = ref('standard');
+                const apiKey = ref('');
+                const model = ref('deepseek-v4-pro');
+                const isReasoningExpanded = ref(false); // 默认折叠
+                const startTime = ref(0);
+                const reasoningTime = ref(0);
+                const displayMode = ref('rendered'); // 显示模式: rendered(渲染) 或 text(原文)
+
+                // Computed
+                const renderedMarkdown = computed(() => {
+                    return summaryResult.value ? markedParse(summaryResult.value) : '';
+                });
+
+                // Markdown 解析函数（支持换行）
+                const markedParse = (text) => {
+                    return marked.parse(text, { breaks: true, gfm: true });
+                };
+
+                // Load Settings
+                onMounted(() => {
+                    const savedConfig = localStorage.getItem('global_llm_config');
+                    if (savedConfig) {
+                        try {
+                            const config = JSON.parse(savedConfig);
+                            if (config.deepseek) apiKey.value = config.deepseek;
+                            if (config.model) model.value = config.model; // 允许恢复上次模型
+                        } catch (e) {
+                            console.error('Failed to load settings', e);
+                        }
+                    }
+                });
+
+                // Actions
+                const saveSettings = () => {
+                    // Update global config, merging with existing
+                    try {
+                        const existing = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                        const newConfig = {
+                            ...existing,
+                            deepseek: apiKey.value,
+                            model: model.value
+                        };
+                        localStorage.setItem('global_llm_config', JSON.stringify(newConfig));
+                        showSettings.value = false;
+                        alert('配置已保存 (API Key 已加密存储于本地)');
+                    } catch (e) {
+                        alert('保存失败: ' + e.message);
+                    }
+                };
+
+                const clearInput = () => {
+                    if(confirm('确定要清空输入内容吗？')) {
+                        inputText.value = '';
+                        summaryResult.value = '';
+                        reasoningContent.value = '';
+                    }
+                };
+
+                const handleFileUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        inputText.value = e.target.result;
+                    };
+                    reader.readAsText(file);
+                };
+
+                const getPromptByType = (type) => {
+                    switch (type) {
+                        case 'bullets': return "请以markdown列表的形式总结以下文档的关键点，力求简洁明了。";
+                        case 'eli5': return "请像对5岁孩子解释一样，用简单通俗的语言概括以下文档的核心内容。";
+                        case 'academic': return "请以严谨的学术风格总结以下文档，保留专业术语，结构清晰。";
+                        case 'action_items': return "请从文档中提取出所有需要执行的行动项(Action Items)，并列出责任人(如果有)和截止日期。";
+                        case 'standard': default: return "请对以下文档进行结构化摘要，包括主要观点、论据和结论。保留关键细节。";
+                    }
+                };
+
+                const generateSummary = async () => {
+                    if (!apiKey.value) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!inputText.value.trim()) return;
+
+                    isLoading.value = true;
+                    summaryResult.value = '';
+                    reasoningContent.value = '';
+                    isReasoningExpanded.value = true; // 开始时展开思考过程
+                    startTime.value = Date.now();
+                    reasoningTime.value = 0;
+
+                    // 计时器
+                    const timer = setInterval(() => {
+                        if (isLoading.value) {
+                            reasoningTime.value = ((Date.now() - startTime.value) / 1000).toFixed(1);
+                        }
+                    }, 100);
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey.value}`
+                            },
+                            body: JSON.stringify({
+                                model: model.value,
+                                messages: [
+                                    { role: 'system', content: '你是专业的文档分析助手。请按照用户的要求生成高质量的摘要。' },
+                                    { role: 'user', content: `${getPromptByType(summaryType.value)}\n\n---\n\n${inputText.value}` }
+                                ],
+                                stream: true
+                            })
+                        });
+
+                        if (!response.ok) {
+                             const errData = await response.json();
+                             throw new Error(errData.error?.message || '请求失败');
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value, { stream: true });
+                            const lines = chunk.split('\n');
+
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const jsonStr = line.slice(6);
+                                    if (jsonStr === '[DONE]') continue;
+                                    try {
+                                        const data = JSON.parse(jsonStr);
+                                        const delta = data.choices[0].delta;
+                                        
+                                        // 处理思维链内容 (DeepSeek V4 Pro)
+                                        if (delta.reasoning_content) {
+                                            reasoningContent.value += delta.reasoning_content;
+                                        }
+                                        
+                                        // 处理最终内容
+                                        if (delta.content) {
+                                            // 如果思维链结束，折叠它 (可选体验优化)
+                                            // if (isReasoningExpanded.value && delta.content.length > 10) isReasoningExpanded.value = false;
+                                            summaryResult.value += delta.content;
+                                        }
+                                    } catch (e) {
+                                        console.error('JSON Parse Error', e);
+                                    }
+                                }
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error(error);
+                        summaryResult.value = `❌ **发生错误**: ${error.message}`;
+                    } finally {
+                        isLoading.value = false;
+                        clearInterval(timer);
+                    }
+                };
+
+                const copyResult = async () => {
+                    try {
+                        await navigator.clipboard.writeText(summaryResult.value);
+                        alert('已复制摘要内容');
+                    } catch (err) {
+                        console.error('Failed to copy', err);
+                    }
+                };
+                
+                const downloadResult = () => {
+                    const blob = new Blob([summaryResult.value], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `summary_${new Date().toISOString().slice(0,10)}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                };
+
+                return {
+                    inputText,
+                    summaryResult,
+                    reasoningContent,
+                    isLoading,
+                    showSettings,
+                    summaryType,
+                    apiKey,
+                    model,
+                    isReasoningExpanded,
+                    reasoningTime,
+                    renderedMarkdown,
+                    markedParse,
+                    displayMode,
+                    saveSettings,
+                    clearInput,
+                    handleFileUpload,
+                    generateSummary,
+                    copyResult,
+                    downloadResult
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/office_document_summarizer.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

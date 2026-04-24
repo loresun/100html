@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>学习规划师</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.0/index.css">
+  <style>
+    body {
+      font-family: "Noto Sans SC", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(130deg, #fef2f2 0%, #f8fafc 60%, #fee2e2 100%);
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen text-slate-800">
+  <div x-data="studyPlanner()" x-init="init()" class="min-h-screen flex flex-col">
+    <header class="bg-white/80 backdrop-blur border-b border-slate-200">
+      <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-red-500 font-semibold">Study · 学习规划师</p>
+          <h1 class="text-xl font-bold">学习规划师</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1 bg-slate-100 rounded-full p-1">
+            <button @click="setModel('v4-flash')" class="px-3 py-1 text-xs rounded-full font-semibold"
+              :class="modelLabel === 'v4-flash' ? 'bg-white shadow text-red-600' : 'text-slate-500'">V4 Flash</button>
+            <button @click="setModel('v4-pro')" class="px-3 py-1 text-xs rounded-full font-semibold"
+              :class="modelLabel === 'v4-pro' ? 'bg-white shadow text-red-600' : 'text-slate-500'">V4 Pro</button>
+          </div>
+          <button @click="showSettings = true" class="text-sm text-slate-600 hover:text-red-600">API 设置</button>
+          <a href="index.html" class="text-sm text-slate-500 hover:text-red-600">返回学习中心</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-[380px_1fr] gap-6">
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">学习目标</label>
+          <input x-model="goal" class="w-full rounded-lg border border-slate-200 px-3 py-2" placeholder="例：3 个月通过 JLPT N2">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">每周学习天数</label>
+            <input type="number" min="1" max="7" x-model.number="days" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">每次学习时长 (分钟)</label>
+            <input type="number" min="30" max="180" x-model.number="minutes" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+          </div>
+        </div>
+        <button @click="generate" :disabled="isLoading" class="w-full bg-red-500 text-white rounded-lg py-2 font-semibold hover:bg-red-400">
+          <span x-show="!isLoading">生成学习计划</span>
+          <span x-show="isLoading">生成中...</span>
+        </button>
+        <p x-show="error" class="text-sm text-rose-600" x-text="error"></p>
+      </section>
+
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 min-h-[200px]">
+        <div>
+          <h2 class="text-lg font-semibold">学习计划</h2>
+          <p class="text-sm text-slate-500">包含阶段目标、每周重点与复盘建议。</p>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-600">阶段规划</h3>
+          <ul class="mt-2 space-y-2 text-sm text-slate-600">
+            <template x-for="(phase, index) in phases" :key="index">
+              <li class="flex gap-2">
+                <span class="text-red-500 font-semibold">•</span>
+                <span x-text="phase"></span>
+              </li>
+            </template>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-600">每周重点</h3>
+          <p class="mt-2 text-slate-700 whitespace-pre-line" x-text="weekly"></p>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-600">复盘建议</h3>
+          <p class="mt-2 text-slate-700 whitespace-pre-line" x-text="review"></p>
+        </div>
+      </section>
+    </main>
+
+    <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div @click.away="showSettings = false" class="bg-white rounded-2xl p-6 w-full max-w-md">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">API 配置</h3>
+          <button @click="showSettings = false" class="text-slate-400">✕</button>
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+          <input x-model="apiConfig.deepseek" type="password" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <button @click="saveConfig" class="mt-6 w-full bg-red-500 text-white rounded-lg py-2 font-medium hover:bg-red-400">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="study-shared.js"></script>
+  <script>
+    const createBaseState = () => ({
+      apiConfig: studyShared.loadConfig(),
+      modelLabel: 'v4-flash',
+      showSettings: false,
+      init() {
+        this.modelLabel = studyShared.resolveLabel(this.apiConfig.model);
+      },
+      setModel(label) {
+        this.modelLabel = label;
+        this.apiConfig.model = studyShared.modelMap[label] || this.apiConfig.model;
+        studyShared.saveConfig(this.apiConfig);
+      },
+      saveConfig() {
+        this.apiConfig.deepseek = this.apiConfig.deepseek.trim();
+        studyShared.saveConfig(this.apiConfig);
+        this.showSettings = false;
+      }
+    });
+
+    function studyPlanner() {
+      return {
+        ...createBaseState(),
+        goal: '3 个月通过 JLPT N2',
+        days: 5,
+        minutes: 60,
+        phases: [],
+        weekly: '生成后展示每周重点。',
+        review: '',
+        isLoading: false,
+        error: '',
+        async generate() {
+          this.error = '';
+          this.isLoading = true;
+          const prompt = `请为学习目标“${this.goal}”制定学习计划，每周学习 ${this.days} 天，每次 ${this.minutes} 分钟。返回 JSON：{\"phases\":[\"阶段目标\"],\"weekly\":\"每周重点描述\",\"review\":\"复盘建议\"}`;
+          try {
+            const content = await studyShared.callLLM({
+              apiKey: this.apiConfig.deepseek,
+              model: this.apiConfig.model,
+              messages: [
+                { role: 'system', content: '你是学习规划师，擅长拆解目标并制定可执行计划。' },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0.6
+            });
+            const cleaned = content.replace(/```json|```/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            this.phases = parsed.phases || [];
+            this.weekly = parsed.weekly || '';
+            this.review = parsed.review || '';
+          } catch (error) {
+            this.error = error.message || '生成失败，请稍后再试。';
+          } finally {
+            this.isLoading = false;
+          }
+        }
+      };
+    }
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/study_study_planner.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

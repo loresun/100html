@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LocalForage 离线存储</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f0fdfa; color: #134e4a; }
+    .glass { background: white; border: 1px solid #ccfbf1; box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.05); }
+    .code-block { font-family: 'Fira Code', monospace; font-size: 0.85rem; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-teal-900">🗄️ LocalForage</h1>
+    <p class="text-teal-800/60 mt-2 text-lg">基于 Promise 的离线存储库 (支持 IndexedDB, WebSQL, localStorage)</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-teal-200 text-teal-800 rounded-lg hover:bg-teal-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-8">
+
+  <!-- 配置信息 -->
+  <div class="glass p-6 rounded-2xl flex justify-between items-center">
+    <div>
+      <h3 class="font-bold text-teal-900">当前驱动</h3>
+      <p id="driver-info" class="text-sm text-teal-600 mt-1">检测中...</p>
+    </div>
+    <div class="text-right">
+      <h3 class="font-bold text-teal-900">存储项数量</h3>
+      <p id="length-info" class="text-2xl font-bold text-teal-500">0</p>
+    </div>
+  </div>
+
+  <!-- 操作区 -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    
+    <!-- 写入 -->
+    <div class="glass p-6 rounded-2xl">
+      <h3 class="font-bold text-teal-900 mb-4">💾 写入数据 (Set)</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-teal-600 mb-1">Key</label>
+          <input type="text" id="set-key" class="w-full px-3 py-2 border border-teal-200 rounded focus:ring-2 focus:ring-teal-500 outline-none" placeholder="例如: user_1">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-teal-600 mb-1">Value (支持对象/Blob/文件)</label>
+          <textarea id="set-value" class="w-full px-3 py-2 border border-teal-200 rounded h-24 focus:ring-2 focus:ring-teal-500 outline-none" placeholder='{"name": "John", "age": 30}'></textarea>
+        </div>
+        <button onclick="setItem()" class="w-full py-2 bg-teal-600 text-white rounded font-bold hover:bg-teal-700 transition">保存</button>
+      </div>
+    </div>
+
+    <!-- 读取 -->
+    <div class="glass p-6 rounded-2xl">
+      <h3 class="font-bold text-teal-900 mb-4">🔍 读取数据 (Get)</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-teal-600 mb-1">Key To Retrieve</label>
+          <div class="flex gap-2">
+            <input type="text" id="get-key" class="w-full px-3 py-2 border border-teal-200 rounded focus:ring-2 focus:ring-teal-500 outline-none" placeholder="输入 Key">
+            <button onclick="getItem()" class="px-4 py-2 bg-teal-100 text-teal-800 rounded font-bold hover:bg-teal-200">读取</button>
+          </div>
+        </div>
+        
+        <div class="bg-slate-50 border border-slate-200 rounded p-4 h-32 overflow-auto code-block text-slate-600" id="result-area">
+          // 结果将显示在这里
+        </div>
+
+        <div class="flex gap-2">
+           <button onclick="removeItem()" class="flex-1 py-1 border border-red-200 text-red-600 rounded text-sm hover:bg-red-50">删除此 Key</button>
+           <button onclick="clearAll()" class="flex-1 py-1 border border-red-200 text-red-600 rounded text-sm hover:bg-red-50">清空所有</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 遍历 -->
+  <div class="glass p-6 rounded-2xl">
+    <div class="flex justify-between mb-4">
+      <h3 class="font-bold text-teal-900">📂 所有存储项 (Iterate)</h3>
+      <button onclick="refreshList()" class="text-xs text-teal-500 hover:text-teal-700">刷新列表</button>
+    </div>
+    <div id="file-list" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <!-- 动态生成 -->
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // 初始化
+  localforage.config({
+    name: 'MyAwesomeApp',
+    storeName: 'keyvalue_pairs'
+  });
+
+  async function updateStatus() {
+    try {
+      const driver = await localforage.driver();
+      document.getElementById('driver-info').innerText = driver || 'None';
+      
+      const len = await localforage.length();
+      document.getElementById('length-info').innerText = len;
+      
+      refreshList();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 写入
+  async function setItem() {
+    const key = document.getElementById('set-key').value;
+    let valStr = document.getElementById('set-value').value;
+    
+    if(!key) return alert('请输入 Key');
+
+    let val;
+    try {
+      // 尝试解析JSON，如果是纯字符串则保留
+      val = JSON.parse(valStr);
+    } catch(e) {
+      val = valStr;
+    }
+
+    try {
+      await localforage.setItem(key, val);
+      alert(`已保存: ${key}`);
+      updateStatus();
+    } catch (err) {
+      console.error(err);
+      alert('保存失败');
+    }
+  }
+
+  // 读取
+  async function getItem() {
+    const key = document.getElementById('get-key').value;
+    if(!key) return alert('请输入 Key');
+
+    try {
+      const val = await localforage.getItem(key);
+      const display = (typeof val === 'object') ? JSON.stringify(val, null, 2) : val;
+      document.getElementById('result-area').innerText = display || 'null (未找到)';
+    } catch (err) {
+      document.getElementById('result-area').innerText = 'Error: ' + err;
+    }
+  }
+
+  // 删除
+  async function removeItem() {
+    const key = document.getElementById('get-key').value;
+    if(!key) return;
+    await localforage.removeItem(key);
+    document.getElementById('result-area').innerText = '// 已删除';
+    updateStatus();
+  }
+
+  // 清空
+  async function clearAll() {
+    if(confirm('确定清空所有数据吗？')) {
+      await localforage.clear();
+      updateStatus();
+      document.getElementById('result-area').innerText = '// 数据库已清空';
+    }
+  }
+
+  // 列表
+  async function refreshList() {
+    const container = document.getElementById('file-list');
+    container.innerHTML = '';
+
+    localforage.iterate(function(value, key, iterationNumber) {
+      const div = document.createElement('div');
+      div.className = 'p-3 bg-teal-50 border border-teal-100 rounded text-sm truncate cursor-pointer hover:bg-teal-100 transition';
+      div.innerHTML = `<span class="font-bold text-teal-800">${key}</span> <span class="text-teal-500 text-xs ml-1">${typeof value}</span>`;
+      div.onclick = () => {
+        document.getElementById('get-key').value = key;
+        getItem();
+      };
+      container.appendChild(div);
+    }).then(function() {
+      // 完成遍历
+    }).catch(function(err) {
+      console.error(err);
+    });
+  }
+
+  // 初始加载
+  updateStatus();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

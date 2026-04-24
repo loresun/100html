@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人生进度条 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-white font-sans" x-data="lifeProgressApp()" x-init="init()">
+
+    <header class="bg-white/5 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold">⏳ 人生进度条</h1>
+            </div>
+            <button @click="showSettings = true" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Life Progress -->
+        <div class="bg-white/10 backdrop-blur-md rounded-3xl p-8 mb-8 border border-white/20">
+            <h2 class="text-3xl font-bold mb-8 text-center">你的人生已经过去...</h2>
+            
+            <div class="space-y-8">
+                <!-- Life Progress -->
+                <div>
+                    <div class="flex justify-between mb-3">
+                        <span class="text-lg font-medium">人生进度 (假设活到 <span x-text="lifeExpectancy"></span> 岁)</span>
+                        <span class="text-2xl font-bold text-purple-400" x-text="lifePercentage + '%'"></span>
+                    </div>
+                    <div class="w-full bg-white/10 rounded-full h-8">
+                        <div 
+                            class="bg-gradient-to-r from-purple-500 to-pink-500 h-8 rounded-full transition-all duration-1000 flex items-center justify-end pr-4"
+                            :style="'width: ' + lifePercentage + '%'"
+                        >
+                            <span class="text-sm font-bold" x-show="lifePercentage > 10" x-text="lifePercentage + '%'"></span>
+                        </div>
+                    </div>
+                    <div class="text-sm text-white/60 mt-2">
+                        已度过 <span class="font-bold text-white" x-text="age"></span> 年，
+                        还剩 <span class="font-bold text-purple-400" x-text="remainingYears"></span> 年
+                    </div>
+                </div>
+
+                <!-- Year Progress -->
+                <div>
+                    <div class="flex justify-between mb-3">
+                        <span class="text-lg font-medium">今年进度</span>
+                        <span class="text-2xl font-bold text-cyan-400" x-text="yearPercentage + '%'"></span>
+                    </div>
+                    <div class="w-full bg-white/10 rounded-full h-6">
+                        <div 
+                            class="bg-gradient-to-r from-cyan-500 to-blue-500 h-6 rounded-full transition-all duration-1000"
+                            :style="'width: ' + yearPercentage + '%'"
+                        ></div>
+                    </div>
+                    <div class="text-sm text-white/60 mt-2">
+                        还剩 <span class="font-bold text-cyan-400" x-text="remainingDays"></span> 天
+                    </div>
+                </div>
+
+                <!-- Month Progress -->
+                <div>
+                    <div class="flex justify-between mb-3">
+                        <span class="text-lg font-medium">本月进度</span>
+                        <span class="text-2xl font-bold text-emerald-400" x-text="monthPercentage + '%'"></span>
+                    </div>
+                    <div class="w-full bg-white/10 rounded-full h-6">
+                        <div 
+                            class="bg-gradient-to-r from-emerald-500 to-teal-500 h-6 rounded-full transition-all duration-1000"
+                            :style="'width: ' + monthPercentage + '%'"
+                        ></div>
+                    </div>
+                </div>
+
+                <!-- Week Progress -->
+                <div>
+                    <div class="flex justify-between mb-3">
+                        <span class="text-lg font-medium">本周进度</span>
+                        <span class="text-2xl font-bold text-amber-400" x-text="weekPercentage + '%'"></span>
+                    </div>
+                    <div class="w-full bg-white/10 rounded-full h-6">
+                        <div 
+                            class="bg-gradient-to-r from-amber-500 to-orange-500 h-6 rounded-full transition-all duration-1000"
+                            :style="'width: ' + weekPercentage + '%'"
+                        ></div>
+                    </div>
+                </div>
+
+                <!-- Day Progress -->
+                <div>
+                    <div class="flex justify-between mb-3">
+                        <span class="text-lg font-medium">今日进度</span>
+                        <span class="text-2xl font-bold text-rose-400" x-text="dayPercentage + '%'"></span>
+                    </div>
+                    <div class="w-full bg-white/10 rounded-full h-6">
+                        <div 
+                            class="bg-gradient-to-r from-rose-500 to-pink-500 h-6 rounded-full transition-all duration-1000"
+                            :style="'width: ' + dayPercentage + '%'"
+                        ></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+                <div class="text-sm text-white/60 mb-2">已度过的天数</div>
+                <div class="text-3xl font-bold" x-text="totalDays.toLocaleString()"></div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+                <div class="text-sm text-white/60 mb-2">已度过的小时</div>
+                <div class="text-3xl font-bold" x-text="totalHours.toLocaleString()"></div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+                <div class="text-sm text-white/60 mb-2">心跳次数 (约)</div>
+                <div class="text-3xl font-bold" x-text="heartbeats.toLocaleString()"></div>
+            </div>
+        </div>
+
+        <!-- Quote -->
+        <div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-md rounded-2xl p-8 border border-purple-500/30 text-center">
+            <p class="text-xl italic mb-4">"时间是最公平的资源，每个人每天都只有 24 小时"</p>
+            <p class="text-white/60">珍惜当下，活在此刻 ✨</p>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div x-show="showSettings" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" @click.self="showSettings = false">
+        <div class="bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-700">
+            <h3 class="text-xl font-bold mb-4">设置</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">出生日期</label>
+                    <input 
+                        type="date" 
+                        x-model="birthDate"
+                        class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">预期寿命 (岁)</label>
+                    <input 
+                        type="number" 
+                        x-model.number="lifeExpectancy"
+                        min="1"
+                        max="150"
+                        class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                </div>
+            </div>
+
+            <button @click="saveSettings()" class="w-full mt-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium transition-colors">
+                保存
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function lifeProgressApp() {
+            return {
+                birthDate: '1990-01-01',
+                lifeExpectancy: 80,
+                showSettings: false,
+                currentTime: new Date(),
+
+                init() {
+                    const saved = localStorage.getItem('webtools_life_progress');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        this.birthDate = data.birthDate || '1990-01-01';
+                        this.lifeExpectancy = data.lifeExpectancy || 80;
+                    }
+                    
+                    setInterval(() => {
+                        this.currentTime = new Date();
+                    }, 1000);
+                    
+                    // init
+                },
+
+                saveSettings() {
+                    localStorage.setItem('webtools_life_progress', JSON.stringify({
+                        birthDate: this.birthDate,
+                        lifeExpectancy: this.lifeExpectancy
+                    }));
+                    this.showSettings = false;
+                },
+
+                get age() {
+                    const birth = new Date(this.birthDate);
+                    const diff = this.currentTime - birth;
+                    return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+                },
+
+                get lifePercentage() {
+                    return Math.min(100, Math.round((this.age / this.lifeExpectancy) * 100));
+                },
+
+                get remainingYears() {
+                    return Math.max(0, this.lifeExpectancy - this.age);
+                },
+
+                get yearPercentage() {
+                    const start = new Date(this.currentTime.getFullYear(), 0, 1);
+                    const end = new Date(this.currentTime.getFullYear() + 1, 0, 1);
+                    const total = end - start;
+                    const passed = this.currentTime - start;
+                    return Math.round((passed / total) * 100);
+                },
+
+                get remainingDays() {
+                    const end = new Date(this.currentTime.getFullYear() + 1, 0, 1);
+                    const diff = end - this.currentTime;
+                    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+                },
+
+                get monthPercentage() {
+                    const day = this.currentTime.getDate();
+                    const daysInMonth = new Date(this.currentTime.getFullYear(), this.currentTime.getMonth() + 1, 0).getDate();
+                    return Math.round((day / daysInMonth) * 100);
+                },
+
+                get weekPercentage() {
+                    const day = this.currentTime.getDay();
+                    return Math.round((day / 7) * 100);
+                },
+
+                get dayPercentage() {
+                    const hours = this.currentTime.getHours();
+                    const minutes = this.currentTime.getMinutes();
+                    const totalMinutes = hours * 60 + minutes;
+                    return Math.round((totalMinutes / 1440) * 100);
+                },
+
+                get totalDays() {
+                    const birth = new Date(this.birthDate);
+                    const diff = this.currentTime - birth;
+                    return Math.floor(diff / (1000 * 60 * 60 * 24));
+                },
+
+                get totalHours() {
+                    return this.totalDays * 24;
+                },
+
+                get heartbeats() {
+                    // 假设平均心率 70 次/分钟
+                    return this.totalDays * 24 * 60 * 70;
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_life_progress.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

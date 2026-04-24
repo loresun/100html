@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Isometric City // HTML_SUPER</title>
+    <style>body { margin: 0; background: #e0e5ec; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; } .ui { position: absolute; top: 20px; left: 20px; z-index: 10; } a { color: #333; }</style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui"><a href="index.html">← BACK</a><br><small>HINT: MOUSE OVER TO BUILD</small></div>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const tileW = 50; // tile width
+        const tileH = 25; // tile height usually half width for iso
+        const mapSize = 10;
+        let blocks = []; // store height of each block
+        
+        // Init map
+        for(let i=0; i<mapSize*mapSize; i++) blocks[i] = 0;
+
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Draw an isometric cube
+        function drawBlock(x, y, z, color) {
+            const top = "#"+(color).toString(16);
+            const right = "#"+(Math.floor(color * 0.8)).toString(16);
+            const left = "#"+(Math.floor(color * 0.6)).toString(16);
+            
+            ctx.save();
+            ctx.translate((x - y) * tileW, (x + y) * tileH);
+            
+            // Adjust for Z height (move up)
+            const h = z * 20;
+            ctx.translate(canvas.width/2, canvas.height/4 + (mapSize * tileH)); // Center map
+            ctx.translate(0, -h); 
+
+            // Top
+            ctx.beginPath();
+            ctx.moveTo(0, -tileH);
+            ctx.lineTo(tileW, 0);
+            ctx.lineTo(0, tileH);
+            ctx.lineTo(-tileW, 0);
+            ctx.closePath();
+            ctx.fillStyle = `hsl(210, 80%, ${50 + z*10}%)`; // Blue gradient based on height
+            ctx.fill();
+            
+            // Right
+            ctx.beginPath();
+            ctx.moveTo(tileW, 0);
+            ctx.lineTo(tileW, tileH*2); // wall height arbitrary
+            ctx.lineTo(0, tileH*3);
+            ctx.lineTo(0, tileH);
+            ctx.closePath();
+            ctx.fillStyle = `hsl(210, 80%, ${40 + z*10}%)`;
+            ctx.fill();
+
+            // Left
+            ctx.beginPath();
+            ctx.moveTo(-tileW, 0);
+            ctx.lineTo(-tileW, tileH*2);
+            ctx.lineTo(0, tileH*3);
+            ctx.lineTo(0, tileH);
+            ctx.closePath();
+            ctx.fillStyle = `hsl(210, 80%, ${30 + z*10}%)`;
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        let mousePos = {x:0, y:0};
+        window.addEventListener('mousemove', e => {
+            mousePos.x = e.clientX;
+            mousePos.y = e.clientY;
+            
+            // Should calc logic to find which tile is hovered mapX/mapY
+            // A bit complex for raw canvas without library, but we can do simple distance check or render logic
+        });
+        
+        // Simple Loop causing growth
+        function loop() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            
+            for(let x=0; x<mapSize; x++) {
+                for(let y=0; y<mapSize; y++) {
+                    const idx = x + y * mapSize;
+                    
+                    // Random Growth animation for demo
+                    if(Math.random() < 0.01) {
+                         if (blocks[idx] < 5) blocks[idx]++;
+                         else blocks[idx] = 0;
+                    }
+                    
+                    // Draw bottom to top z-order is mostly handled by x+y loop order in iso
+                    drawBlock(x, y, blocks[idx], 0x5599ff);
+                }
+            }
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

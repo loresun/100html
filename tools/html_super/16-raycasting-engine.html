@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <title>Raycasting Engine (Wolf-style) // HTML_SUPER</title>
+    <style>
+        body { margin: 0; background: #333; overflow: hidden; font-family: sans-serif; }
+        .ui { position: absolute; top: 20px; left: 20px; color: #fff; z-index: 10; } a { color: #fff; }
+        #screen { width: 100vw; height: 100vh; display: block; background: #000; }
+        #instructions { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.7); font-size: 14px; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+    <div class="ui"><a href="index.html">← BACK</a></div>
+    <div id="instructions">ARROW KEYS to Move & Turn</div>
+    <canvas id="screen" width="640" height="480"></canvas>
+    
+    <script>
+        const canvas = document.getElementById('screen');
+        const ctx = canvas.getContext('2d');
+
+        // Map (1=Wall, 0=Empty)
+        const mapWidth = 24;
+        const mapHeight = 24;
+        const worldMap = [
+          [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,2,2,2,2,2,0,0,0,0,3,0,3,0,3,0,0,0,1],
+          [1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,3,0,0,0,3,0,0,0,1],
+          [1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,2,2,0,2,2,0,0,0,0,3,0,3,0,3,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,4,0,0,0,0,5,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,4,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+          [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        // Player State
+        var posX = 22, posY = 12;  // x and y start position
+        var dirX = -1, dirY = 0; // initial direction vector
+        var planeX = 0, planeY = 0.66; // the 2d raycaster version of camera plane
+
+        var moveSpeed = 0.1;
+        var rotSpeed = 0.05;
+
+        // Input
+        var keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function loop() {
+            // Movement
+            if (keys['ArrowUp'] || keys['KeyW']) {
+                if(worldMap[Math.floor(posX + dirX * moveSpeed)][Math.floor(posY)] == 0) posX += dirX * moveSpeed;
+                if(worldMap[Math.floor(posX)][Math.floor(posY + dirY * moveSpeed)] == 0) posY += dirY * moveSpeed;
+            }
+            if (keys['ArrowDown'] || keys['KeyS']) {
+                if(worldMap[Math.floor(posX - dirX * moveSpeed)][Math.floor(posY)] == 0) posX -= dirX * moveSpeed;
+                if(worldMap[Math.floor(posX)][Math.floor(posY - dirY * moveSpeed)] == 0) posY -= dirY * moveSpeed;
+            }
+            if (keys['ArrowRight'] || keys['KeyD']) {
+                var oldDirX = dirX;
+                dirX = dirX * Math.cos(-rotSpeed) - dirY * Math.sin(-rotSpeed);
+                dirY = oldDirX * Math.sin(-rotSpeed) + dirY * Math.cos(-rotSpeed);
+                var oldPlaneX = planeX;
+                planeX = planeX * Math.cos(-rotSpeed) - planeY * Math.sin(-rotSpeed);
+                planeY = oldPlaneX * Math.sin(-rotSpeed) + planeY * Math.cos(-rotSpeed);
+            }
+            if (keys['ArrowLeft'] || keys['KeyA']) {
+                var oldDirX = dirX;
+                dirX = dirX * Math.cos(rotSpeed) - dirY * Math.sin(rotSpeed);
+                dirY = oldDirX * Math.sin(rotSpeed) + dirY * Math.cos(rotSpeed);
+                var oldPlaneX = planeX;
+                planeX = planeX * Math.cos(rotSpeed) - planeY * Math.sin(rotSpeed);
+                planeY = oldPlaneX * Math.sin(rotSpeed) + planeY * Math.cos(rotSpeed);
+            }
+
+            // Draw
+            // Ceiling and Floor
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0,0,canvas.width,canvas.height/2);
+            ctx.fillStyle = '#555';
+            ctx.fillRect(0,canvas.height/2,canvas.width,canvas.height/2);
+
+            // Raycasting
+            for(var x = 0; x < canvas.width; x++) {
+                var cameraX = 2 * x / canvas.width - 1;
+                var rayDirX = dirX + planeX * cameraX;
+                var rayDirY = dirY + planeY * cameraX;
+                
+                var mapX = Math.floor(posX);
+                var mapY = Math.floor(posY);
+                
+                var sideDistX, sideDistY;
+                var deltaDistX = (rayDirX == 0) ? 1e30 : Math.abs(1 / rayDirX);
+                var deltaDistY = (rayDirY == 0) ? 1e30 : Math.abs(1 / rayDirY);
+                var perpWallDist;
+                
+                var stepX, stepY;
+                var hit = 0;
+                var side;
+
+                if (rayDirX < 0) { stepX = -1; sideDistX = (posX - mapX) * deltaDistX; }
+                else { stepX = 1; sideDistX = (mapX + 1.0 - posX) * deltaDistX; }
+                
+                if (rayDirY < 0) { stepY = -1; sideDistY = (posY - mapY) * deltaDistY; }
+                else { stepY = 1; sideDistY = (mapY + 1.0 - posY) * deltaDistY; }
+                
+                // DDA
+                while (hit == 0) {
+                    if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
+                    else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
+                    if (worldMap[mapX][mapY] > 0) hit = 1;
+                }
+                
+                if (side == 0) perpWallDist = (sideDistX - deltaDistX);
+                else          perpWallDist = (sideDistY - deltaDistY);
+                
+                var lineHeight = Math.floor(canvas.height / perpWallDist);
+                var drawStart = -lineHeight / 2 + canvas.height / 2;
+                if(drawStart < 0) drawStart = 0;
+                var drawEnd = lineHeight / 2 + canvas.height / 2;
+                if(drawEnd >= canvas.height) drawEnd = canvas.height - 1;
+                
+                // Colors
+                var color;
+                switch(worldMap[mapX][mapY]) {
+                    case 1: color = "rgb(255,0,0)"; break;
+                    case 2: color = "rgb(0,255,0)"; break;
+                    case 3: color = "rgb(0,0,255)"; break;
+                    case 4: color = "rgb(255,255,255)"; break;
+                    default: color = "rgb(255,255,0)"; break;
+                }
+                // Darken sides
+                if(side == 1) { 
+                    // Manual darken by parsing RGB? nah let's just use opacity overlay or simple hex logic. 
+                    // Canvas RGB string manipulation is annoying. Let's just repaint semi-transparent black
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+                    ctx.fillStyle = "rgba(0,0,0,0.3)";
+                    ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+                } else {
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+                }
+            }
+            requestAnimationFrame(loop);
+        }
+        loop();
+        
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fuse.js 模糊搜索</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fdf2f8; color: #831843; }
+    .glass { background: white; border: 1px solid #fbcfe8; box-shadow: 0 4px 6px -1px rgba(219, 39, 119, 0.05); }
+    .mark { background-color: #fce7f3; color: #be185d; font-weight: bold; padding: 0 2px; border-radius: 2px; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-pink-900">🔍 Fuse.js</h1>
+    <p class="text-pink-800/60 mt-2 text-lg">轻量级、强大的前端模糊搜索库</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-800 rounded-lg hover:bg-pink-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-8">
+
+  <!-- 搜索控制台 -->
+  <div class="glass p-8 rounded-2xl sticky top-4 z-10 shadow-lg border-pink-200">
+    <div class="relative">
+      <input 
+        type="text" 
+        id="search-input" 
+        class="w-full pl-12 pr-4 py-4 border-2 border-pink-100 rounded-xl focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 outline-none text-lg transition-all" 
+        placeholder="搜索书名或作者 (例如: 'old man', 'potter')..."
+        autofocus
+      >
+      <div class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl">🔎</div>
+    </div>
+    
+    <div class="flex gap-4 mt-4 text-sm text-pink-700">
+      <label class="flex items-center gap-2">
+        <input type="checkbox" id="check-title" checked class="accent-pink-600">
+        搜索标题
+      </label>
+      <label class="flex items-center gap-2">
+        <input type="checkbox" id="check-author" checked class="accent-pink-600">
+        搜索作者
+      </label>
+      <div class="ml-auto text-xs text-pink-400 self-center">
+        模糊阈值: 0.4
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果列表 -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="results-container">
+    <!-- 初始占位: 显示所有数据 (或部分) -->
+  </div>
+
+  <div class="text-center text-pink-300 text-sm mt-8">
+    共加载 <span id="total-count">0</span> 条数据
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
+<script>
+  // 模拟书籍数据
+  const list = [
+    { title: "Old Man's War", author: "John Scalzi", tags: ['fiction'] },
+    { title: "The Lock Artist", author: "Steve Hamilton", tags: ['thriller'] },
+    { title: "HTML5", author: "Remy Sharp", tags: ['tech'] },
+    { title: "Right Ho Jeeves", author: "P.D. Wodehouse", tags: ['fiction'] },
+    { title: "The Code of the Wooster", author: "P.D. Wodehouse", tags: ['fiction'] },
+    { title: "Thank You Jeeves", author: "P.D. Wodehouse", tags: ['fiction'] },
+    { title: "The DaVinci Code", author: "Dan Brown", tags: ['thriller'] },
+    { title: "Angels & Demons", author: "Dan Brown", tags: ['thriller'] },
+    { title: "The Silmarillion", author: "J.R.R Tolkien", tags: ['fantasy'] },
+    { title: "Syrup", author: "Max Barry", tags: ['fiction'] },
+    { title: "The Lost Symbol", author: "Dan Brown", tags: ['thriller'] },
+    { title: "The Book of Lies", author: "Brad Meltzer", tags: ['thriller'] },
+    { title: "Lamb", author: "Christopher Moore", tags: ['fiction'] },
+    { title: "JavaScript: The Good Parts", author: "Douglas Crockford", tags: ['tech'] },
+    { title: "Effective Java", author: "Joshua Bloch", tags: ['tech'] },
+    { title: "Harry Potter and the Sorcerer's Stone", author: "J.K. Rowling", tags: ['fantasy'] },
+  ];
+
+  document.getElementById('total-count').innerText = list.length;
+  
+  const container = document.getElementById('results-container');
+  const searchInput = document.getElementById('search-input');
+
+  // 初始化 Fuse
+  let fuse;
+  
+  function initFuse() {
+    const keys = [];
+    if(document.getElementById('check-title').checked) keys.push('title');
+    if(document.getElementById('check-author').checked) keys.push('author');
+
+    fuse = new Fuse(list, {
+      keys: keys,
+      threshold: 0.4, // 模糊度
+      includeScore: true
+    });
+  }
+
+  function render(results) {
+    container.innerHTML = '';
+    
+    if (results.length === 0 && searchInput.value.length > 0) {
+      container.innerHTML = `<div class="col-span-full text-center text-pink-400 py-10">未找到相关结果</div>`;
+      return;
+    }
+
+    // 如果搜索为空，显示全部
+    const dataToShow = searchInput.value.length > 0 ? results.map(r => r.item) : list;
+    const scores = searchInput.value.length > 0 ? results.map(r => r.score) : [];
+
+    dataToShow.forEach((item, index) => {
+      const score = scores[index] !== undefined ? `<span class="text-xs ml-2 px-1 bg-pink-100 rounded text-pink-600">匹配度: ${(1-scores[index]).toFixed(2)}</span>` : '';
+      
+      const el = document.createElement('div');
+      el.className = 'glass p-6 rounded-xl hover:shadow-md transition-shadow bg-white';
+      el.innerHTML = `
+        <div class="flex justify-between items-start">
+          <h3 class="font-bold text-pink-900 text-lg">${highlight(item.title, searchInput.value)}</h3>
+          ${score}
+        </div>
+        <p class="text-pink-700/70 mt-1 text-sm">by ${highlight(item.author, searchInput.value)}</p>
+        <div class="mt-4 flex gap-2">
+          ${item.tags.map(t => `<span class="px-2 py-1 bg-slate-100 text-slate-500 rounded text-xs">#${t}</span>`).join('')}
+        </div>
+      `;
+      container.appendChild(el);
+    });
+  }
+
+  // 简单的高亮逻辑 (仅用于演示，生产环境建议使用 Fuse 的 includeMatches 特性)
+  function highlight(text, term) {
+    if(!term) return text;
+    // 简单的正则替换，处理不了复杂的模糊匹配高亮
+    return text; 
+  }
+
+  // 事件监听
+  searchInput.addEventListener('input', () => {
+    initFuse(); // 重新初始化以应用 checkbox 变更
+    if (searchInput.value.trim() === '') {
+      render([]);
+    } else {
+      const results = fuse.search(searchInput.value);
+      render(results);
+    }
+  });
+
+  document.getElementById('check-title').addEventListener('change', () => searchInput.dispatchEvent(new Event('input')));
+  document.getElementById('check-author').addEventListener('change', () => searchInput.dispatchEvent(new Event('input')));
+
+  // 初始渲染
+  initFuse();
+  render([]);
+
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

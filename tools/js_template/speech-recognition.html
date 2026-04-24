@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Speech Recognition 语音听写</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fdf4ff; color: #701a75; transition: background 0.5s; }
+    .glass { background: rgba(255, 255, 255, 0.9); border: 1px solid #f0abfc; box-shadow: 0 10px 15px -3px rgba(192, 38, 211, 0.1); }
+    .waveform-bar { width: 6px; background: #e879f9; border-radius: 99px; animation: wave 1s infinite; }
+    @keyframes wave { 0%, 100% { height: 10px; } 50% { height: 40px; } }
+    .listening .waveform-bar { display: block; }
+    .waveform-bar { display: none; margin: 0 2px;}
+    
+    body.speaking { background: #fae8ff; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-6 relative">
+
+  <a href="index.html" class="absolute top-6 right-6 px-5 py-2 glass rounded-lg text-fuchsia-800 font-bold hover:bg-white transition">返回</a>
+
+  <div class="glass max-w-2xl w-full p-10 rounded-3xl text-center shadow-xl">
+    
+    <div class="mb-8">
+      <div class="w-20 h-20 bg-fuchsia-100 text-fuchsia-600 rounded-full flex items-center justify-center mx-auto text-4xl mb-4 transition-all duration-300" id="mic-icon">
+        🎙️
+      </div>
+      <h1 class="text-3xl font-bold text-fuchsia-900">语音听写</h1>
+      <p class="text-fuchsia-700/60 mt-2">点击下方按钮开始说话 (Web Speech API)</p>
+    </div>
+
+    <!-- Visualization (Fake Waveform) -->
+    <div class="h-16 flex justify-center items-center mb-8" id="visualizer">
+       <div class="waveform-bar" style="animation-delay: 0s"></div>
+       <div class="waveform-bar" style="animation-delay: 0.1s"></div>
+       <div class="waveform-bar" style="animation-delay: 0.2s"></div>
+       <div class="waveform-bar" style="animation-delay: 0.3s"></div>
+       <div class="waveform-bar" style="animation-delay: 0.2s"></div>
+       <div class="waveform-bar" style="animation-delay: 0.1s"></div>
+       <div class="waveform-bar" style="animation-delay: 0s"></div>
+    </div>
+
+    <!-- Output -->
+    <div class="min-h-[120px] p-6 bg-white rounded-xl border-2 border-fuchsia-100 text-left text-lg leading-relaxed text-slate-700 relative mb-8">
+      <span id="final-span" class="font-medium text-slate-800"></span>
+      <span id="interim-span" class="text-slate-400 italic"></span>
+      <div class="absolute top-3 right-3 text-xs text-slate-300 font-mono" id="status-text">Ready</div>
+    </div>
+
+    <!-- Controls -->
+    <button id="toggle-btn" class="px-10 py-4 bg-fuchsia-600 text-white rounded-full text-lg font-bold shadow-lg shadow-fuchsia-500/30 hover:bg-fuchsia-700 hover:scale-105 transition-all">
+      开始监听
+    </button>
+    
+  </div>
+  
+  <p class="mt-8 text-sm text-fuchsia-800/40 text-center max-w-md">
+    注意：此功能依赖浏览器原生的 Web Speech API。推荐使用 Chrome/Edge/Safari。
+  </p>
+
+<script>
+  const btn = document.getElementById('toggle-btn');
+  const mic = document.getElementById('mic-icon');
+  const visualizer = document.getElementById('visualizer');
+  const finalSpan = document.getElementById('final-span');
+  const interimSpan = document.getElementById('interim-span');
+  const statusText = document.getElementById('status-text');
+
+  let recognition;
+  let isListening = false;
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'zh-CN'; // Default Chinese
+
+    recognition.onstart = () => {
+      isListening = true;
+      btn.innerText = "停止监听";
+      btn.className = "px-10 py-4 bg-red-500 text-white rounded-full text-lg font-bold shadow-lg shadow-red-500/30 hover:bg-red-600 hover:scale-105 transition-all";
+      mic.className = "w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-4xl mb-4 animate-pulse";
+      visualizer.classList.add('listening');
+      statusText.innerText = "Listening...";
+      document.body.classList.add('speaking');
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      btn.innerText = "开始监听";
+      btn.className = "px-10 py-4 bg-fuchsia-600 text-white rounded-full text-lg font-bold shadow-lg shadow-fuchsia-500/30 hover:bg-fuchsia-700 hover:scale-105 transition-all";
+      mic.className = "w-20 h-20 bg-fuchsia-100 text-fuchsia-600 rounded-full flex items-center justify-center mx-auto text-4xl mb-4";
+      visualizer.classList.remove('listening');
+      statusText.innerText = "Stopped";
+      document.body.classList.remove('speaking');
+    };
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      
+      if(finalTranscript) {
+         finalSpan.innerHTML += finalTranscript + '，'; // Punctuation hack
+      }
+      interimSpan.innerHTML = interimTranscript;
+    };
+
+    recognition.onerror = (event) => {
+      statusText.innerText = "Error: " + event.error;
+    };
+
+  } else {
+    btn.disabled = true;
+    btn.innerText = "浏览器不支持";
+    alert('您的浏览器不支持 Web Speech API。');
+  }
+
+  btn.addEventListener('click', () => {
+    if (isListening) {
+      recognition.stop();
+    } else {
+      recognition.start();
+    }
+  });
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

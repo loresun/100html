@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics：全站统一统计 ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 配色大师 - 视觉创意工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* 页面基底：紫红色 fuchsia 系渐变 */
+        body {
+            background: linear-gradient(145deg, #fdf4ff 0%, #fae8ff 18%, #e879f9 42%, #c026d3 72%, #86198f 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.25); }
+        ::-webkit-scrollbar-thumb { background: rgba(134, 25, 143, 0.55); border-radius: 3px; }
+
+        [x-cloak] { display: none !important; }
+
+        /* 色卡 hover 浮层过渡 */
+        .swatch-card {
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+        }
+        .swatch-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.35);
+        }
+
+        /* Markdown 区域（和谐度分析） */
+        .harmony-md p { margin: 0.35rem 0; line-height: 1.7; color: #4c1d95; }
+        .harmony-md ul { padding-left: 1.2rem; margin: 0.35rem 0; }
+        .harmony-md li { margin: 0.2rem 0; color: #5b21b6; }
+        .harmony-md strong { color: #3b0764; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-violet-950">
+    <div x-data="colorPaletteApp()" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航：左侧返回项目首页（相对路径 ../../index.html） -->
+        <nav class="bg-white/75 backdrop-blur-md sticky top-0 z-50 border-b border-fuchsia-200/80 shadow-sm">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer hover:opacity-90 transition"
+                    onclick="location.href='../../index.html'">
+                    <div class="w-10 h-10 bg-gradient-to-br from-fuchsia-500 to-purple-700 rounded-xl flex items-center justify-center shadow-md">
+                        <i data-lucide="palette" class="text-white h-5 w-5"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg text-violet-950">AI 配色大师</span>
+                        <span class="hidden sm:inline text-xs text-fuchsia-800/80 ml-2">场景驱动 · 专业色卡</span>
+                    </div>
+                </div>
+                <button type="button" @click="showSettings = true"
+                    class="text-violet-800 hover:text-fuchsia-800 flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-xl hover:bg-fuchsia-50/90 transition">
+                    <i data-lucide="settings" class="h-4 w-4"></i>
+                    <span class="hidden sm:inline">设置</span>
+                </button>
+            </div>
+        </nav>
+
+        <main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 pb-28 space-y-8">
+
+            <header class="text-center space-y-2">
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-md tracking-tight">
+                    描述场景与情绪，生成可落地的配色方案
+                </h1>
+                <p class="text-sm sm:text-base text-white/90 max-w-2xl mx-auto drop-shadow">
+                    AI 输出 HEX / RGB、中文色名与使用建议；支持应用预览、色轮关系与代码导出。
+                </p>
+            </header>
+
+            <!-- 输入区 -->
+            <section class="bg-white/90 backdrop-blur rounded-2xl border border-fuchsia-200/90 shadow-xl p-5 sm:p-6 space-y-4">
+                <label class="flex items-center gap-2 text-sm font-bold text-violet-900">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-fuchsia-600"></i>
+                    场景 / 情绪 / 风格描述
+                </label>
+                <textarea x-model="description" rows="3"
+                    placeholder="例如：秋天的傍晚森林、赛博朋克城市夜景、温馨北欧咖啡馆…"
+                    class="w-full rounded-xl border border-fuchsia-200 bg-fuchsia-50/30 p-4 text-sm sm:text-base outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent resize-y min-h-[5rem]"></textarea>
+
+                <div>
+                    <p class="text-xs font-semibold text-violet-800 mb-2 flex items-center gap-1.5">
+                        <i data-lucide="tag" class="w-3.5 h-3.5"></i>
+                        预设情绪标签（点击切换，可与上方描述叠加）
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="tag in moodPresets" :key="tag">
+                            <button type="button" @click="toggleMood(tag)"
+                                class="rounded-full px-3.5 py-1.5 text-sm font-medium border transition"
+                                :class="selectedMoods.includes(tag)
+                                    ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-md'
+                                    : 'bg-white border-fuchsia-200 text-violet-800 hover:border-fuchsia-400'">
+                                <span x-text="tag"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+                    <div class="flex-1">
+                        <label class="block text-xs font-semibold text-violet-800 mb-1.5">颜色数量</label>
+                        <input type="range" min="3" max="7" x-model.number="colorCount"
+                            class="w-full accent-fuchsia-600 h-2 rounded-lg cursor-pointer">
+                        <div class="flex justify-between text-xs text-violet-600 mt-1">
+                            <span>3 色</span>
+                            <span class="font-bold text-fuchsia-700" x-text="colorCount + ' 色'"></span>
+                            <span>7 色</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+                        <button type="button" @click="generatePalette(false)"
+                            :disabled="isLoading || !description.trim()"
+                            class="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-3.5 px-6 shadow-lg hover:from-fuchsia-700 hover:to-purple-800 disabled:opacity-45 disabled:cursor-not-allowed transition">
+                            <template x-if="!isLoading">
+                                <span class="flex items-center gap-2">
+                                    <i data-lucide="wand-2" class="w-5 h-5"></i>
+                                    生成配色
+                                </span>
+                            </template>
+                            <template x-if="isLoading">
+                                <span class="flex items-center gap-2">
+                                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                    生成中…
+                                </span>
+                            </template>
+                        </button>
+                        <button type="button" @click="generatePalette(true)"
+                            :disabled="isLoading || !description.trim() || !palette.length"
+                            class="flex-1 sm:flex-none rounded-xl border-2 border-violet-300 bg-white/90 px-5 py-3.5 text-sm font-bold text-violet-900 hover:bg-violet-50 disabled:opacity-40 transition">
+                            换一组
+                        </button>
+                    </div>
+                </div>
+
+                <p x-show="errorMessage" class="text-sm text-red-600 font-medium" x-text="errorMessage" x-cloak></p>
+            </section>
+
+            <!-- 结果：情绪摘要 -->
+            <section x-show="moodSummary" class="bg-white/80 rounded-2xl border border-fuchsia-100 p-4 shadow-md" x-cloak>
+                <div class="flex items-start gap-3">
+                    <div class="p-2 rounded-lg bg-fuchsia-100 text-fuchsia-700">
+                        <i data-lucide="heart" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-violet-900 mb-1">整体气质</h2>
+                        <p class="text-sm text-violet-800 leading-relaxed" x-text="moodSummary"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 大色卡 -->
+            <section x-show="palette.length" x-cloak>
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-bold text-white drop-shadow-md flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                        配色色卡
+                    </h2>
+                    <button type="button" @click="showExport = true"
+                        class="text-sm font-semibold text-white/95 hover:text-white flex items-center gap-1 bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-lg backdrop-blur">
+                        <i data-lucide="code-2" class="w-4 h-4"></i>
+                        导出代码
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-3 sm:gap-4 justify-center sm:justify-start">
+                    <template x-for="(c, idx) in palette" :key="idx">
+                        <div class="group swatch-card relative rounded-2xl overflow-hidden cursor-pointer border-2 border-white/50 shadow-lg flex-1 min-w-[140px] max-w-[200px]"
+                            style="min-height: 120px;"
+                            :style="'background-color:' + normalizeHex(c.hex)"
+                            @click="copyColor(c)"
+                            title="点击复制 HEX">
+                            <!-- hover 详细信息 -->
+                            <div class="absolute inset-0 bg-black/0 hover:bg-black/35 transition-colors flex flex-col justify-end p-3 group">
+                                <div class="opacity-0 group-hover:opacity-100 transition-opacity text-white drop-shadow-md">
+                                    <p class="font-bold text-sm leading-tight" x-text="c.name || '未命名'"></p>
+                                    <p class="text-xs font-mono mt-1" x-text="normalizeHex(c.hex)"></p>
+                                    <p class="text-xs font-mono opacity-90" x-text="displayRgb(c)"></p>
+                                    <p class="text-[11px] mt-1.5 line-clamp-3" x-text="c.usage || ''"></p>
+                                </div>
+                            </div>
+                            <!-- 默认底部条（无 hover 时仍可见色名） -->
+                            <div class="absolute bottom-0 left-0 right-0 bg-black/45 backdrop-blur-sm px-2 py-1.5 pointer-events-none sm:pointer-events-none group-hover:opacity-0 transition-opacity">
+                                <p class="text-white text-xs font-semibold truncate text-center" x-text="c.name"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <p class="text-center text-white/85 text-xs mt-3">点击色块复制 HEX 到剪贴板</p>
+            </section>
+
+            <!-- 应用场景预览 -->
+            <section x-show="palette.length >= 3" class="space-y-4" x-cloak>
+                <h2 class="text-lg font-bold text-white drop-shadow-md flex items-center gap-2">
+                    <i data-lucide="monitor" class="w-5 h-5"></i>
+                    应用预览（模拟）
+                </h2>
+                <div class="grid md:grid-cols-3 gap-4">
+
+                    <!-- 模拟网页界面 -->
+                    <div class="rounded-2xl border border-white/40 bg-white/95 shadow-xl overflow-hidden flex flex-col min-h-[220px]">
+                        <div class="text-xs font-bold text-white px-3 py-2 flex items-center gap-2"
+                            :style="'background:' + (palette[0] ? normalizeHex(palette[0].hex) : '#7c3aed')">
+                            <span class="w-2 h-2 rounded-full bg-white/80"></span>
+                            <span x-text="palette[0]?.name || '主色'"></span>
+                        </div>
+                        <div class="p-3 flex-grow flex flex-col gap-2">
+                            <div class="h-16 rounded-lg" :style="'background: linear-gradient(135deg,' + normalizeHex(palette[1]?.hex || '#ddd') + ',' + normalizeHex(palette[2]?.hex || '#eee') + ')'"></div>
+                            <p class="text-xs text-slate-600 leading-snug">模拟 hero 区：主色导航 + 渐变焦点。</p>
+                            <button type="button" class="text-xs text-white font-semibold py-2 rounded-lg self-start px-4"
+                                :style="'background:' + normalizeHex(palette[Math.min(3, palette.length - 1)]?.hex || '#a855f7')">
+                                主要操作
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 模拟海报 -->
+                    <div class="rounded-2xl border border-white/40 shadow-xl overflow-hidden min-h-[220px] relative">
+                        <div class="absolute inset-0"
+                            :style="'background: linear-gradient(160deg,' + normalizeHex(palette[0]?.hex) + ' 0%,' + normalizeHex(palette[1]?.hex) + ' 45%,' + normalizeHex(palette[2]?.hex) + ' 100%)'"></div>
+                        <div class="relative p-4 h-full flex flex-col justify-end">
+                            <p class="text-white text-lg font-black drop-shadow-lg leading-tight">海报标题</p>
+                            <p class="text-white/90 text-xs mt-1 drop-shadow">副标题与活动信息</p>
+                        </div>
+                    </div>
+
+                    <!-- 模拟名片 -->
+                    <div class="rounded-2xl border border-white/40 bg-white shadow-xl overflow-hidden min-h-[220px] flex">
+                        <div class="w-3 shrink-0 h-full"
+                            :style="'background: linear-gradient(180deg,' + normalizeHex(palette[0]?.hex) + ',' + normalizeHex(palette[1]?.hex) + ')'"></div>
+                        <div class="p-4 flex flex-col justify-center">
+                            <p class="font-bold text-slate-900 text-sm">张 三</p>
+                            <p class="text-xs mt-1" :style="'color:' + normalizeHex(palette[2]?.hex || '#64748b')">创意总监 · 品牌工作室</p>
+                            <p class="text-[10px] text-slate-500 mt-3">模拟名片色彩条 + 信息层级</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 色彩和谐度 + 色轮 -->
+            <section x-show="palette.length" class="bg-white/90 backdrop-blur rounded-2xl border border-fuchsia-200 p-5 sm:p-6 shadow-xl space-y-4" x-cloak>
+                <h2 class="text-lg font-bold text-violet-900 flex items-center gap-2">
+                    <i data-lucide="pie-chart" class="w-5 h-5 text-fuchsia-600"></i>
+                    色彩和谐度分析
+                </h2>
+                <div class="harmony-md text-sm" x-html="renderHarmony(harmonyText)"></div>
+
+                <div class="border-t border-fuchsia-100 pt-4">
+                    <p class="text-xs font-semibold text-violet-700 mb-3 flex items-center gap-1.5">
+                        <i data-lucide="circle-dot" class="w-4 h-4"></i>
+                        色相环位置（实心点 = 配色；空心点 = 互补方向参考）
+                    </p>
+                    <div class="flex justify-center overflow-x-auto">
+                        <svg viewBox="0 0 240 240" class="w-64 h-64 sm:w-72 sm:h-72 shrink-0">
+                            <!-- 外圈淡色环 -->
+                            <circle cx="120" cy="120" r="102" fill="none" stroke="#e9d5ff" stroke-width="3" />
+                            <circle cx="120" cy="120" r="88" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1" />
+                            <!-- 类似色连线（按色相排序后的相邻连接） -->
+                            <template x-for="(seg, i) in analogousSegments" :key="'a'+i">
+                                <line :x1="seg.x1" :y1="seg.y1" :x2="seg.x2" :y2="seg.y2"
+                                    stroke="#a78bfa" stroke-width="2" stroke-dasharray="4 3" opacity="0.85" />
+                            </template>
+                            <!-- 主色到互补方向的参考线 -->
+                            <template x-for="(seg, i) in complementSegments" :key="'c'+i">
+                                <line :x1="seg.x1" :y1="seg.y1" :x2="seg.x2" :y2="seg.y2"
+                                    stroke="#f472b6" stroke-width="2" stroke-dasharray="6 4" opacity="0.75" />
+                            </template>
+                            <!-- 配色点 -->
+                            <template x-for="(d, i) in wheelDots" :key="'d'+i">
+                                <circle :cx="d.x" :cy="d.y" r="10" :fill="d.hex" stroke="#fff" stroke-width="2.5" />
+                            </template>
+                            <template x-for="(d, i) in complementDots" :key="'cd'+i">
+                                <circle :cx="d.x" :cy="d.y" r="8" fill="none" :stroke="d.hex" stroke-width="3" />
+                            </template>
+                        </svg>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 设置弹窗 -->
+        <div x-show="showSettings" x-cloak
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            @keydown.escape.window="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-fuchsia-100"
+                @click.outside="showSettings = false">
+                <h3 class="text-lg font-bold text-violet-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="key-round" class="w-5 h-5 text-fuchsia-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-violet-800 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border border-fuchsia-200 p-2.5 text-sm focus:ring-2 focus:ring-fuchsia-500 outline-none"
+                            placeholder="sk-..." />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-violet-800 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-fuchsia-200 p-2.5 text-sm focus:ring-2 focus:ring-fuchsia-500 outline-none">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false"
+                        class="px-4 py-2 rounded-lg text-violet-700 hover:bg-violet-50 font-medium">取消</button>
+                    <button type="button" @click="saveConfig()"
+                        class="px-4 py-2 rounded-lg bg-fuchsia-600 text-white font-semibold hover:bg-fuchsia-700">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 导出代码弹窗 -->
+        <div x-show="showExport" x-cloak
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 border border-fuchsia-100 max-h-[85vh] overflow-y-auto"
+                @click.outside="showExport = false">
+                <h3 class="text-lg font-bold text-violet-900 mb-3">导出配色代码</h3>
+                <div class="flex gap-2 mb-3">
+                    <button type="button" @click="exportTab = 'css'"
+                        :class="exportTab === 'css' ? 'bg-fuchsia-600 text-white' : 'bg-violet-50 text-violet-800'"
+                        class="px-3 py-1.5 rounded-lg text-sm font-semibold">CSS 变量</button>
+                    <button type="button" @click="exportTab = 'tailwind'"
+                        :class="exportTab === 'tailwind' ? 'bg-fuchsia-600 text-white' : 'bg-violet-50 text-violet-800'"
+                        class="px-3 py-1.5 rounded-lg text-sm font-semibold">Tailwind 扩展</button>
+                </div>
+                <pre class="text-xs bg-slate-900 text-green-100 p-4 rounded-xl overflow-x-auto whitespace-pre-wrap break-all font-mono leading-relaxed"
+                    x-text="exportTab === 'css' ? buildCssVariables() : buildTailwindExtend()"></pre>
+                <button type="button" @click="copyExport()"
+                    class="mt-3 w-full py-2.5 rounded-xl bg-violet-800 text-white font-semibold hover:bg-violet-900 flex items-center justify-center gap-2">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                    复制当前内容
+                </button>
+                <button type="button" @click="showExport = false"
+                    class="mt-2 w-full py-2 text-sm text-violet-600 hover:underline">关闭</button>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition.opacity.duration.200ms
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2.5 rounded-xl bg-violet-900 text-white text-sm font-medium shadow-xl flex items-center gap-2"
+            x-cloak>
+            <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Alpine 根组件：AI 配色大师
+         * 调用 DeepSeek JSON 模式生成 palette + harmony + mood，并计算色轮几何数据。
+         */
+        function colorPaletteApp() {
+            return {
+                description: '',
+                /** 已选情绪标签（可多选） */
+                selectedMoods: [],
+                moodPresets: ['温暖', '清冷', '活力', '优雅', '神秘', '自然'],
+                colorCount: 5,
+                palette: [],
+                harmonyText: '',
+                moodSummary: '',
+                isLoading: false,
+                showSettings: false,
+                showExport: false,
+                exportTab: 'css',
+                errorMessage: '',
+                toast: { show: false, message: '', icon: 'check' },
+
+                /** 色轮上的点（主配色） */
+                wheelDots: [],
+                /** 互补方向空心点 */
+                complementDots: [],
+                /** 类似色折线（按色相排序相邻点连接） */
+                analogousSegments: [],
+                /** 每个颜色指向其互补方向的线段 */
+                complementSegments: [],
+
+                /** DeepSeek 配置：字段名与全站 global_llm_config 对齐 */
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                        } catch (e) {
+                            console.warn('[color_palette] 配置解析失败', e);
+                        }
+                    }
+                    this.refreshIcons();
+                },
+
+                refreshIcons() {
+                    setTimeout(() => {
+                        try { lucide.createIcons(); } catch (e) { /* 忽略 */ }
+                    }, 50);
+                },
+
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2400);
+                },
+
+                /**
+                 * 保存配置：合并写入 localStorage，禁止覆盖其它工具字段
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'check-circle');
+                },
+
+                toggleMood(tag) {
+                    const i = this.selectedMoods.indexOf(tag);
+                    if (i >= 0) this.selectedMoods.splice(i, 1);
+                    else this.selectedMoods.push(tag);
+                },
+
+                /**
+                 * 规范化十六进制颜色，保证带 # 且合法
+                 * @param {string} hex
+                 * @returns {string}
+                 */
+                normalizeHex(hex) {
+                    if (!hex || typeof hex !== 'string') return '#888888';
+                    let h = hex.trim();
+                    if (!h.startsWith('#')) h = '#' + h;
+                    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(h)) {
+                        if (h.length === 4) {
+                            h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+                        }
+                        return h.toLowerCase();
+                    }
+                    return '#888888';
+                },
+
+                /**
+                 * HEX 转 RGB 分量
+                 * @param {string} hex
+                 * @returns {{r:number,g:number,b:number}|null}
+                 */
+                hexToRgb(hex) {
+                    const h = this.normalizeHex(hex);
+                    const n = parseInt(h.slice(1), 16);
+                    if (Number.isNaN(n)) return null;
+                    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+                },
+
+                /**
+                 * RGB 转 HSL，h 为 0–360
+                 */
+                rgbToHsl(r, g, b) {
+                    r /= 255; g /= 255; b /= 255;
+                    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                    let h = 0, s = 0;
+                    const l = (max + min) / 2;
+                    if (max !== min) {
+                        const d = max - min;
+                        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                        switch (max) {
+                            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                            case g: h = ((b - r) / d + 2) / 6; break;
+                            default: h = ((r - g) / d + 4) / 6;
+                        }
+                    }
+                    return { h: h * 360, s: s * 100, l: l * 100 };
+                },
+
+                /**
+                 * 展示用 RGB 字符串：优先 AI 返回，否则本地计算
+                 */
+                displayRgb(c) {
+                    if (c.rgb && typeof c.rgb === 'string' && c.rgb.trim()) return c.rgb.trim();
+                    const o = this.hexToRgb(c.hex);
+                    if (!o) return '';
+                    return `rgb(${o.r}, ${o.g}, ${o.b})`;
+                },
+
+                /**
+                 * 根据当前 palette 更新色轮几何（类似色连线、互补参考）
+                 */
+                updateWheelGeometry() {
+                    const cx = 120, cy = 120, r = 86;
+                    const dots = [];
+                    for (const c of this.palette) {
+                        const hex = this.normalizeHex(c.hex);
+                        const rgb = this.hexToRgb(hex);
+                        if (!rgb) continue;
+                        const { h } = this.rgbToHsl(rgb.r, rgb.g, rgb.b);
+                        const rad = (h - 90) * Math.PI / 180;
+                        dots.push({
+                            hex,
+                            h,
+                            x: cx + r * Math.cos(rad),
+                            y: cy + r * Math.sin(rad)
+                        });
+                    }
+                    this.wheelDots = dots;
+
+                    // 按色相排序，连接相邻点 → 类似色关系折线
+                    const sorted = [...dots].sort((a, b) => a.h - b.h);
+                    const aSeg = [];
+                    for (let i = 0; i < sorted.length - 1; i++) {
+                        aSeg.push({ x1: sorted[i].x, y1: sorted[i].y, x2: sorted[i + 1].x, y2: sorted[i + 1].y });
+                    }
+                    if (sorted.length >= 3) {
+                        aSeg.push({ x1: sorted[sorted.length - 1].x, y1: sorted[sorted.length - 1].y, x2: sorted[0].x, y2: sorted[0].y });
+                    }
+                    this.analogousSegments = aSeg;
+
+                    // 每个颜色一条指向互补方向的线 + 外圈空心互补点
+                    const cSeg = [];
+                    const cDots = [];
+                    for (const d of dots) {
+                        const compH = (d.h + 180) % 360;
+                        const rad = (compH - 90) * Math.PI / 180;
+                        const x2 = cx + r * Math.cos(rad);
+                        const y2 = cy + r * Math.sin(rad);
+                        cSeg.push({ x1: d.x, y1: d.y, x2, y2 });
+                        cDots.push({ x: x2, y: y2, hex: d.hex });
+                    }
+                    this.complementSegments = cSeg;
+                    this.complementDots = cDots;
+                },
+
+                renderHarmony(text) {
+                    if (!text) return '<p class="text-violet-600">暂无分析</p>';
+                    try {
+                        return marked.parse(text);
+                    } catch (e) {
+                        return '<p>' + text + '</p>';
+                    }
+                },
+
+                /**
+                 * 从模型输出中抽取 JSON（处理偶发的 markdown 代码块包裹）
+                 * @param {string} raw
+                 * @returns {object}
+                 */
+                parsePaletteJson(raw) {
+                    let s = raw.trim();
+                    const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+                    if (fence) s = fence[1].trim();
+                    return JSON.parse(s);
+                },
+
+                /**
+                 * 构建系统提示：约束 JSON 结构（含 rgb 字段）
+                 */
+                buildSystemPrompt() {
+                    return `你是专业色彩与视觉设计顾问。根据用户的场景、情绪与风格描述，生成一套协调的配色方案。
+必须只输出一个 JSON 对象，不要 markdown，不要代码块。JSON 结构严格如下：
+{
+  "palette": [
+    { "hex": "#RRGGBB", "rgb": "rgb(r, g, b)", "name": "中文色名（诗意、好记）", "usage": "使用建议（如主色/辅助/背景/强调等）" }
+  ],
+  "harmony": "色彩和谐度分析：说明色相关系（类似色/互补点缀/分裂互补等）、对比度与层次建议，可使用 Markdown 列表。",
+  "mood": "一句话概括整体情绪与风格气质"
+}
+要求：
+1. hex 必须合法 6 位；rgb 字符串与 hex 一致。
+2. palette 数组长度必须等于用户要求的数量。
+3. 配色要专业、可商用，避免荧光刺眼组合（除非用户明确要求）。
+4. harmony 用中文，条理清晰。`;
+                },
+
+                /**
+                 * 复制单色 HEX
+                 */
+                async copyColor(c) {
+                    const h = this.normalizeHex(c.hex);
+                    try {
+                        await navigator.clipboard.writeText(h);
+                        this.showToast('已复制 ' + h, 'copy');
+                    } catch (e) {
+                        const ta = document.createElement('textarea');
+                        ta.value = h;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        this.showToast('已复制 ' + h, 'copy');
+                    }
+                },
+
+                /** 生成 CSS 自定义属性 */
+                buildCssVariables() {
+                    if (!this.palette.length) return '/* 请先生成配色 */';
+                    let out = ':root {\n';
+                    this.palette.forEach((c, i) => {
+                        const name = (c.name || 'color' + (i + 1)).replace(/\s+/g, '-');
+                        out += `  --color-${i + 1}: ${this.normalizeHex(c.hex)}; /* ${name} */\n`;
+                    });
+                    out += '}\n';
+                    return out;
+                },
+
+                /** 生成 Tailwind theme.extend.colors 片段 */
+                buildTailwindExtend() {
+                    if (!this.palette.length) return '// 请先生成配色';
+                    const keys = this.palette.map((c, i) => {
+                        const slug = 'brand-' + (i + 1);
+                        return `    '${slug}': '${this.normalizeHex(c.hex)}', // ${c.name || ''}`;
+                    });
+                    return `// tailwind.config.js 中 extend:\nmodule.exports = {\n  theme: {\n    extend: {\n      colors: {\n${keys.join('\n')}\n      }\n    }\n  }\n}`;
+                },
+
+                async copyExport() {
+                    const t = this.exportTab === 'css' ? this.buildCssVariables() : this.buildTailwindExtend();
+                    try {
+                        await navigator.clipboard.writeText(t);
+                        this.showToast('已复制到剪贴板', 'check');
+                    } catch (e) {
+                        this.showToast('复制失败，请手动选择', 'alert-circle');
+                    }
+                },
+
+                /**
+                 * 主流程：请求 AI 生成配色 JSON
+                 * @param {boolean} isRegenerate 是否为「换一组」
+                 */
+                async generatePalette(isRegenerate) {
+                    this.errorMessage = '';
+                    if (!this.description.trim()) {
+                        this.showToast('请先填写场景描述', 'alert-circle');
+                        return;
+                    }
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    try {
+                        const moodLine = this.selectedMoods.length
+                            ? `用户选中的情绪标签：${this.selectedMoods.join('、')}。`
+                            : '';
+                        let userContent = `场景/情绪/风格描述：\n${this.description.trim()}\n\n${moodLine}\n请生成恰好 ${this.colorCount} 个颜色的 palette 数组。`;
+
+                        if (isRegenerate && this.palette.length) {
+                            const prev = this.palette.map((p) => this.normalizeHex(p.hex)).join(', ');
+                            userContent += `\n\n上一组 HEX 为：${prev}。请生成一组视觉差异明显的新配色，尽量避免重复相同或过于接近的 HEX。`;
+                        }
+
+                        // 闭包外无法访问 regenerateDifferent，改用局部变量控制 temperature
+                        const messages = [
+                            { role: 'system', content: this.buildSystemPrompt() },
+                            { role: 'user', content: userContent }
+                        ];
+
+                        const raw = await this.callAPIJsonWithTemp(messages, isRegenerate ? 0.9 : 0.65);
+                        const obj = this.parsePaletteJson(raw);
+
+                        if (!obj.palette || !Array.isArray(obj.palette)) {
+                            throw new Error('返回 JSON 缺少 palette 数组');
+                        }
+
+                        this.palette = obj.palette.map((item) => ({
+                            hex: item.hex,
+                            rgb: item.rgb || '',
+                            name: item.name || '未命名',
+                            usage: item.usage || ''
+                        }));
+
+                        this.harmonyText = obj.harmony || '';
+                        this.moodSummary = obj.mood || '';
+                        this.updateWheelGeometry();
+                        this.showToast(isRegenerate ? '已换新一组配色' : '配色生成完成', 'sparkles');
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMessage = e.message || '生成失败，请重试';
+                        this.showToast(this.errorMessage, 'alert-circle');
+                    } finally {
+                        this.isLoading = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                /**
+                 * 带 temperature 的 JSON 请求（换一组时略提高随机性）
+                 */
+                async callAPIJsonWithTemp(messages, temperature) {
+                    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages,
+                            response_format: { type: 'json_object' },
+                            stream: false,
+                            temperature
+                        })
+                    });
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${err}`);
+                    }
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content || '';
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

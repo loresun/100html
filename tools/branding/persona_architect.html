@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人设打造师 (Persona Architect)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 聊天气泡动画 */
+        .chat-enter-active,
+        .chat-leave-active {
+            transition: all 0.3s ease;
+        }
+
+        .chat-enter-from,
+        .chat-leave-to {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-user-check text-purple-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">Persona Architect</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="hidden md:flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'; saveConfig()"
+                                :class="{'bg-white shadow text-purple-600': apiConfig.model === 'deepseek-v4-flash', 'text-slate-500 hover:text-slate-700': apiConfig.model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1">
+                                <i class="fa-solid fa-bolt w-3 h-3"></i> V4 Flash (快)
+                            </button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'; saveConfig()"
+                                :class="{'bg-white shadow text-indigo-600': apiConfig.model === 'deepseek-v4-pro', 'text-slate-500 hover:text-slate-700': apiConfig.model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1">
+                                <i class="fa-solid fa-brain w-3 h-3"></i> V4 Pro (深)
+                            </button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-purple-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i> 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主布局容器 -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：交互问诊区 -->
+            <div class="w-full md:w-1/2 lg:w-2/5 bg-white border-r border-slate-200 flex flex-col h-full z-20">
+
+                <!-- 聊天记录区域 -->
+                <div ref="chatContainer" class="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-50">
+
+                    <!-- 初始欢迎语 -->
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-robot w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div
+                            class="bg-white border border-slate-200 rounded-2xl rounded-tl-none p-3 shadow-sm max-w-[85%] text-sm text-slate-700">
+                            <p>你好！我是你的人设架构师。打造一个有记忆点的账号，始于对自我的深度挖掘。</p>
+                            <p class="mt-2">请先告诉我你的**基本背景**（职业、擅长领域）以及**想做的账号类型**（如：职场干货、美妆种草）。</p>
+                            <p class="mt-2 text-xs text-slate-400">💡 我会通过几轮提问来完善你的画像。</p>
+                        </div>
+                    </div>
+
+                    <!-- 消息列表 -->
+                    <template v-for="(msg, index) in chatHistory" :key="index">
+                        <!-- 用户消息 -->
+                        <div v-if="msg.role === 'user'" class="flex gap-3 flex-row-reverse">
+                            <div
+                                class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                                <i class="fa-solid fa-user w-5 h-5 text-slate-600"></i>
+                            </div>
+                            <div
+                                class="bg-purple-600 text-white rounded-2xl rounded-tr-none p-3 shadow-sm max-w-[85%] text-sm">
+                                {{ msg.content }}
+                            </div>
+                        </div>
+
+                        <!-- AI 消息 -->
+                        <div v-else class="flex gap-3">
+                            <div
+                                class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                <i class="fa-solid fa-robot w-5 h-5 text-purple-600"></i>
+                            </div>
+                            <div
+                                class="bg-white border border-slate-200 rounded-2xl rounded-tl-none p-3 shadow-sm max-w-[85%] text-sm text-slate-700">
+                                <div v-html="renderMarkdown(msg.content)"></div>
+                                <!-- 深度思考展开 (V4 Pro) -->
+                                <div v-if="msg.reasoning" class="mt-2 pt-2 border-t border-slate-100">
+                                    <details class="text-xs text-slate-400 cursor-pointer">
+                                        <summary class="hover:text-purple-500 transition">查看深度思考过程</summary>
+                                        <div
+                                            class="mt-1 p-2 bg-slate-50 rounded text-slate-500 font-mono whitespace-pre-wrap">
+                                            {{ msg.reasoning }}</div>
+                                    </details>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- 正在输入动画 -->
+                    <div v-if="isTyping" class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-robot w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div
+                            class="bg-white border border-slate-200 rounded-2xl rounded-tl-none p-3 shadow-sm flex items-center gap-1 h-10">
+                            <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                            <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                            <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 底部输入框 -->
+                <div class="p-4 bg-white border-t border-slate-200 z-30">
+                    <div class="relative">
+                        <textarea v-model="userInput" @keydown.enter.prevent="sendMessage"
+                            :disabled="isTyping || isFinished" rows="3"
+                            :placeholder="isFinished ? '人设生成完毕，请在右侧查看结果 ✨' : '输入回答，按 Enter 发送...'"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 pr-12 focus:ring-2 focus:ring-purple-500 focus:outline-none transition text-sm resize-none disabled:bg-slate-100 disabled:cursor-not-allowed"></textarea>
+
+                        <button @click="sendMessage" :disabled="!userInput.trim() || isTyping || isFinished"
+                            class="absolute right-2 bottom-2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:bg-slate-300">
+                            <i class="fa-solid fa-paper-plane w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="flex justify-between mt-2 text-xs text-slate-400">
+                        <span v-if="!isFinished">当前进度: {{ step }}/{{ totalSteps }} (问诊阶段)</span>
+                        <span v-else class="text-purple-600 font-bold">🎉 诊断完成</span>
+                        <button v-if="chatHistory.length > 0" @click="resetChat"
+                            class="text-slate-400 hover:text-red-500 flex items-center gap-1">
+                            <i class="fa-solid fa-rotate w-3 h-3"></i> 重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：人设卡片结果 -->
+            <div class="flex-grow bg-slate-100 flex flex-col h-full overflow-hidden relative">
+
+                <!-- 空状态占位 -->
+                <div v-if="!finalPersona"
+                    class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+                    <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
+                        <i class="fa-solid fa-circle-user w-12 h-12 text-slate-300"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-600 mb-2">人设生成中...</h3>
+                    <p class="max-w-md text-slate-500">请在左侧与 AI 对话。完成 3-5 轮深度问诊后，你的专属差异化人设卡片将在这里生成。</p>
+                </div>
+
+                <!-- 结果展示区 -->
+                <div v-else class="flex-grow overflow-y-auto p-6 md:p-10">
+                    <div class="max-w-3xl mx-auto space-y-6 animate-fade-in">
+
+                        <!-- 1. 核心定位卡 (Identity Card) -->
+                        <div
+                            class="bg-white rounded-3xl p-8 border border-purple-100 shadow-xl relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 to-pink-500">
+                            </div>
+                            <div class="flex flex-col md:flex-row gap-6 items-start">
+                                <div
+                                    class="w-24 h-24 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center text-4xl flex-shrink-0 border-4 border-white shadow-md">
+                                    {{ finalPersona.emoji || '👤' }}
+                                </div>
+                                <div>
+                                    <h2 class="text-3xl font-black text-slate-900 mb-2">{{ finalPersona.name }}</h2>
+                                    <p class="text-purple-600 font-bold text-lg mb-4">{{ finalPersona.slogan }}</p>
+                                    <p class="text-slate-600 leading-relaxed">{{ finalPersona.bio }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. 差异化标签 (Tags) -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><i
+                                        class="fa-solid fa-tag w-4 h-4 text-blue-500"></i> 身份标签</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <span v-for="tag in finalPersona.tags.identity" :key="tag"
+                                        class="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-md font-bold">#{{ tag
+                                        }}</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><i
+                                        class="fa-solid fa-wand-magic-sparkles w-4 h-4 text-yellow-500"></i> 性格魅力</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <span v-for="tag in finalPersona.tags.personality" :key="tag"
+                                        class="px-2 py-1 bg-yellow-50 text-yellow-600 text-xs rounded-md font-bold">#{{
+                                        tag }}</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><i
+                                        class="fa-solid fa-crosshairs w-4 h-4 text-red-500"></i> 记忆锚点</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <span v-for="tag in finalPersona.tags.memory_hook" :key="tag"
+                                        class="px-2 py-1 bg-red-50 text-red-600 text-xs rounded-md font-bold">#{{ tag
+                                        }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. 内容风格指南 (Style Guide) -->
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                            <h3 class="text-lg font-bold text-slate-900 mb-4 border-l-4 border-purple-500 pl-3">内容风格指南
+                            </h3>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 class="font-bold text-sm text-slate-500 mb-2 uppercase tracking-wider">口头禅 / 常用语
+                                    </h4>
+                                    <ul class="space-y-2">
+                                        <li v-for="phrase in finalPersona.catchphrases" :key="phrase"
+                                            class="flex items-center gap-2 text-slate-700 bg-slate-50 p-2 rounded-lg">
+                                            <i class="fa-solid fa-comment-dots w-4 h-4 text-purple-400"></i>
+                                            "{{ phrase }}"
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm text-slate-500 mb-2 uppercase tracking-wider">视觉风格建议
+                                    </h4>
+                                    <ul class="space-y-2">
+                                        <li v-for="visual in finalPersona.visual_style" :key="visual"
+                                            class="flex items-center gap-2 text-slate-700 bg-slate-50 p-2 rounded-lg">
+                                            <i class="fa-solid fa-palette w-4 h-4 text-pink-400"></i>
+                                            {{ visual }}
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. 选题方向 (Topics) -->
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                            <h3 class="text-lg font-bold text-slate-900 mb-4 border-l-4 border-green-500 pl-3">首发爆款选题建议
+                            </h3>
+                            <div class="space-y-3">
+                                <div v-for="(topic, idx) in finalPersona.topics" :key="idx"
+                                    class="p-4 border border-green-100 bg-green-50/30 rounded-xl">
+                                    <h4 class="font-bold text-green-800 mb-1">{{ topic.title }}</h4>
+                                    <p class="text-sm text-slate-600">{{ topic.desc }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="flex justify-end gap-3 pt-4 pb-10">
+                            <button @click="exportPersona"
+                                class="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition flex items-center gap-2 shadow-lg">
+                                <i class="fa-solid fa-download w-5 h-5"></i> 导出人设卡片 (JSON)
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">全局 API 设置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-purple-500 outline-none"
+                            placeholder="sk-...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">默认模型</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-purple-500 outline-none bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue;
+
+        createApp({
+            setup() {
+
+
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                // 聊天状态
+                const chatHistory = ref([]);
+                const userInput = ref('');
+                const isTyping = ref(false);
+                const chatContainer = ref(null);
+
+                // 流程控制
+                const step = ref(0);
+                const totalSteps = 4; // 初始背景 -> 提问1 -> 提问2 -> 提问3 -> 生成
+                const isFinished = ref(false);
+
+                // 结果
+                const finalPersona = ref(null);
+
+                onMounted(() => {
+
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            apiConfig.value = { ...apiConfig.value, ...parsed };
+                            if (!apiConfig.value.model) apiConfig.value.model = 'deepseek-v4-flash';
+                        } catch (e) {
+                            console.error('JSON parse error:', e);
+                        }
+                    }
+                });
+
+                // 自动滚动到底部
+                const scrollToBottom = () => {
+                    nextTick(() => {
+                        if (chatContainer.value) {
+                            chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+                        }
+                    });
+                };
+
+                watch(chatHistory, () => {
+                    scrollToBottom();
+                }, { deep: true });
+
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                const renderMarkdown = (text) => {
+                    if (!text) return '';
+                    return marked.parse(text);
+                };
+
+                const sendMessage = async () => {
+                    const content = userInput.value.trim();
+                    if (!content) return;
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    // 添加用户消息
+                    chatHistory.value.push({ role: 'user', content });
+                    userInput.value = '';
+                    isTyping.value = true;
+                    step.value++;
+
+                    // 1. 判断是否到达最终生成阶段
+                    if (step.value >= totalSteps) {
+                        await generateFinalPersona();
+                    } else {
+                        await generateFollowUpQuestion();
+                    }
+                };
+
+                // 生成追问 (Step 1-3)
+                const generateFollowUpQuestion = async () => {
+                    const context = chatHistory.value.map(m => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`).join('\n');
+
+                    const prompt = `
+                        你是一个专业的新媒体人设顾问。目前正在进行一对一的用户访谈，目的是为了收集足够的信息，最终为用户生成一个差异化的人设定位方案。
+                        
+                        当前访谈进度：第 ${step.value} 轮 / 共 ${totalSteps} 轮。
+                        
+                        历史对话记录：
+                        ${context}
+                        
+                        请根据用户刚才的回答，提出**一个**最有价值的追问，以挖掘更深层的信息。
+                        追问方向参考：
+                        - 独特的个人经历或反差萌点
+                        - 目标受众的具体画像
+                        - 核心价值观或不想做什么（避雷点）
+                        - 视觉偏好或个人风格
+                        
+                        要求：
+                        - 只提一个问题，不要一次问一堆。
+                        - 语气亲切、专业，像真人聊天。
+                        - 简短有力。
+                    `;
+
+                    try {
+                        const response = await callDeepSeek(prompt);
+                        chatHistory.value.push({ role: 'assistant', content: response.content, reasoning: response.reasoning });
+                    } catch (e) {
+                        console.error(e);
+                        chatHistory.value.push({ role: 'assistant', content: "网络开小差了，请重试一下~" });
+                    } finally {
+                        isTyping.value = false;
+                    }
+                };
+
+                // 生成最终结果 (Final Step)
+                const generateFinalPersona = async () => {
+                    isFinished.value = true; // 锁定输入框
+                    chatHistory.value.push({ role: 'assistant', content: "收到！信息量已经足够了。正在为你构建专属的人设架构，请稍候，马上在右侧展示结果... 🚀" });
+
+                    const context = chatHistory.value.map(m => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`).join('\n');
+
+                    const systemPrompt = `
+                        你是一位顶尖的品牌人设架构师。根据用户的访谈记录，生成一份详细的、差异化的新媒体账号人设方案。
+                        请严格按照以下 JSON 格式返回结果。
+
+                        JSON 结构：
+                        {
+                            "name": "账号昵称建议 (富有记忆点)",
+                            "slogan": "一句话Slogan (定位清晰)",
+                            "emoji": "代表性Emoji (1个)",
+                            "bio": "简介文案 (100字以内，黄金3行)",
+                            "tags": {
+                                "identity": ["标签1", "标签2"],
+                                "personality": ["性格1", "性格2"],
+                                "memory_hook": ["记忆点1", "记忆点2"]
+                            },
+                            "catchphrases": ["口头禅1", "口头禅2", "口头禅3"],
+                            "visual_style": ["视觉建议1", "视觉建议2"],
+                            "topics": [
+                                {"title": "选题1标题", "desc": "选题简述"},
+                                {"title": "选题2标题", "desc": "选题简述"},
+                                {"title": "选题3标题", "desc": "选题简述"}
+                            ]
+                        }
+                    `;
+
+                    const userPrompt = `
+                        访谈记录如下：
+                        ${context}
+
+                        请基于以上信息，提炼出一个具有差异化竞争力的IP人设。
+                    `;
+
+                    try {
+                        // 这里必须强制 JSON 模式
+                        const responseText = await callDeepSeek(userPrompt, systemPrompt, true);
+                        const jsonStr = responseText.content.replace(/```json|```/g, '').trim();
+                        finalPersona.value = JSON.parse(jsonStr);
+                    } catch (e) {
+                        console.error(e);
+                        alert("生成最终人设时出现格式错误，请重试或查看控制台。");
+                    } finally {
+                        isTyping.value = false;
+                    }
+                };
+
+                // 通用 API 调用封装
+                const callDeepSeek = async (userPrompt, systemPrompt = null, jsonMode = false) => {
+                    const apiKey = apiConfig.value.deepseek;
+                    const model = apiConfig.value.model;
+
+                    const messages = [
+                        { role: "user", content: userPrompt }
+                    ];
+                    if (systemPrompt) {
+                        messages.unshift({ role: "system", content: systemPrompt });
+                    }
+
+                    const body = {
+                        model: model,
+                        messages: messages,
+                        stream: false
+                    };
+
+                    if (jsonMode) {
+                        body.response_format = { type: 'json_object' };
+                    }
+
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify(body)
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) throw new Error("API Request Failed");
+
+                    const data = await response.json();
+                    const choice = data.choices[0];
+
+                    return {
+                        content: choice.message.content,
+                        reasoning: choice.message.reasoning_content || null // V4 Pro 模型特有
+                    };
+                };
+
+                const resetChat = () => {
+                    if (confirm('确定要重置当前对话吗？')) {
+                        chatHistory.value = [];
+                        step.value = 0;
+                        isFinished.value = false;
+                        finalPersona.value = null;
+                        userInput.value = '';
+                    }
+                };
+
+                const exportPersona = () => {
+                    if (!finalPersona.value) return;
+                    const text = JSON.stringify(finalPersona.value, null, 2);
+                    const blob = new Blob([text], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `persona_${finalPersona.value.name}_${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                };
+
+                return {
+                    showSettings, apiConfig, saveConfig,
+                    chatHistory, userInput, isTyping, chatContainer,
+                    step, totalSteps, isFinished,
+                    finalPersona,
+                    sendMessage, resetChat, exportPersona, renderMarkdown
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/branding_persona_architect.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

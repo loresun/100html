@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial OS / HTML_SUPER</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Roboto', sans-serif;
+            perspective: 1200px; /* Key for 3D */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 3D World container */
+        .world {
+            transform-style: preserve-3d;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.1s;
+        }
+
+        /* Nav Bar 3D */
+        .dock {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%) translateZ(50px);
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            padding: 15px 25px;
+            border-radius: 40px;
+            display: flex;
+            gap: 20px;
+            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transform-style: preserve-3d;
+        }
+
+        .dock-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 12px;
+            transition: 0.3s;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .dock-icon:hover {
+            transform: scale(1.2) translateY(-10px);
+        }
+
+        /* Windows */
+        .window {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 600px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(30px) saturate(150%);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+            /* Centering */
+            margin-left: -300px;
+            margin-top: -200px;
+            padding: 30px;
+            
+            /* Initial State */
+            transform: translateZ(0px);
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .window.active {
+            opacity: 1;
+            transform: translateZ(100px); /* Bring forward */
+            pointer-events: auto;
+        }
+
+        /* Content inside window */
+        .win-header {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .close-btn {
+            width: 20px;
+            height: 20px;
+            background: #ff5f56;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        p { color: #333; line-height: 1.6; }
+
+        /* Floating Layers */
+        .layer-1 { transform: translateZ(20px); }
+        .layer-2 { transform: translateZ(40px); background: #fff; padding: 20px; border-radius: 10px; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .layer-3 { transform: translateZ(60px); position: absolute; bottom: 30px; right: 30px; font-size: 3rem; opacity: 0.2; }
+
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+
+    <div class="world" id="world">
+        
+        <!-- Window 1: Safari -->
+        <div class="window active" id="win-safari">
+            <div class="win-header">
+                <span>Safari</span>
+                <div class="close-btn" onclick="closeWin('win-safari')"></div>
+            </div>
+            <div class="layer-1">
+                <p>欢迎来到空间计算时代。</p>
+                <div class="layer-2">这是一个悬浮的 3D 窗口。</div>
+                <p>移动鼠标观察视差效果。背景和窗口层级会根据你的视角发生微小的偏移。</p>
+            </div>
+            <div class="layer-3"></div>
+        </div>
+
+        <!-- Window 2: Photos (Hidden) -->
+        <div class="window" id="win-photos">
+            <div class="win-header">
+                <span>Photos</span>
+                <div class="close-btn" onclick="closeWin('win-photos')"></div>
+            </div>
+            <div class="layer-1">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="height: 100px; background: #eee; border-radius: 8px;"></div>
+                    <div style="height: 100px; background: #ddd; border-radius: 8px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dock">
+            <div class="dock-icon" onclick="openWin('win-safari')">🧭</div>
+            <div class="dock-icon" onclick="openWin('win-photos')">🖼️</div>
+            <div class="dock-icon">⚙️</div>
+            <div class="dock-icon"><a href="index.html" style="text-decoration:none; color:inherit;">↩</a></div>
+        </div>
+
+    </div>
+
+    <script>
+        const world = document.getElementById('world');
+        
+        // Parallax Effect
+        document.addEventListener('mousemove', (e) => {
+            const x = (window.innerWidth / 2 - e.clientX) / 25;
+            const y = (window.innerHeight / 2 - e.clientY) / 25;
+            
+            // Rotate the whole world slightly
+            world.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
+        });
+
+        // Window Manager
+        function openWin(id) {
+            // Close all first (simple toggle for demo)
+            document.querySelectorAll('.window').forEach(w => {
+               w.classList.remove('active');
+               w.style.transform = 'translateZ(-100px) scale(0.9)'; // Push back effect
+            });
+            
+            const win = document.getElementById(id);
+            win.classList.add('active');
+            // Reset transform for CSS class to take over, but wait a tick
+            setTimeout(() => {
+                win.style.transform = ''; // Clear inline to let class 'active' translateZ(100px) work
+            }, 10);
+        }
+
+        function closeWin(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

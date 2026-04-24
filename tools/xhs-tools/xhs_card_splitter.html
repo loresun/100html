@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书卡片拆分器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: #f8fafc;
+        }
+
+        .card-shell {
+            width: 600px;
+            height: 800px;
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-content {
+            padding: 40px 44px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: rgba(15, 23, 42, 0.6);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .card-footer {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: rgba(15, 23, 42, 0.4);
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .card-body {
+            flex: 1;
+            padding: 12px 0;
+            overflow: hidden;
+        }
+
+        .card-body h1 {
+            font-size: 32px;
+            line-height: 1.2;
+            font-weight: 800;
+        }
+
+        .card-body h2 {
+            font-size: 24px;
+            line-height: 1.3;
+            font-weight: 700;
+        }
+
+        .card-body h3 {
+            font-size: 20px;
+            line-height: 1.4;
+            font-weight: 600;
+        }
+
+        .card-body p {
+            margin: 0 0 12px;
+        }
+
+        .card-body ul {
+            padding-left: 18px;
+            margin: 0 0 12px;
+        }
+
+        .card-body li {
+            margin-bottom: 6px;
+        }
+
+        .preview-wrapper {
+            transform: scale(0.52);
+            transform-origin: top left;
+            width: 312px;
+            height: 416px;
+        }
+
+        .prose-block strong {
+            color: #0f172a;
+        }
+
+        .hidden-export {
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            pointer-events: none;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="h-screen overflow-hidden" x-data="xhsSplitter()" x-init="init()">
+    <div class="h-full flex flex-col">
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow">
+                    <i class="fa-solid fa-scissors"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800">小红书卡片拆分器</h1>
+                    <p class="text-xs text-slate-500">Markdown 自动拆分 · 600×800 导出</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="../../index.html" class="text-slate-500 text-sm flex items-center gap-1 hover:text-rose-600">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                    返回首页
+                </a>
+                <button @click="exportAll" :disabled="isExporting || pages.length === 0"
+                    class="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md shadow-rose-200 flex items-center gap-2 disabled:opacity-60">
+                    <i class="fa-solid fa-download text-xs text-white"></i>
+                    <span x-text="isExporting ? '导出中...' : '批量导出'"></span>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 flex overflow-hidden">
+            <section class="w-96 bg-white border-r border-slate-200 flex flex-col">
+                <div class="p-4 border-b border-slate-100 bg-slate-50">
+                    <h2 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-pencil text-rose-500"></i>
+                        内容输入
+                    </h2>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-semibold text-slate-500">Markdown / 文本</label>
+                            <button @click="addSample" class="text-xs text-rose-500 hover:text-rose-600">填入示例</button>
+                        </div>
+                        <textarea x-model="inputText"
+                            class="mt-2 w-full h-64 p-3 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:ring-2 focus:ring-rose-200 focus:border-rose-400 outline-none resize-none font-mono"
+                            placeholder="输入 Markdown 或长文本"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">顶部文案</label>
+                            <input x-model="headerText"
+                                class="mt-1 w-full p-2 text-xs border border-slate-200 rounded bg-white"
+                                placeholder="@你的账号">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">底部文案</label>
+                            <input x-model="footerText"
+                                class="mt-1 w-full p-2 text-xs border border-slate-200 rounded bg-white"
+                                placeholder="关注收藏">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 border-t border-slate-100 pt-4">
+                        <h3 class="text-xs font-semibold text-slate-500">版式参数</h3>
+                        <div>
+                            <label class="text-xs text-slate-500">正文字号：<span x-text="fontSize"></span>px</label>
+                            <input type="range" min="16" max="26" step="1" x-model.number="fontSize"
+                                class="w-full mt-2">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">行距倍率：<span x-text="lineHeight"></span></label>
+                            <input type="range" min="1.3" max="1.9" step="0.05" x-model.number="lineHeight"
+                                class="w-full mt-2">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500">导出倍率</label>
+                            <select x-model.number="exportScale"
+                                class="mt-2 w-full p-2 text-xs border border-slate-200 rounded bg-white">
+                                <option value="1">1x（600×800）</option>
+                                <option value="2">2x（1200×1600）</option>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">预览为缩放模式，导出使用隐藏原尺寸卡片避免缩放误差。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="flex-1 overflow-auto bg-slate-100 p-8">
+                <div class="flex flex-wrap gap-8">
+                    <template x-for="(page, index) in pages" :key="index">
+                        <div class="space-y-3">
+                            <div class="preview-wrapper">
+                                <div class="card-shell preview-card" :data-card-index="index">
+                                    <div class="card-content" :style="contentStyle">
+                                        <div class="card-header">
+                                            <span x-text="headerText"></span>
+                                            <span x-text="`${index + 1}/${pages.length}`"></span>
+                                        </div>
+                                        <div class="card-body prose-block" :style="bodyStyle">
+                                            <div x-html="page"></div>
+                                        </div>
+                                        <div class="card-footer" x-text="footerText"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button @click="exportOne(index)"
+                                class="w-full text-xs text-slate-600 hover:text-rose-600 flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-image text-[10px]"></i>
+                                单张导出
+                            </button>
+                        </div>
+                    </template>
+
+                    <div x-show="pages.length === 0"
+                        class="w-full flex items-center justify-center h-full text-slate-400">
+                        <p>输入内容后，右侧将自动拆分预览。</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="hidden-export" x-ref="exportContainer"></div>
+
+    <div class="hidden-export" aria-hidden="true">
+        <div class="card-shell" x-ref="measureCard">
+            <div class="card-content" :style="contentStyle">
+                <div class="card-header"></div>
+                <div class="card-body prose-block" :style="bodyStyle" x-ref="measureBody"></div>
+                <div class="card-footer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function xhsSplitter() {
+            return {
+                inputText: '',
+                headerText: '@我的小红书',
+                footerText: '点赞收藏不迷路',
+                fontSize: 20,
+                lineHeight: 1.6,
+                exportScale: 1,
+                pages: [],
+                isExporting: false,
+                contentHeight: 0,
+                splitTimer: null,
+                init() {
+                    marked.setOptions({ breaks: true });
+                    this.updateContentHeight();
+                    this.$watch('fontSize', () => this.scheduleSplit());
+                    this.$watch('lineHeight', () => this.scheduleSplit());
+                    window.addEventListener('resize', () => this.updateContentHeight());
+                    if (!this.inputText.trim()) {
+                        this.addSample();
+                    }
+                },
+                get contentStyle() {
+                    return `font-size: ${this.fontSize}px; line-height: ${this.lineHeight};`;
+                },
+                get bodyStyle() {
+                    return `font-size: ${this.fontSize}px; line-height: ${this.lineHeight};`;
+                },
+                refreshIcons() {
+                    // 初始化图标已由 Font Awesome 自动处理
+                },
+                updateContentHeight() {
+                    this.$nextTick(() => {
+                        if (this.$refs.measureBody) {
+                            this.contentHeight = this.$refs.measureBody.clientHeight;
+                            this.scheduleSplit();
+                        }
+                    });
+                },
+                scheduleSplit() {
+                    clearTimeout(this.splitTimer);
+                    this.splitTimer = setTimeout(() => this.splitContent(), 120);
+                },
+                addSample() {
+                    this.inputText = `# 小红书爆款长文拆分\n\n分享一套写作框架，帮你快速拆成多张卡片。\n\n## 1. 开头要抛出痛点\n- 别用大段开场白\n- 直接告诉读者收益\n\n## 2. 主体用清单\n每个要点尽量一句话，读者更容易截图收藏。\n\n## 3. 结尾留下动作\n“收藏 + 关注”会大幅提升转化率。\n\n> 小贴士：每页最好控制在 4~6 行内容。`;
+                },
+                tokenToHtml(token) {
+                    return marked.parser([token]);
+                },
+                measureHeight(html) {
+                    this.$refs.measureBody.innerHTML = html;
+                    return this.$refs.measureBody.scrollHeight;
+                },
+                splitTextToChunks(text) {
+                    const parts = [];
+                    const segments = text.split(/([。！？.!?；;])/).filter(Boolean);
+                    for (let i = 0; i < segments.length; i += 2) {
+                        const chunk = (segments[i] || '') + (segments[i + 1] || '');
+                        if (chunk.trim()) parts.push(chunk.trim());
+                    }
+                    if (parts.length === 0) {
+                        return [text];
+                    }
+                    const refined = [];
+                    parts.forEach((segment) => {
+                        if (segment.length <= 80) {
+                            refined.push(segment);
+                        } else {
+                            for (let i = 0; i < segment.length; i += 60) {
+                                refined.push(segment.slice(i, i + 60));
+                            }
+                        }
+                    });
+                    return refined;
+                },
+                splitToken(token) {
+                    if (token.type === 'paragraph' && token.text) {
+                        const chunks = this.splitTextToChunks(token.text);
+                        return chunks.map((chunk) => marked.parse(chunk));
+                    }
+                    if (token.type === 'text' && token.raw) {
+                        const chunks = this.splitTextToChunks(token.raw);
+                        return chunks.map((chunk) => marked.parse(chunk));
+                    }
+                    return [this.tokenToHtml(token)];
+                },
+                splitContent() {
+                    if (!this.inputText.trim()) {
+                        this.pages = [];
+                        return;
+                    }
+                    const tokens = marked.lexer(this.inputText);
+                    const pages = [];
+                    let current = [];
+                    const pushPage = () => {
+                        if (current.length) {
+                            pages.push(current.join(''));
+                            current = [];
+                        }
+                    };
+
+                    tokens.forEach((token) => {
+                        const html = this.tokenToHtml(token).trim();
+                        if (!html) return;
+                        current.push(html);
+                        if (this.measureHeight(current.join('')) > this.contentHeight) {
+                            current.pop();
+                            if (current.length === 0) {
+                                const chunks = this.splitToken(token);
+                                chunks.forEach((chunkHtml) => {
+                                    current.push(chunkHtml);
+                                    if (this.measureHeight(current.join('')) > this.contentHeight) {
+                                        current.pop();
+                                        pushPage();
+                                        current = [chunkHtml];
+                                    }
+                                });
+                            } else {
+                                pushPage();
+                                current = [html];
+                            }
+                        }
+                    });
+                    pushPage();
+                    this.pages = pages;
+                    this.$nextTick(() => this.refreshIcons());
+                },
+                async exportCanvas(cardNode, index) {
+                    const cloned = cardNode.cloneNode(true);
+                    cloned.style.transform = 'none';
+                    cloned.style.margin = '0';
+                    cloned.style.boxShadow = 'none';
+                    this.$refs.exportContainer.innerHTML = '';
+                    this.$refs.exportContainer.appendChild(cloned);
+
+                    const canvas = await html2canvas(cloned, {
+                        backgroundColor: '#ffffff',
+                        scale: this.exportScale,
+                        width: 600,
+                        height: 800,
+                        useCORS: true
+                    });
+
+                    const link = document.createElement('a');
+                    link.download = `xhs-card-${index + 1}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                },
+                async exportOne(index) {
+                    const card = this.getCardNode(index);
+                    if (!card) return;
+                    await this.exportCanvas(card, index);
+                },
+                async exportAll() {
+                    this.isExporting = true;
+                    for (let i = 0; i < this.pages.length; i += 1) {
+                        const card = this.getCardNode(i);
+                        if (card) {
+                            await this.exportCanvas(card, i);
+                        }
+                    }
+                    this.isExporting = false;
+                },
+                getCardNode(index) {
+                    return document.querySelector(`.preview-card[data-card-index=\"${index}\"]`);
+                }
+            };
+        }
+
+        window.addEventListener('load', () => {
+            // Font Awesome 自动处理
+        });
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_generation_xhs_card_splitter.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

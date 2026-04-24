@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM 流式输出 - 打字机效果演示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .code-editor {
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+        }
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 min-h-screen" x-data="streamDemo()">
+
+    <div class="max-w-6xl mx-auto px-4 py-8 pb-24">
+        
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <div class="inline-flex items-center gap-3 mb-4">
+                <a href="./llm-api-demo.html" class="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition">
+                    <i class="fa-solid fa-arrow-left text-white"></i>
+                </a>
+                <span class="px-3 py-1 bg-purple-500/30 text-purple-300 rounded-full text-sm font-medium">
+                    进阶教程
+                </span>
+            </div>
+            <h1 class="text-4xl font-bold text-white mb-3">
+                <i class="fa-solid fa-wave-square mr-3"></i>
+                流式输出演示
+            </h1>
+            <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+                理解 LLM 的"打字机效果"：如何实现实时显示 AI 回复，无需等待完整响应
+            </p>
+        </header>
+
+        <!-- 步骤导航 -->
+        <div class="flex justify-center gap-4 mb-8 flex-wrap">
+            <template x-for="(step, index) in steps" :key="index">
+                <button 
+                    @click="currentStep = index"
+                    :class="[
+                        'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                        currentStep === index 
+                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' 
+                            : 'bg-white/10 text-slate-400 hover:bg-white/20'
+                    ]"
+                >
+                    <span class="mr-2" x-text="index + 1"></span>
+                    <span x-text="step.title"></span>
+                </button>
+            </template>
+        </div>
+
+        <!-- 步骤内容 -->
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-8 mb-8">
+            
+            <!-- 步骤 1: 什么是流式输出 -->
+            <div x-show="currentStep === 0">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-purple-500 rounded-lg mr-3 text-sm">1</span>
+                    什么是流式输出？
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <p class="text-slate-300 mb-4 leading-relaxed">
+                            <strong class="text-white">流式输出 (Streaming)</strong> 是一种实时传输技术，AI 会一点一点地返回结果，而不是等待全部生成完毕后再一起返回。
+                        </p>
+                        
+                        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                            <h3 class="text-white font-semibold mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-stopwatch text-purple-400"></i>
+                                对比
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                        <i class="fa-solid fa-times text-red-400"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-white font-medium">传统模式 (等待)</div>
+                                        <div class="text-slate-400 text-sm">AI 先思考 10 秒 → 一次性返回全部内容</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                        <i class="fa-solid fa-check text-green-400"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-white font-medium">流式模式 (实时)</div>
+                                        <div class="text-slate-400 text-sm">AI 边思考边返回 → 用户实时看到内容增加</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                            <h3 class="text-white font-semibold mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-bolt text-yellow-400"></i>
+                                为什么需要流式输出？
+                            </h3>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex items-center gap-3 text-slate-300">
+                                    <i class="fa-solid fa-clock text-blue-400"></i>
+                                    <span>用户体验更好：不用长时间等待</span>
+                                </div>
+                                <div class="flex items-center gap-3 text-slate-300">
+                                    <i class="fa-solid fa-eye text-blue-400"></i>
+                                    <span>实时反馈：看到 AI "正在思考"</span>
+                                </div>
+                                <div class="flex items-center gap-3 text-slate-300">
+                                    <i class="fa-solid fa-stop text-blue-400"></i>
+                                    <span>提前中断：不想看了可以随时停止</span>
+                                </div>
+                                <div class="flex items-center gap-3 text-slate-300">
+                                    <i class="fa-solid fa-battery-half text-blue-400"></i>
+                                    <span>降低延迟感知：感觉响应更快</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤 2: 技术原理 -->
+            <div x-show="currentStep === 1">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-purple-500 rounded-lg mr-3 text-sm">2</span>
+                    技术原理
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                        <div class="flex items-center justify-between px-4 py-2 bg-slate-700 border-b border-slate-600">
+                            <span class="text-sm text-white font-medium">HTTP 请求对比</span>
+                        </div>
+                        <div class="p-6 code-editor text-sm text-slate-300 overflow-x-auto">
+<pre><code class="language-javascript">// 传统请求：等待完整响应
+const response = await fetch(url, { stream: false });
+const data = await response.json();
+// AI 生成 1000 字 = 等待 10 秒 → 一次性收到 1000 字
+
+// 流式请求：实时接收数据块
+const response = await fetch(url, { stream: true });
+const reader = response.body.getReader();
+while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    // 每收到一批数据就处理
+    const chunk = new TextDecoder().decode(value);
+    processChunk(chunk);
+}
+// AI 生成 1000 字 = 每隔几十毫秒收到一批数据 → 实时显示</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                        <h4 class="text-blue-400 font-medium mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-info-circle"></i>
+                            数据块格式
+                        </h4>
+                        <p class="text-slate-300 text-sm">
+                            服务器返回的数据使用 <code class="bg-blue-500/20 px-2 py-0.5 rounded">data: {...}</code> 格式，每行一个数据块。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤 3: 代码实现 -->
+            <div x-show="currentStep === 2">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-purple-500 rounded-lg mr-3 text-sm">3</span>
+                    代码实现
+                </h2>
+                
+                <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 mb-6">
+                    <div class="flex items-center justify-between px-4 py-2 bg-slate-700 border-b border-slate-600">
+                        <span class="text-sm text-white font-medium">使用 simple-llm-api.js 的流式方法</span>
+                    </div>
+                    <div class="p-6 code-editor text-sm text-slate-300 overflow-x-auto">
+<pre><code class="language-javascript">// 创建 LLM 客户端
+const llm = createLLM('your-api-key');
+
+// 方法1: 使用 for...of 遍历
+async function demo1() {
+    for await (const chunk of llm.stream('讲一个故事')) {
+        // 每收到一个数据块就追加到显示区域
+        document.getElementById('output').innerHTML += chunk;
+    }
+}
+
+// 方法2: 使用 Generator 手动控制
+async function demo2() {
+    const generator = llm.stream('写一首诗');
+    let result = '';
+    
+    while (true) {
+        const { value, done } = await generator.next();
+        if (done) break;
+        result += value;
+        updateDisplay(result);  // 实时更新显示
+    }
+}
+
+// 方法3: 停止流式输出
+async function demo3() {
+    const generator = llm.stream('写很长的文章');
+    let result = '';
+    
+    for await (const chunk of generator) {
+        result += chunk;
+        updateDisplay(result);
+        
+        // 如果用户点击停止，或者达到某个条件
+        if (shouldStop) {
+            generator.return();  // 停止生成
+            break;
+        }
+    }
+}</code></pre>
+                    </div>
+                </div>
+
+                <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                    <h4 class="text-yellow-400 font-medium mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        关键点
+                    </h4>
+                    <ul class="text-slate-300 text-sm space-y-2">
+                        <li>• 使用 <code class="bg-yellow-500/20 px-1 rounded">for await...of</code> 遍历生成器</li>
+                        <li>• 每个 <code class="bg-yellow-500/20 px-1 rounded">chunk</code> 是一段文本，不是完整回复</li>
+                        <li>• 调用 <code class="bg-yellow-500/20 px-1 rounded">generator.return()</code> 可以提前停止</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 4: 实战演示 -->
+            <div x-show="currentStep === 3">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-purple-500 rounded-lg mr-3 text-sm">4</span>
+                    实战：实时查看 AI 回复
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- 配置区域 -->
+                    <div class="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-key text-yellow-400"></i>
+                            配置
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-slate-400 mb-2">API Key</label>
+                                <input 
+                                    type="password" 
+                                    x-model="apiKey"
+                                    placeholder="sk-..."
+                                    class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                                >
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm text-slate-400 mb-2">选择内容</label>
+                                <select 
+                                    x-model="selectedPrompt"
+                                    class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                >
+                                    <option value="写一首关于春天的现代诗">写一首关于春天的现代诗</option>
+                                    <option value="用50个字介绍北京的特点">用50个字介绍北京的特点</option>
+                                    <option value="讲一个程序员冷笑话">讲一个程序员冷笑话</option>
+                                    <option value="list: 10个提升效率的工作建议">10个提升效率的工作建议</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                <button 
+                                    @click="startStreaming"
+                                    :disabled="!apiKey || isStreaming"
+                                    class="flex-1 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+                                    :class="!apiKey || isStreaming ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-600 text-white'"
+                                >
+                                    <i class="fa-solid fa-play"></i>
+                                    <span x-text="isStreaming ? '生成中...' : '开始流式输出'"></span>
+                                </button>
+                                
+                                <button 
+                                    @click="stopStreaming"
+                                    :disabled="!isStreaming"
+                                    class="px-4 py-3 rounded-lg font-medium transition-all"
+                                    :disabled="!isStreaming"
+                                    :class="!isStreaming ? 'bg-white/10 text-slate-600 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'"
+                                >
+                                    <i class="fa-solid fa-stop"></i>
+                                </button>
+                                
+                                <button 
+                                    @click="clearOutput"
+                                    class="px-4 py-3 rounded-lg font-medium transition-all bg-white/10 text-slate-300 hover:bg-white/20"
+                                >
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 结果展示 -->
+                    <div class="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-robot text-purple-400"></i>
+                            AI 回复
+                        </h3>
+                        
+                        <div id="output-area" class="min-h-[300px] bg-slate-900 rounded-lg p-4 overflow-y-auto">
+                            <template x-if="!streamingContent && !isStreaming">
+                                <div class="h-full flex flex-col items-center justify-center text-slate-500">
+                                    <i class="fa-solid fa-wave-square text-4xl mb-3"></i>
+                                    <p>点击"开始流式输出"查看效果</p>
+                                </div>
+                            </template>
+                            
+                            <template x-if="isStreaming">
+                                <div class="flex items-center gap-2 text-purple-400">
+                                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                    <span>AI 正在思考...</span>
+                                </div>
+                            </template>
+                            
+                            <div 
+                                class="text-slate-300 whitespace-pre-wrap" 
+                                x-html="formatStreamingContent()"
+                            ></div>
+                        </div>
+                        
+                        <div x-show="stats" class="mt-4 pt-4 border-t border-white/10 flex justify-between text-sm">
+                            <span class="text-slate-400">
+                                <i class="fa-solid fa-gauge mr-1"></i>
+                                <span x-text="stats"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤 5: 进阶技巧 -->
+            <div x-show="currentStep === 4">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <span class="w-8 h-8 inline-flex items-center justify-center bg-green-500 rounded-lg mr-3 text-sm">5</span>
+                    进阶技巧与最佳实践
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-palette text-blue-400"></i>
+                            打字机效果
+                        </h3>
+                        <p class="text-slate-400 text-sm mb-4">
+                            让文字一个一个出现，更有"AI 正在打字"的感觉。
+                        </p>
+                        <div class="bg-slate-900 rounded-lg p-4 code-editor text-xs text-slate-400">
+<pre>// 打字机效果：添加短暂延迟
+for await (const chunk of llm.stream(text)) {
+    for (const char of chunk) {
+        output += char;
+        updateDisplay(output);
+        await sleep(30);  // 每个字延迟 30ms
+    }
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-green-400"></i>
+                            Markdown 渲染
+                        </h3>
+                        <p class="text-slate-400 text-sm mb-4">
+                            在流式输出的同时渲染 Markdown 格式。
+                        </p>
+                        <div class="bg-slate-900 rounded-lg p-4 code-editor text-xs text-slate-400">
+<pre>// 使用 marked.js 实时渲染
+for await (const chunk of llm.stream(text)) {
+    rawOutput += chunk;
+    html = marked.parse(rawOutput);
+    display.innerHTML = html;
+}</pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-6">
+                    <h3 class="text-green-400 font-medium mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        完整模板代码
+                    </h3>
+                    <div class="bg-slate-900 rounded-lg p-4 code-editor text-xs text-slate-400 overflow-x-auto max-h-64">
+<pre>&lt;script src="simple-llm-api.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+async function streamDemo() {
+    const llm = createLLM('your-api-key');
+    const output = document.getElementById('output');
+    let content = '';
+    
+    // 流式输出 + 打字机效果
+    for await (const chunk of llm.stream('你的问题')) {
+        for (const char of chunk) {
+            content += char;
+            output.innerHTML = marked.parse(content);
+            await sleep(30);
+        }
+    }
+}
+&lt;/script&gt;</pre>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 底部导航 -->
+        <div class="flex justify-between items-center">
+            <button 
+                @click="currentStep = Math.max(0, currentStep - 1)"
+                :disabled="currentStep === 0"
+                class="px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2"
+                :class="currentStep === 0 ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-white/10 text-white hover:bg-white/20'"
+            >
+                <i class="fa-solid fa-arrow-left"></i>
+                上一步
+            </button>
+            
+            <div class="flex items-center gap-2 text-sm text-slate-500">
+                <span x-text="currentStep + 1"></span> / <span x-text="steps.length"></span>
+            </div>
+            
+            <button 
+                @click="currentStep = Math.min(steps.length - 1, currentStep + 1)"
+                :disabled="currentStep === steps.length - 1"
+                class="px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2"
+                :class="currentStep === steps.length - 1 ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-600 text-white'"
+            >
+                下一步
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <script src="simple-llm-api.js"></script>
+    <script>
+        function streamDemo() {
+            return {
+                currentStep: 0,
+                steps: [
+                    { title: '什么是流式' },
+                    { title: '技术原理' },
+                    { title: '代码实现' },
+                    { title: '实战演示' },
+                    { title: '进阶技巧' }
+                ],
+                apiKey: '',
+                selectedPrompt: '写一首关于春天的现代诗',
+                streamingContent: '',
+                isStreaming: false,
+                stats: '',
+                abortController: null,
+
+                async startStreaming() {
+                    if (!this.apiKey) return;
+                    
+                    this.isStreaming = true;
+                    this.streamingContent = '';
+                    this.stats = '';
+                    const startTime = Date.now();
+                    let chunkCount = 0;
+                    let charsCount = 0;
+                    
+                    try {
+                        const llm = createLLM(this.apiKey);
+                        const generator = llm.stream(this.selectedPrompt);
+                        
+                        for await (const chunk of generator) {
+                            if (!this.isStreaming) break;
+                            
+                            this.streamingContent += chunk;
+                            chunkCount++;
+                            charsCount += chunk.length;
+                            
+                            // 更新统计
+                            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                            this.stats = `已接收 ${chunkCount} 个数据块，${charsCount} 个字符，耗时 ${elapsed}s`;
+                        }
+                    } catch (e) {
+                        if (e.name !== 'AbortError') {
+                            this.streamingContent = '错误: ' + e.message;
+                        }
+                    } finally {
+                        this.isStreaming = false;
+                    }
+                },
+
+                stopStreaming() {
+                    this.isStreaming = false;
+                },
+
+                clearOutput() {
+                    this.streamingContent = '';
+                    this.stats = '';
+                },
+
+                formatStreamingContent() {
+                    // 简单的换行处理
+                    return this.streamingContent
+                        .replace(/\n/g, '<br>')
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                }
+            }
+        }
+    </script>
+
+    <!-- HELP-WIDGET-START -->
+    <script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/streaming_demo.md"></script>
+    <!-- HELP-WIDGET-END -->
+</body>
+</html>

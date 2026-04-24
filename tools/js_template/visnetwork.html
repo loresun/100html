@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vis-Network 动态网络</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #eef2ff; color: #3730a3; }
+    .glass { background: white; border: 1px solid #c7d2fe; box-shadow: 0 4px 6px -1px rgba(67, 56, 202, 0.05); }
+    #mynetwork { width: 100%; height: 600px; background: #ffffff; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold text-indigo-900">🕸️ Vis-Network</h1>
+    <p class="text-indigo-800/60 mt-2 text-lg">处理大量动态、交互式数据的网络可视化库</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-indigo-200 text-indigo-800 rounded-lg hover:bg-indigo-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+  <!-- 左侧控制面板 -->
+  <div class="glass p-6 rounded-2xl lg:col-span-1 h-fit space-y-6">
+    <h3 class="font-bold text-indigo-900 border-b border-indigo-100 pb-2">⚙️ 网络配置</h3>
+
+    <div>
+      <label class="block text-sm font-bold text-indigo-700 mb-2">节点形状</label>
+      <select onchange="updateShape(this.value)" class="w-full p-2 border border-indigo-200 rounded text-sm bg-indigo-50">
+        <option value="dot">圆点 (Dot)</option>
+        <option value="box">方块 (Box)</option>
+        <option value="diamond">菱形 (Diamond)</option>
+        <option value="hexagon">六边形 (Hexagon)</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-bold text-indigo-700 mb-2">物理引擎</label>
+      <div class="flex gap-2">
+        <button onclick="togglePhysics(true)" class="flex-1 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200">开启</button>
+        <button onclick="togglePhysics(false)" class="flex-1 py-1 bg-white border border-indigo-200 text-indigo-700 rounded text-sm hover:bg-indigo-50">关闭</button>
+      </div>
+    </div>
+    
+    <div class="pt-4 border-t border-indigo-100">
+      <div id="eventSpan" class="text-xs text-indigo-500 font-mono min-h-[1rem]">等待交互...</div>
+    </div>
+  </div>
+
+  <!-- 网络图容器 -->
+  <div class="lg:col-span-3 rounded-2xl overflow-hidden shadow-lg border border-indigo-200 relative">
+    <div id="mynetwork"></div>
+    <div class="absolute bottom-4 left-4 bg-white/80 p-2 rounded text-xs text-indigo-400 pointer-events-none">
+      滚轮缩放 | 拖拽平移 | 点击节点
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // 1. 创建节点
+  const nodes = new vis.DataSet([
+    { id: 1, label: 'Node 1', group: 'admin' },
+    { id: 2, label: 'Node 2', group: 'user' },
+    { id: 3, label: 'Node 3', group: 'user' },
+    { id: 4, label: 'Node 4', group: 'guest' },
+    { id: 5, label: 'Node 5', group: 'guest' },
+    { id: 6, label: 'Node 6', group: 'server' },
+    { id: 7, label: 'Node 7', group: 'server' },
+    { id: 8, label: 'Node 8', group: 'server' }
+  ]);
+
+  // 2. 创建边
+  const edges = new vis.DataSet([
+    { from: 1, to: 2 },
+    { from: 1, to: 3 },
+    { from: 2, to: 4 },
+    { from: 2, to: 5 },
+    { from: 3, to: 6 },
+    { from: 3, to: 7 },
+    { from: 6, to: 8 }
+  ]);
+
+  // 3. 网络图配置
+  const container = document.getElementById('mynetwork');
+  const data = { nodes: nodes, edges: edges };
+  const options = {
+    nodes: {
+      shape: 'dot',
+      size: 16,
+      font: { face: 'Inter', color: '#333' }
+    },
+    edges: {
+      color: '#a5b4fc', // indigo-300
+      smooth: { type: 'continuous' }
+    },
+    physics: {
+      enabled: true,
+      barnesHut: { gravitationalConstant: -2000, centralGravity: 0.3, springLength: 95 }
+    },
+    groups: {
+      admin: { color: { background: '#ef4444', border: '#b91c1c' } }, // red
+      user:  { color: { background: '#3b82f6', border: '#1d4ed8' } }, // blue
+      guest: { color: { background: '#10b981', border: '#047857' } }, // green
+      server:{ color: { background: '#f59e0b', border: '#b45309' } }  // amber
+    }
+  };
+
+  // 4. 初始化
+  const network = new vis.Network(container, data, options);
+
+  // 5. 事件监听
+  network.on("click", function (params) {
+    const info = params.nodes.length > 0 ? `Selected: Node ${params.nodes[0]}` : "Clicked empty space";
+    document.getElementById('eventSpan').innerText = info;
+  });
+
+  // 6. 动态控制
+  function updateShape(shape) {
+    options.nodes.shape = shape;
+    network.setOptions(options);
+  }
+
+  function togglePhysics(state) {
+    options.physics.enabled = state;
+    network.setOptions(options);
+  }
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

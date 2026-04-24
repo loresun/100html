@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内容合规审查助手</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            /* Indigo */
+            --bg-color: #eef2ff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Top Navigation -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-shield-halved text-indigo-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">Content Review</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-indigo-50 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-indigo-600': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-indigo-600': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showRuleSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-file-contract h-4 w-4"></i> 审查规则配置
+                        </button>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i> API 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Layout -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- Left: Input & Controls -->
+            <div
+                class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-indigo-100 flex flex-col h-full z-20 shadow-lg">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+
+                    <!-- Input Content -->
+                    <div class="space-y-3 flex-grow flex flex-col">
+                        <label class="block text-sm font-bold text-slate-700">待审查内容 (Content)</label>
+                        <textarea v-model="inputContent" ref="textareaRef" @input="adjustHeight"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition resize-none text-sm leading-relaxed min-h-[300px] overflow-hidden"
+                            placeholder="在此粘贴需要审查的文章、文案或评论..."></textarea>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button @click="startReview" :disabled="isGenerating || !inputContent"
+                        class="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner animate-spin w-5 h-5"></i>
+                        <span v-else>🔍 开始审查</span>
+                    </button>
+
+                    <!-- Status -->
+                    <div class="text-xs text-center text-slate-400">
+                        {{ statusText }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Output -->
+            <div class="flex-grow bg-[#eef2ff] p-4 md:p-8 overflow-y-auto h-full relative">
+
+                <!-- Empty State -->
+                <div v-if="!reviewResult && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                    <i class="fa-solid fa-file-shield w-24 h-24 mb-4 text-indigo-300"></i>
+                    <p class="text-lg text-indigo-900/50">输入内容并配置规则，AI 帮您把关</p>
+                </div>
+
+                <!-- Loading State -->
+                <div v-else-if="isGenerating && !reviewResult"
+                    class="h-full flex flex-col items-center justify-center text-slate-400">
+                    <i class="fa-solid fa-spinner animate-spin w-16 h-16 mb-4 text-indigo-500"></i>
+                    <p class="text-indigo-900/70 animate-pulse">正在进行合规性审查...</p>
+                    <div v-if="reasoningContent"
+                        class="mt-4 max-w-lg w-full bg-white/50 p-4 rounded-lg text-xs font-mono text-slate-600 max-h-32 overflow-hidden relative">
+                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-white/80 pointer-events-none">
+                        </div>
+                        {{ reasoningContent }}
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div v-else class="max-w-4xl mx-auto space-y-6">
+
+                    <!-- Reasoning (V4 Pro) -->
+                    <div v-if="reasoningContent"
+                        class="bg-white rounded-xl shadow-sm border border-indigo-100 overflow-hidden">
+                        <details class="group">
+                            <summary
+                                class="flex items-center justify-between p-4 cursor-pointer bg-indigo-50/50 hover:bg-indigo-50 transition">
+                                <span class="font-bold text-indigo-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-brain w-4 h-4"></i> 深度思考过程
+                                </span>
+                                <i
+                                    class="fa-solid fa-chevron-down w-4 h-4 text-indigo-400 transition-transform group-open:rotate-180"></i>
+                            </summary>
+                            <div
+                                class="p-4 text-sm text-slate-600 font-mono whitespace-pre-wrap bg-slate-50 border-t border-indigo-100">
+                                {{ reasoningContent }}
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Score Card -->
+                    <div class="bg-white rounded-xl shadow-lg border border-indigo-100 overflow-hidden">
+                        <div class="p-6 flex items-center justify-between border-b border-slate-100">
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-800">审查报告</h2>
+                                <p class="text-slate-500 text-sm mt-1">{{ reviewResult.summary }}</p>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <div class="text-4xl font-black" :class="getScoreColor(reviewResult.score)">
+                                    {{ reviewResult.score }}
+                                </div>
+                                <span class="text-xs text-slate-400 uppercase font-bold tracking-wider">合规指数</span>
+                            </div>
+                        </div>
+
+                        <!-- Issues List -->
+                        <div class="divide-y divide-slate-100">
+                            <div v-if="!reviewResult.issues || reviewResult.issues.length === 0"
+                                class="p-8 text-center text-green-600">
+                                <i class="fa-solid fa-circle-check w-12 h-12 mx-auto mb-2"></i>
+                                <p class="font-bold">未发现明显违规内容</p>
+                            </div>
+
+                            <div v-for="(issue, index) in reviewResult.issues" :key="index"
+                                class="p-4 hover:bg-slate-50 transition flex gap-4">
+                                <div class="shrink-0 mt-1">
+                                    <i v-if="issue.type === 'violation'"
+                                        class="fa-solid fa-circle-xmark text-red-500 w-5 h-5"></i>
+                                    <i v-else-if="issue.type === 'sensitive'"
+                                        class="fa-solid fa-triangle-exclamation text-orange-500 w-5 h-5"></i>
+                                    <i v-else class="fa-solid fa-circle-info text-blue-500 w-5 h-5"></i>
+                                </div>
+                                <div class="flex-grow">
+                                    <div class="flex justify-between items-start">
+                                        <h4 class="font-bold text-slate-800 text-sm">
+                                            <span
+                                                class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono mr-2">{{
+                                                issue.original }}</span>
+                                            <span v-if="issue.suggestion" class="text-slate-400 mx-1">→</span>
+                                            <span v-if="issue.suggestion" class="text-green-600 font-bold">{{
+                                                issue.suggestion }}</span>
+                                        </h4>
+                                        <span
+                                            class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
+                                            :class="{
+                                                'bg-red-100 text-red-600': issue.type === 'violation',
+                                                'bg-orange-100 text-orange-600': issue.type === 'sensitive',
+                                                'bg-blue-100 text-blue-600': issue.type === 'suggestion'
+                                            }">
+                                            {{ issue.type === 'violation' ? '违规' : (issue.type === 'sensitive' ? '敏感' :
+                                            '建议') }} </span>
+                                    </div>
+                                    <p class="text-sm text-slate-600 mt-1">{{ issue.reason }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div> <!-- Raw JSON Toggle -->
+                    <div class="text-center"> <button @click="showRawJson = !showRawJson"
+                            class="text-xs text-slate-400 hover:text-indigo-600 underline"> {{ showRawJson ? '隐藏原始数据' :
+                            '查看原始 JSON' }}
+                        </button>
+                    </div>
+                    <div v-if="showRawJson"
+                        class="bg-slate-900 text-slate-300 p-4 rounded-xl font-mono text-xs overflow-x-auto">
+                        <pre>{{ JSON.stringify(reviewResult, null, 2) }}</pre>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- API Settings Modal -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Key 会存储在本地，与其他应用共享。</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Review Rules Settings Modal -->
+        <div v-if="showRuleSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 h-[80vh] flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-800">审查规则配置</h3>
+                    <button @click="showRuleSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="flex-grow overflow-y-auto space-y-6 pr-2">
+                    <!-- Violation Words -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-ban w-4 h-4 text-red-500"></i> 违规词库 (Violation Words)
+                        </label>
+                        <p class="text-xs text-slate-500 mb-2">每行一个词，系统将严格检查这些词汇。</p>
+                        <textarea v-model="rulesConfig.violationWords" rows="5"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:outline-none text-sm font-mono"
+                            placeholder="例如：\n绝对化\n第一\n顶级"></textarea>
+                    </div>
+
+                    <!-- Sensitive Names -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-user-xmark w-4 h-4 text-orange-500"></i> 易错人名/产品名 (Sensitive Names)
+                        </label>
+                        <p class="text-xs text-slate-500 mb-2">每行一个，用于检查拼写错误或不当引用。</p>
+                        <textarea v-model="rulesConfig.sensitiveNames" rows="5"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm font-mono"
+                            placeholder="例如：\nDeepSeek\nChatGPT\nElon Musk"></textarea>
+                    </div>
+
+                    <!-- Custom Rules -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-scroll w-4 h-4 text-blue-500"></i> 自定义审查规则 (Custom Rules)
+                        </label>
+                        <p class="text-xs text-slate-500 mb-2">使用自然语言描述其他需要遵守的规则。</p>
+                        <textarea v-model="rulesConfig.customRules" rows="5"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                            placeholder="例如：\n1. 语气不能太生硬。\n2. 必须包含至少一个表情符号。\n3. 禁止涉及政治敏感话题。"></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2 pt-4 border-t border-slate-100">
+                    <button @click="showRuleSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">关闭</button>
+                    <button @click="saveRules"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+
+                // State
+                const showSettings = ref(false);
+                const showRuleSettings = ref(false);
+                const showRawJson = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+                const statusText = ref('');
+                const inputContent = ref('');
+                const reasoningContent = ref('');
+                const reviewResult = ref(null);
+                const textareaRef = ref(null);
+
+                // Rules Config
+                const rulesConfig = reactive({
+                    violationWords: '',
+                    sensitiveNames: '',
+                    customRules: ''
+                });
+
+                // Auto-resize Textarea
+                const adjustHeight = () => {
+                    const el = textareaRef.value;
+                    if (el) {
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                    }
+                };
+
+                // Initialization
+                onMounted(() => {
+                    const savedConfig = localStorage.getItem('global_llm_config');
+                    if (savedConfig) {
+                        try {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(savedConfig) };
+                        } catch (e) {
+
+                        }
+                    }
+
+                    const savedRules = localStorage.getItem('content_review_rules');
+                    if (savedRules) {
+                        try {
+                            const parsed = JSON.parse(savedRules);
+                            rulesConfig.violationWords = parsed.violationWords || '';
+                            rulesConfig.sensitiveNames = parsed.sensitiveNames || '';
+                            rulesConfig.customRules = parsed.customRules || '';
+                        } catch (e) {
+
+                        }
+                    }
+
+
+                    nextTick(adjustHeight);
+                });
+
+                // Watch input to resize
+                Vue.watch(inputContent, () => {
+                    nextTick(adjustHeight);
+                });
+
+                // Helpers
+                const getScoreColor = (score) => {
+                    if (score >= 90) return 'text-green-500';
+                    if (score >= 70) return 'text-orange-500';
+                    return 'text-red-500';
+                };
+
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                const saveRules = () => {
+                    localStorage.setItem('content_review_rules', JSON.stringify(rulesConfig));
+                    showRuleSettings.value = false;
+                };
+
+                // Core Logic
+                const startReview = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!inputContent.value) return;
+
+                    isGenerating.value = true;
+                    statusText.value = '正在分析内容...';
+                    reviewResult.value = null;
+                    reasoningContent.value = '';
+
+                    // Construct Prompt
+                    const systemPrompt = `你是一个专业的内容合规审查专家。请根据用户提供的规则和违规词库，对内容进行严格审查。
+请输出标准的 JSON 格式，不要包含 Markdown 代码块标记（如 \`\`\`json）。
+
+返回格式要求：
+{
+  "score": <0-100的整数，100为完全合规>,
+  "summary": "<简短的审查总结>",
+  "issues": [
+    {
+      "type": "<violation|sensitive|suggestion>",
+      "original": "<原文中有问题的词句>",
+      "suggestion": "<修改建议>",
+      "reason": "<违规或修改原因>"
+    }
+  ]
+}
+
+如果内容完全合规，issues 数组应为空，score 为 100。`;
+
+                    const userPrompt = `【待审查内容】：
+${inputContent.value}
+
+【审查规则】：
+1. 违规词库（绝对禁止）：
+${rulesConfig.violationWords || '无'}
+
+2. 易错/敏感人名或产品名（需仔细核对）：
+${rulesConfig.sensitiveNames || '无'}
+
+3. 其他自定义规则：
+${rulesConfig.customRules || '无'}
+
+请开始审查，并只返回 JSON 数据。`;
+
+                    try {
+                        let fullContent = '';
+                        await callDeepSeek(systemPrompt, userPrompt, true,
+                            (chunk) => {
+                                fullContent += chunk;
+                            },
+                            (reasoning) => {
+                                reasoningContent.value += reasoning;
+                            }
+                        );
+
+                        // Try to parse JSON
+                        // Remove markdown code blocks if present
+                        let jsonStr = fullContent.trim();
+                        if (jsonStr.startsWith('```json')) {
+                            jsonStr = jsonStr.replace(/^```json/, '').replace(/```$/, '');
+                        } else if (jsonStr.startsWith('```')) {
+                            jsonStr = jsonStr.replace(/^```/, '').replace(/```$/, '');
+                        }
+
+                        try {
+                            reviewResult.value = JSON.parse(jsonStr);
+                        } catch (e) {
+
+                            // Fallback if JSON is malformed
+                            reviewResult.value = {
+                                score: 0,
+                                summary: "解析结果失败，请查看原始输出。",
+                                issues: [{ type: 'violation', original: 'System Error', suggestion: '', reason: 'AI 返回的格式不正确: ' + fullContent }]
+                            };
+                        }
+
+                        statusText.value = '审查完成';
+                    } catch (e) {
+
+                        statusText.value = '审查失败: ' + e.message;
+                    } finally {
+                        isGenerating.value = false;
+                        nextTick(() => {
+                        });
+                    }
+                };
+
+                // API Call
+                const callDeepSeek = async (systemPrompt, userContent, stream = false, onChunk = null, onReasoning = null) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 未配置");
+
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: model.value,
+                                messages: [
+                                    { "role": "system", "content": systemPrompt },
+                                    { "role": "user", "content": userContent }
+                                ],
+                                stream: stream,
+                                response_format: { type: 'json_object' } // Force JSON if supported, though DeepSeek might not strictly support this param yet, it helps.
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    if (!stream) {
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+
+                                    // Handle Reasoning Content
+                                    const reasoning = json.choices[0].delta.reasoning_content;
+                                    if (reasoning && onReasoning) {
+                                        onReasoning(reasoning);
+                                    }
+
+                                    // Handle Normal Content
+                                    const content = json.choices[0].delta.content || "";
+                                    if (onChunk) onChunk(content);
+
+                                } catch (e) {
+
+                                }
+                            }
+                        }
+                    }
+                };
+
+                return {
+                    showSettings, showRuleSettings, showRawJson,
+                    apiConfig, model, saveConfig, saveRules,
+                    inputContent, rulesConfig,
+                    isGenerating, statusText, startReview,
+                    reviewResult, reasoningContent,
+                    getScoreColor,
+                    adjustHeight,
+                    textareaRef
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_tools_content_review.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

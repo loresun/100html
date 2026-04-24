@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS 动效工坊 - AI 内容创作工坊</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* 页面主背景：青色系渐变 */
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(160deg, #ecfeff 0%, #a5f3fc 35%, #22d3ee 55%, #06b6d4 85%, #0891b2 100%);
+      min-height: 100vh;
+    }
+
+    /* 预览区网格底纹 */
+    .preview-grid-bg {
+      background-color: rgba(255, 255, 255, 0.92);
+      background-image:
+        linear-gradient(rgba(6, 182, 212, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6, 182, 212, 0.08) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* 代码区暗色主题滚动条 */
+    .code-panel::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .code-panel::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+    .code-panel::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+
+    /* 生成进度条：无限流动动画 */
+    @keyframes progress-shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .progress-indeterminate {
+      position: relative;
+      overflow: hidden;
+      height: 4px;
+      border-radius: 9999px;
+      background: rgba(6, 182, 212, 0.25);
+    }
+    .progress-indeterminate::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      width: 40%;
+      background: linear-gradient(90deg, transparent, #06b6d4, #22d3ee, transparent);
+      animation: progress-shimmer 1.2s ease-in-out infinite;
+    }
+
+    /* 示例标签卡片微动效 */
+    .example-chip {
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .example-chip:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -6px rgba(8, 145, 178, 0.45);
+      border-color: #06b6d4;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+  <div x-data="cssAnimWorkshop()" x-init="init()" class="min-h-screen flex flex-col pb-8">
+
+    <!-- 顶部导航：左侧返回站点首页 -->
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-cyan-200/80 shadow-sm">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer shrink-0" onclick="location.href='../../index.html'">
+          <i data-lucide="palette" class="text-cyan-600 h-6 w-6"></i>
+          <span class="font-bold text-lg sm:text-xl text-slate-900">CSS 动效工坊</span>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="hidden sm:flex bg-slate-100 rounded-lg p-0.5 text-xs">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-white shadow text-cyan-700 font-medium' : 'text-slate-500'"
+              class="px-2 py-1 rounded-md transition">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-white shadow text-cyan-700 font-medium' : 'text-slate-500'"
+              class="px-2 py-1 rounded-md transition">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true" class="p-2 rounded-lg text-slate-500 hover:bg-cyan-50 hover:text-cyan-700"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-5">
+
+      <!-- 左：输入与参数 / 右：可并排或堆叠 -->
+      <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5 items-start">
+
+        <!-- 输入面板 -->
+        <section class="bg-white/90 backdrop-blur rounded-2xl border border-cyan-100 shadow-lg shadow-cyan-500/10 p-5 space-y-4">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="wand-2" class="w-5 h-5 text-cyan-600"></i>
+            描述你的动效
+          </h2>
+          <textarea x-model="description" rows="5"
+            class="w-full rounded-xl border border-slate-200 p-3 text-sm focus:ring-2 focus:ring-cyan-300 focus:border-cyan-400 resize-y min-h-[120px]"
+            placeholder="例如：一个青色的球从左边缘弹跳到右边缘，带弹性缓动…"></textarea>
+
+          <div>
+            <p class="text-xs font-semibold text-slate-600 mb-2">热门示例（点击填入）</p>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="ex in hotExamples" :key="ex.id">
+                <button type="button" @click="applyExample(ex)"
+                  class="example-chip inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-cyan-200/80 bg-cyan-50/80 text-sm text-slate-800">
+                  <span x-text="ex.emoji" class="text-base leading-none"></span>
+                  <span x-text="ex.label"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">速度</label>
+              <select x-model="speed"
+                class="w-full rounded-lg border border-slate-200 text-sm py-2 px-2 bg-white">
+                <option value="slow">慢</option>
+                <option value="medium">中</option>
+                <option value="fast">快</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">循环</label>
+              <select x-model="loopMode"
+                class="w-full rounded-lg border border-slate-200 text-sm py-2 px-2 bg-white">
+                <option value="infinite">无限循环</option>
+                <option value="1">播放 1 次</option>
+                <option value="3">播放 3 次</option>
+                <option value="5">播放 5 次</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">主题色</label>
+              <div class="flex gap-2 items-center">
+                <input type="color" x-model="accentColor" class="h-9 w-12 rounded border border-slate-200 cursor-pointer p-0.5 bg-white" title="选择颜色">
+                <input type="text" x-model="accentColor" maxlength="7"
+                  class="flex-1 rounded-lg border border-slate-200 text-sm py-2 px-2 font-mono uppercase"
+                  placeholder="#06B6D4">
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button type="button" @click="generate(false)" :disabled="isGenerating"
+              class="flex-1 flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-cyan-600/30">
+              <i x-show="!isGenerating" data-lucide="sparkles" class="w-5 h-5"></i>
+              <i x-show="isGenerating" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              <span x-text="isGenerating ? '生成中…' : '生成动效'"></span>
+            </button>
+            <button type="button" @click="generate(true)" :disabled="isGenerating || (!htmlCode && !cssCode)"
+              class="sm:w-40 flex items-center justify-center gap-2 border-2 border-cyan-500 text-cyan-800 font-semibold py-3 rounded-xl hover:bg-cyan-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              <i data-lucide="shuffle" class="w-5 h-5"></i>
+              变换一下
+            </button>
+          </div>
+
+          <!-- 生成过程进度条 -->
+          <div x-show="isGenerating" x-transition class="space-y-1">
+            <div class="progress-indeterminate"></div>
+            <p class="text-xs text-cyan-800/80">AI 正在编写纯 CSS 动效代码，请稍候…</p>
+          </div>
+
+          <p x-show="errorMsg" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2" x-text="errorMsg"></p>
+        </section>
+
+        <!-- 预览区：上半概念，在窄屏上紧随其后 -->
+        <section class="flex flex-col min-h-[320px] lg:min-h-[420px] rounded-2xl border border-cyan-200/90 shadow-xl overflow-hidden bg-white/40">
+          <div class="px-4 py-2 border-b border-cyan-100/80 bg-cyan-50/90 flex items-center justify-between">
+            <span class="text-sm font-semibold text-cyan-900 flex items-center gap-2">
+              <i data-lucide="monitor-play" class="w-4 h-4"></i>
+              实时预览
+            </span>
+            <span class="text-xs text-cyan-700/70">iframe · srcdoc</span>
+          </div>
+          <div class="preview-grid-bg flex-1 min-h-[260px] lg:min-h-[360px] relative">
+            <iframe x-ref="previewFrame" class="absolute inset-0 w-full h-full border-0 bg-transparent"
+              title="动效预览" sandbox=""
+              :srcdoc="buildPreviewSrcdoc()"></iframe>
+            <div x-show="!htmlCode && !cssCode && !isGenerating"
+              class="absolute inset-0 flex flex-col items-center justify-center text-cyan-800/50 text-sm pointer-events-none">
+              <i data-lucide="layout-template" class="w-12 h-12 mb-2 opacity-40"></i>
+              生成后将在此处预览动画
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 代码区：暗色主题 + Tab -->
+      <section class="rounded-2xl border border-slate-700 overflow-hidden shadow-2xl bg-slate-950">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-slate-900 border-b border-slate-700">
+          <div class="flex rounded-lg bg-slate-800 p-0.5">
+            <button type="button" @click="codeTab = 'html'" :class="codeTab === 'html' ? 'bg-cyan-600 text-white' : 'text-slate-400'"
+              class="px-4 py-1.5 text-sm font-medium rounded-md transition">HTML</button>
+            <button type="button" @click="codeTab = 'css'" :class="codeTab === 'css' ? 'bg-cyan-600 text-white' : 'text-slate-400'"
+              class="px-4 py-1.5 text-sm font-medium rounded-md transition">CSS</button>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" @click="copyActiveCode()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 border border-slate-600">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+              复制当前
+            </button>
+            <button type="button" @click="openInNewWindow()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-sm hover:bg-slate-700 border border-slate-600">
+              <i data-lucide="external-link" class="w-4 h-4"></i>
+              新窗口查看
+            </button>
+            <button type="button" @click="downloadHtml()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-700 text-white text-sm hover:bg-cyan-600">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              下载 HTML
+            </button>
+          </div>
+        </div>
+        <pre class="code-panel text-sm text-cyan-100/95 font-mono leading-relaxed p-4 max-h-[min(50vh,420px)] overflow-auto bg-slate-950 m-0"><code x-show="codeTab === 'html'" x-text="htmlCode || '（尚无 HTML 片段）'"></code><code x-show="codeTab === 'css'" x-text="cssCode || '（尚无 CSS）'"></code></pre>
+      </section>
+    </main>
+
+    <!-- 设置弹窗 -->
+    <div x-show="showSettings" x-transition.opacity class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50"
+      @keydown.escape.window="showSettings = false">
+      <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <h3 class="text-lg font-bold text-slate-900">API 配置</h3>
+        <p class="text-xs text-slate-500">密钥保存在浏览器本地，与其他工具共用 <code class="bg-slate-100 px-1 rounded">global_llm_config</code>，保存时合并、不覆盖其他字段。</p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+          <input type="password" x-model="apiConfig.deepseek"
+            class="w-full rounded-lg border border-slate-300 p-2.5 text-sm" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-cyan-600 text-white hover:bg-cyan-700">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl bg-slate-900 text-white text-sm shadow-lg flex items-center gap-2">
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Alpine 根组件：CSS 动效工坊
+     * 负责参数收集、DeepSeek 流式调用、解析 HTML/CSS、预览与导出
+     */
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('cssAnimWorkshop', () => ({
+        description: '',
+        speed: 'medium',
+        loopMode: 'infinite',
+        accentColor: '#06b6d4',
+        codeTab: 'html',
+        htmlCode: '',
+        cssCode: '',
+        rawStream: '',
+        isGenerating: false,
+        errorMsg: '',
+        showSettings: false,
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+
+        /** 热门示例：点击写入描述文案 */
+        hotExamples: [
+          { id: 'bounce', emoji: '⚽', label: '弹跳球', text: '一个圆形小球在容器内从左到右弹跳移动，带重力感和弹性缓动，背景简洁。' },
+          { id: 'typewriter', emoji: '⌨️', label: '打字机', text: '文字「Hello CSS」以打字机效果逐字显示，后面有闪烁光标。' },
+          { id: 'breath', emoji: '💡', label: '呼吸灯', text: '一个圆角矩形像呼吸灯一样缓慢放大缩小并改变透明度，节奏舒缓。' },
+          { id: 'particles', emoji: '✨', label: '粒子扩散', text: '多个小圆点从中心向外扩散并淡出，循环播放，有层次感。' },
+          { id: 'flip', emoji: '🃏', label: '翻转卡片', text: '一张卡片在 3D 空间中沿 Y 轴翻转，正面和背面颜色不同。' },
+          { id: 'wave', emoji: '🌊', label: '波浪文字', text: '一行标题文字每个字母上下起伏形成波浪动画，整体协调。' },
+          { id: 'heartbeat', emoji: '💓', label: '心跳', text: '一颗心形图标周期性缩放模拟心跳，两次快速跳动后短暂停顿。' },
+          { id: 'loader', emoji: '⏳', label: '加载图标', text: '圆环分段旋转的加载动画，线条流畅，适合作为加载指示器。' }
+        ],
+
+        init() {
+          this.loadConfig();
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+          // 推理内容变化后重新挂载图标（Alpine 更新 DOM）
+          this.$watch('isGenerating', () => {
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          });
+        },
+
+        /** 从 localStorage 合并加载全局 LLM 配置 */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存 API 配置（合并策略，禁止整对象覆盖）
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          setTimeout(() => { this.toast.show = false; }, 2600);
+        },
+
+        applyExample(ex) {
+          this.description = ex.text;
+          this.showToast('已填入示例：' + ex.label, 'file-text');
+        },
+
+        /**
+         * 将速度与循环模式转为自然语言，拼进用户提示
+         */
+        buildOptionHints() {
+          const speedMap = { slow: '较慢、舒缓', medium: '中等节奏', fast: '较快、利落' };
+          const loopMap = {
+            infinite: '动画应无限循环（animation-iteration-count: infinite）',
+            '1': '动画只播放 1 次',
+            '3': '动画播放 3 次',
+            '5': '动画播放 5 次'
+          };
+          return [
+            `整体节奏：${speedMap[this.speed] || '中等'}`,
+            loopMap[this.loopMode] || loopMap.infinite,
+            `主色 / 强调色请优先使用：${this.accentColor}（可搭配协调的邻近色）`
+          ].join('；');
+        },
+
+        /**
+         * 系统提示词：约束仅使用纯 CSS、输出格式便于解析
+         */
+        getSystemPrompt() {
+          return `你是资深前端动效与 CSS 动画专家。用户会用中文描述想要的动画效果。
+
+【硬性要求】
+1. 只使用纯 CSS 实现动画：可用 @keyframes、animation、transition、transform、filter 等。禁止依赖 JavaScript 执行动画逻辑（不要用 <script> 写动画）。
+2. 代码简洁、可读，关键步骤写中文注释。
+3. 视觉效果现代、流畅，注意缓动函数与层次。
+4. 必须严格按下面「输出格式」返回，不要在代码块之外输出大段说明文字（最多一两句简短说明可放在代码块之前）。
+
+【输出格式】
+先输出两个 Markdown 代码块，顺序固定：
+第一个代码块语言标记为 html，内容为**放入 <body> 内的 HTML 片段**（可包含多个元素与 class，不要写 <!DOCTYPE> 或 <html> 包裹）。
+第二个代码块语言标记为 css，内容为**完整样式表**（包含 @keyframes 与选择器），需能直接配合上面的 HTML 使用。
+
+示例结构：
+\`\`\`html
+<div class="stage">...</div>
+\`\`\`
+\`\`\`css
+/* 中文注释：整体布局 */
+.stage { ... }
+\`\`\`
+
+【技术提示】
+- 需要居中可用 flex / grid；舞台区域建议限制最大宽高以免撑破预览。
+- 循环次数、时长请遵守用户在消息中给出的参数。
+- 不要使用外部图片 URL；可用 CSS 形状、渐变、box-shadow 表现图形。`;
+        },
+
+        /**
+         * 解析模型输出中的 ```html 与 ```css 代码块
+         * 注意：解析规则与 tests/css_animation_workshop_parse.test.mjs 保持一致，修改时请同步测试
+         * @param {string} text - 完整模型输出
+         * @returns {{ html: string, css: string } | null}
+         */
+        parseCodeBlocks(text) {
+          const htmlRe = /```\s*html\s*([\s\S]*?)```/i;
+          const cssRe = /```\s*css\s*([\s\S]*?)```/i;
+          const hm = text.match(htmlRe);
+          const cm = text.match(cssRe);
+          if (hm && cm) {
+            return { html: hm[1].trim(), css: cm[1].trim() };
+          }
+          // 兜底：任意顺序的两个围栏
+          const generic = /```(\w*)\s*([\s\S]*?)```/gi;
+          const parts = [];
+          let m;
+          while ((m = generic.exec(text)) !== null) {
+            parts.push({ lang: (m[1] || '').toLowerCase(), code: m[2].trim() });
+          }
+          let html = '';
+          let css = '';
+          for (const p of parts) {
+            if (p.lang === 'html' || (!html && p.lang === '' && p.code.includes('<'))) html = p.code;
+            else if (p.lang === 'css' || (!css && p.lang === '' && /[{@}]/.test(p.code))) css = p.code;
+          }
+          if (html && css) return { html, css };
+          return null;
+        },
+
+        /**
+         * 组装 iframe / 下载用的完整 HTML 文档字符串
+         * @returns {string}
+         */
+        buildPreviewSrcdoc() {
+          const h = this.htmlCode || '<div style="padding:2rem;color:#94a3b8;font-family:system-ui">等待生成…</div>';
+          const c = this.cssCode || 'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;}';
+          return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${c}</style></head><body>${h}</body></html>`;
+        },
+
+        /**
+         * 流式调用 DeepSeek Chat Completions
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {function(string):void} onDelta - 主内容增量
+         * @param {function(string):void} [onReasoning] - V4 Pro 推理增量
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.65
+            })
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || ('HTTP ' + response.status));
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) onReasoning(delta.reasoning_content);
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /**
+         * 主生成入口
+         * @param {boolean} transform - true 表示「变换一下」
+         */
+        async generate(transform) {
+          this.errorMsg = '';
+          if (!transform && !(this.description || '').trim()) {
+            this.errorMsg = '请先输入动画描述，或点击上方热门示例。';
+            return;
+          }
+          if (transform && !this.htmlCode && !this.cssCode) {
+            this.errorMsg = '请先生成一版动效，再使用「变换一下」。';
+            return;
+          }
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先在设置中填写 DeepSeek API Key。';
+            return;
+          }
+
+          this.isGenerating = true;
+          this.rawStream = '';
+          const messages = [{ role: 'system', content: this.getSystemPrompt() }];
+
+          if (transform) {
+            messages.push({
+              role: 'user',
+              content: `【当前 HTML 片段】\n\`\`\`html\n${this.htmlCode}\n\`\`\`\n\n【当前 CSS】\n\`\`\`css\n${this.cssCode}\n\`\`\`\n\n请在保持同一动效主题的前提下，做一版明显的视觉或节奏上的「变化」（例如：换缓动、换构图、增加层次感、微调配色但仍使用 ${this.accentColor} 为主色）。仍须只使用纯 CSS。\n\n参数要求：${this.buildOptionHints()}`
+            });
+          } else {
+            messages.push({
+              role: 'user',
+              content: `【动画需求】\n${this.description.trim()}\n\n【参数】\n${this.buildOptionHints()}`
+            });
+          }
+
+          try {
+            await this.streamDeepSeek(messages, (chunk) => {
+              this.rawStream += chunk;
+            });
+            const parsed = this.parseCodeBlocks(this.rawStream);
+            if (!parsed) {
+              this.errorMsg = '未能解析 AI 返回的 HTML/CSS 代码块，请重试或换用 V4 Flash 模型。';
+              this.showToast('解析失败，请重试', 'alert-circle');
+              return;
+            }
+            this.htmlCode = parsed.html;
+            this.cssCode = parsed.css;
+            this.showToast('生成完成', 'check-circle');
+            this.codeTab = 'html';
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '请求失败';
+            this.showToast(this.errorMsg, 'alert-circle');
+          } finally {
+            this.isGenerating = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /** 复制当前 Tab 对应代码 */
+        async copyActiveCode() {
+          const text = this.codeTab === 'html' ? this.htmlCode : this.cssCode;
+          if (!text) {
+            this.showToast('没有可复制的内容', 'alert-circle');
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('已复制到剪贴板', 'copy');
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('已复制', 'copy');
+          }
+        },
+
+        /** 新窗口打开完整预览页 */
+        openInNewWindow() {
+          const doc = this.buildPreviewSrcdoc();
+          if (!this.htmlCode && !this.cssCode) {
+            this.showToast('请先生成动效', 'alert-circle');
+            return;
+          }
+          const w = window.open('', '_blank');
+          if (w) {
+            w.document.open();
+            w.document.write(doc);
+            w.document.close();
+          } else {
+            this.showToast('请允许弹出窗口', 'alert-circle');
+          }
+        },
+
+        /** 下载完整单文件 HTML */
+        downloadHtml() {
+          if (!this.htmlCode && !this.cssCode) {
+            this.showToast('请先生成动效', 'alert-circle');
+            return;
+          }
+          const blob = new Blob([this.buildPreviewSrcdoc()], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'css-animation-' + Date.now() + '.html';
+          a.click();
+          URL.revokeObjectURL(url);
+          this.showToast('已开始下载', 'download');
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

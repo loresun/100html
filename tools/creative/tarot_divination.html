@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 塔罗占卜馆 - AI Office</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Serif+SC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: radial-gradient(circle at center, #2e1065 0%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* 卡牌样式 */
+        .tarot-card {
+            width: 180px;
+            height: 300px;
+            perspective: 1000px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border-radius: 12px;
+        }
+
+        .card-flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border: 2px solid #a855f7;
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 10px);
+        }
+
+        .card-front {
+            background: #fff;
+            color: #1e1b4b;
+            transform: rotateY(180deg);
+            padding: 10px;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiNmM2Y0ZjYiLz4KPC9zdmc+');
+        }
+
+        .card-symbol {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        /* 呼吸灯特效 */
+        .glow-text {
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { text-shadow: 0 0 5px #fff, 0 0 10px #a855f7; }
+            to { text-shadow: 0 0 10px #fff, 0 0 20px #a855f7, 0 0 30px #a855f7; }
+        }
+        
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="flex flex-col">
+    <div id="app" class="flex-grow flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        
+        <!-- 背景装饰 -->
+        <div class="absolute inset-0 pointer-events-none">
+            <div class="absolute top-10 left-10 w-32 h-32 bg-purple-500 rounded-full blur-[100px] opacity-20"></div>
+            <div class="absolute bottom-10 right-10 w-40 h-40 bg-indigo-500 rounded-full blur-[100px] opacity-20"></div>
+        </div>
+
+        <!-- 顶部导航 -->
+        <nav class="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-50">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i>
+                <h1 class="text-2xl font-bold text-white tracking-widest font-[Cinzel]">TAROT AI</h1>
+            </div>
+            <div class="flex gap-3 text-sm text-purple-200 items-center">
+                <!-- V4 Flash/V4 Pro 模型切换器 -->
+                <div class="flex items-center gap-2 bg-black/30 backdrop-blur-md rounded-lg p-1 border border-purple-500/30">
+                    <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                        :class="{'bg-purple-500 shadow text-white': apiConfig.model === 'deepseek-v4-flash', 'text-purple-300': apiConfig.model !== 'deepseek-v4-flash'}"
+                        class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                    <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                        :class="{'bg-purple-500 shadow text-white': apiConfig.model === 'deepseek-v4-pro', 'text-purple-300': apiConfig.model !== 'deepseek-v4-pro'}"
+                        class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                </div>
+                <button @click="reset" class="hover:text-white transition">重置牌局</button>
+                <a href="../../index.html" class="hover:text-white transition">退出</a>
+                <button @click="showSettings = true"><i class="fa-solid fa-gear text-lg"></i></button>
+            </div>
+        </nav>
+
+        <!-- 阶段 1: 提问 -->
+        <transition name="fade" mode="out-in">
+            <div v-if="step === 1" class="text-center max-w-lg w-full z-10" key="step1">
+                <h2 class="text-3xl font-bold mb-8 glow-text">心中默念你的问题</h2>
+                <div class="relative mb-8">
+                    <input v-model="question" type="text" 
+                        class="w-full bg-white/10 border border-purple-500/30 rounded-full py-4 px-8 text-white placeholder-purple-300/50 outline-none focus:border-purple-500 focus:bg-white/20 transition text-center text-lg"
+                        placeholder="例如：最近的工作运势如何？我和TA会有结果吗？">
+                    <button v-if="question" @click="startDivination" class="absolute right-2 top-2 bottom-2 bg-purple-600 hover:bg-purple-500 text-white px-6 rounded-full font-bold transition">
+                        开始
+                    </button>
+                </div>
+                <div class="flex flex-wrap justify-center gap-2">
+                    <button v-for="q in quickQuestions" :key="q" @click="question = q" class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-4 py-2 text-xs text-purple-200 transition">
+                        {{ q }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- 阶段 2: 抽牌 -->
+            <div v-else-if="step === 2" class="text-center z-10 w-full" key="step2">
+                <h2 class="text-2xl mb-12 text-purple-200">请凭借直觉，选取一张牌</h2>
+                <div class="flex flex-wrap justify-center gap-6 perspective-1000">
+                    <div v-for="(card, index) in 3" :key="index" 
+                        @click="pickCard(index)"
+                        class="tarot-card hover:-translate-y-4 transition-transform duration-300">
+                        <div class="card-inner">
+                            <div class="card-back flex items-center justify-center">
+                                <i class="fa-solid fa-eye text-purple-400/30 text-5xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 阶段 3: 解牌 -->
+            <div v-else-if="step === 3" class="text-center z-10 w-full max-w-4xl flex flex-col md:flex-row items-center gap-12" key="step3">
+                
+                <!-- 选中的牌 -->
+                <div :class="['tarot-card', 'card-flipped']">
+                    <div class="card-inner">
+                        <div class="card-back"></div>
+                        <div class="card-front border-4" :class="isReversed ? 'border-red-400' : 'border-purple-500'">
+                            <div class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">{{ selectedCard.id }}</div>
+                            <div class="card-symbol" :style="{ transform: isReversed ? 'rotate(180deg)' : 'none' }">
+                                {{ selectedCard.emoji }}
+                            </div>
+                            <h3 class="text-lg font-bold mt-4 mb-1">{{ selectedCard.name }}</h3>
+                            <p class="text-xs text-purple-600 font-bold uppercase">{{ isReversed ? '逆位 (Reversed)' : '正位 (Upright)' }}</p>
+                            <p class="text-[10px] text-slate-500 mt-4 px-4 leading-tight">{{ selectedCard.keywords }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 解读内容 -->
+                <div class="flex-1 text-left bg-black/30 backdrop-blur-md p-8 rounded-2xl border border-white/10">
+                    <div v-if="isInterpreting" class="flex flex-col items-center justify-center py-12">
+                        <i class="fa-solid fa-spinner fa-spin text-4xl text-purple-400 mb-4"></i>
+                        <p class="text-purple-200 animate-pulse">正在沟通宇宙能量...</p>
+                    </div>
+                    <div v-else>
+                        <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-moon text-purple-400 text-lg"></i>
+                            牌面解读
+                        </h3>
+                        <div class="prose prose-invert prose-sm max-w-none text-purple-100 leading-relaxed whitespace-pre-wrap">
+                            {{ interpretation }}
+                        </div>
+                        <div class="mt-6 flex gap-4">
+                            <button @click="reset" class="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition">再次占卜</button>
+                            <button @click="copyResult" class="px-6 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm transition font-bold">保存结果</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-[#1e1b4b] border border-purple-500/30 rounded-2xl w-full max-w-md p-6 text-purple-100">
+                <h3 class="text-lg font-bold mb-4">星盘配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-purple-300 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" class="w-full bg-black/30 border border-purple-500/30 rounded px-3 py-2 outline-none focus:border-purple-500">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="saveConfig" class="bg-purple-600 px-4 py-2 rounded hover:bg-purple-500 font-bold text-sm">连接</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        // 简化的塔罗牌数据 (22张大阿卡纳)
+        const TAROT_DECK = [
+            { id: '0', name: '愚者', emoji: '🤡', keywords: '新的开始、冒险、天真' },
+            { id: 'I', name: '魔术师', emoji: '🪄', keywords: '创造力、能力、自信' },
+            { id: 'II', name: '女祭司', emoji: '📜', keywords: '直觉、神秘、潜意识' },
+            { id: 'III', name: '皇后', emoji: '👑', keywords: '丰饶、母性、自然' },
+            { id: 'IV', name: '皇帝', emoji: '🏰', keywords: '权威、结构、控制' },
+            { id: 'V', name: '教皇', emoji: '⛪', keywords: '传统、信仰、指导' },
+            { id: 'VI', name: '恋人', emoji: '💑', keywords: '爱情、选择、和谐' },
+            { id: 'VII', name: '战车', emoji: '🛡️', keywords: '意志力、胜利、决心' },
+            { id: 'VIII', name: '力量', emoji: '🦁', keywords: '勇气、耐心、控制' },
+            { id: 'IX', name: '隐士', emoji: '🏮', keywords: '内省、孤独、指引' },
+            { id: 'X', name: '命运之轮', emoji: '🎡', keywords: '命运、转变、周期' },
+            { id: 'XI', name: '正义', emoji: '⚖️', keywords: '公平、真理、因果' },
+            { id: 'XII', name: '倒吊人', emoji: '🦇', keywords: '牺牲、新视角、等待' },
+            { id: 'XIII', name: '死神', emoji: '💀', keywords: '结束、重生、转变' },
+            { id: 'XIV', name: '节制', emoji: '🏺', keywords: '平衡、耐心、调和' },
+            { id: 'XV', name: '恶魔', emoji: '😈', keywords: '束缚、诱惑、物质' },
+            { id: 'XVI', name: '高塔', emoji: '⚡', keywords: '灾难、剧变、启示' },
+            { id: 'XVII', name: '星星', emoji: '⭐', keywords: '希望、灵感、宁静' },
+            { id: 'XVIII', name: '月亮', emoji: '🌙', keywords: '幻觉、恐惧、潜意识' },
+            { id: 'XIX', name: '太阳', emoji: '☀️', keywords: '成功、快乐、活力' },
+            { id: 'XX', name: '审判', emoji: '🎺', keywords: '觉醒、召唤、重生' },
+            { id: 'XXI', name: '世界', emoji: '🌍', keywords: '圆满、完成、旅行' }
+        ];
+
+        createApp({
+            setup() {
+
+
+                const step = ref(1);
+                const question = ref('');
+                const quickQuestions = ['今日运势', '我和TA会有结果吗？', '要不要跳槽？', '最近财运如何？'];
+                const selectedCard = ref(null);
+                const isReversed = ref(false);
+                const isInterpreting = ref(false);
+                const interpretation = ref('');
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) apiConfig.value = JSON.parse(saved);
+                });
+
+                const saveConfig = () => {
+                    localStorage.setItem('global_llm_config', JSON.stringify(apiConfig.value));
+                    showSettings.value = false;
+                };
+
+                const startDivination = () => {
+                    step.value = 2;
+                };
+
+                const reset = () => {
+                    step.value = 1;
+                    question.value = '';
+                    selectedCard.value = null;
+                    interpretation.value = '';
+                };
+
+                const pickCard = async (index) => {
+                    // 随机抽牌
+                    const randomIdx = Math.floor(Math.random() * TAROT_DECK.length);
+                    selectedCard.value = TAROT_DECK[randomIdx];
+                    isReversed.value = Math.random() > 0.5; // 50% 概率逆位
+                    
+                    step.value = 3;
+                    isInterpreting.value = true;
+
+                    // 调用 AI 解读
+                    await interpretCard();
+                };
+
+                const interpretCard = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        interpretation.value = "未配置 API Key，无法连接宇宙能量。请点击右上角设置。";
+                        isInterpreting.value = false;
+                        return;
+                    }
+
+                    const prompt = `你是一个神秘而富有智慧的塔罗牌占卜师。
+用户的问题是："${question.value || '今日运势'}"
+抽到的牌是：【${selectedCard.value.name}】
+牌位：${isReversed.value ? '逆位 (Reversed)' : '正位 (Upright)'}
+关键词：${selectedCard.value.keywords}
+
+请结合问题和牌面含义，给出一份温暖、有洞察力且充满指引性的解读（300字以内）。
+语气要神秘、柔和，像一位老朋友在低语。`;
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.value.model,
+                                messages: [
+                                    { role: "system", content: prompt }
+                                ],
+                                stream: false
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (data.choices && data.choices[0]) {
+                            interpretation.value = data.choices[0].message.content;
+                        }
+                    } catch (e) {
+                        interpretation.value = "信号受到干扰...请稍后再试。";
+                    } finally {
+                        isInterpreting.value = false;
+                    }
+                };
+                
+                const copyResult = () => {
+                    const text = `🔮 塔罗占卜结果\n问题：${question.value}\n牌面：${selectedCard.value.name} (${isReversed.value ? '逆位' : '正位'})\n\n${interpretation.value}`;
+                    navigator.clipboard.writeText(text);
+                    alert('占卜结果已保存');
+                };
+
+                return {
+
+                    step, question, quickQuestions, selectedCard, isReversed,
+                    isInterpreting, interpretation, showSettings, apiConfig,
+                    saveConfig, startDivination, pickCard, reset, copyResult
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_tarot_divination.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

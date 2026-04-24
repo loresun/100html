@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reality Field / HTML_SUPER</title>
+    <link href="https://fonts.googleapis.com/css2?family=Italiana&family=Inter:wght@300;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            cursor: none; /* Hide default cursor for custom one */
+        }
+
+        /* Custom Cursor */
+        .cursor-follower {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            transition: width 0.3s, height 0.3s;
+            mix-blend-mode: difference;
+        }
+
+        .cursor-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* UI Overlay */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Italiana', serif;
+            font-size: 8vw;
+            line-height: 1;
+            margin: 0;
+            mix-blend-mode: exclusion;
+            pointer-events: auto; /* Allow hover */
+            transition: 0.5s;
+        }
+        
+        h1:hover {
+            letter-spacing: 20px;
+            color: #ff00ff;
+        }
+
+        p {
+            font-size: 1.5rem;
+            margin-top: 20px;
+            opacity: 0.7;
+            mix-blend-mode: exclusion;
+        }
+
+        .nav {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            font-size: 14px;
+            pointer-events: auto;
+        }
+        
+        a { color: #fff; text-decoration: none; border-bottom: 1px solid transparent; transition: 0.3s; }
+        a:hover { border-bottom: 1px solid #fff; }
+
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+
+    <div class="cursor-follower" id="cursor-circle"></div>
+    <div class="cursor-dot" id="cursor-dot"></div>
+
+    <div class="nav"><a href="index.html">← BACK</a></div>
+
+    <div class="overlay">
+        <h1>REALITY<br>DISTORTION</h1>
+        <p>Mouse interaction & Liquid Displacement</p>
+    </div>
+
+    <!-- Minimal WebGL without external Image Lib for Liquid Effect, simulating via 2D Canvas for portability if WebGL assets fail, but let's try a clever Canvas 2D hack that looks like WebGL liquid -->
+    <canvas id="liquidCanvas"></canvas>
+
+    <script>
+        // Custom Cursor Logic
+        const cursorCircle = document.getElementById('cursor-circle');
+        const cursorDot = document.getElementById('cursor-dot');
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let cursorX = mouseX;
+        let cursorY = mouseY;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cursorDot.style.left = mouseX + 'px';
+            cursorDot.style.top = mouseY + 'px';
+        });
+
+        // Loop for smooth follower
+        function cursorLoop() {
+            cursorX += (mouseX - cursorX) * 0.1;
+            cursorY += (mouseY - cursorY) * 0.1;
+            cursorCircle.style.left = cursorX + 'px';
+            cursorCircle.style.top = cursorY + 'px';
+            requestAnimationFrame(cursorLoop);
+        }
+        cursorLoop();
+
+        // Canvas Liquid Effect
+        const canvas = document.getElementById('liquidCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let resize = () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Image to distort (Using a high quality abstract image)
+        const img = new Image();
+        img.src = 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2568&auto=format&fit=crop';
+        
+        let loaded = false;
+        img.onload = () => loaded = true;
+
+        // Grid for distortion
+        const cols = 20;
+        const rows = 20;
+        let grid = [];
+        
+        for(let i=0; i <= cols; i++) {
+            grid[i] = [];
+            for(let j=0; j <= rows; j++) {
+                grid[i][j] = { x: i * (width/cols), y: j * (height/rows), ox: i * (width/cols), oy: j * (height/rows) };
+            }
+        }
+
+        // Animation Loop
+        function draw() {
+            if (!loaded) { requestAnimationFrame(draw); return; }
+
+            // Clear
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0,0,width,height);
+
+            // Update grid based on mouse
+            for(let i=0; i <= cols; i++) {
+                for(let j=0; j <= rows; j++) {
+                    const p = grid[i][j];
+                    
+                    // Distance to mouse
+                    // Map mouseX/Y relative to canvas scale if needed, but here it matches window
+                    const dx = mouseX - p.ox;
+                    const dy = mouseY - p.oy;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    const maxDist = 300;
+                    
+                    if (dist < maxDist) {
+                        const force = (maxDist - dist) / maxDist;
+                        const angle = Math.atan2(dy, dx);
+                        // Push away
+                        p.x += Math.cos(angle) * force * 5;
+                        p.y += Math.sin(angle) * force * 5;
+                    }
+
+                    // Return to origin (Elasticity)
+                    p.x += (p.ox - p.x) * 0.05;
+                    p.y += (p.oy - p.y) * 0.05;
+                }
+            }
+
+            // Draw distorted image using mesh (texture mapping simulation)
+            // Since Canvas 2D texture mapping is hard, we draw small image patches or lines? 
+            // Better: Just draw colored mesh lines or create a "lens" effect.
+            // For a *REAL* liquid image effect without WebGL, we usually use multiple strip drawing.
+            // Let's do a simple "Mesh Line" effect which is also very "Acid" style.
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+
+            // Draw horizontal curves
+            for(let j=0; j <= rows; j++) {
+                ctx.beginPath();
+                for(let i=0; i <= cols; i++) {
+                    const p = grid[i][j];
+                    if (i==0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                }
+                ctx.stroke();
+            }
+             // Draw vertical curves
+             for(let i=0; i <= cols; i++) {
+                ctx.beginPath();
+                for(let j=0; j <= rows; j++) {
+                    const p = grid[i][j];
+                    if (j==0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                }
+                ctx.stroke();
+            }
+
+            // Draw image on top with "Difference" mode to create that trippy look?
+            // Actually, let's just use the mesh as the main visual. It looks very "Tech/Modern".
+            
+            // Or.. draw the image clipped to the mesh? Too expensive for 2D Canvas.
+            // Let's enhance the visual by drawing circles at nodes.
+             ctx.fillStyle = '#fff';
+             for(let i=0; i <= cols; i++) {
+                for(let j=0; j <= rows; j++) {
+                    const p = grid[i][j];
+                    const size = 2; 
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, size, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+
+            requestAnimationFrame(draw);
+        }
+        draw();
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

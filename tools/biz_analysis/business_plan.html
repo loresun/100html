@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商业计划书生成器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #f0f9ff 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #818cf8; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(99, 102, 241, 0.3); }
+            50% { border-color: rgba(99, 102, 241, 0.8); }
+        }
+        .pulse-border { animation: pulse-border 2s ease-in-out infinite; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #e0e7ff 25%, #c7d2fe 50%, #e0e7ff 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        /* 步骤进度条 */
+        .step-dot {
+            transition: all 0.3s ease;
+        }
+        .step-dot.active {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+            color: white;
+        }
+        .step-dot.completed {
+            background: #22c55e;
+            color: white;
+        }
+        .step-line {
+            transition: background 0.5s ease;
+        }
+        .step-line.active {
+            background: linear-gradient(90deg, #22c55e, #4f46e5);
+        }
+        .step-line.completed {
+            background: #22c55e;
+        }
+
+        /* 商业模式画布网格 */
+        .bmc-card {
+            transition: all 0.3s ease;
+            border: 1px solid #e0e7ff;
+        }
+        .bmc-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -8px rgba(79, 70, 229, 0.2);
+            border-color: #818cf8;
+        }
+
+        /* 文档视图 */
+        .doc-view h1 { font-size: 1.75rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; }
+        .doc-view h2 { font-size: 1.35rem; font-weight: 700; color: #334155; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e0e7ff; }
+        .doc-view h3 { font-size: 1.1rem; font-weight: 600; color: #475569; margin: 1rem 0 0.5rem; }
+        .doc-view p { margin: 0.5rem 0; line-height: 1.8; color: #475569; }
+        .doc-view ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+        .doc-view li { margin: 0.25rem 0; line-height: 1.7; color: #475569; }
+        .doc-view table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .doc-view th { background: #f1f5f9; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #e2e8f0; }
+        .doc-view td { padding: 0.75rem; border: 1px solid #e2e8f0; }
+        .doc-view strong { color: #1e293b; }
+        .doc-view blockquote { border-left: 3px solid #818cf8; padding-left: 1rem; margin: 1rem 0; color: #64748b; font-style: italic; }
+
+        /* BMC 编辑模式 */
+        .bmc-edit textarea {
+            resize: none;
+            min-height: 80px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="businessPlanApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="file-text" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">商业计划书生成器</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 多步编排工作流</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-indigo-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-indigo-100 py-4">
+            <div class="max-w-4xl mx-auto px-4">
+                <div class="flex items-center justify-between">
+                    <template x-for="(step, index) in steps" :key="index">
+                        <div class="flex items-center" :class="index < steps.length - 1 ? 'flex-1' : ''">
+                            <!-- 步骤圆点 -->
+                            <div class="flex flex-col items-center relative">
+                                <div @click="canGoToStep(index + 1) && goToStep(index + 1)"
+                                    :class="[
+                                        'step-dot w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer',
+                                        currentStep === index + 1 ? 'active' : '',
+                                        currentStep > index + 1 ? 'completed' : 'bg-slate-200 text-slate-500'
+                                    ]">
+                                    <template x-if="currentStep > index + 1">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="currentStep <= index + 1">
+                                        <span x-text="index + 1"></span>
+                                    </template>
+                                </div>
+                                <span class="absolute -bottom-5 whitespace-nowrap text-xs font-medium"
+                                    :class="currentStep >= index + 1 ? 'text-indigo-600' : 'text-slate-400'"
+                                    x-text="step.label"></span>
+                            </div>
+                            <!-- 连接线 -->
+                            <div x-show="index < steps.length - 1"
+                                :class="[
+                                    'step-line flex-1 h-1 mx-3 rounded-full',
+                                    currentStep > index + 1 ? 'completed' : '',
+                                    currentStep === index + 1 ? 'active' : 'bg-slate-200'
+                                ]"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="flex-grow overflow-y-auto pb-8">
+            <div class="max-w-6xl mx-auto px-4 pt-10">
+
+                <!-- ==================== 步骤 1: 基本信息输入 ==================== -->
+                <div x-show="currentStep === 1" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📝 描述你的商业创意</h2>
+                        <p class="text-slate-500">请详细描述你的商业想法，AI 将帮你生成完整的商业计划书</p>
+                    </div>
+
+                    <div class="max-w-3xl mx-auto space-y-5">
+                        <!-- 商业创意 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="lightbulb" class="w-4 h-4 text-indigo-600"></i>
+                                商业创意描述 <span class="text-red-500">*</span>
+                            </label>
+                            <textarea x-model="input.businessIdea" rows="5"
+                                placeholder="详细描述你的商业创意、要解决的问题、产品或服务的核心功能...&#10;&#10;例如：开发一款面向中小企业的 AI 智能客服系统，通过自然语言处理技术，帮助企业降低客服成本 70%，同时提升客户满意度。支持多渠道接入（微信、网页、APP），可自动学习企业知识库..."
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none leading-relaxed"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <!-- 行业领域 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="building-2" class="w-4 h-4 text-indigo-600"></i>
+                                    行业领域 <span class="text-red-500">*</span>
+                                </label>
+                                <select x-model="input.industry"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                                    <option value="">请选择行业</option>
+                                    <template x-for="ind in industries" :key="ind">
+                                        <option :value="ind" x-text="ind"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <!-- 目标市场 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="globe" class="w-4 h-4 text-indigo-600"></i>
+                                    目标市场 <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" x-model="input.targetMarket"
+                                    placeholder="如：中国一二线城市 25-40 岁白领"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <!-- 创始团队 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="users" class="w-4 h-4 text-indigo-600"></i>
+                                    创始团队
+                                </label>
+                                <textarea x-model="input.teamDescription" rows="3"
+                                    placeholder="描述团队核心成员背景、技能和经验...&#10;例如：CEO-10年SaaS行业经验，CTO-前阿里P8..."
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"></textarea>
+                            </div>
+
+                            <!-- 初始投资预算 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="banknote" class="w-4 h-4 text-indigo-600"></i>
+                                    初始投资预算
+                                </label>
+                                <select x-model="input.budget"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition mb-3">
+                                    <option value="">请选择预算范围</option>
+                                    <option value="10万以下">10万以下</option>
+                                    <option value="10-50万">10-50万</option>
+                                    <option value="50-100万">50-100万</option>
+                                    <option value="100-500万">100-500万</option>
+                                    <option value="500-1000万">500-1000万</option>
+                                    <option value="1000万以上">1000万以上</option>
+                                </select>
+                                <input type="text" x-model="input.budgetDetail"
+                                    placeholder="补充说明（可选）：如已获天使轮200万..."
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                            </div>
+                        </div>
+
+                        <!-- 开始生成按钮 -->
+                        <button @click="startStep2()"
+                            :disabled="!canProceedStep1"
+                            class="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                            开始生成商业模式画布
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 2: 商业模式画布 ==================== -->
+                <div x-show="currentStep === 2" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">🧩 商业模式画布</h2>
+                        <p class="text-slate-500">Business Model Canvas - 你可以编辑每个模块的内容</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-indigo-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-indigo-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-indigo-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在生成商业模式画布...</p>
+                            <p class="text-sm text-slate-500">AI 正在分析你的商业创意，构建九大模块</p>
+                            <div class="mt-4 grid grid-cols-3 gap-3">
+                                <template x-for="i in 9" :key="i">
+                                    <div class="shimmer h-20 rounded-xl"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BMC 画布网格 -->
+                    <div x-show="!isGenerating && bmcData" class="max-w-6xl mx-auto">
+                        <!-- 经典 BMC 布局：
+                             行1: KP | KA | VP | CR | CS
+                             行2: KP | KR | VP | CH | CS
+                             行3: Cost Structure    | Revenue Streams
+                        -->
+                        <div class="grid grid-cols-10 gap-3">
+                            <!-- 重要合作 KP (row 1-2, col 1-2) -->
+                            <div class="col-span-10 md:col-span-2 md:row-span-2 bmc-card bg-white rounded-2xl p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="handshake" class="w-4 h-4 text-violet-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-violet-700">重要合作</h4>
+                                </div>
+                                <textarea x-model="bmcData.keyPartners" rows="5"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+
+                            <!-- 关键业务 KA (row 1, col 3-4) -->
+                            <div class="col-span-10 md:col-span-2 bmc-card bg-white rounded-2xl p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="cog" class="w-4 h-4 text-blue-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-blue-700">关键业务</h4>
+                                </div>
+                                <textarea x-model="bmcData.keyActivities" rows="3"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+
+                            <!-- 价值主张 VP (row 1-2, col 5-6) -->
+                            <div class="col-span-10 md:col-span-2 md:row-span-2 bmc-card bg-white rounded-2xl p-4 border-2 border-indigo-200 pulse-border">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="gift" class="w-4 h-4 text-indigo-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-indigo-700">价值主张</h4>
+                                </div>
+                                <textarea x-model="bmcData.valuePropositions" rows="5"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+
+                            <!-- 客户关系 CR (row 1, col 7-8) -->
+                            <div class="col-span-10 md:col-span-2 bmc-card bg-white rounded-2xl p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-pink-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="heart" class="w-4 h-4 text-pink-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-pink-700">客户关系</h4>
+                                </div>
+                                <textarea x-model="bmcData.customerRelationships" rows="3"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+
+                            <!-- 客户细分 CS (row 1-2, col 9-10) -->
+                            <div class="col-span-10 md:col-span-2 md:row-span-2 bmc-card bg-white rounded-2xl p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-emerald-700">客户细分</h4>
+                                </div>
+                                <textarea x-model="bmcData.customerSegments" rows="5"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+
+                            <!-- 核心资源 KR (row 2, col 3-4) -->
+                            <div class="col-span-10 md:col-span-2 bmc-card bg-white rounded-2xl p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="database" class="w-4 h-4 text-amber-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-amber-700">核心资源</h4>
+                                </div>
+                                <textarea x-model="bmcData.keyResources" rows="3"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+
+                            <!-- 渠道通路 CH (row 2, col 7-8) -->
+                            <div class="col-span-10 md:col-span-2 bmc-card bg-white rounded-2xl p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-cyan-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="truck" class="w-4 h-4 text-cyan-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-cyan-700">渠道通路</h4>
+                                </div>
+                                <textarea x-model="bmcData.channels" rows="3"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+
+                            <!-- 成本结构 (row 3, col 1-5) -->
+                            <div class="col-span-10 md:col-span-5 bmc-card bg-white rounded-2xl p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="trending-down" class="w-4 h-4 text-red-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-red-700">成本结构</h4>
+                                </div>
+                                <textarea x-model="bmcData.costStructure" rows="3"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+
+                            <!-- 收入来源 (row 3, col 6-10) -->
+                            <div class="col-span-10 md:col-span-5 bmc-card bg-white rounded-2xl p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="trending-up" class="w-4 h-4 text-green-600"></i>
+                                    </div>
+                                    <h4 class="font-bold text-sm text-green-700">收入来源</h4>
+                                </div>
+                                <textarea x-model="bmcData.revenueStreams" rows="3"
+                                    class="bmc-edit w-full text-xs leading-relaxed text-slate-600 bg-transparent border-0 outline-none resize-none p-0"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="flex justify-between mt-6">
+                            <button @click="goToStep(1)"
+                                class="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition flex items-center gap-2">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回修改
+                            </button>
+                            <button @click="startStep3()"
+                                class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2">
+                                生成市场分析 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 3: 市场分析 ==================== -->
+                <div x-show="currentStep === 3" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📊 市场分析</h2>
+                        <p class="text-slate-500">TAM/SAM/SOM 市场规模、目标客户画像、竞争格局</p>
+                    </div>
+
+                    <div class="max-w-4xl mx-auto">
+                        <!-- 加载或结果 -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+                            <!-- 加载状态 -->
+                            <div x-show="isGenerating" class="p-8 text-center">
+                                <div class="w-16 h-16 mx-auto mb-4 bg-indigo-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="loader-2" class="w-8 h-8 text-indigo-600 animate-spin"></i>
+                                </div>
+                                <p class="text-lg font-bold text-slate-800 mb-2">正在分析市场...</p>
+                                <p class="text-sm text-slate-500 mb-4">AI 正在进行 TAM/SAM/SOM 分析和竞争格局评估</p>
+                            </div>
+
+                            <!-- 流式内容 -->
+                            <div x-show="marketAnalysis || isGenerating" class="p-6">
+                                <!-- 思考过程 -->
+                                <details x-show="reasoningContent" class="mb-4">
+                                    <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-indigo-600">
+                                        🧠 深度思考过程 (点击展开)
+                                    </summary>
+                                    <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm whitespace-pre-wrap text-slate-600 max-h-60 overflow-y-auto"
+                                        x-text="reasoningContent"></div>
+                                </details>
+                                <div class="doc-view prose max-w-none" x-html="renderMarkdown(marketAnalysis)"></div>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div x-show="!isGenerating && marketAnalysis" class="flex justify-between mt-6">
+                            <button @click="goToStep(2)"
+                                class="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition flex items-center gap-2">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回画布
+                            </button>
+                            <div class="flex gap-3">
+                                <button @click="startStep3()"
+                                    class="px-5 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition flex items-center gap-2">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新生成
+                                </button>
+                                <button @click="startStep4()"
+                                    class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2">
+                                    生成财务预测 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 4: 财务预测 ==================== -->
+                <div x-show="currentStep === 4" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">💰 财务预测</h2>
+                        <p class="text-slate-500">1-3年收入预测、成本分解、盈亏平衡分析</p>
+                    </div>
+
+                    <div class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+                            <div x-show="isGenerating" class="p-8 text-center">
+                                <div class="w-16 h-16 mx-auto mb-4 bg-indigo-50 rounded-full flex items-center justify-center">
+                                    <i data-lucide="loader-2" class="w-8 h-8 text-indigo-600 animate-spin"></i>
+                                </div>
+                                <p class="text-lg font-bold text-slate-800 mb-2">正在生成财务预测...</p>
+                                <p class="text-sm text-slate-500 mb-4">AI 正在进行营收预测、成本建模和盈亏分析</p>
+                            </div>
+
+                            <div x-show="financialProjection || isGenerating" class="p-6">
+                                <details x-show="reasoningContent" class="mb-4">
+                                    <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-indigo-600">
+                                        🧠 深度思考过程 (点击展开)
+                                    </summary>
+                                    <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm whitespace-pre-wrap text-slate-600 max-h-60 overflow-y-auto"
+                                        x-text="reasoningContent"></div>
+                                </details>
+                                <div class="doc-view prose max-w-none" x-html="renderMarkdown(financialProjection)"></div>
+                            </div>
+                        </div>
+
+                        <div x-show="!isGenerating && financialProjection" class="flex justify-between mt-6">
+                            <button @click="goToStep(3)"
+                                class="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition flex items-center gap-2">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回市场分析
+                            </button>
+                            <div class="flex gap-3">
+                                <button @click="startStep4()"
+                                    class="px-5 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition flex items-center gap-2">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新生成
+                                </button>
+                                <button @click="startStep5()"
+                                    class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2">
+                                    生成完整计划书 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 5: 完整商业计划书 ==================== -->
+                <div x-show="currentStep === 5" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📋 完整商业计划书</h2>
+                        <p class="text-slate-500">基于前述分析，生成包含执行摘要的完整文档</p>
+                    </div>
+
+                    <div class="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6">
+                        <!-- 目录侧栏 -->
+                        <div x-show="!isGenerating && finalPlan" class="w-full lg:w-56 flex-shrink-0">
+                            <div class="bg-white rounded-2xl shadow-sm border border-indigo-100 p-4 lg:sticky lg:top-28">
+                                <h4 class="font-bold text-sm text-indigo-700 mb-3 flex items-center gap-2">
+                                    <i data-lucide="list" class="w-4 h-4"></i> 目录导航
+                                </h4>
+                                <nav class="space-y-1.5 text-xs">
+                                    <a href="#" @click.prevent="scrollToSection('exec')" class="block px-3 py-1.5 rounded-lg hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 transition">执行摘要</a>
+                                    <a href="#" @click.prevent="scrollToSection('bmc')" class="block px-3 py-1.5 rounded-lg hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 transition">商业模式</a>
+                                    <a href="#" @click.prevent="scrollToSection('market')" class="block px-3 py-1.5 rounded-lg hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 transition">市场分析</a>
+                                    <a href="#" @click.prevent="scrollToSection('finance')" class="block px-3 py-1.5 rounded-lg hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 transition">财务预测</a>
+                                    <a href="#" @click.prevent="scrollToSection('risk')" class="block px-3 py-1.5 rounded-lg hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 transition">风险与对策</a>
+                                    <a href="#" @click.prevent="scrollToSection('milestone')" class="block px-3 py-1.5 rounded-lg hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 transition">里程碑</a>
+                                </nav>
+                                <!-- 导出按钮 -->
+                                <div class="mt-4 pt-4 border-t border-indigo-100 space-y-2">
+                                    <button @click="exportMarkdown()"
+                                        class="w-full text-xs px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition flex items-center justify-center gap-1.5">
+                                        <i data-lucide="download" class="w-3.5 h-3.5"></i> 导出 Markdown
+                                    </button>
+                                    <button @click="exportTxt()"
+                                        class="w-full text-xs px-3 py-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition flex items-center justify-center gap-1.5">
+                                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i> 导出 TXT
+                                    </button>
+                                    <button @click="copyFullPlan()"
+                                        class="w-full text-xs px-3 py-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition flex items-center justify-center gap-1.5">
+                                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> 复制全文
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 文档主体 -->
+                        <div class="flex-grow">
+                            <div class="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+                                <div x-show="isGenerating" class="p-8 text-center">
+                                    <div class="w-16 h-16 mx-auto mb-4 bg-indigo-50 rounded-full flex items-center justify-center">
+                                        <i data-lucide="loader-2" class="w-8 h-8 text-indigo-600 animate-spin"></i>
+                                    </div>
+                                    <p class="text-lg font-bold text-slate-800 mb-2">正在编撰完整商业计划书...</p>
+                                    <p class="text-sm text-slate-500">AI 正在整合所有分析结果，生成执行摘要和完整文档</p>
+                                </div>
+
+                                <div x-show="finalPlan || isGenerating" class="p-8" id="plan-content">
+                                    <details x-show="reasoningContent" class="mb-4">
+                                        <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-indigo-600">
+                                            🧠 深度思考过程 (点击展开)
+                                        </summary>
+                                        <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm whitespace-pre-wrap text-slate-600 max-h-60 overflow-y-auto"
+                                            x-text="reasoningContent"></div>
+                                    </details>
+                                    <div class="doc-view" x-html="renderMarkdown(finalPlan)"></div>
+                                </div>
+                            </div>
+
+                            <div x-show="!isGenerating && finalPlan" class="flex justify-between mt-6">
+                                <button @click="goToStep(4)"
+                                    class="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition flex items-center gap-2">
+                                    <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回财务预测
+                                </button>
+                                <button @click="startStep5()"
+                                    class="px-5 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition flex items-center gap-2">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新生成完整计划书
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ==================== 设置弹窗 ==================== -->
+        <div x-show="showSettings" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-indigo-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border-slate-300 border p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">V4 Pro 模型会显示思考过程，适合复杂分析场景</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false" class="px-4 py-2 hover:bg-slate-100 rounded-xl text-sm transition">取消</button>
+                    <button @click="saveConfig()" class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Toast 提示 ==================== -->
+        <div x-show="toast.show" x-transition:enter="transition ease-out duration-200 transform"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150 transform"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-4"
+            class="fixed bottom-6 right-6 z-[200] bg-slate-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm">
+            <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+            <span x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('businessPlanApp', () => ({
+                // ==================== 状态管理 ====================
+                currentStep: 1,
+                isGenerating: false,
+                showSettings: false,
+                reasoningContent: '',
+
+                // 步骤定义
+                steps: [
+                    { label: '商业创意', icon: 'lightbulb' },
+                    { label: '模式画布', icon: 'layout-grid' },
+                    { label: '市场分析', icon: 'bar-chart-3' },
+                    { label: '财务预测', icon: 'calculator' },
+                    { label: '完整计划', icon: 'file-text' }
+                ],
+
+                // Toast 提示
+                toast: { show: false, message: '', icon: 'check' },
+
+                // API 配置
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                // ==================== 用户输入 ====================
+                input: {
+                    businessIdea: '',
+                    industry: '',
+                    targetMarket: '',
+                    teamDescription: '',
+                    budget: '',
+                    budgetDetail: ''
+                },
+
+                // 行业列表
+                industries: [
+                    '人工智能/机器学习', '企业服务/SaaS', '电子商务', '金融科技',
+                    '教育培训', '医疗健康', '社交/社区', '内容/媒体',
+                    '物流/供应链', '房地产/家居', '旅游/餐饮', '新能源/环保',
+                    '智能硬件/IoT', '游戏/娱乐', '农业科技', '零售/新零售',
+                    '区块链/Web3', '汽车/出行', '生物科技', '其他'
+                ],
+
+                // ==================== 生成结果 ====================
+                bmcData: null,
+                marketAnalysis: '',
+                financialProjection: '',
+                finalPlan: '',
+
+                // ==================== 计算属性 ====================
+                get canProceedStep1() {
+                    return this.input.businessIdea.trim().length > 10
+                        && this.input.industry
+                        && this.input.targetMarket.trim().length > 2;
+                },
+
+                // ==================== 生命周期 ====================
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                    }
+                    this.refreshIcons();
+                },
+
+                // ==================== 通用方法 ====================
+
+                /** 刷新 Lucide 图标 */
+                refreshIcons() {
+                    setTimeout(() => {
+                        try { lucide.createIcons(); } catch (e) { /* 忽略 */ }
+                    }, 50);
+                },
+
+                /** 显示 Toast 提示 */
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+
+                /** 保存 API 配置（合并策略） */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'check');
+                },
+
+                /** 渲染 Markdown 为 HTML */
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    try { return marked.parse(text); } catch (e) { return text; }
+                },
+
+                /** 检查是否可以跳转到指定步骤 */
+                canGoToStep(step) {
+                    if (step === 1) return true;
+                    if (step === 2) return this.canProceedStep1;
+                    if (step === 3) return !!this.bmcData;
+                    if (step === 4) return !!this.marketAnalysis;
+                    if (step === 5) return !!this.financialProjection;
+                    return false;
+                },
+
+                /** 跳转步骤（仅限已完成的步骤） */
+                goToStep(step) {
+                    if (this.isGenerating) return;
+                    this.currentStep = step;
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+                },
+
+                /** 滚动到文档锚点 */
+                scrollToSection(id) {
+                    const el = document.getElementById('section-' + id);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                },
+
+                // ==================== API 调用：非流式（JSON） ====================
+
+                /**
+                 * 调用 DeepSeek API（非流式），用于 JSON 结构化输出
+                 * @param {Array} messages - 消息列表
+                 * @returns {string} - 返回的文本内容
+                 */
+                async callAPIJson(messages) {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages,
+                            response_format: { type: 'json_object' },
+                            stream: false,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${err}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content || '';
+                },
+
+                // ==================== API 调用：流式 ====================
+
+                /**
+                 * 调用 DeepSeek API（流式），实时渲染生成内容
+                 * @param {Array} messages - 消息列表
+                 * @param {Function} onContent - 内容回调函数
+                 * @param {Function} onReasoning - 推理内容回调函数（V4 Pro 模型）
+                 */
+                async callAPIStream(messages, onContent, onReasoning) {
+                    this.reasoningContent = '';
+
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages,
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${err}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content && onReasoning) {
+                                        onReasoning(delta.reasoning_content);
+                                    }
+
+                                    if (delta.content && onContent) {
+                                        onContent(delta.content);
+                                    }
+                                } catch (e) { /* 忽略解析错误 */ }
+                            }
+                        }
+                    }
+                },
+
+                // ==================== 步骤 2: 生成商业模式画布 ====================
+
+                /**
+                 * 构建用户信息摘要，供所有步骤的 prompt 复用
+                 */
+                getUserContextPrompt() {
+                    let ctx = `## 商业创意
+${this.input.businessIdea}
+
+## 行业领域
+${this.input.industry}
+
+## 目标市场
+${this.input.targetMarket}`;
+
+                    if (this.input.teamDescription) {
+                        ctx += `\n\n## 创始团队\n${this.input.teamDescription}`;
+                    }
+                    if (this.input.budget) {
+                        ctx += `\n\n## 初始投资预算\n${this.input.budget}`;
+                        if (this.input.budgetDetail) ctx += `（${this.input.budgetDetail}）`;
+                    }
+                    return ctx;
+                },
+
+                /** 步骤2入口：生成商业模式画布 */
+                async startStep2() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+
+                    this.currentStep = 2;
+                    this.isGenerating = true;
+                    this.bmcData = null;
+                    this.refreshIcons();
+
+                    try {
+                        const systemPrompt = `你是一位资深商业顾问和创业导师。请根据用户的商业创意，生成完整的商业模式画布（Business Model Canvas）。
+
+要求：
+1. 每个模块用简洁的要点列出（每点一行，用 "• " 开头）
+2. 内容具体、可执行，避免空泛
+3. 各模块逻辑自洽，相互呼应
+4. 输出 JSON 格式
+
+JSON 结构：
+{
+  "keyPartners": "要点内容...",
+  "keyActivities": "要点内容...",
+  "keyResources": "要点内容...",
+  "valuePropositions": "要点内容...",
+  "customerRelationships": "要点内容...",
+  "channels": "要点内容...",
+  "customerSegments": "要点内容...",
+  "costStructure": "要点内容...",
+  "revenueStreams": "要点内容..."
+}`;
+
+                        const userPrompt = `请为以下商业创意生成商业模式画布：
+
+${this.getUserContextPrompt()}
+
+请用中文输出，每个模块提供 3-5 个具体要点，JSON 格式。`;
+
+                        const result = await this.callAPIJson([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ]);
+
+                        const parsed = JSON.parse(result);
+                        this.bmcData = parsed;
+                        this.showToast('商业模式画布生成完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[BusinessPlan] BMC生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                        this.currentStep = 1;
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 步骤 3: 市场分析 ====================
+
+                /** 步骤3入口：生成市场分析 */
+                async startStep3() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.currentStep = 3;
+                    this.isGenerating = true;
+                    this.marketAnalysis = '';
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+
+                    try {
+                        const systemPrompt = `你是一位资深市场分析师。请基于用户的商业创意和商业模式画布，进行深入的市场分析。
+
+分析框架：
+1. **市场规模估算**（TAM/SAM/SOM）
+   - TAM（潜在市场总量）：整个行业的市场规模
+   - SAM（可服务市场）：你能触达的市场部分
+   - SOM（可获得市场）：短期内可实际获取的市场份额
+   - 用具体数据和逻辑推导
+
+2. **目标客户画像**
+   - 核心用户群特征（人口统计、行为特征、痛点）
+   - 客户决策路径
+   - 付费意愿和能力
+
+3. **竞争格局分析**
+   - 主要竞争对手（直接和间接）
+   - 各竞品优劣势对比
+   - 市场进入壁垒
+   - 差异化竞争策略
+
+4. **市场趋势与机遇**
+   - 行业发展趋势
+   - 政策法规环境
+   - 技术驱动因素
+
+请用 Markdown 格式输出，包含表格对比、数据支撑。中文回复。`;
+
+                        const bmcSummary = this.bmcData ? `## 商业模式画布摘要
+- 价值主张：${this.bmcData.valuePropositions}
+- 客户细分：${this.bmcData.customerSegments}
+- 渠道通路：${this.bmcData.channels}
+- 收入来源：${this.bmcData.revenueStreams}` : '';
+
+                        const userPrompt = `请对以下商业项目进行市场分析：
+
+${this.getUserContextPrompt()}
+
+${bmcSummary}
+
+请提供详细的 TAM/SAM/SOM 分析、目标客户画像和竞争格局。`;
+
+                        await this.callAPIStream(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            (content) => { this.marketAnalysis += content; },
+                            (reasoning) => { this.reasoningContent += reasoning; }
+                        );
+
+                        this.showToast('市场分析生成完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[BusinessPlan] 市场分析生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 步骤 4: 财务预测 ====================
+
+                /** 步骤4入口：生成财务预测 */
+                async startStep4() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.currentStep = 4;
+                    this.isGenerating = true;
+                    this.financialProjection = '';
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+
+                    try {
+                        const systemPrompt = `你是一位资深财务分析师和投行顾问。请基于用户的商业创意、商业模式和市场分析，生成详细的财务预测。
+
+分析框架：
+1. **收入预测（第1-3年）**
+   - 收入模型和定价策略
+   - 用户/客户增长预测
+   - 各业务线收入构成
+   - 用表格展示月度/季度/年度预测
+
+2. **成本分解**
+   - 固定成本（办公、人员、设备等）
+   - 可变成本（获客、运营、服务器等）
+   - 人员编制和薪资计划
+   - 用表格对比各年成本
+
+3. **盈亏平衡分析**
+   - 盈亏平衡点计算
+   - 达到盈亏平衡的时间预估
+   - 现金流预测
+
+4. **关键财务假设**
+   - 列出所有核心假设
+   - 敏感性分析（乐观/基准/悲观）
+   - 融资需求和资金使用计划
+
+5. **关键财务指标**
+   - 毛利率、净利率趋势
+   - 客户获取成本(CAC)
+   - 客户生命周期价值(LTV)
+   - LTV/CAC 比率
+
+请用 Markdown 格式输出，多使用表格展示数据。所有金额使用人民币。中文回复。`;
+
+                        const bmcSummary = this.bmcData ? `## 商业模式摘要
+- 收入来源：${this.bmcData.revenueStreams}
+- 成本结构：${this.bmcData.costStructure}
+- 核心资源：${this.bmcData.keyResources}` : '';
+
+                        const userPrompt = `请为以下商业项目生成三年财务预测：
+
+${this.getUserContextPrompt()}
+
+${bmcSummary}
+
+## 市场分析摘要
+${this.marketAnalysis ? this.marketAnalysis.substring(0, 1500) : '暂无'}
+
+请提供详细的三年财务预测，包含收入预测表、成本分解和盈亏平衡分析。`;
+
+                        await this.callAPIStream(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            (content) => { this.financialProjection += content; },
+                            (reasoning) => { this.reasoningContent += reasoning; }
+                        );
+
+                        this.showToast('财务预测生成完成', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[BusinessPlan] 财务预测生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 步骤 5: 完整商业计划书 ====================
+
+                /** 步骤5入口：生成完整商业计划书 */
+                async startStep5() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.currentStep = 5;
+                    this.isGenerating = true;
+                    this.finalPlan = '';
+                    this.reasoningContent = '';
+                    this.refreshIcons();
+
+                    try {
+                        const systemPrompt = `你是一位顶级商业计划书撰写专家，曾帮助数百个项目成功融资。请基于前面所有分析成果，编撰一份专业、完整、有说服力的商业计划书。
+
+文档结构要求：
+1. <span id="section-exec"></span>**一、执行摘要**（最重要！投资人首先看这部分）
+   - 项目概述（1段话概括商业机会）
+   - 核心价值主张
+   - 目标市场和规模
+   - 商业模式概述
+   - 融资需求和资金用途
+   - 预期回报
+
+2. <span id="section-bmc"></span>**二、商业模式**
+   - 产品/服务详述
+   - 价值主张深化
+   - 目标客户分析
+   - 收入模式
+   - 渠道策略
+
+3. <span id="section-market"></span>**三、市场分析**
+   - 市场规模（TAM/SAM/SOM）
+   - 竞争格局
+   - 市场趋势
+
+4. <span id="section-finance"></span>**四、财务计划**
+   - 收入预测
+   - 成本结构
+   - 盈亏平衡
+   - 融资计划
+
+5. <span id="section-risk"></span>**五、风险分析与应对**
+   - 市场风险
+   - 技术风险
+   - 运营风险
+   - 应对策略
+
+6. <span id="section-milestone"></span>**六、发展里程碑**
+   - 短期目标（6个月）
+   - 中期目标（1年）
+   - 长期目标（3年）
+
+输出格式：Markdown，专业、简洁、数据驱动。中文。
+重要：执行摘要要精炼有力，控制在 400 字以内。全文结构清晰，逻辑严密。`;
+
+                        const bmcText = this.bmcData ? `
+## 商业模式画布
+- 价值主张：${this.bmcData.valuePropositions}
+- 客户细分：${this.bmcData.customerSegments}
+- 渠道通路：${this.bmcData.channels}
+- 客户关系：${this.bmcData.customerRelationships}
+- 收入来源：${this.bmcData.revenueStreams}
+- 核心资源：${this.bmcData.keyResources}
+- 关键业务：${this.bmcData.keyActivities}
+- 重要合作：${this.bmcData.keyPartners}
+- 成本结构：${this.bmcData.costStructure}` : '';
+
+                        const userPrompt = `请编撰完整的商业计划书：
+
+${this.getUserContextPrompt()}
+
+${bmcText}
+
+## 市场分析
+${this.marketAnalysis || '暂无'}
+
+## 财务预测
+${this.financialProjection || '暂无'}
+
+请整合以上所有内容，生成一份完整的、可用于融资路演的商业计划书。`;
+
+                        await this.callAPIStream(
+                            [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            (content) => { this.finalPlan += content; },
+                            (reasoning) => { this.reasoningContent += reasoning; }
+                        );
+
+                        this.showToast('商业计划书生成完成！', 'check-circle');
+
+                    } catch (error) {
+                        console.error('[BusinessPlan] 完整计划书生成失败:', error);
+                        this.showToast('生成失败: ' + error.message, 'alert-circle');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                // ==================== 导出功能 ====================
+
+                /**
+                 * 构建完整文档的纯文本内容，供导出使用
+                 */
+                buildFullDocument() {
+                    let doc = `# 商业计划书\n`;
+                    doc += `项目：${this.input.businessIdea.substring(0, 50)}...\n`;
+                    doc += `行业：${this.input.industry}\n`;
+                    doc += `生成时间：${new Date().toLocaleString('zh-CN')}\n\n`;
+                    doc += `---\n\n`;
+
+                    if (this.bmcData) {
+                        doc += `## 商业模式画布\n\n`;
+                        doc += `### 价值主张\n${this.bmcData.valuePropositions}\n\n`;
+                        doc += `### 客户细分\n${this.bmcData.customerSegments}\n\n`;
+                        doc += `### 渠道通路\n${this.bmcData.channels}\n\n`;
+                        doc += `### 客户关系\n${this.bmcData.customerRelationships}\n\n`;
+                        doc += `### 收入来源\n${this.bmcData.revenueStreams}\n\n`;
+                        doc += `### 核心资源\n${this.bmcData.keyResources}\n\n`;
+                        doc += `### 关键业务\n${this.bmcData.keyActivities}\n\n`;
+                        doc += `### 重要合作\n${this.bmcData.keyPartners}\n\n`;
+                        doc += `### 成本结构\n${this.bmcData.costStructure}\n\n`;
+                        doc += `---\n\n`;
+                    }
+
+                    if (this.marketAnalysis) {
+                        doc += `## 市场分析\n\n${this.marketAnalysis}\n\n---\n\n`;
+                    }
+
+                    if (this.financialProjection) {
+                        doc += `## 财务预测\n\n${this.financialProjection}\n\n---\n\n`;
+                    }
+
+                    if (this.finalPlan) {
+                        doc += `## 完整商业计划书\n\n${this.finalPlan}\n`;
+                    }
+
+                    return doc;
+                },
+
+                /** 导出为 Markdown 文件 */
+                exportMarkdown() {
+                    const content = this.buildFullDocument();
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `商业计划书_${this.input.industry || '项目'}_${new Date().toISOString().slice(0, 10)}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    this.showToast('已导出 Markdown 文件', 'download');
+                },
+
+                /** 导出为 TXT 文件 */
+                exportTxt() {
+                    const content = this.buildFullDocument()
+                        .replace(/#{1,6}\s/g, '')
+                        .replace(/\*\*/g, '')
+                        .replace(/\*/g, '')
+                        .replace(/---/g, '────────────────');
+
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `商业计划书_${this.input.industry || '项目'}_${new Date().toISOString().slice(0, 10)}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    this.showToast('已导出 TXT 文件', 'download');
+                },
+
+                /** 复制完整计划书到剪贴板 */
+                async copyFullPlan() {
+                    try {
+                        await navigator.clipboard.writeText(this.buildFullDocument());
+                        this.showToast('已复制到剪贴板', 'copy');
+                    } catch (err) {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = this.buildFullDocument();
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        this.showToast('已复制到剪贴板', 'copy');
+                    }
+                }
+            }));
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Matter.js 物理引擎</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fff7ed; color: #7c2d12; margin: 0; overflow: hidden; }
+    #canvas-container { width: 100vw; height: 100vh; }
+    .ui-overlay {
+      position: absolute; top: 20px; left: 20px; 
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(251, 146, 60, 0.3);
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      width: 300px;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div class="ui-overlay">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold text-orange-900">🧱 Matter.js</h1>
+    <a href="index.html" class="text-xs text-orange-600 hover:underline">退出</a>
+  </div>
+  <p class="text-orange-800/70 text-sm mb-6">2D 刚体物理引擎游乐场</p>
+  
+  <div class="space-y-4">
+    <button onclick="addStack()" class="w-full py-2 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 shadow-md shadow-orange-500/20 active:scale-95 transition">
+      📦 生成堆叠箱子
+    </button>
+    <button onclick="addCircleStack()" class="w-full py-2 bg-orange-100 text-orange-800 font-bold rounded-lg hover:bg-orange-200 border border-orange-200 active:scale-95 transition">
+      ⚽ 生成球体雨
+    </button>
+    <button onclick="clearWorld()" class="w-full py-2 text-red-500 text-sm hover:underline">
+      💥 清空世界
+    </button>
+  </div>
+  
+  <div class="mt-6 pt-4 border-t border-orange-200 text-xs text-orange-800/60 leading-relaxed">
+    <strong>提示:</strong><br>
+    - 使用鼠标拖拽物体<br>
+    - 物理引擎包含重力、碰撞和摩擦力模拟
+  </div>
+</div>
+
+<script>
+  // Module aliases
+  const Engine = Matter.Engine,
+        Render = Matter.Render,
+        Runner = Matter.Runner,
+        Bodies = Matter.Bodies,
+        Composite = Matter.Composite,
+        Mouse = Matter.Mouse,
+        MouseConstraint = Matter.MouseConstraint,
+        Events = Matter.Events;
+
+  // 1. Setup
+  const engine = Engine.create();
+  const world = engine.world;
+
+  const render = Render.create({
+    element: document.getElementById('canvas-container'),
+    engine: engine,
+    options: {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      background: '#fff7ed', // Match body bg
+      wireframes: false, // Solid shapes
+      showAngleIndicator: false
+    }
+  });
+
+  // 2. Add Boundaries
+  function addBoundaries() {
+    const wallOptions = { isStatic: true, render: { fillStyle: '#fdba74' } };
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    
+    Composite.add(world, [
+      Bodies.rectangle(width/2, height + 30, width, 60, wallOptions), // Bottom
+      Bodies.rectangle(width + 30, height/2, 60, height, wallOptions), // Right
+      Bodies.rectangle(-30, height/2, 60, height, wallOptions)         // Left
+    ]);
+  }
+  addBoundaries();
+
+  // 3. Mouse Control
+  const mouse = Mouse.create(render.canvas);
+  const mouseConstraint = MouseConstraint.create(engine, {
+    mouse: mouse,
+    constraint: {
+      stiffness: 0.2,
+      render: { visible: false }
+    }
+  });
+  Composite.add(world, mouseConstraint);
+  render.mouse = mouse; // Sync mouse with render
+
+  // 4. Generators
+  function addStack() {
+    const stack = Matter.Composites.stack(window.innerWidth/2 - 100, 50, 4, 4, 0, 0, function(x, y) {
+      return Bodies.rectangle(x, y, 40, 40, {
+        render: { fillStyle: '#fb923c' } // orange-400
+      });
+    });
+    Composite.add(world, stack);
+  }
+
+  function addCircleStack() {
+    const stack = Matter.Composites.stack(window.innerWidth/2 - 100, 0, 5, 5, 0, 0, function(x, y) {
+      return Bodies.circle(x, y, 20, {
+        restitution: 0.9, // Bouncy
+        render: { fillStyle: '#38bdf8' } // sky-400
+      });
+    });
+    Composite.add(world, stack);
+  }
+
+  function clearWorld() {
+    Composite.clear(world);
+    Engine.clear(engine);
+    // Re-add boundaries and mouse
+    addBoundaries();
+    Composite.add(world, mouseConstraint);
+  }
+  
+  // Initial demo
+  addStack();
+
+  // 5. Run
+  Render.run(render);
+  const runner = Runner.create();
+  Runner.run(runner, engine);
+
+  // Resize Handler
+  window.addEventListener('resize', () => {
+    render.canvas.width = window.innerWidth;
+    render.canvas.height = window.innerHeight;
+    // Note: Boundaries don't auto-update in this simple demo, clearing recommended
+  });
+
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

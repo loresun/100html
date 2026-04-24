@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直播/口播逐字稿专家</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Lucide Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            /* 使用温暖的橙红色系，象征直播的热情与能量 */
+            --primary-color: #f97316;
+            --bg-color: #fff7ed;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* 隐藏滚动条 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 口播稿特殊样式 - 停顿标记 */
+        .script-content .pause-short {
+            color: #f97316;
+            font-weight: bold;
+        }
+
+        .script-content .pause-long {
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        /* 语气词高亮 */
+        .script-content .tone-word {
+            background-color: #fef3c7;
+            padding: 0 4px;
+            border-radius: 4px;
+        }
+
+        /* Markdown 渲染样式增强 */
+        .prose h1,
+        .prose h2,
+        .prose h3 {
+            color: #c2410c;
+            border-bottom: 2px solid #fed7aa;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .prose ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+        }
+
+        .prose ol {
+            list-style-type: decimal;
+            padding-left: 1.5rem;
+        }
+
+        .prose blockquote {
+            border-left: 4px solid #f97316;
+            background-color: #fff7ed;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-style: italic;
+        }
+
+        .prose strong {
+            color: #c2410c;
+        }
+
+        /* 时间轴样式 */
+        .timeline-item {
+            position: relative;
+            padding-left: 2rem;
+            border-left: 2px solid #fdba74;
+            margin-left: 0.5rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #f97316;
+        }
+
+        /* 标签样式 */
+        .tag-hook {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .tag-pain {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .tag-sell {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .tag-close {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-orange-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <!-- 左侧: 首页链接 -->
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-tower-broadcast text-orange-600 text-2xl"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">直播/口播逐字稿专家</span>
+                    </div>
+                    <!-- 右侧: 控制按钮 -->
+                    <div class="flex items-center gap-4">
+                        <!-- 模型切换 -->
+                        <div class="flex items-center gap-2 bg-orange-50 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-orange-600': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-orange-600': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <!-- 提示词设置 -->
+                        <button @click="showPromptSettings = true"
+                            class="text-slate-500 hover:text-orange-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-pen h-4 w-4"></i> 提示词
+                        </button>
+                        <!-- API 设置 -->
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-orange-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i> API
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主布局区域 -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧: 输入与控制面板 -->
+            <div class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-orange-100 flex flex-col h-full z-20 shadow-lg">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6 no-scrollbar">
+
+                    <!-- 脚本模式选择 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">脚本模式</label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <div v-for="mode in scriptModes" :key="mode.id" @click="currentModeId = mode.id"
+                                :class="{'bg-orange-50 border-orange-500 text-orange-700': currentModeId === mode.id, 'bg-slate-50 border-slate-200 text-slate-600': currentModeId !== mode.id}"
+                                class="cursor-pointer border rounded-lg p-3 flex items-center justify-between transition hover:shadow-sm">
+                                <div class="flex items-center gap-2">
+                                    <i :class="mode.icon + ' w-4 h-4'"></i>
+                                    <span class="text-sm font-medium">{{ mode.name }}</span>
+                                </div>
+                                <span class="text-xs opacity-60">{{ mode.desc }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 主题/产品输入 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <span v-if="currentModeId === 'short_video'">视频主题</span>
+                            <span v-else-if="currentModeId === 'livestream'">直播主题/产品</span>
+                            <span v-else>内容主题</span>
+                        </label>
+                        <input v-model="input.topic" type="text" 
+                            :placeholder="getTopicPlaceholder()"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none transition text-sm">
+                    </div>
+
+                    <!-- 原文/参考内容 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">
+                            <span v-if="currentModeId === 'oral_convert'">待转化的书面文案</span>
+                            <span v-else>详细信息/参考资料</span>
+                        </label>
+                        <textarea v-model="input.content" rows="8" 
+                            :placeholder="getContentPlaceholder()"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none transition resize-none text-sm leading-relaxed"></textarea>
+                    </div>
+
+                    <!-- 短视频模式专属设置 -->
+                    <div v-if="currentModeId === 'short_video'" class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">视频时长</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button v-for="duration in videoDurations" :key="duration.value"
+                                @click="input.duration = duration.value"
+                                :class="{'bg-orange-500 text-white': input.duration === duration.value, 'bg-slate-100 text-slate-600': input.duration !== duration.value}"
+                                class="py-2 rounded-lg text-xs font-medium transition">
+                                {{ duration.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 直播模式专属设置 -->
+                    <div v-if="currentModeId === 'livestream'" class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">直播时长</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button v-for="duration in livestreamDurations" :key="duration.value"
+                                @click="input.livestreamDuration = duration.value"
+                                :class="{'bg-orange-500 text-white': input.livestreamDuration === duration.value, 'bg-slate-100 text-slate-600': input.livestreamDuration !== duration.value}"
+                                class="py-2 rounded-lg text-xs font-medium transition">
+                                {{ duration.label }}
+                            </button>
+                        </div>
+                        <label class="block text-sm font-bold text-slate-700 mt-4">直播类型</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button v-for="type in livestreamTypes" :key="type.value"
+                                @click="input.livestreamType = type.value"
+                                :class="{'bg-orange-500 text-white': input.livestreamType === type.value, 'bg-slate-100 text-slate-600': input.livestreamType !== type.value}"
+                                class="py-2 rounded-lg text-xs font-medium transition">
+                                {{ type.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 口语化转换设置 -->
+                    <div v-if="currentModeId === 'oral_convert'" class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">口语化风格</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button v-for="style in oralStyles" :key="style.value"
+                                @click="input.oralStyle = style.value"
+                                :class="{'bg-orange-500 text-white': input.oralStyle === style.value, 'bg-slate-100 text-slate-600': input.oralStyle !== style.value}"
+                                class="py-2 rounded-lg text-xs font-medium transition">
+                                {{ style.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 生成按钮 -->
+                    <button @click="startGenerate" :disabled="isGenerating || !input.content"
+                        class="w-full bg-orange-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin w-5 h-5"></i>
+                        <span v-else>🎙️ 生成逐字稿</span>
+                    </button>
+
+                    <!-- 状态提示 -->
+                    <div class="text-xs text-center text-slate-400">
+                        {{ statusText }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧: 输出展示区域 -->
+            <div class="flex-grow bg-[#fff7ed] p-4 md:p-8 overflow-y-auto h-full relative flex flex-col">
+
+                <!-- 空状态提示 -->
+                <div v-if="!result.content && !isGenerating && !result.reasoning"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                    <i class="fa-solid fa-microphone w-24 h-24 mb-4 text-orange-300"></i>
+                    <p class="text-lg text-orange-900/50 text-center">选择模式，输入内容<br>一键生成专业口播逐字稿</p>
+                    <div class="mt-8 grid grid-cols-3 gap-4 text-center max-w-md">
+                        <div class="bg-white/80 p-4 rounded-xl">
+                            <i class="fa-solid fa-video w-6 h-6 mx-auto mb-2 text-orange-500"></i>
+                            <p class="text-xs text-slate-500">短视频口播</p>
+                        </div>
+                        <div class="bg-white/80 p-4 rounded-xl">
+                            <i class="fa-solid fa-tower-broadcast w-6 h-6 mx-auto mb-2 text-orange-500"></i>
+                            <p class="text-xs text-slate-500">直播带货</p>
+                        </div>
+                        <div class="bg-white/80 p-4 rounded-xl">
+                            <i class="fa-solid fa-comments w-6 h-6 mx-auto mb-2 text-orange-500"></i>
+                            <p class="text-xs text-slate-500">口语化转换</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 结果展示区域 -->
+                <div v-else
+                    class="max-w-4xl mx-auto w-full bg-white rounded-xl shadow-sm border border-orange-100 flex flex-col h-full overflow-hidden">
+
+                    <!-- 结果头部 -->
+                    <div class="p-4 border-b border-orange-100 flex justify-between items-center bg-orange-50/30 shrink-0">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-lg font-bold text-slate-800">生成结果</h2>
+                            <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                                {{ getModeName(currentModeId) }}
+                            </span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button v-if="result.content" @click="exportToTxt"
+                                class="text-orange-600 text-sm font-medium hover:bg-orange-50 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-download w-4 h-4"></i> 导出 TXT
+                            </button>
+                            <button v-if="result.content" @click="copyContent"
+                                class="text-slate-500 text-sm font-medium hover:bg-slate-100 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-copy w-4 h-4"></i> 复制全文
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 内容滚动区域 -->
+                    <div class="flex-grow overflow-y-auto p-6">
+
+                        <!-- 深度思考过程折叠框 (Reasoner 模型) -->
+                        <div v-if="result.reasoning"
+                            class="mb-6 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden shrink-0">
+                            <details class="group" :open="isGenerating">
+                                <summary
+                                    class="flex items-center justify-between p-2 cursor-pointer bg-slate-100 hover:bg-slate-200 transition text-xs font-bold text-slate-600 select-none">
+                                    <div class="flex items-center gap-1">
+                                        <i class="fa-solid fa-brain w-3 h-3"></i>
+                                        <span>深度思考过程</span>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-down w-3 h-3 transition-transform group-open:rotate-180"></i>
+                                </summary>
+                                <div
+                                    class="p-3 bg-slate-50 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-200 max-h-60 overflow-y-auto">
+                                    {{ result.reasoning }}
+                                </div>
+                            </details>
+                        </div>
+
+                        <!-- 主内容区域 (Markdown 渲染) -->
+                        <div class="prose prose-sm max-w-none script-content" v-html="renderMarkdown(result.content)">
+                        </div>
+
+                        <!-- 加载指示器 -->
+                        <div v-if="isGenerating" class="flex items-center justify-center py-4 text-orange-500 gap-2">
+                            <i class="fa-solid fa-spinner fa-spin w-5 h-5"></i>
+                            <span class="text-sm">正在撰写逐字稿...</span>
+                        </div>
+
+                        <!-- 错误提示 -->
+                        <div v-if="result.error" class="bg-red-50 text-red-600 p-4 rounded-lg mt-4 text-sm text-center">
+                            {{ result.error }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-orange-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Key 会存储在本地，与其他应用共享。</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提示词设置弹窗 -->
+        <div v-if="showPromptSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 h-[80vh] flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">提示词配置</h3>
+                    <button @click="resetPrompts" class="text-xs text-red-500 hover:underline">恢复默认</button>
+                </div>
+
+                <div class="flex gap-4 flex-grow overflow-hidden">
+                    <!-- 左侧: 模式列表 -->
+                    <div class="w-1/3 border-r border-slate-100 pr-4 overflow-y-auto">
+                        <div v-for="mode in scriptModes" :key="mode.id" @click="currentEditingModeId = mode.id"
+                            :class="{'bg-orange-50 text-orange-700 font-medium': currentEditingModeId === mode.id, 'text-slate-600 hover:bg-slate-50': currentEditingModeId !== mode.id}"
+                            class="p-3 rounded-lg cursor-pointer mb-2 flex items-center gap-2 transition">
+                            <i :class="mode.icon + ' w-4 h-4'"></i>
+                            {{ mode.name }}
+                        </div>
+                    </div>
+
+                    <!-- 右侧: 提示词编辑器 -->
+                    <div class="w-2/3 flex flex-col">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                            {{ getModeName(currentEditingModeId) }} - 系统提示词
+                        </label>
+                        <textarea v-model="customPrompts[currentEditingModeId]"
+                            class="flex-grow w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none resize-none text-sm font-mono leading-relaxed"
+                            placeholder="输入该模式的专属提示词..."></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2 pt-4 border-t border-slate-100">
+                    <button @click="showPromptSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="savePrompts"
+                        class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700">保存设置</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick, computed, watch } = Vue;
+
+        /**
+         * 默认提示词配置
+         * 针对三种不同场景优化的系统提示词
+         */
+        const DEFAULT_PROMPTS = {
+            // 短视频口播模式 - 强调黄金3秒和节奏感
+            short_video: `你是一位顶级短视频口播稿撰写专家，擅长创作抖音、视频号等平台的爆款口播脚本。
+
+## 你的核心能力：
+1. **黄金3秒开头**：擅长设计"钩子"开场，在前3秒内抓住观众注意力
+2. **节奏把控**：熟悉短视频的呼吸节奏，语句简短有力
+3. **口语化表达**：所有文字都适合朗读，拒绝书面语
+
+## 输出格式要求：
+
+### 🎬 黄金3秒开头（Hook）
+[设计一个让人停不下来的开头，可以是：震惊型/悬念型/共鸣型/利益型]
+
+### 📝 完整逐字稿
+[用以下格式标注：]
+- 【停顿】表示短停顿（约0.5秒）
+- 【长停顿】表示长停顿（约1-2秒）
+- **加粗文字** 表示需要重读/强调的部分
+- (语气词) 表示自然的语气词，如(嗯)(啊)(对吧)
+
+### ⏱️ 时间轴参考
+[按秒数划分内容结构]
+
+### 💡 拍摄建议
+[镜头运用、表情动作、BGM风格建议]
+
+## 写作原则：
+1. 每句话不超过15个字，易于朗读
+2. 多用"你"，少用"大家"，制造私密感
+3. 语气要像朋友聊天，不要像念稿
+4. 适当加入情绪起伏，避免平铺直叙
+5. 结尾要有明确的行动召唤（CTA）
+
+请直接输出结果，不要有多余的解释。`,
+
+            // 直播带货模式 - 聚人→留人→逼单
+            livestream: `你是一位金牌直播带货主播脚本撰写专家，熟悉直播间的流量机制和成交心理学。
+
+## 直播间黄金公式：聚人 → 留人 → 锁客 → 逼单 → 复购
+
+## 输出格式要求：
+
+### 📢 直播脚本大纲
+
+根据直播时长，生成分阶段的逐字稿：
+
+#### 第一阶段：聚人（开场前5分钟）
+**目标**：快速拉升在线人数
+- 开场话术（带动气氛、欢迎语）
+- 福利预告（吊胃口、留人钩子）
+- 互动话术（刷屏引导、点赞关注）
+
+#### 第二阶段：留人（正式讲品前）
+**目标**：建立信任、铺垫痛点
+- 故事引入（个人经历/用户案例）
+- 痛点放大（场景化描述）
+- 需求激发话术
+
+#### 第三阶段：锁客（产品介绍）
+**目标**：展示价值、消除疑虑
+- 产品亮相话术
+- 卖点逐一拆解（FAB法则）
+- 竞品对比话术
+- 信任背书（证书、销量、好评）
+
+#### 第四阶段：逼单（促成交易）
+**目标**：制造紧迫感、促进下单
+- 价格锚定话术（原价vs直播价）
+- 限时限量话术
+- 赠品叠加话术
+- 倒计时逼单话术
+- 犹豫客户唤醒话术
+
+#### 第五阶段：复购引导
+- 下播预告
+- 关注话术
+- 下次预约话术
+
+### 🎯 关键话术金句库
+[提供10-15句可以直接使用的高转化话术]
+
+### ⚠️ 违禁词提醒
+[提醒避免使用的敏感词汇]
+
+## 写作原则：
+1. 语气亲切热情，像朋友推荐好物
+2. 善用数字和对比，让利益具象化
+3. 预设观众疑问，主动回应打消顾虑
+4. 穿插互动指令，保持直播间活跃度
+5. 话术要接地气，避免念广告感
+
+请根据用户提供的产品信息，生成完整的直播带货脚本。`,
+
+            // 口语化转换模式 - 将书面语转为口语
+            oral_convert: `你是一位专业的口语化改写专家，擅长将生硬的书面文字转化为自然流畅的口播稿。
+
+## 你的核心能力：
+1. **消灭书面感**：识别并改写所有不适合朗读的表达
+2. **注入生命力**：添加自然的语气词、停顿和情感
+3. **保留核心信息**：在改写过程中不丢失原文重点
+
+## 转换规则：
+
+### 1. 句式转换
+- 长句拆短句（每句不超过15字）
+- 被动语态 → 主动语态
+- 书面词汇 → 日常口语词汇
+- 抽象表达 → 具体场景化表达
+
+### 2. 添加口语元素
+- 自然的语气词：嗯、啊、对吧、你看、说实话、真的
+- 停顿标记：【停顿】【长停顿】
+- 重音标记：**需要强调的词**
+- 情绪词：（惊讶）（感叹）（疑问）
+
+### 3. 增加互动感
+- 多用"你"而非"您/大家"
+- 适当加入反问句
+- 设置假想对话
+
+## 输出格式：
+
+### 📖 原文分析
+[简要指出原文中的书面语特点]
+
+### 🎙️ 口语化逐字稿
+
+[完整的口语化版本，包含所有标记]
+
+### 📊 转换对照表
+
+| 原书面表达 | 口语化表达 | 转换理由 |
+|---------|---------|--------|
+| ... | ... | ... |
+
+### 💡 朗读提示
+[语速、情感、重音等提示]
+
+## 风格选项：
+- **亲和力强**：像闺蜜/兄弟聊天
+- **专业权威**：专家科普风格
+- **轻松幽默**：段子手风格
+- **真诚走心**：娓娓道来风格
+
+请根据用户选择的风格进行转换。`
+        };
+
+        createApp({
+            setup() {
+
+
+                // ==================== 状态定义 ====================
+                
+                // 弹窗显示状态
+                const showSettings = ref(false);           // API设置弹窗
+                const showPromptSettings = ref(false);     // 提示词设置弹窗
+                
+                // API 配置
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');        // 当前选择的模型
+                
+                // 生成状态
+                const isGenerating = ref(false);
+                const statusText = ref('准备就绪');
+                
+                // 输入数据
+                const input = reactive({
+                    topic: '',                              // 主题
+                    content: '',                            // 内容/原文
+                    duration: '60',                         // 短视频时长
+                    livestreamDuration: '30',               // 直播时长（分钟）
+                    livestreamType: 'selling',              // 直播类型
+                    oralStyle: 'friendly'                   // 口语化风格
+                });
+
+                // 脚本模式配置
+                const scriptModes = [
+                    { id: 'short_video', name: '短视频口播', icon: 'fa-solid fa-video', desc: '黄金3秒、节奏感强' },
+                    { id: 'livestream', name: '直播带货', icon: 'fa-solid fa-tower-broadcast', desc: '聚人→留人→逼单' },
+                    { id: 'oral_convert', name: '口语化转换', icon: 'fa-solid fa-comments', desc: '书面语→人话' }
+                ];
+                const currentModeId = ref('short_video');
+                const currentEditingModeId = ref('short_video');
+
+                // 短视频时长选项
+                const videoDurations = [
+                    { value: '15', label: '15秒' },
+                    { value: '30', label: '30秒' },
+                    { value: '60', label: '60秒' },
+                    { value: '90', label: '90秒' },
+                    { value: '180', label: '3分钟' }
+                ];
+
+                // 直播时长选项
+                const livestreamDurations = [
+                    { value: '15', label: '15分钟' },
+                    { value: '30', label: '30分钟' },
+                    { value: '60', label: '1小时' },
+                    { value: '120', label: '2小时' }
+                ];
+
+                // 直播类型选项
+                const livestreamTypes = [
+                    { value: 'selling', label: '带货卖货' },
+                    { value: 'knowledge', label: '知识分享' },
+                    { value: 'entertainment', label: '娱乐互动' },
+                    { value: 'branding', label: '品牌宣传' }
+                ];
+
+                // 口语化风格选项
+                const oralStyles = [
+                    { value: 'friendly', label: '亲和闺蜜风' },
+                    { value: 'professional', label: '专业权威风' },
+                    { value: 'humorous', label: '轻松幽默风' },
+                    { value: 'sincere', label: '真诚走心风' }
+                ];
+
+                // 自定义提示词
+                const customPrompts = reactive({ ...DEFAULT_PROMPTS });
+
+                // 生成结果
+                const result = reactive({
+                    content: '',
+                    reasoning: '',
+                    error: null
+                });
+
+                // ==================== 初始化 ====================
+                onMounted(() => {
+
+                    // 从 localStorage 读取 API 配置（合并策略，保留默认值）
+                    const savedConfig = localStorage.getItem('global_llm_config');
+                    if (savedConfig) {
+                        try {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(savedConfig) };
+                        } catch (e) {
+                            console.error('JSON parse error:', e);
+                        }
+                    }
+
+                    // 从 localStorage 读取自定义提示词
+                    const savedPrompts = localStorage.getItem('livestream_script_prompts');
+                    if (savedPrompts) {
+                        try {
+                            Object.assign(customPrompts, JSON.parse(savedPrompts));
+                        } catch (e) {
+                            console.error('JSON parse error:', e);
+                        }
+                    }
+
+                    // 初始化 Lucide 图标
+                });
+
+                // ==================== 辅助函数 ====================
+                
+                /**
+                 * 获取模式名称
+                 * @param {string} id - 模式ID
+                 * @returns {string} 模式名称
+                 */
+                const getModeName = (id) => scriptModes.find(m => m.id === id)?.name || id;
+
+                /**
+                 * 获取主题输入框占位符
+                 */
+                const getTopicPlaceholder = () => {
+                    const placeholders = {
+                        short_video: '例如：如何3步做出完美的拿铁',
+                        livestream: '例如：XX品牌保湿面霜 / 双11专场',
+                        oral_convert: '例如：产品功效介绍'
+                    };
+                    return placeholders[currentModeId.value] || '请输入主题';
+                };
+
+                /**
+                 * 获取内容输入框占位符
+                 */
+                const getContentPlaceholder = () => {
+                    const placeholders = {
+                        short_video: '输入视频要传达的核心内容、卖点、目标人群等信息...',
+                        livestream: '输入产品详情、价格、优惠信息、目标用户等...',
+                        oral_convert: '粘贴需要转换的书面文案，AI将帮你转化为适合朗读的口语稿...'
+                    };
+                    return placeholders[currentModeId.value] || '请输入内容';
+                };
+
+                /**
+                 * 渲染 Markdown 内容
+                 * @param {string} text - Markdown 文本
+                 * @returns {string} HTML 内容
+                 */
+                const renderMarkdown = (text) => {
+                    if (!text) return '';
+                    return marked.parse(text);
+                };
+
+                // ==================== 配置保存 ====================
+                
+                /**
+                 * 保存 API 配置
+                 * 合并策略：先读取现有配置，再合并新配置
+                 */
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                /**
+                 * 保存自定义提示词
+                 */
+                const savePrompts = () => {
+                    localStorage.setItem('livestream_script_prompts', JSON.stringify(customPrompts));
+                    showPromptSettings.value = false;
+                };
+
+                /**
+                 * 恢复默认提示词
+                 */
+                const resetPrompts = () => {
+                    if (confirm('确定要恢复默认提示词吗？所有自定义修改将丢失。')) {
+                        Object.assign(customPrompts, DEFAULT_PROMPTS);
+                    }
+                };
+
+                // ==================== 核心生成逻辑 ====================
+                
+                /**
+                 * 构建用户提示词
+                 * 根据不同模式组装不同的用户输入
+                 */
+                const buildUserPrompt = () => {
+                    let prompt = `【主题】：${input.topic || '未指定'}\n\n`;
+
+                    switch (currentModeId.value) {
+                        case 'short_video':
+                            prompt += `【视频时长】：${input.duration}秒\n\n`;
+                            prompt += `【内容要求】：\n${input.content}`;
+                            break;
+                        case 'livestream':
+                            prompt += `【直播时长】：${input.livestreamDuration}分钟\n`;
+                            const typeLabels = {
+                                selling: '带货卖货',
+                                knowledge: '知识分享',
+                                entertainment: '娱乐互动',
+                                branding: '品牌宣传'
+                            };
+                            prompt += `【直播类型】：${typeLabels[input.livestreamType]}\n\n`;
+                            prompt += `【产品/内容信息】：\n${input.content}`;
+                            break;
+                        case 'oral_convert':
+                            const styleLabels = {
+                                friendly: '亲和闺蜜风',
+                                professional: '专业权威风',
+                                humorous: '轻松幽默风',
+                                sincere: '真诚走心风'
+                            };
+                            prompt += `【目标风格】：${styleLabels[input.oralStyle]}\n\n`;
+                            prompt += `【待转换的书面文案】：\n${input.content}`;
+                            break;
+                    }
+
+                    return prompt;
+                };
+
+                /**
+                 * 开始生成逐字稿
+                 */
+                const startGenerate = async () => {
+                    // 检查 API Key
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!input.content) return;
+
+                    // 重置状态
+                    isGenerating.value = true;
+                    statusText.value = '正在构思逐字稿...';
+                    result.content = '';
+                    result.reasoning = '';
+                    result.error = null;
+
+                    // 获取系统提示词和用户提示词
+                    const systemPrompt = customPrompts[currentModeId.value];
+                    const userPrompt = buildUserPrompt();
+
+                    try {
+                        // 调用 DeepSeek API（流式）
+                        await callDeepSeek(systemPrompt, userPrompt, true,
+                            (chunk) => {
+                                result.content += chunk;
+                            },
+                            (reasoningChunk) => {
+                                result.reasoning += reasoningChunk;
+                            }
+                        );
+                        statusText.value = '生成完成 ✓';
+                    } catch (e) {
+                        console.error('生成失败:', e);
+                        result.error = e.message;
+                        statusText.value = '生成失败';
+                    } finally {
+                        isGenerating.value = false;
+                        // 重新渲染图标
+                        nextTick(() => {
+                        });
+                    }
+                };
+
+                /**
+                 * 调用 DeepSeek API
+                 * @param {string} systemPrompt - 系统提示词
+                 * @param {string} userContent - 用户内容
+                 * @param {boolean} stream - 是否流式输出
+                 * @param {function} onChunk - 内容回调
+                 * @param {function} onReasoning - 推理内容回调（V4 Pro 模型）
+                 */
+                const callDeepSeek = async (systemPrompt, userContent, stream = false, onChunk = null, onReasoning = null) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 未配置");
+
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: model.value,
+                                messages: [
+                                    { "role": "system", "content": systemPrompt },
+                                    { "role": "user", "content": userContent }
+                                ],
+                                stream: stream
+                            })
+                        });
+                    } catch (e) {
+                         throw new Error(`网络请求失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    // 非流式响应直接返回
+                    if (!stream) {
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+                    }
+
+                    // 流式响应处理
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+
+                                    // 处理推理内容（DeepSeek V4 Pro 模型）
+                                    const reasoning = json.choices[0].delta.reasoning_content;
+                                    if (reasoning && onReasoning) {
+                                        onReasoning(reasoning);
+                                    }
+
+                                    // 处理普通内容
+                                    const content = json.choices[0].delta.content || "";
+                                    if (onChunk) onChunk(content);
+
+                                } catch (e) {
+                                    console.error("Stream parse error", e);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                // ==================== 导出功能 ====================
+                
+                /**
+                 * 复制全部内容到剪贴板
+                 */
+                const copyContent = () => {
+                    if (!result.content) return;
+                    
+                    // 组装导出内容（包含思考过程）
+                    let exportText = result.content;
+                    if (result.reasoning) {
+                        exportText = `【深度思考过程】\n${result.reasoning}\n\n【生成结果】\n${result.content}`;
+                    }
+                    
+                    navigator.clipboard.writeText(exportText).then(() => {
+                        statusText.value = '已复制到剪贴板 ✓';
+                        setTimeout(() => { statusText.value = '准备就绪'; }, 2000);
+                    });
+                };
+
+                /**
+                 * 导出为 TXT 文件
+                 */
+                const exportToTxt = () => {
+                    if (!result.content) return;
+
+                    // 组装导出内容
+                    let exportText = `【${getModeName(currentModeId.value)}】\n`;
+                    exportText += `主题：${input.topic || '未指定'}\n`;
+                    exportText += `生成时间：${new Date().toLocaleString()}\n`;
+                    exportText += `模型：${model.value}\n`;
+                    exportText += '\n' + '='.repeat(50) + '\n\n';
+                    
+                    // 包含思考过程
+                    if (result.reasoning) {
+                        exportText += `【深度思考过程】\n${result.reasoning}\n\n`;
+                        exportText += '='.repeat(50) + '\n\n';
+                    }
+                    
+                    exportText += `【逐字稿内容】\n${result.content}`;
+
+                    // 创建下载
+                    const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `口播稿_${input.topic || '未命名'}_${new Date().toLocaleDateString()}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                };
+
+                // ==================== 返回响应式数据和方法 ====================
+                return {
+
+                    // 状态
+                    showSettings,
+                    showPromptSettings,
+                    apiConfig,
+                    model,
+                    isGenerating,
+                    statusText,
+                    input,
+                    result,
+                    
+                    // 配置数据
+                    scriptModes,
+                    currentModeId,
+                    currentEditingModeId,
+                    videoDurations,
+                    livestreamDurations,
+                    livestreamTypes,
+                    oralStyles,
+                    customPrompts,
+                    
+                    // 方法
+                    saveConfig,
+                    savePrompts,
+                    resetPrompts,
+                    getModeName,
+                    getTopicPlaceholder,
+                    getContentPlaceholder,
+                    renderMarkdown,
+                    startGenerate,
+                    copyContent,
+                    exportToTxt
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/video_livestream_script.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>
+
+
+
+
+
+

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek 创意写作专家</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Typography Plugin for Tailwind (Optional but good for preview) -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+
+    <style>
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* 模拟微信公众号预览样式 (用于复制) */
+        .wx-content {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .wx-content h1 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 14px;
+            margin-top: 20px;
+            color: #1a202c;
+            border-left: 4px solid #3b82f6;
+            padding-left: 10px;
+        }
+
+        .wx-content h2 {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            margin-top: 18px;
+            color: #2d3748;
+        }
+
+        .wx-content p {
+            margin-bottom: 16px;
+            font-size: 16px;
+            text-align: justify;
+        }
+
+        .wx-content blockquote {
+            background: #f7fafc;
+            border-left: 4px solid #cbd5e0;
+            padding: 10px;
+            color: #718096;
+            margin-bottom: 16px;
+        }
+
+        .wx-content ul {
+            list-style-type: disc;
+            padding-left: 20px;
+            margin-bottom: 16px;
+        }
+
+        .wx-content strong {
+            color: #2b6cb0;
+        }
+
+        /* 动画 */
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.5s ease;
+        }
+
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="bg-slate-50 text-slate-800 antialiased">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i data-lucide="pen-tool" class="text-blue-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">DeepWriter</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-blue-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i data-lucide="settings" class="h-4 w-4"></i> 设置 API
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">API 配置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600"><i data-lucide="x"
+                            class="h-5 w-5"></i></button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Tavily Search API Key (可选)</label>
+                        <input type="password" v-model="apiConfig.tavily" placeholder="tvly-..."
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                        <p class="text-xs text-slate-500 mt-1">用于补充实时资料，为空则仅使用 LLM 知识库。</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button @click="saveConfig"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">保存缓存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <main class="flex-grow flex flex-col">
+
+            <!-- 1. 首页 Landing Page -->
+            <transition name="fade" mode="out-in">
+                <div v-if="view === 'home'" key="home"
+                    class="flex-grow flex flex-col items-center justify-center text-center p-8 bg-[url('https://images.unsplash.com/photo-1519681393784-d120267933ba?ixlib=rb-4.0.3&auto=format&fit=crop&w=2340&q=80')] bg-cover bg-center bg-no-repeat relative">
+                    <div class="absolute inset-0 bg-white/90"></div>
+                    <div class="relative z-10 max-w-3xl">
+                        <div
+                            class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold mb-6">
+                            <span class="relative flex h-2 w-2">
+                                <span
+                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                            </span>
+                            由 DeepSeek V4 Flash 驱动
+                        </div>
+                        <h1
+                            class="text-5xl md:text-6xl font-extrabold text-slate-900 mb-6 tracking-tight leading-tight">
+                            不仅是写作，<br>更是<span class="text-blue-600">思想的构建</span>
+                        </h1>
+                        <p class="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+                            全自动化的创意写作流水线。从智能选题拆解，到深度内容生成，再到专家级审查，一键输出公众号完美排版。
+                        </p>
+                        <button @click="startWriting"
+                            class="bg-blue-600 text-white text-lg font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-center gap-2 mx-auto">
+                            开始创作 <i data-lucide="arrow-right" class="h-5 w-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. 核心写作页 Workspace -->
+                <div v-else key="workspace" class="flex flex-col md:flex-row h-full max-w-7xl mx-auto w-full p-4 gap-6">
+
+                    <!-- 左侧：输入与控制 -->
+                    <div class="w-full md:w-1/3 flex flex-col gap-6">
+                        <!-- 输入卡片 -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                                <i data-lucide="sparkles" class="text-yellow-500 h-5 w-5"></i> 创作需求
+                            </h2>
+                            <div class="space-y-4" v-if="status === 'idle'">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">文章主题</label>
+                                    <input v-model="input.topic" type="text" placeholder="例如：AI 时代如何高效学习"
+                                        class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">类型/语气</label>
+                                        <select v-model="input.tone"
+                                            class="w-full p-2 border border-slate-200 rounded-lg outline-none">
+                                            <option>深度干货</option>
+                                            <option>幽默风趣</option>
+                                            <option>商业评论</option>
+                                            <option>感性散文</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">预估字数</label>
+                                        <select v-model="input.length"
+                                            class="w-full p-2 border border-slate-200 rounded-lg outline-none">
+                                            <option>1000字 (短篇)</option>
+                                            <option>2000字 (中篇)</option>
+                                            <option>5000字 (长篇)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">额外要求</label>
+                                    <textarea v-model="input.extra" rows="3" placeholder="例如：需要包含具体案例，结尾要升华..."
+                                        class="w-full p-2 border border-slate-200 rounded-lg outline-none"></textarea>
+                                </div>
+                                <button @click="runWorkflow" :disabled="!isConfigured"
+                                    class="w-full bg-slate-900 text-white py-3 rounded-xl font-medium hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {{ isConfigured ? '启动智能写作 Agent' : '请先配置 API Key' }}
+                                </button>
+                            </div>
+
+                            <!-- 状态显示 -->
+                            <div v-else class="space-y-4">
+                                <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                    <div v-if="status !== 'done'"
+                                        class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                    <div v-else class="text-green-500"><i data-lucide="check-circle"
+                                            class="h-5 w-5"></i></div>
+                                    <span class="font-medium text-blue-900">{{ statusText }}</span>
+                                </div>
+                                <!-- 进度日志 -->
+                                <div
+                                    class="bg-slate-50 rounded-lg p-3 h-64 overflow-y-auto text-xs font-mono text-slate-600 border border-slate-200">
+                                    <div v-for="(log, idx) in logs" :key="idx" class="mb-1">
+                                        <span class="text-slate-400">[{{ log.time }}]</span> {{ log.msg }}
+                                    </div>
+                                </div>
+                                <button v-if="status === 'done'" @click="reset"
+                                    class="w-full border border-slate-300 text-slate-700 py-2 rounded-lg hover:bg-slate-50 transition">
+                                    开始新创作
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 大纲预览 (生成后显示) -->
+                        <div v-if="outline.length > 0"
+                            class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex-grow overflow-hidden flex flex-col">
+                            <h3 class="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">生成的结构</h3>
+                            <div class="overflow-y-auto flex-grow space-y-2">
+                                <div v-for="(item, index) in outline" :key="index"
+                                    class="flex items-start gap-2 text-sm p-2 rounded hover:bg-slate-50">
+                                    <span
+                                        class="bg-blue-100 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded mt-0.5">{{
+                                        index + 1 }}</span>
+                                    <span class="text-slate-700">{{ item.title }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：结果展示 -->
+                    <div
+                        class="w-full md:w-2/3 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[85vh] md:h-auto">
+                        <div
+                            class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-2xl">
+                            <h2 class="font-bold text-slate-700">文章预览</h2>
+                            <div class="flex gap-2">
+                                <button v-if="finalContent" @click="copyToClipboard"
+                                    class="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded transition shadow-sm">
+                                    <i data-lucide="copy" class="h-3 w-3"></i> 复制到公众号
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-grow overflow-y-auto p-8 bg-white relative">
+                            <!-- 空状态 -->
+                            <div v-if="!finalContent && !streamingContent"
+                                class="h-full flex flex-col items-center justify-center text-slate-300">
+                                <i data-lucide="file-text" class="h-16 w-16 mb-4 opacity-50"></i>
+                                <p>等待内容生成...</p>
+                            </div>
+                            <!-- 内容渲染区 -->
+                            <div v-else>
+                                <!-- 渲染 Markdown -->
+                                <div id="render-target" class="wx-content prose prose-slate max-w-none"
+                                    v-html="renderedMarkdown"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </transition>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, nextTick, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const view = ref('home');
+                const showSettings = ref(false);
+                const apiConfig = ref({
+                    deepseek: '',
+                    tavily: ''
+                });
+
+                // 状态机
+                const status = ref('idle'); // idle, planning, writing, reviewing, done
+                const statusText = ref('准备就绪');
+                const logs = ref([]);
+
+                // 输入
+                const input = ref({
+                    topic: '',
+                    tone: '深度干货',
+                    length: '2000字 (中篇)',
+                    extra: ''
+                });
+
+                // 数据
+                const outline = ref([]);
+                const streamingContent = ref(''); // 实时流
+                const finalContent = ref(''); // 最终 Markdown
+
+                // 挂载时加载配置
+                onMounted(() => {
+                    // 尝试加载全局配置
+                    // 尝试加载全局配置
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                    } else {
+                        // 兼容旧配置
+                        const old = localStorage.getItem('dw_api_config');
+                        if (old) {
+                            const parsedOld = JSON.parse(old);
+                            apiConfig.value = { ...apiConfig.value, ...parsedOld };
+                            // 迁移到全局 (保留现有全局配置 if any, though here it's else block)
+                            localStorage.setItem('global_llm_config', JSON.stringify(parsedOld));
+                        }
+                    }
+                    lucide.createIcons();
+                });
+
+                const isConfigured = computed(() => !!apiConfig.value.deepseek);
+
+                const renderedMarkdown = computed(() => {
+                    const content = finalContent.value || streamingContent.value;
+                    return marked.parse(content);
+                });
+
+                // 方法
+                const goHome = () => view.value = 'home';
+                const startWriting = () => view.value = 'workspace';
+
+                const saveConfig = () => {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                    addLog('系统', 'API 配置已保存 (全局共享)');
+                };
+
+                const addLog = (agent, msg) => {
+                    const time = new Date().toLocaleTimeString();
+                    logs.value.unshift({ time, msg: `${agent}: ${msg}` });
+                };
+
+                const reset = () => {
+                    status.value = 'idle';
+                    statusText.value = '准备就绪';
+                    logs.value = [];
+                    outline.value = [];
+                    streamingContent.value = '';
+                    finalContent.value = '';
+                    input.value.topic = '';
+                };
+
+                // --- 核心工作流 ---
+
+                const runWorkflow = async () => {
+                    if (!input.value.topic) return alert('请输入主题');
+
+                    status.value = 'planning';
+                    finalContent.value = '';
+                    streamingContent.value = '';
+                    logs.value = [];
+
+                    try {
+                        // 1. 选题 & 大纲 Agent
+                        statusText.value = '正在构建大纲...';
+                        addLog('选题 Agent', '正在分析需求，拆解文章结构...');
+
+                        // 可选：如果配置了 Tavily，这里可以先搜索资料 (此处为模拟)
+                        let searchContext = "";
+                        if (apiConfig.value.tavily) {
+                            addLog('搜索 Agent', '正在检索相关资料 (Tavily)...');
+                            // 实际项目中此处调用 Tavily API
+                            // searchContext = await fetchTavily(...);
+                            await new Promise(r => setTimeout(r, 1000)); // 模拟耗时
+                            addLog('搜索 Agent', '资料检索完成');
+                        }
+
+                        const outlinePrompt = `
+                            作为一个专业的创意写作专家。请根据以下要求生成文章大纲。
+                            主题：${input.value.topic}
+                            风格：${input.value.tone}
+                            长度：${input.value.length}
+                            ${input.value.extra ? `额外要求：${input.value.extra}` : ''}
+                            
+                            请仅返回一个 JSON 数组，不包含 markdown 格式或其他废话。
+                            格式示例：[{"title": "引言", "desc": "简述背景"}, {"title": "第一章", "desc": "..."}]
+                        `;
+
+                        const outlineRes = await callDeepSeek(outlinePrompt, false); // 非流式，确保 JSON 完整
+                        // 清理 Markdown 代码块标记（如果 LLM 输出了 ```json ... ```）
+                        const cleanJson = outlineRes.replace(/```json|```/g, '').trim();
+                        try {
+                            outline.value = JSON.parse(cleanJson);
+                        } catch (e) {
+                            console.error("JSON parse error", cleanJson);
+                            // 降级处理：简单的按行分割
+                            outline.value = [{ title: "正文内容", desc: "AI 未能正确生成结构化大纲，将直接生成全文。" }];
+                        }
+
+                        addLog('选题 Agent', `大纲生成完毕，共 ${outline.value.length} 个部分`);
+
+                        // 2. 写作 Agent (循环调用)
+                        status.value = 'writing';
+                        let fullDraft = "";
+
+                        for (let i = 0; i < outline.value.length; i++) {
+                            const section = outline.value[i];
+                            statusText.value = `正在撰写: ${section.title} (${i + 1}/${outline.value.length})`;
+                            addLog('写作 Agent', `开始撰写：${section.title}`);
+
+                            const contextSoFar = fullDraft.slice(-500); // 提供上下文
+                            const writePrompt = `
+                                你是专业作家。请撰写文章的这一部分。
+                                
+                                文章主题：${input.value.topic}
+                                当前章节：${section.title}
+                                章节意图：${section.desc}
+                                整体风格：${input.value.tone}
+                                
+                                上文内容(参考)：...${contextSoFar}
+
+                                要求：
+                                1. 使用 Markdown 格式。
+                                2. 直接输出内容，不要包含"好的"、"如下"等废话。
+                                3. 内容要详实、深入。
+                            `;
+
+                            // 模拟流式效果：先获取内容，然后追加
+                            // 真实场景可以用 stream: true，这里为了逻辑简单使用 await 整体返回
+                            let sectionContent = "";
+                            await callDeepSeek(writePrompt, true, (chunk) => {
+                                sectionContent += chunk;
+                                streamingContent.value = fullDraft + `## ${section.title}\n\n${sectionContent}`;
+                                scrollToBottom();
+                            });
+
+                            // 3. 审查 Agent (针对该段落的快速自我修正)
+                            addLog('审查 Agent', `正在审查润色：${section.title}`);
+                            const reviewPrompt = `
+                                请优化以下文本，使其更符合公众号阅读习惯，段落更短，金句更突出。保持 Markdown 格式。
+                                文本：
+                                ${sectionContent}
+                            `;
+
+                            let polishedContent = "";
+                            // 流式审查，替换掉草稿
+                            await callDeepSeek(reviewPrompt, true, (chunk) => {
+                                polishedContent += chunk;
+                                streamingContent.value = fullDraft + `## ${section.title}\n\n${polishedContent}`;
+                                scrollToBottom();
+                            });
+
+                            fullDraft += `## ${section.title}\n\n${polishedContent}\n\n`;
+                        }
+
+                        // 完成
+                        finalContent.value = fullDraft;
+                        status.value = 'done';
+                        statusText.value = '创作完成';
+                        addLog('系统', '所有步骤完成，已准备好 Markdown');
+
+                    } catch (error) {
+                        console.error(error);
+                        statusText.value = '发生错误';
+                        addLog('错误', error.message);
+                    }
+                };
+
+                // 滚动到底部辅助函数
+                const scrollToBottom = async () => {
+                    await nextTick();
+                    const container = document.querySelector('.overflow-y-auto.p-8');
+                    if (container) container.scrollTop = container.scrollHeight;
+                };
+
+                // 调用 DeepSeek API
+                const callDeepSeek = async (prompt, stream = false, onChunk = null) => {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiConfig.value.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: "deepseek-v4-flash",
+                            messages: [
+                                { "role": "system", "content": "You are a helpful assistant." },
+                                { "role": "user", "content": prompt }
+                            ],
+                            stream: stream
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error?.message || 'API 请求失败');
+                    }
+
+                    if (!stream) {
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+                    }
+
+                    // 流式处理
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+                    let resultText = "";
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+                                    const content = json.choices[0].delta.content || "";
+                                    resultText += content;
+                                    if (onChunk) onChunk(content);
+                                } catch (e) {
+                                    console.error("Stream parse error", e);
+                                }
+                            }
+                        }
+                    }
+                    return resultText;
+                };
+
+                // 复制到公众号 (带样式)
+                const copyToClipboard = () => {
+                    const element = document.getElementById('render-target');
+                    if (!element) return;
+
+                    // 获取带内联样式的HTML
+                    // 注意：这里的 CSS 其实在 <style> 标签里定义了，
+                    // 复制到微信需要内联 style 属性。
+                    // 简单的实现是将计算后的样式内联。
+
+                    const html = element.innerHTML;
+
+                    // 构建一个包含基本样式的 Wrapper，微信有些编辑器能识别 class，有些需要 inline
+                    // 这里做一个简单的 ClipboardItem 封装
+                    const blobHtml = new Blob([html], { type: 'text/html' });
+                    const blobText = new Blob([element.innerText], { type: 'text/plain' });
+
+                    const data = [new ClipboardItem({
+                        ['text/html']: blobHtml,
+                        ['text/plain']: blobText
+                    })];
+
+                    navigator.clipboard.write(data).then(() => {
+                        addLog('系统', '内容已复制到剪贴板 (公众号格式)');
+                        alert('已复制！请直接在微信公众号后台按 Ctrl+V');
+                    });
+                };
+
+                return {
+                    view, showSettings, apiConfig, input,
+                    status, statusText, logs, outline,
+                    streamingContent, finalContent, renderedMarkdown,
+                    goHome, startWriting, saveConfig, runWorkflow, reset, copyToClipboard, isConfigured
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 人生模拟器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* 翡翠绿渐变背景 */
+        body {
+            background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 35%, #a7f3d0 70%, #6ee7b7 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #059669; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.45s ease-out forwards; }
+
+        @keyframes blinkCaret {
+            50% { opacity: 0; }
+        }
+        .typewriter-caret::after {
+            content: '▍';
+            color: #059669;
+            animation: blinkCaret 1s step-end infinite;
+            margin-left: 2px;
+        }
+
+        /* 选项卡片 hover */
+        .choice-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+        .choice-card:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px -8px rgba(5, 150, 105, 0.35);
+            border-color: #10b981;
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        }
+
+        /* 属性条过渡动画 */
+        .stat-bar-fill {
+            transition: width 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Markdown 故事区 */
+        .prose-life h2 { font-size: 1.1rem; font-weight: 700; color: #065f46; margin: 0.75rem 0 0.4rem; }
+        .prose-life h3 { font-size: 1rem; font-weight: 600; color: #047857; margin: 0.6rem 0 0.3rem; }
+        .prose-life p { margin: 0.35rem 0; line-height: 1.75; color: #1e293b; }
+        .prose-life ul, .prose-life ol { padding-left: 1.25rem; margin: 0.35rem 0; }
+        .prose-life li { margin: 0.2rem 0; line-height: 1.65; }
+        .prose-life strong { color: #059669; }
+        .prose-life blockquote {
+            border-left: 4px solid #10b981;
+            padding: 0.5rem 1rem;
+            margin: 0.5rem 0;
+            background: rgba(255, 255, 255, 0.65);
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+
+        .chapter-divider {
+            background: linear-gradient(90deg, transparent, #059669, transparent);
+            height: 2px;
+            margin: 1.5rem 0;
+            opacity: 0.35;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+    <div x-data="lifeSimApp()" x-init="init()" class="min-h-screen pb-16">
+
+        <!-- 顶部导航 -->
+        <nav class="bg-white/85 backdrop-blur-md sticky top-0 z-50 border-b border-emerald-200/80 shadow-sm">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                    <i data-lucide="sparkles" class="text-emerald-600 h-6 w-6"></i>
+                    <span class="font-bold text-xl text-slate-900">AI 人生模拟器</span>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button type="button" x-show="phase !== 'setup' && !isLoading"
+                        @click="exportStory()"
+                        class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        导出故事
+                    </button>
+                    <button type="button" @click="showSettings = true"
+                        class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 transition">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">设置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex flex-col lg:flex-row gap-6">
+
+            <!-- 左侧：属性面板（桌面端sticky） -->
+            <aside class="lg:w-72 flex-shrink-0 order-first lg:order-none">
+                <div class="lg:sticky lg:top-24 space-y-4">
+                    <div class="bg-white/90 backdrop-blur rounded-2xl border border-emerald-100 shadow-md p-4">
+                        <h3 class="text-sm font-bold text-emerald-800 flex items-center gap-2 mb-4">
+                            <i data-lucide="activity" class="w-4 h-4"></i>
+                            人生属性
+                        </h3>
+                        <template x-for="row in statRows" :key="row.key">
+                            <div class="mb-3 last:mb-0">
+                                <div class="flex justify-between text-xs font-medium text-slate-600 mb-1">
+                                    <span x-text="row.label"></span>
+                                    <span x-text="formatStat(row.key)"></span>
+                                </div>
+                                <div class="h-2.5 rounded-full bg-emerald-100 overflow-hidden">
+                                    <div class="stat-bar-fill h-full rounded-full"
+                                        :class="row.barClass"
+                                        :style="'width:' + statPercent(row.key) + '%'"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="phase !== 'setup'" class="text-center">
+                        <span class="inline-flex items-center gap-1 text-xs text-emerald-800/80 bg-white/70 px-3 py-1.5 rounded-full border border-emerald-100">
+                            <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                            第 <span x-text="chapterDisplay"></span> 章 / 共 10 章
+                        </span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 主内容：设定 / 故事流 -->
+            <main class="flex-1 min-w-0">
+
+                <!-- 阶段：角色设定 -->
+                <div x-show="phase === 'setup'" x-transition class="bg-white/90 backdrop-blur rounded-2xl border border-emerald-100 shadow-lg p-6 sm:p-8 animate-fade-in">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+                        <i data-lucide="user-circle" class="w-7 h-7 text-emerald-600"></i>
+                        创建你的角色
+                    </h2>
+                    <p class="text-slate-500 text-sm mb-6">填写基本信息与特质，AI 将据此生成独一无二的人生剧本（共 10 章互动）。</p>
+
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">姓名</label>
+                            <input type="text" x-model="character.name" placeholder="例如：林晓晨"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">性别</label>
+                                <select x-model="character.gender"
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <option value="男">男</option>
+                                    <option value="女">女</option>
+                                    <option value="不愿透露">不愿透露</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">出生年代</label>
+                                <select x-model="character.birthEra"
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <option value="1990年代（90后）">1990年代（90后）</option>
+                                    <option value="1980年代（80后）">1980年代（80后）</option>
+                                    <option value="2000年代（00后）">2000年代（00后）</option>
+                                    <option value="2010年代及以后">2010年代及以后</option>
+                                    <option value="1970年代及更早">1970年代及更早</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">初始特质（可多选）</label>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="t in traitOptions" :key="t">
+                                    <button type="button"
+                                        @click="toggleTrait(t)"
+                                        :class="character.traits.includes(t)
+                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                                            : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'"
+                                        class="px-3 py-1.5 rounded-full text-sm border transition"
+                                        x-text="t"></button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button"
+                        @click="startLife()"
+                        :disabled="isLoading || !canStart"
+                        class="mt-8 w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2">
+                        <i x-show="isLoading" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                        <span x-text="isLoading ? '正在生成第一章…' : '开始人生旅程'"></span>
+                    </button>
+                    <p x-show="errorMsg" class="mt-3 text-sm text-red-600" x-text="errorMsg"></p>
+                </div>
+
+                <!-- 阶段：游戏中 / 总结 -->
+                <div x-show="phase !== 'setup'" x-transition class="space-y-4">
+
+                    <!-- 故事流 -->
+                    <div class="bg-white/90 backdrop-blur rounded-2xl border border-emerald-100 shadow-lg p-5 sm:p-6 min-h-[200px]">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="messages-square" class="w-5 h-5 text-emerald-600"></i>
+                                人生故事
+                            </h3>
+                            <button type="button" class="sm:hidden text-xs text-emerald-700 flex items-center gap-1" @click="exportStory()">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> 导出
+                            </button>
+                        </div>
+
+                        <!-- 已归档章节 -->
+                        <template x-for="(ch, idx) in chapters" :key="ch.id">
+                            <div class="mb-6 animate-fade-in">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg"
+                                        x-text="ch.round >= 11 ? '尾声' : ('第 ' + ch.round + ' 章')"></span>
+                                    <div class="chapter-divider flex-1"></div>
+                                </div>
+                                <div class="prose-life text-sm sm:text-base" x-html="renderMd(ch.narrative)"></div>
+                                <p x-show="ch.choiceMade" class="mt-3 text-sm text-slate-500 border-l-4 border-emerald-300 pl-3">
+                                    <span class="font-medium text-emerald-800">你的选择：</span>
+                                    <span x-text="ch.choiceMade"></span>
+                                </p>
+                            </div>
+                        </template>
+
+                        <!-- 流式生成中的章节（打字机/流式光标） -->
+                        <div x-show="streamingNarrative || reasoningBuffer" class="mb-4">
+                            <div x-show="reasoningBuffer" class="mb-3">
+                                <details class="text-xs">
+                                    <summary class="cursor-pointer text-slate-500 font-medium">🧠 深度思考过程（点击展开）</summary>
+                                    <pre class="mt-2 p-3 bg-slate-50 rounded-lg whitespace-pre-wrap text-slate-600 max-h-40 overflow-y-auto" x-text="reasoningBuffer"></pre>
+                                </details>
+                            </div>
+                            <div class="prose-life text-sm sm:text-base"
+                                :class="{ 'typewriter-caret': isLoading && streamingNarrative }"
+                                x-html="renderMd(streamingNarrative)"></div>
+                        </div>
+
+                        <!-- 结局与总结 -->
+                        <div x-show="phase === 'summary'" class="mt-6 pt-6 border-t border-emerald-100">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i data-lucide="scroll-text" class="w-5 h-5 text-amber-600"></i>
+                                <span class="font-bold text-slate-900">人生总结报告</span>
+                            </div>
+                            <div class="prose-life text-sm sm:text-base" x-html="renderMd(summaryText)"></div>
+                        </div>
+
+                        <div x-show="isLoading && !streamingNarrative && phase === 'playing'" class="flex items-center gap-2 text-emerald-700 text-sm py-8 justify-center">
+                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                            正在推演时空…
+                        </div>
+                    </div>
+
+                    <!-- 三选一 -->
+                    <div x-show="phase === 'playing' && currentChoices.length === 3 && !isLoading" class="space-y-3" x-transition>
+                        <p class="text-sm font-medium text-slate-700">你会如何选择？</p>
+                        <div class="grid gap-3">
+                            <template x-for="(c, i) in currentChoices" :key="i">
+                                <button type="button"
+                                    @click="chooseOption(c)"
+                                    class="choice-card w-full text-left rounded-2xl border-2 border-emerald-100 bg-white/95 p-4 sm:p-5 shadow-sm">
+                                    <div class="flex items-start gap-3">
+                                        <span class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm"
+                                            x-text="i + 1"></span>
+                                        <span class="text-slate-800 leading-relaxed" x-text="c"></span>
+                                    </div>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 重新开始 -->
+                    <div x-show="phase === 'summary'" class="flex flex-wrap gap-3">
+                        <button type="button" @click="resetAll()"
+                            class="px-6 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition flex items-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            重新开始
+                        </button>
+                        <button type="button" @click="exportStory()"
+                            class="px-6 py-3 rounded-xl border-2 border-emerald-200 text-emerald-800 font-medium hover:bg-emerald-50 transition flex items-center gap-2">
+                            <i data-lucide="file-down" class="w-4 h-4"></i>
+                            导出完整故事
+                        </button>
+                    </div>
+
+                    <p x-show="errorMsg && phase !== 'setup'" class="text-sm text-red-600" x-text="errorMsg"></p>
+                </div>
+            </main>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/45"
+            @keydown.escape.window="showSettings = false">
+            <div @click.away="showSettings = false"
+                class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-emerald-100">
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="key-round" class="w-5 h-5 text-emerald-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false"
+                        class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100">取消</button>
+                    <button type="button" @click="saveConfig()"
+                        class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl shadow-lg text-white text-sm font-medium"
+            :class="toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-700'"
+            x-text="toast.msg"></div>
+    </div>
+
+    <script>
+        /**
+         * AI 人生模拟器 — Alpine 根组件
+         * 负责：角色设定、多轮流式剧情、属性更新、总结与导出
+         */
+        function lifeSimApp() {
+            const MAX_CHAPTER = 10;
+
+            return {
+                /* ---------- 阶段：setup | playing | summary ---------- */
+                phase: 'setup',
+                isLoading: false,
+                showSettings: false,
+                errorMsg: '',
+                toast: { show: false, msg: '', type: 'info' },
+
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                /** 角色表单 */
+                character: {
+                    name: '',
+                    gender: '男',
+                    birthEra: '1990年代（90后）',
+                    traits: []
+                },
+                traitOptions: ['聪明', '勤奋', '幸运', '外向', '坚韧', '创意'],
+
+                /** 五维属性（年龄单独显示数值，其余 0–100） */
+                stats: {
+                    age: 18,
+                    wealth: 35,
+                    health: 82,
+                    happiness: 72,
+                    reputation: 45
+                },
+                /** 上一帧属性，用于进度条动画对比（可选） */
+                _prevStats: null,
+
+                /** 当前章节序号 1..10 */
+                currentRound: 0,
+                /** 已完成的章节记录 */
+                chapters: [],
+                /** 当前待选三项 */
+                currentChoices: [],
+                /** 流式缓冲区全文（含 json） */
+                streamRaw: '',
+                /** 展示用叙事（隐藏 ```json 之后） */
+                streamingNarrative: '',
+                reasoningBuffer: '',
+                summaryText: '',
+
+                statRows: [
+                    { key: 'age', label: '年龄', barClass: 'bg-gradient-to-r from-teal-500 to-emerald-600' },
+                    { key: 'wealth', label: '财富', barClass: 'bg-gradient-to-r from-amber-400 to-yellow-500' },
+                    { key: 'health', label: '健康', barClass: 'bg-gradient-to-r from-rose-400 to-red-500' },
+                    { key: 'happiness', label: '幸福', barClass: 'bg-gradient-to-r from-violet-400 to-purple-500' },
+                    { key: 'reputation', label: '声望', barClass: 'bg-gradient-to-r from-sky-400 to-blue-600' }
+                ],
+
+                get canStart() {
+                    return (this.character.name || '').trim().length > 0 && this.character.traits.length > 0;
+                },
+
+                get chapterDisplay() {
+                    if (this.phase === 'summary') return '终章';
+                    return Math.max(1, this.currentRound || 1);
+                },
+
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        } catch (e) { /* 忽略 */ }
+                    }
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /** 切换特质标签 */
+                toggleTrait(t) {
+                    const i = this.character.traits.indexOf(t);
+                    if (i >= 0) this.character.traits.splice(i, 1);
+                    else this.character.traits.push(t);
+                },
+
+                /**
+                 * 保存 API 配置：合并写入 global_llm_config，避免覆盖其他工具字段
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'success');
+                },
+
+                showToast(msg, type = 'info') {
+                    this.toast = { show: true, msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2800);
+                },
+
+                renderMd(text) {
+                    if (!text) return '';
+                    try { return marked.parse(text); }
+                    catch { return String(text).replace(/\n/g, '<br>'); }
+                },
+
+                /** 年龄条用 18–90 映射到百分比；其余 0–100 */
+                statPercent(key) {
+                    const v = this.stats[key];
+                    if (key === 'age') {
+                        return Math.min(100, Math.max(0, ((v - 18) / (90 - 18)) * 100));
+                    }
+                    return Math.min(100, Math.max(0, v));
+                },
+
+                formatStat(key) {
+                    if (key === 'age') return this.stats.age + ' 岁';
+                    return Math.round(this.stats[key]) + ' / 100';
+                },
+
+                /** 构建角色设定说明（注入系统提示） */
+                buildCharacterSummary() {
+                    const n = (this.character.name || '').trim() || '无名';
+                    return `姓名：${n}；性别：${this.character.gender}；出生年代：${this.character.birthEra}；特质：${this.character.traits.join('、')}`;
+                },
+
+                /**
+                 * 开始游戏：拉取第一章（含 3 选项 + 属性初值可选调整）
+                 */
+                async startLife() {
+                    this.errorMsg = '';
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 DeepSeek API Key', 'error');
+                        return;
+                    }
+                    if (!this.canStart) {
+                        this.errorMsg = '请填写姓名并至少选择一项特质。';
+                        return;
+                    }
+
+                    this.phase = 'playing';
+                    this.chapters = [];
+                    this.currentChoices = [];
+                    this.summaryText = '';
+                    this.currentRound = 1;
+                    this.stats = {
+                        age: 18,
+                        wealth: 35,
+                        health: 82,
+                        happiness: 72,
+                        reputation: 45
+                    };
+
+                    const messages = this.buildMessagesForRound(null);
+                    await this.runStreamTurn(messages, true);
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /**
+                 * 根据是否已有上一章选择，构造对话消息列表
+                 * @param {string|null} lastChoice 用户上一轮选择的文案；第一章为 null
+                 */
+                buildMessagesForRound(lastChoice) {
+                    const sys = this.getSystemPrompt();
+                    const char = this.buildCharacterSummary();
+                    const statLine = `当前属性（JSON）：${JSON.stringify(this.stats)}`;
+
+                    if (this.currentRound === 1 && !lastChoice) {
+                        return [
+                            { role: 'system', content: sys },
+                            { role: 'user', content: `${char}\n\n${statLine}\n\n请开始「第 1 章」：生成第一个重大人生场景，并严格按格式输出正文与 JSON。` }
+                        ];
+                    }
+
+                    const history = this.compressHistoryForApi(lastChoice);
+                    return [
+                        { role: 'system', content: sys },
+                        ...history
+                    ];
+                },
+
+                /**
+                 * 构造「续写下一章」的用户消息：附带全书已发生剧情，避免模型失忆
+                 * @param {string} lastChoice 玩家上一章点选的选项全文
+                 */
+                compressHistoryForRound(lastChoice) {
+                    const pastBlocks = this.chapters.map(c => {
+                        const head = `### 第 ${c.round} 章`;
+                        const body = (c.narrative || '').trim();
+                        const line = c.choiceMade ? `\n> 玩家选择：${c.choiceMade}` : '';
+                        return `${head}\n${body}${line}`;
+                    }).join('\n\n');
+
+                    const recap = pastBlocks
+                        ? `【已发生的剧情】\n${pastBlocks}\n\n`
+                        : '';
+
+                    return [{
+                        role: 'user',
+                        content: `${this.buildCharacterSummary()}\n\n${recap}【当前状态】\n- 即将撰写：第 ${this.currentRound} 章（全 10 章）\n- 五维属性（绝对值）：${JSON.stringify(this.stats)}\n\n【上一章结尾选择】\n「${lastChoice}」\n\n请承接该选择的直接后果与中长期影响，推进到新的关键抉择点，并输出 3 个互斥选项及更新后的 stats。严格使用 Markdown + \`\`\`json 代码块格式。`
+                    }];
+                },
+
+                /**
+                 * 系统提示：输出格式约定（Markdown + JSON 代码块）
+                 */
+                getSystemPrompt() {
+                    return `你是「AI 人生模拟器」的总导演与叙事者，用中文写作，风格写实略带戏剧张力，避免说教。
+
+【玩法】
+- 共 10 章。每章先写剧情（Markdown，可含小标题、列表），描写要具体、有画面感。
+- 章末必须输出一个 JSON 代码块（ fenced：\`\`\`json ），且仅此一处代码块，结构如下：
+{
+  "choices": ["选项A约20-40字", "选项B…", "选项C…"],
+  "stats": { "age": 数字, "wealth": 0-100, "health": 0-100, "happiness": 0-100, "reputation": 0-100 }
+}
+- choices 必须恰好 3 条，互斥且有真实权衡。
+- stats 为本章结束后的**绝对属性值**（不是增量），请根据剧情合理更新；age 在 18-75 之间随时间推进；其余四项限制在 0-100。
+
+【禁止】
+- 不要在 \`\`\`json 之前使用三个反引号代码块。
+- 不要输出任何 JSON 以外的机器可读格式。`;
+                },
+
+                /**
+                 * 用户点击某一选项
+                 * @param {string} choice 选项全文
+                 */
+                async chooseOption(choice) {
+                    if (this.isLoading) return;
+                    this.errorMsg = '';
+
+                    const lastNarrative = this.stripJsonBlock(this.streamRaw) || this.streamingNarrative;
+                    this.chapters.push({
+                        id: 'ch-' + Date.now(),
+                        round: this.currentRound,
+                        narrative: lastNarrative.trim(),
+                        choiceMade: choice
+                    });
+
+                    this.streamingNarrative = '';
+                    this.streamRaw = '';
+                    this.reasoningBuffer = '';
+                    this.currentChoices = [];
+
+                    if (this.currentRound >= MAX_CHAPTER) {
+                        await this.runEpilogueAndSummary(choice);
+                        return;
+                    }
+
+                    this.currentRound += 1;
+                    const messages = this.buildMessagesForRound(choice);
+                    await this.runStreamTurn(messages, false);
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /**
+                 * 第 10 章选择后：生成尾声 + 人生总结（一次或两次流式）
+                 */
+                async runEpilogueAndSummary(lastChoice) {
+                    this.isLoading = true;
+                    this.streamingNarrative = '';
+                    this.streamRaw = '';
+                    this.reasoningBuffer = '';
+                    this.currentChoices = [];
+
+                    const epiloguePrompt = `${this.buildCharacterSummary()}\n\n玩家在第 10 章的选择是：「${lastChoice}」\n当前属性：${JSON.stringify(this.stats)}\n\n请先写一段「尾声」Markdown（1-3 段），描写这一选择带来的中长期影响与情感收束。\n然后单独输出 \`\`\`json 代码块，结构：{ "stats": { 同前 } } 表示尾声结束时的属性（可做最终微调）。\n不要输出 choices。`;
+
+                    try {
+                        /* mode=epilogue：流结束后不把 isLoading 置 false，便于紧接着生成总结 */
+                        await this.streamRawOnly([
+                            { role: 'system', content: this.getSystemPrompt() + '\n本章为终章尾声，无选项。JSON 仅含 stats。' },
+                            { role: 'user', content: epiloguePrompt }
+                        ], 'epilogue');
+
+                        const epiText = this.stripJsonBlock(this.streamRaw).trim();
+                        const epiStats = this.parseStatsFromRaw(this.streamRaw);
+                        if (epiStats) this.applyStats(epiStats);
+
+                        /* 尾声单独成章，避免与第 10 章「抉择前」编号冲突 */
+                        this.chapters.push({
+                            id: 'ch-end-' + Date.now(),
+                            round: 11,
+                            narrative: epiText,
+                            choiceMade: ''
+                        });
+                        this.streamingNarrative = '';
+                        this.streamRaw = '';
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = e.message || '尾声生成失败';
+                    }
+
+                    /* 总结报告：第二次请求 */
+                    this.summaryText = '';
+                    this.reasoningBuffer = '';
+                    const storyDigest = this.chapters.map(c =>
+                        `第${c.round}章：\n${c.narrative}\n${c.choiceMade ? '选择：' + c.choiceMade : ''}`
+                    ).join('\n\n---\n\n');
+
+                    const sumPrompt = `根据以下完整人生模拟记录，写一份「人生总结报告」（Markdown）：\n\n角色：${this.buildCharacterSummary()}\n\n最终属性：${JSON.stringify(this.stats)}\n\n故事概要：\n${storyDigest}\n\n报告需包含：\n1. 人生轨迹回顾（按阶段）\n2. 关键抉择与影响\n3. 五维属性解读\n4. 若重来一条建议\n5. 一句送给玩家的寄语\n语气温暖、有洞察，避免空洞鸡汤。`;
+
+                    try {
+                        await this.streamRawOnly([
+                            { role: 'system', content: '你是资深人生教练与叙事回顾者，擅长中文总结。只输出 Markdown 正文，不要 JSON。' },
+                            { role: 'user', content: sumPrompt }
+                        ], 'summary');
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = (this.errorMsg ? this.errorMsg + ' ' : '') + (e.message || '总结失败');
+                    } finally {
+                        this.isLoading = false;
+                        this.phase = 'summary';
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    }
+                },
+
+                /**
+                 * 从原始文本中解析 stats 对象（尾声用）
+                 */
+                parseStatsFromRaw(raw) {
+                    const j = this.extractJsonObject(raw);
+                    if (j && j.stats && typeof j.stats === 'object') return j.stats;
+                    return null;
+                },
+
+                applyStats(s) {
+                    const keys = ['age', 'wealth', 'health', 'happiness', 'reputation'];
+                    keys.forEach(k => {
+                        if (typeof s[k] === 'number' && !Number.isNaN(s[k])) {
+                            if (k === 'age') this.stats.age = Math.min(75, Math.max(18, Math.round(s[k])));
+                            else this.stats[k] = Math.min(100, Math.max(0, Math.round(s[k])));
+                        }
+                    });
+                },
+
+                /**
+                 * 执行一章流式生成，解析 choices 与 stats
+                 * @param {boolean} isFirst 是否第一章（用于 UI 提示，逻辑相同）
+                 */
+                async runStreamTurn(messages, isFirst) {
+                    this.isLoading = true;
+                    this.streamingNarrative = '';
+                    this.streamRaw = '';
+                    this.reasoningBuffer = '';
+
+                    try {
+                        await this.streamApi(messages, (deltaContent, deltaReason) => {
+                            if (deltaReason) this.reasoningBuffer += deltaReason;
+                            if (deltaContent) {
+                                this.streamRaw += deltaContent;
+                                this.streamingNarrative = this.stripJsonBlock(this.streamRaw);
+                            }
+                        });
+
+                        const json = this.extractJsonObject(this.streamRaw);
+                        if (json && Array.isArray(json.choices) && json.choices.length === 3) {
+                            this.currentChoices = json.choices.map(String);
+                        } else {
+                            this.errorMsg = 'AI 返回格式异常：需要恰好 3 个选项。请重试或更换模型。';
+                            this.currentChoices = [];
+                        }
+                        if (json && json.stats) this.applyStats(json.stats);
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = e.message || '生成失败';
+                        this.currentChoices = [];
+                    } finally {
+                        this.isLoading = false;
+                        /* 保留 streamingNarrative / streamRaw，直到玩家做出选择后再归档到 chapters */
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    }
+                },
+
+                /**
+                 * 仅累积 raw（尾声/总结），可选写入 summaryText
+                 * @param {'summary'|'epilogue'|undefined} mode summary=写入总结；epilogue=尾声且保持 loading 直到外层结束
+                 */
+                async streamRawOnly(messages, mode) {
+                    this.isLoading = true;
+                    if (mode !== 'summary') {
+                        this.streamingNarrative = '';
+                        this.streamRaw = '';
+                    }
+                    this.reasoningBuffer = '';
+
+                    try {
+                        await this.streamApi(messages, (deltaContent, deltaReason) => {
+                            if (deltaReason) this.reasoningBuffer += deltaReason;
+                            if (deltaContent) {
+                                this.streamRaw += deltaContent;
+                                if (mode === 'summary') {
+                                    this.summaryText += deltaContent;
+                                } else {
+                                    this.streamingNarrative = this.stripJsonBlock(this.streamRaw);
+                                }
+                            }
+                        });
+                    } finally {
+                        /* 总结与尾声由 runEpilogueAndSummary 统一收尾 isLoading */
+                        if (mode !== 'summary' && mode !== 'epilogue') this.isLoading = false;
+                    }
+                },
+
+                /**
+                 * DeepSeek 流式请求核心
+                 * @param {(content: string, reasoning: string) => void} onDelta
+                 */
+                async streamApi(messages, onDelta) {
+                    const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages,
+                            stream: true,
+                            temperature: 0.85
+                        })
+                    });
+
+                    if (!resp.ok) {
+                        const errData = await resp.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || 'API 错误 ' + resp.status);
+                    }
+
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const raw = line.slice(6).trim();
+                            if (raw === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(raw);
+                                const delta = parsed.choices[0]?.delta || {};
+                                const r = delta.reasoning_content || '';
+                                const c = delta.content || '';
+                                if (r || c) onDelta(c, r);
+                            } catch (e) { /* 忽略单行 */ }
+                        }
+                    }
+                },
+
+                /**
+                 * 从全文中截取 ```json ... ``` 并解析为对象
+                 */
+                extractJsonObject(full) {
+                    const m = full.match(/```(?:json)?\s*([\s\S]*?)```/i);
+                    if (!m) return null;
+                    try { return JSON.parse(m[1].trim()); }
+                    catch (e) {
+                        console.warn('JSON 解析失败', e);
+                        return null;
+                    }
+                },
+
+                /**
+                 * 展示用：去掉 JSON 代码块（流式过程中一旦检测到 ```json 则隐藏后续）
+                 */
+                stripJsonBlock(text) {
+                    const m = text.match(/```json/i);
+                    if (!m || m.index === undefined) return text;
+                    return text.slice(0, m.index).trimEnd();
+                },
+
+                /** 重置游戏 */
+                resetAll() {
+                    this.phase = 'setup';
+                    this.chapters = [];
+                    this.currentChoices = [];
+                    this.currentRound = 0;
+                    this.summaryText = '';
+                    this.streamingNarrative = '';
+                    this.streamRaw = '';
+                    this.errorMsg = '';
+                    this.reasoningBuffer = '';
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /**
+                 * 导出完整人生故事为 Markdown 文件
+                 */
+                exportStory() {
+                    let md = '# AI 人生模拟器 · 完整记录\n\n';
+                    md += '> 导出时间：' + new Date().toLocaleString('zh-CN') + '\n\n';
+                    md += '## 角色设定\n\n' + this.buildCharacterSummary() + '\n\n';
+                    md += '## 最终属性\n\n```json\n' + JSON.stringify(this.stats, null, 2) + '\n```\n\n';
+                    md += '## 正文章节\n\n';
+                    this.chapters.forEach(c => {
+                        const title = c.round >= 11 ? '尾声' : ('第 ' + c.round + ' 章');
+                        md += '### ' + title + '\n\n';
+                        md += c.narrative + '\n\n';
+                        if (c.choiceMade) md += '> **选择：** ' + c.choiceMade + '\n\n';
+                    });
+                    if (this.summaryText) {
+                        md += '## 人生总结报告\n\n' + this.summaryText + '\n';
+                    }
+                    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '人生模拟_' + (this.character.name || '角色').replace(/\s/g, '_') + '_' + Date.now() + '.md';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showToast('已导出 Markdown 文件', 'success');
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

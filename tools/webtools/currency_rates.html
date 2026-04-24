@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汇率看板 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .currency-flag {
+            font-size: 1.5em;
+            line-height: 1;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-slate-800" x-data="rateApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-gray-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-900">
+                    🌍 汇率看板
+                </h1>
+            </div>
+            
+            <div class="text-xs text-slate-400 font-mono" x-show="lastUpdated">
+                更新于: <span x-text="lastUpdated"></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Controls -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-6 items-center">
+            
+            <div class="w-full md:w-auto flex-1">
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">持有货币 (基准)</label>
+                <div class="relative">
+                    <select x-model="base" @change="fetchRates" class="w-full appearance-none bg-gray-50 border border-gray-200 text-slate-900 text-lg font-bold rounded-xl py-3 px-4 pr-8 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        <template x-for="c in currencies" :key="c.code">
+                            <option :value="c.code" x-text="c.flag + ' ' + c.code + ' - ' + c.name"></option>
+                        </template>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                        <i class="fa-solid fa-chevron-down w-4 h-4"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-slate-300 hidden md:block">
+                <i class="fa-solid fa-arrow-right w-6 h-6"></i>
+            </div>
+
+            <div class="w-full md:w-auto flex-1">
+                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">兑换数量</label>
+                 <input type="number" x-model="amount" class="w-full bg-gray-50 border border-gray-200 text-slate-900 text-lg font-bold rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+            </div>
+
+            <button @click="fetchRates" class="p-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="刷新汇率">
+                <i class="fa-solid fa-rotate w-6 h-6" :class="loading ? 'fa-spin' : ''"></i>
+            </button>
+        </div>
+
+        <!-- Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <template x-for="target in targetList" :key="target.code">
+                <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl" x-text="target.flag"></span>
+                            <div>
+                                <div class="font-bold text-slate-900" x-text="target.code"></div>
+                                <div class="text-xs text-slate-500" x-text="target.name"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs font-mono text-slate-400" x-text="'1 ' + base + ' = ' + (rates[target.code] || '---')"></div>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-gray-50">
+                        <div class="text-2xl font-bold text-slate-800 font-mono tracking-tight" x-text="convert(target.code)"></div>
+                        <div class="text-xs text-slate-400 mt-1">兑换金额</div>
+                    </div>
+                    
+                    <!-- Trend placeholder (since simple API has no history) -->
+                    <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </div>
+            </template>
+        </div>
+        
+        <p class="text-center text-xs text-slate-400 mt-12 bg-gray-100 py-2 rounded-lg inline-block mx-auto px-4">
+            数据来源: open.er-api.com (每日更新) | 仅供参考
+        </p>
+
+    </main>
+
+    <script>
+        function rateApp() {
+            return {
+                base: 'CNY',
+                amount: 100,
+                rates: {},
+                lastUpdated: '',
+                loading: false,
+                
+                currencies: [
+                    { code: 'CNY', name: '人民币', flag: '🇨🇳' },
+                    { code: 'USD', name: '美元', flag: '🇺🇸' },
+                    { code: 'EUR', name: '欧元', flag: '🇪🇺' },
+                    { code: 'JPY', name: '日元', flag: '🇯🇵' },
+                    { code: 'GBP', name: '英镑', flag: '🇬🇧' },
+                    { code: 'HKD', name: '港币', flag: '🇭🇰' },
+                    { code: 'AUD', name: '澳元', flag: '🇦🇺' },
+                    { code: 'CAD', name: '加元', flag: '🇨🇦' },
+                    { code: 'SGD', name: '新加坡元', flag: '🇸🇬' },
+                    { code: 'CHF', name: '瑞士法郎', flag: '🇨🇭' },
+                    { code: 'KRW', name: '韩元', flag: '🇰🇷' },
+                    { code: 'THB', name: '泰铢', flag: '🇹🇭' },
+                ],
+
+                init() {
+                    const cached = localStorage.getItem('webtools_rates_data');
+                    if (cached) {
+                        const data = JSON.parse(cached);
+                        // Cache for 1 hour
+                        if (Date.now() - data.timestamp < 3600000) {
+                            this.rates = data.rates;
+                            this.lastUpdated = new Date(data.timestamp).toLocaleString();
+                        } else {
+                            this.fetchRates();
+                        }
+                    } else {
+                        this.fetchRates();
+                    }
+                },
+
+                async fetchRates() {
+                    this.loading = true;
+                    try {
+                        const res = await fetch(`https://open.er-api.com/v6/latest/${this.base}`);
+                        const data = await res.json();
+                        if (data.result === 'success') {
+                            this.rates = data.rates;
+                            this.lastUpdated = new Date().toLocaleString();
+                            localStorage.setItem('webtools_rates_data', JSON.stringify({
+                                rates: this.rates,
+                                timestamp: Date.now(),
+                                base: this.base
+                            }));
+                        }
+                    } catch (e) {
+                         console.error('Failed to fetch rates', e);
+                         alert('获取汇率失败，请检查网络或稍后重试。');
+                         // Fallback data for demo if offline
+                         if (this.base === 'CNY') {
+                             this.rates = { USD: 0.14, EUR: 0.13, JPY: 20.5, HKD: 1.08, GBP: 0.11 };
+                         }
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                convert(code) {
+                    if (!this.rates[code]) return '---';
+                    return (this.amount * this.rates[code]).toLocaleString('en-US', { maximumFractionDigits: 2 });
+                },
+
+                get targetList() {
+                    return this.currencies.filter(c => c.code !== this.base);
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_currency_rates.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 对联·藏头诗大师 - 古典诗词创作</title>
+
+  <!-- 书法与正文：马善政 + 思源宋体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- 将诗词展示区导出为 PNG -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <style>
+    /* 页面：古典红调渐变底 */
+    body.poetry-body {
+      font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+      background: linear-gradient(165deg, #fff5f5 0%, #fecaca 25%, #f87171 55%, #b91c1c 92%, #7f1d1d 100%);
+      min-height: 100vh;
+    }
+
+    .font-calligraphy {
+      font-family: 'Ma Shan Zheng', 'Noto Serif SC', cursive, serif;
+    }
+
+    /* 卷轴 / 宣纸质感 */
+    .scroll-paper {
+      background-color: #f9f4e8;
+      background-image:
+        radial-gradient(ellipse at 20% 30%, rgba(255, 255, 255, 0.35) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(185, 28, 28, 0.06) 0%, transparent 45%),
+        linear-gradient(to bottom, rgba(254, 243, 199, 0.5), rgba(250, 245, 232, 0.95));
+      box-shadow:
+        inset 0 0 80px rgba(185, 28, 28, 0.08),
+        0 12px 40px rgba(127, 29, 29, 0.25);
+      border: 2px solid #c4a574;
+      border-radius: 4px;
+    }
+
+    .scroll-rail {
+      background: linear-gradient(90deg, #7f1d1d, #991b1b 40%, #7f1d1d);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 毛笔落下：墨迹自上而下晕染 */
+    @keyframes brush-ink-fall {
+      0% {
+        transform: translateY(-8%) scaleY(0.15);
+        opacity: 0;
+      }
+      15% {
+        opacity: 0.85;
+      }
+      100% {
+        transform: translateY(0) scaleY(1);
+        opacity: 0.35;
+      }
+    }
+
+    .brush-overlay {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border-radius: inherit;
+    }
+
+    .brush-overlay::after {
+      content: '';
+      position: absolute;
+      left: 18%;
+      top: 0;
+      width: 12%;
+      height: 100%;
+      background: linear-gradient(180deg,
+          transparent 0%,
+          rgba(127, 29, 29, 0.12) 20%,
+          rgba(69, 10, 10, 0.18) 55%,
+          transparent 100%);
+      filter: blur(6px);
+      transform-origin: top center;
+      animation: brush-ink-fall 1.8s ease-in-out infinite;
+    }
+
+    /* 对联竖排 */
+    .couplet-col {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      letter-spacing: 0.25em;
+      line-height: 1.85;
+    }
+
+    /* 古诗竖排：多列从右向左 */
+    .poem-vertical-cols {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .poem-vertical-cols .poem-line {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      letter-spacing: 0.2em;
+    }
+
+    .acrostic-head {
+      color: #b91c1c;
+      font-weight: 700;
+      text-shadow: 0 0 1px rgba(185, 28, 28, 0.4);
+    }
+
+    /* 导出用卡片（离屏渲染时保持字体） */
+    #poetry-export-card {
+      width: 540px;
+      min-height: 720px;
+      padding: 2.5rem 2rem;
+      box-sizing: border-box;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="poetry-body text-slate-900 antialiased">
+  <div x-data="poetryMaster()" x-init="init()" class="min-h-screen flex flex-col pb-10">
+
+    <!-- 顶栏：返回站点首页 ../../index.html -->
+    <nav class="bg-red-950/85 backdrop-blur-md sticky top-0 z-50 border-b border-red-800/60 shadow-lg">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer shrink-0 text-amber-50" onclick="location.href='../../index.html'">
+          <i data-lucide="scroll-text" class="text-amber-400 h-6 w-6"></i>
+          <span class="font-bold text-lg sm:text-xl font-calligraphy tracking-wide">对联·藏头诗大师</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="showSettings = true"
+            class="p-2 rounded-lg text-amber-100/90 hover:bg-red-900/50 hover:text-amber-200"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-6 items-start">
+
+        <!-- 左侧：表单 -->
+        <section class="bg-white/90 backdrop-blur rounded-2xl border border-red-200/80 shadow-xl shadow-red-900/10 p-5 space-y-4">
+          <h2 class="text-base font-bold text-red-950 flex items-center gap-2">
+            <i data-lucide="feather" class="w-5 h-5 text-red-700"></i>
+            创作选项
+          </h2>
+
+          <!-- 创作形式 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-2">创作形式</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <template x-for="opt in formOptions" :key="opt.value">
+                <button type="button"
+                  @click="form = opt.value"
+                  :class="form === opt.value
+                    ? 'border-red-600 bg-red-50 text-red-900 ring-1 ring-red-400'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-red-300'"
+                  class="text-left text-sm px-3 py-2.5 rounded-xl border transition">
+                  <span class="font-semibold" x-text="opt.label"></span>
+                  <span class="block text-xs text-slate-500 mt-0.5" x-text="opt.hint"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- 主题 / 上联 / 藏头字 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1" x-text="inputLabel"></label>
+            <textarea x-model="userInput" rows="4"
+              class="w-full rounded-xl border border-slate-200 p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 resize-y min-h-[100px]"
+              :placeholder="inputPlaceholder"></textarea>
+          </div>
+
+          <!-- 意境风格（可选） -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">意境风格（可选）</label>
+            <select x-model="moodStyle"
+              class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3 bg-white">
+              <option value="">不限 / 由 AI 斟酌</option>
+              <option value="豪放">豪放</option>
+              <option value="婉约">婉约</option>
+              <option value="田园">田园</option>
+              <option value="边塞">边塞</option>
+              <option value="讽刺">讽刺</option>
+            </select>
+          </div>
+
+          <!-- 展示排版：横排 / 竖排（对联模式固定竖排） -->
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-xs font-semibold text-slate-600">正文排版</span>
+            <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" class="accent-red-700" value="horizontal" x-model="textLayout" :disabled="form === 'couplet'">
+              <span>横排</span>
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" class="accent-red-700" value="vertical" x-model="textLayout" :disabled="form === 'couplet'">
+              <span>竖排（右起）</span>
+            </label>
+          </div>
+
+          <p x-show="form === 'couplet'" class="text-xs text-red-800/80 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            对联模式将以上联+下联竖排展示；若只填主题，AI 会自拟上联并给出下联与横批。
+          </p>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button type="button" @click="generate(false)" :disabled="isGenerating"
+              class="flex-1 flex items-center justify-center gap-2 bg-red-700 hover:bg-red-800 text-white font-semibold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-900/20">
+              <i x-show="!isGenerating" data-lucide="pen-line" class="w-5 h-5"></i>
+              <i x-show="isGenerating" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              <span x-text="isGenerating ? '挥毫中…' : '落笔生花'"></span>
+            </button>
+            <button type="button" @click="generate(true)" :disabled="isGenerating || !resultRaw.trim()"
+              class="sm:w-36 flex items-center justify-center gap-2 border-2 border-red-700 text-red-900 font-semibold py-3 rounded-xl hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+              再来一首
+            </button>
+          </div>
+
+          <p x-show="errorMsg" class="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2" x-text="errorMsg"></p>
+        </section>
+
+        <!-- 右侧：展示区 -->
+        <section class="relative">
+          <div class="scroll-rail h-3 rounded-t-md opacity-90"></div>
+          <div class="scroll-paper relative p-6 sm:p-8 min-h-[420px] lg:min-h-[480px]" x-ref="scrollStage">
+
+            <!-- 生成中：毛笔动画遮罩 -->
+            <div x-show="isGenerating" class="brush-overlay z-10" aria-hidden="true"></div>
+
+            <!-- V4 Pro 推理过程（可折叠） -->
+            <details x-show="reasoningContent && !isGenerating" class="mb-4 text-sm border border-amber-200/80 rounded-lg bg-amber-50/90 p-3">
+              <summary class="cursor-pointer font-medium text-amber-900">🧠 深度思考过程（点击展开）</summary>
+              <pre class="mt-2 whitespace-pre-wrap text-xs text-amber-950/90 max-h-40 overflow-y-auto" x-text="reasoningContent"></pre>
+            </details>
+
+            <!-- 空状态 -->
+            <div x-show="!resultRaw && !isGenerating"
+              class="absolute inset-0 flex flex-col items-center justify-center text-red-900/40 text-center px-6 pointer-events-none">
+              <i data-lucide="flower-2" class="w-14 h-14 mb-3 opacity-50"></i>
+              <p class="font-calligraphy text-xl text-red-950/50">一纸空白，待君落墨</p>
+              <p class="text-sm mt-2">选择形式、填入意境，点「落笔生花」</p>
+            </div>
+
+            <!-- 流式进行中：原始文本 -->
+            <div x-show="isGenerating && resultRaw" class="relative z-[1]">
+              <p class="text-xs text-red-900/60 mb-2">正在书写…</p>
+              <pre class="text-base text-red-950 whitespace-pre-wrap leading-relaxed" style="font-family:'Noto Serif SC',serif" x-text="resultRaw"></pre>
+            </div>
+
+            <!-- 完成后：对联竖排 -->
+            <div x-show="!isGenerating && resultRaw && form === 'couplet' && parsedCouplet"
+              class="relative z-[1] flex flex-col items-center gap-6 py-2">
+              <div class="text-sm text-red-900/70 font-calligraphy tracking-[0.3em] border-b border-red-200/60 pb-1">横批</div>
+              <p class="text-2xl sm:text-3xl font-calligraphy text-red-900 tracking-widest" x-text="parsedCouplet.hengpi"></p>
+              <div class="flex flex-row justify-center items-stretch gap-10 sm:gap-16 mt-4">
+                <div class="text-center">
+                  <div class="text-xs text-red-800/60 mb-2">上联</div>
+                  <div class="couplet-col text-2xl sm:text-3xl font-calligraphy text-red-950 min-h-[120px]" x-text="parsedCouplet.shanglian"></div>
+                </div>
+                <div class="text-center">
+                  <div class="text-xs text-red-800/60 mb-2">下联</div>
+                  <div class="couplet-col text-2xl sm:text-3xl font-calligraphy text-red-950 min-h-[120px]" x-text="parsedCouplet.xialian"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 完成后：藏头诗（首字高亮）；横排为逐行，竖排为右起列 -->
+            <div x-show="!isGenerating && resultRaw && form === 'acrostic' && acrosticLines.length"
+              class="relative z-[1] space-y-3 text-center sm:text-left"
+              :class="textLayout === 'vertical' ? 'poem-vertical-cols' : 'space-y-4'">
+              <template x-for="(row, idx) in acrosticLines" :key="'ac'+idx">
+                <p class="text-xl sm:text-2xl font-calligraphy text-red-950 leading-relaxed"
+                  :class="textLayout === 'vertical' ? 'poem-line text-2xl sm:text-3xl !mb-0' : ''">
+                  <span class="acrostic-head text-3xl sm:text-4xl mr-0.5" x-text="row.head"></span><span x-text="row.rest"></span>
+                </p>
+              </template>
+            </div>
+
+            <!-- 完成后：其余体裁（横排 Markdown；竖排按行拆分） -->
+            <div x-show="!isGenerating && resultRaw && form !== 'couplet' && form !== 'acrostic'"
+              class="relative z-[1] prose prose-red prose-lg max-w-none"
+              :class="textLayout === 'vertical' ? 'poem-vertical-cols' : ''">
+              <div x-show="textLayout === 'horizontal'" class="font-calligraphy text-xl sm:text-2xl text-red-950 leading-loose poem-md" x-html="resultHtmlSafe"></div>
+              <template x-if="textLayout === 'vertical'">
+                <template x-for="(ln, i) in plainLines" :key="'pl'+i">
+                  <div class="poem-line text-2xl font-calligraphy text-red-950" x-text="ln"></div>
+                </template>
+              </template>
+            </div>
+
+            <!-- 对联解析失败时的兜底 -->
+            <div x-show="!isGenerating && resultRaw && form === 'couplet' && !parsedCouplet"
+              class="relative z-[1] font-calligraphy text-lg text-red-950 whitespace-pre-wrap leading-relaxed" x-text="resultRaw"></div>
+
+            <!-- 藏头解析失败兜底 -->
+            <div x-show="!isGenerating && resultRaw && form === 'acrostic' && !acrosticLines.length"
+              class="relative z-[1] font-calligraphy text-lg text-red-950 whitespace-pre-wrap leading-relaxed" x-text="resultRaw"></div>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div class="flex flex-wrap gap-2 mt-4 justify-center sm:justify-end">
+            <button type="button" @click="copyResult()" :disabled="!resultRaw.trim()"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-900 text-amber-50 text-sm font-medium hover:bg-red-950 disabled:opacity-40">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+              一键复制
+            </button>
+            <button type="button" @click="exportCard()" :disabled="!resultRaw.trim() || isGenerating"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-red-800 text-red-950 text-sm font-medium hover:bg-red-50 disabled:opacity-40">
+              <i data-lucide="image" class="w-4 h-4"></i>
+              生成古风卡片图
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- 设置弹窗：API Key + 模型 -->
+    <div x-show="showSettings" x-transition.opacity
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50"
+      @keydown.escape.window="showSettings = false">
+      <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <h3 class="text-lg font-bold text-slate-900">API 配置</h3>
+        <p class="text-xs text-slate-500">
+          密钥保存在浏览器本地，与其他工具共用 <code class="bg-slate-100 px-1 rounded">global_llm_config</code>，保存时<strong>合并</strong>、不覆盖其他字段。
+        </p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+          <input type="password" x-model="apiConfig.deepseek"
+            class="w-full rounded-lg border border-slate-300 p-2.5 text-sm" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl bg-red-950 text-amber-50 text-sm shadow-lg flex items-center gap-2">
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+
+    <!-- 离屏导出卡片：固定尺寸、透明不可点，供 html2canvas 截图 -->
+    <div id="poetry-export-card" class="scroll-paper fixed left-0 top-0 opacity-0 pointer-events-none -z-10 font-calligraphy overflow-hidden"
+      style="width:540px;min-height:720px" x-ref="exportCard" aria-hidden="true">
+      <div class="text-center text-red-900/70 text-sm tracking-[0.5em] mb-4 border-b border-red-200/50 pb-2" x-text="exportTitle"></div>
+      <div class="text-red-950 text-center" x-html="exportInnerHtml"></div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 转义 HTML，防止 x-html 注入（仅对纯文本行使用）
+     */
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /**
+     * 去掉行首序号、书名号提示等，得到诗句正文
+     */
+    function stripLinePrefix(line) {
+      return String(line)
+        .replace(/^\s*[\d０-９]+[\.、．]\s*/, '')
+        .replace(/^[第][一二三四五六七八九十\d]+[句联首行][:：]\s*/, '')
+        .trim();
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('poetryMaster', () => ({
+        /** 创作形式：对联 / 藏头诗 / 五绝 / 七律 / 打油诗 */
+        form: 'couplet',
+        formOptions: [
+          { value: 'couplet', label: '对联', hint: '上联或主题 → 下联 + 横批' },
+          { value: 'acrostic', label: '藏头诗', hint: '嵌入字如「春风得意」' },
+          { value: 'wujue', label: '五言绝句', hint: '四句，每句五字' },
+          { value: 'qilv', label: '七言律诗', hint: '八句，每句七字，中间对仗' },
+          { value: 'doggerel', label: '打油诗', hint: '幽默通俗' }
+        ],
+        userInput: '',
+        moodStyle: '',
+        /** 横排 | 竖排；对联强制竖排展示联语 */
+        textLayout: 'horizontal',
+        resultRaw: '',
+        reasoningContent: '',
+        isGenerating: false,
+        errorMsg: '',
+        showSettings: false,
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+        /** 再来一首时附加提示，避免重复意象 */
+        variationHint: '',
+
+        /** 导出卡片用标题与内部 HTML */
+        exportTitle: '',
+        exportInnerHtml: '',
+
+        init() {
+          this.loadConfig();
+          this.$watch('form', (v) => {
+            if (v === 'couplet') this.textLayout = 'vertical';
+          });
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+          this.$watch('isGenerating', () => {
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          });
+        },
+
+        /** 输入框标签文案 */
+        get inputLabel() {
+          const map = {
+            couplet: '上联（可空）或主题 / 意境',
+            acrostic: '藏头文字（依次作为每句首字，如：我爱你中国）',
+            wujue: '主题或意境关键词',
+            qilv: '主题或意境关键词',
+            doggerel: '主题或调侃对象（幽默方向）'
+          };
+          return map[this.form] || '主题或关键词';
+        },
+
+        get inputPlaceholder() {
+          const map = {
+            couplet: '例如：春风拂槛露华浓 —— 或写：春日游园',
+            acrostic: '例如：平安喜乐（四字则四句，首字依次为这四个字）',
+            wujue: '例如：月夜思乡、山水闲居',
+            qilv: '例如：登高怀古、赠别友人',
+            doggerel: '例如：周一上班、减肥失败、程序员加班'
+          };
+          return map[this.form] || '';
+        },
+
+        /** 解析后的对联结构，供模板使用 */
+        get parsedCouplet() {
+          return this.parseCouplet(this.resultRaw);
+        },
+
+        /** 藏头诗分行高亮数据 */
+        get acrosticLines() {
+          return this.buildAcrosticLines(this.resultRaw, this.userInput);
+        },
+
+        /** 非对联藏头的纯文本行（竖排用） */
+        get plainLines() {
+          return this.resultRaw
+            .split(/\r?\n/)
+            .map((l) => stripLinePrefix(l))
+            .filter((l) => l.length > 0);
+        },
+
+        /**
+         * 横排 Markdown 安全 HTML（体裁非对联/藏头时使用）
+         * 使用 marked 解析后，对未知场景仍以换行展示为主
+         */
+        get resultHtmlSafe() {
+          const raw = this.resultRaw || '';
+          if (!raw.trim()) return '';
+          try {
+            if (typeof marked !== 'undefined' && marked.parse) {
+              return marked.parse(raw, { breaks: true });
+            }
+          } catch (e) {
+            console.warn('marked 解析失败', e);
+          }
+          return '<p class="whitespace-pre-wrap">' + escapeHtml(raw) + '</p>';
+        },
+
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存配置：合并写入 localStorage，禁止整表覆盖
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          setTimeout(() => { this.toast.show = false; }, 2600);
+        },
+
+        /**
+         * 从模型输出中解析 上联、下联、横批
+         * @returns {{ shanglian: string, xialian: string, hengpi: string } | null}
+         */
+        parseCouplet(text) {
+          if (!text || !text.trim()) return null;
+          const shang = text.match(/上联[：:]\s*([^\n]+)/);
+          const xia = text.match(/下联[：:]\s*([^\n]+)/);
+          const heng = text.match(/横批[：:]\s*([^\n]+)/);
+          if (shang && xia && heng) {
+            return {
+              shanglian: shang[1].trim(),
+              xialian: xia[1].trim(),
+              hengpi: heng[1].trim()
+            };
+          }
+          return null;
+        },
+
+        /**
+         * 藏头诗：按行拆分，首字与 user 输入的藏头字依次匹配则高亮
+         */
+        buildAcrosticLines(text, embedRaw) {
+          const heads = Array.from(String(embedRaw || '').replace(/\s/g, ''));
+          if (!heads.length || !text.trim()) return [];
+          const lines = text.split(/\r?\n/).map((l) => stripLinePrefix(l)).filter((l) => l.length > 0);
+          const out = [];
+          for (let i = 0; i < lines.length && i < heads.length; i++) {
+            const line = lines[i];
+            const h = heads[i];
+            if (line.charAt(0) === h) {
+              out.push({ head: h, rest: line.slice(1) });
+            } else {
+              out.push({ head: line.charAt(0), rest: line.slice(1) });
+            }
+          }
+          // 若行数多于藏头字数，追加剩余行（首字不高亮匹配）
+          for (let j = out.length; j < lines.length; j++) {
+            const line = lines[j];
+            out.push({ head: line.charAt(0), rest: line.slice(1) });
+          }
+          return out.length ? out : [];
+        },
+
+        /** 系统提示：约束体裁与输出格式，便于解析对联 */
+        buildSystemPrompt() {
+          return `你是一位精通中国古典诗词与对联创作的文学助手。请严格使用简体中文输出，韵脚与格律尽量贴切；若用户指定意境风格，须贯穿全篇。
+
+【对联】必须严格使用下面四行格式（每行单独一行，冒号为中文冒号）：
+上联：……
+下联：……
+横批：……
+
+【藏头诗】每一句单独一行，共 N 句（N=用户藏头字数），每句首字必须依次为用户的藏头字，不要加序号。
+
+【五言绝句】共四句，每句五字（可接受轻微衬字但需说明）。每句单独一行。
+
+【七言律诗】共八句，每句七字；颔联、颈联尽量对仗。每句单独一行。
+
+【打油诗】幽默通俗，句数灵活（建议 4～8 句），每句单独一行。
+
+除以上内容外不要输出冗长解释；如需标题可单独一行「题目：」开头。`;
+        },
+
+        /** 按当前表单组装用户消息 */
+        buildUserMessage() {
+          const style = this.moodStyle ? `意境风格：${this.moodStyle}。` : '';
+          const vary = this.variationHint ? `\n${this.variationHint}` : '';
+          const content = (this.userInput || '').trim();
+
+          switch (this.form) {
+            case 'couplet':
+              return `${style}请创作一副对联。${content ? `用户输入：${content}（若像上联则对下联；否则视为主题自拟上联与下联）` : '请自拟与春天相关的上联，并给出下联与横批。'}${vary}`;
+            case 'acrostic':
+              if (!content) throw new Error('请填写藏头文字');
+              return `${style}请写藏头诗，藏头字依次为：${Array.from(content.replace(/\s/g, '')).join('、')}（共 ${Array.from(content.replace(/\s/g, '')).length} 字，故需 ${Array.from(content.replace(/\s/g, '')).length} 句）。${vary}`;
+            case 'wujue':
+              if (!content) throw new Error('请填写主题或意境');
+              return `${style}请以「${content}」为主题写一首五言绝句。${vary}`;
+            case 'qilv':
+              if (!content) throw new Error('请填写主题或意境');
+              return `${style}请以「${content}」为主题写一首七言律诗。${vary}`;
+            case 'doggerel':
+              if (!content) throw new Error('请填写打油诗主题');
+              return `${style}请以「${content}」为主题写一首幽默打油诗。${vary}`;
+            default:
+              return content + vary;
+          }
+        },
+
+        /**
+         * DeepSeek 流式补全
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.75
+            })
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || ('HTTP ' + response.status));
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) onReasoning(delta.reasoning_content);
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /**
+         * @param {boolean} again - true 表示「再来一首」
+         */
+        async generate(again) {
+          this.errorMsg = '';
+          try {
+            this.buildUserMessage();
+          } catch (e) {
+            this.errorMsg = e.message;
+            return;
+          }
+
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先在设置中填写 DeepSeek API Key。';
+            return;
+          }
+
+          this.variationHint = again
+            ? '请与上一版在意象、用词上明显不同，仍满足相同格律与约束。'
+            : '';
+
+          /* 每次生成（含「再来一首」）均清空后再流式写入，避免新旧内容混杂 */
+          this.isGenerating = true;
+          this.resultRaw = '';
+          this.reasoningContent = '';
+
+          const messages = [
+            { role: 'system', content: this.buildSystemPrompt() },
+            { role: 'user', content: this.buildUserMessage() }
+          ];
+
+          try {
+            await this.streamDeepSeek(
+              messages,
+              (chunk) => { this.resultRaw += chunk; },
+              (r) => { this.reasoningContent += r; }
+            );
+            this.showToast('墨韵已成', 'sparkles');
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败';
+            this.showToast(this.errorMsg, 'alert-circle');
+          } finally {
+            this.isGenerating = false;
+            this.variationHint = '';
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        async copyResult() {
+          const t = this.resultRaw;
+          if (!t.trim()) {
+            this.showToast('暂无内容可复制', 'alert-circle');
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(t);
+            this.showToast('已复制到剪贴板', 'copy');
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = t;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('已复制', 'copy');
+          }
+        },
+
+        /**
+         * 组装导出用 HTML（与页面展示语义一致，便于 html2canvas 截图）
+         */
+        buildExportInnerHtml() {
+          const formLabels = { couplet: '对联', acrostic: '藏头诗', wujue: '五言绝句', qilv: '七言律诗', doggerel: '打油诗' };
+          this.exportTitle = formLabels[this.form] || '诗词';
+
+          if (this.form === 'couplet') {
+            const c = this.parseCouplet(this.resultRaw);
+            if (c) {
+              return `
+                <div style="text-align:center;margin-bottom:12px;font-size:14px;color:#7f1d1d;">横批</div>
+                <div style="text-align:center;font-size:28px;margin-bottom:24px;letter-spacing:0.3em;">${escapeHtml(c.hengpi)}</div>
+                <div style="display:flex;flex-direction:row;justify-content:center;gap:48px;">
+                  <div style="writing-mode:vertical-rl;text-orientation:upright;font-size:26px;">${escapeHtml(c.shanglian)}</div>
+                  <div style="writing-mode:vertical-rl;text-orientation:upright;font-size:26px;">${escapeHtml(c.xialian)}</div>
+                </div>`;
+            }
+          }
+          if (this.form === 'acrostic') {
+            const rows = this.buildAcrosticLines(this.resultRaw, this.userInput);
+            if (rows.length) {
+              return rows.map((r) =>
+                `<p style="font-size:24px;line-height:1.8;"><span style="color:#b91c1c;font-size:28px;">${escapeHtml(r.head)}</span>${escapeHtml(r.rest)}</p>`
+              ).join('');
+            }
+          }
+          return `<div style="font-size:22px;line-height:1.85;white-space:pre-wrap;">${escapeHtml(this.resultRaw)}</div>`;
+        },
+
+        /**
+         * 使用 html2canvas 生成带宣纸背景的 PNG
+         */
+        async exportCard() {
+          if (!this.resultRaw.trim()) {
+            this.showToast('请先生成诗词', 'alert-circle');
+            return;
+          }
+          if (typeof html2canvas === 'undefined') {
+            this.showToast('图片库未加载，请刷新重试', 'alert-circle');
+            return;
+          }
+          this.exportInnerHtml = this.buildExportInnerHtml();
+          await new Promise((resolve) => {
+            this.$nextTick(() => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          });
+          const el = this.$refs.exportCard;
+          if (!el) {
+            this.showToast('导出节点异常', 'alert-circle');
+            return;
+          }
+          try {
+            const canvas = await html2canvas(el, {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: '#f9f4e8',
+              logging: false,
+              /* 克隆 DOM 中恢复不透明，避免 opacity:0 导出全白 */
+              onclone: (_doc, cloned) {
+                cloned.style.opacity = '1';
+                cloned.style.pointerEvents = 'none';
+              }
+            });
+            canvas.toBlob((blob) => {
+              if (!blob) {
+                this.showToast('导出失败', 'alert-circle');
+                return;
+              }
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'poetry-card-' + Date.now() + '.png';
+              a.click();
+              URL.revokeObjectURL(url);
+              this.showToast('卡片已下载', 'image');
+            }, 'image/png');
+          } catch (e) {
+            console.error(e);
+            this.showToast('导出图片失败', 'alert-circle');
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

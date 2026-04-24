@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亲密关系体检表 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .love-gradient {
+            background: linear-gradient(135deg, #FFF1F2 0%, #FCE7F3 50%, #FAE8FF 100%);
+        }
+
+        .love-card {
+            background: linear-gradient(135deg, #ffffff 0%, #FFF7FB 100%);
+            border: 2px solid #FBCFE8;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #FFF7FB;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #F472B6;
+            border-radius: 3px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="love-gradient min-h-screen">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b-2 border-pink-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-pink-400 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-heart text-white text-xl"></i>
+                        </div>
+                        <span class="font-bold text-xl text-slate-900">亲密关系体检</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 bg-pink-100 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-pink-600': apiConfig.model === 'deepseek-v4-flash', 'text-pink-400': apiConfig.model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-pink-600': apiConfig.model === 'deepseek-v4-pro', 'text-pink-400': apiConfig.model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-pink-600 hover:text-pink-700 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear text-base"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow flex flex-col lg:flex-row max-w-7xl mx-auto w-full p-4 gap-6">
+            <div class="w-full lg:w-2/5 space-y-6">
+                <div class="love-card rounded-2xl p-6 shadow-lg">
+                    <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list text-pink-500"></i>
+                        关系评估问卷
+                    </h2>
+                    <div class="space-y-4" v-if="!isAnalyzing && !result">
+                        <div v-for="(q, idx) in questions" :key="idx" class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-700">{{ idx + 1 }}. {{ q.question
+                                }}</label>
+                            <select v-model="answers[idx]"
+                                class="w-full bg-white border-2 border-pink-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-pink-400">
+                                <option value="">请选择</option>
+                                <option value="5">非常好</option>
+                                <option value="4">比较好</option>
+                                <option value="3">一般</option>
+                                <option value="2">不太好</option>
+                                <option value="1">很差</option>
+                            </select>
+                        </div>
+                        <button @click="analyzeRelationship" :disabled="isAnalyzing || !allAnswered"
+                            class="w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center">
+                            <span v-if="isAnalyzing" class="flex items-center">
+                                <i class="fa-solid fa-spinner animate-spin mr-2"></i>
+                                正在分析...
+                            </span>
+                            <span v-else class="flex items-center">
+                                <i class="fa-solid fa-heart-pulse mr-2"></i>
+                                开始分析
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-full lg:w-3/5">
+                <div v-if="!result && !isAnalyzing"
+                    class="love-card rounded-2xl p-12 shadow-lg flex flex-col items-center justify-center text-center h-full">
+                    <div class="w-24 h-24 bg-pink-100 rounded-full flex items-center justify-center mb-6">
+                        <i class="fa-solid fa-hand-holding-heart text-pink-500 text-5xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-700 mb-2">评估你的亲密关系</h3>
+                    <p class="text-slate-500">回答右侧问题，获取专业的关系分析报告</p>
+                </div>
+
+                <div v-if="isAnalyzing && !result"
+                    class="love-card rounded-2xl p-12 shadow-lg flex flex-col items-center justify-center text-center h-full">
+                    <div class="relative">
+                        <div class="w-32 h-32 bg-gradient-to-br from-pink-200 to-rose-200 rounded-full flex items-center justify-center animate-pulse">
+                            <i class="fa-solid fa-heart text-pink-500 text-5xl animate-bounce"></i>
+                        </div>
+                        <div class="absolute inset-0 w-32 h-32 border-4 border-pink-200 rounded-full animate-ping opacity-75"></div>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-700 mt-6 mb-2">正在分析你们的关系...</h3>
+                    <p class="text-slate-500">AI 正在解读问卷结果，请稍候</p>
+                    <div class="mt-4 flex gap-2">
+                        <div class="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+                        <div class="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                    <div class="mt-6 bg-pink-50 rounded-lg p-4 text-sm text-slate-600 max-w-xs">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-lightbulb text-yellow-500"></i>
+                            <span class="font-medium">小贴士</span>
+                        </div>
+                        <p>深呼吸放松心情，分析结果仅供参考，真正的亲密关系需要双方共同经营。</p>
+                    </div>
+                </div>
+
+                <div v-if="result" class="space-y-6">
+                    <div class="love-card rounded-2xl p-6 shadow-lg">
+                        <h3 class="text-lg font-bold text-slate-900 mb-4">关系雷达图</h3>
+                        <div class="flex justify-center">
+                            <svg width="300" height="300" viewBox="0 0 300 300">
+                                <g v-for="i in 5" :key="'grid-' + i">
+                                    <polygon :points="getRadarPolygonPoints(60 * i / 5)" fill="none" stroke="#FBCFE8"
+                                        stroke-width="1" />
+                                </g>
+                                <g v-for="(dim, idx) in dimensions" :key="'axis-' + idx">
+                                    <line x1="150" y1="150"
+                                        :x2="150 + 60 * Math.cos((idx * 2 * Math.PI / 6) - Math.PI / 2)"
+                                        :y2="150 + 60 * Math.sin((idx * 2 * Math.PI / 6) - Math.PI / 2)"
+                                        stroke="#F9A8D4" stroke-width="1" />
+                                    <text :x="150 + 80 * Math.cos((idx * 2 * Math.PI / 6) - Math.PI / 2)"
+                                        :y="150 + 80 * Math.sin((idx * 2 * Math.PI / 6) - Math.PI / 2)"
+                                        text-anchor="middle" class="text-xs font-medium fill-slate-700">{{ dim.name
+                                        }}</text>
+                                </g>
+                                <polygon :points="getDataPoints()" fill="rgba(244, 114, 182, 0.3)" stroke="#F472B6"
+                                    stroke-width="2" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="love-card rounded-2xl p-6 shadow-lg">
+                        <h3 class="text-lg font-bold text-slate-900 mb-4">深度分析</h3>
+                        <div class="prose prose-slate max-w-none" v-html="marked.parse(result.analysis)"></div>
+                    </div>
+                    <div class="love-card rounded-2xl p-6 shadow-lg">
+                        <h3 class="text-lg font-bold text-slate-900 mb-4">改进建议</h3>
+                        <div class="prose prose-slate max-w-none" v-html="marked.parse(result.suggestions)"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
+                <div class="sticky top-0 bg-white border-b p-6 rounded-t-2xl">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold">高级设置</h3>
+                        <button @click="showSettings = false"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                </div>
+                <div class="p-6 space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold mb-2">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-lg border-2 border-slate-300 p-3 focus:ring-2 focus:ring-pink-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2">系统提示词</label>
+                        <textarea v-model="apiConfig.systemPrompt" rows="10"
+                            class="w-full rounded-lg border-2 border-slate-300 p-3 font-mono text-sm focus:ring-2 focus:ring-pink-400 outline-none"></textarea>
+                        <button @click="resetPrompt" class="text-xs text-slate-600 mt-2">恢复默认</button>
+                    </div>
+                </div>
+                <div class="sticky bottom-0 bg-slate-50 border-t p-6 rounded-b-2xl flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-6 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-6 py-2 rounded-lg">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+        const DEFAULT_PROMPT = `你是一位专业的亲密关系咨询师，基于Gottman方法评估关系健康度。
+
+评估6个维度：
+1. 信任（Trust）- 相互依赖和安全感
+2. 沟通（Communication）- 深度交流和倾听
+3. 情感连接（Emotional Connection）- 亲密度和共情
+4. 冲突处理（Conflict Resolution）- 争吵后的修复能力
+5. 共同成长（Growth）- 支持彼此目标
+6. 承诺（Commitment）- 对未来的共同愿景
+
+请基于问卷结果：
+1. 分析每个维度的得分和关系健康程度
+2. 识别关系中的优势和需要改进的领域
+3. 提供3-5条具体可行的改进建议
+4. 使用温暖、非评判的语言
+
+输出格式：JSON
+{
+  "dimensions": {"信任": 85, "沟通": 70, ...},
+  "analysis": "深度分析（Markdown）",
+  "suggestions": "改进建议（Markdown）"
+}`;
+
+        createApp({
+            setup() {
+
+                const showSettings = ref(false);
+                const isAnalyzing = ref(false);
+                const result = ref(null);
+                const apiConfig = reactive({ deepseek: '', model: 'deepseek-v4-pro', systemPrompt: DEFAULT_PROMPT });
+                const answers = ref(Array(12).fill(''));
+                const questions = ref([
+                    { question: '你们多久进行一次深度交流？', dimension: '沟通' },
+                    { question: '你是否信任对方？', dimension: '信任' },
+                    { question: '争吵后你们如何和解？', dimension: '冲突处理' },
+                    { question: '你感到被对方理解和支持吗？', dimension: '情感连接' },
+                    { question: '你们是否共同规划未来？', dimension: '承诺' },
+                    { question: '你们是否支持彼此的个人成长？', dimension: '共同成长' },
+                    { question: '你对这段关系的整体满意度？', dimension: '整体' },
+                    { question: '你们的亲密程度（身体和情感）？', dimension: '情感连接' },
+                    { question: '你能向对方表达真实的自己吗？', dimension: '信任' },
+                    { question: '你们如何处理分歧？', dimension: '冲突处理' },
+                    { question: '你们有共同的兴趣和活动吗？', dimension: '共同成长' },
+                    { question: '你感到被重视和欣赏吗？', dimension: '沟通' }
+                ]);
+                const dimensions = ref([
+                    { name: '信任', value: 50 },
+                    { name: '沟通', value: 50 },
+                    { name: '情感连接', value: 50 },
+                    { name: '冲突处理', value: 50 },
+                    { name: '共同成长', value: 50 },
+                    { name: '承诺', value: 50 }
+                ]);
+
+                const allAnswered = computed(() => answers.value.every(a => a !== ''));
+
+                onMounted(() => {
+                    // 初始化配置
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const config = JSON.parse(saved);
+                            apiConfig.deepseek = config.deepseek || '';
+                            apiConfig.model = config.model || 'deepseek-v4-pro';
+                        } catch (e) {
+                            console.error('JSON parse error:', e);
+                        }
+                    }
+                    const savedPrompt = localStorage.getItem('relationship_prompt');
+                    if (savedPrompt) apiConfig.systemPrompt = savedPrompt;
+                });
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, deepseek: apiConfig.deepseek, model: apiConfig.model }));
+                    localStorage.setItem('relationship_prompt', apiConfig.systemPrompt);
+                    showSettings.value = false;
+                    alert('配置已保存！');
+                };
+
+                const resetPrompt = () => {
+                    if (confirm('确定恢复默认提示词？')) apiConfig.systemPrompt = DEFAULT_PROMPT;
+                };
+
+                const analyzeRelationship = async () => {
+                    if (!apiConfig.deepseek) { showSettings.value = true; return; }
+                    isAnalyzing.value = true;
+                    // Refresh icons for loading state
+
+                    try {
+                        const userPrompt = `请分析以下关系评估问卷结果：\n\n` +
+                            questions.value.map((q, i) => `${q.question}\n回答：${['', '很差', '不太好', '一般', '比较好', '非常好'][answers.value[i]]}`).join('\n\n');
+
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiConfig.deepseek}` },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: [{ role: 'system', content: apiConfig.systemPrompt }, { role: 'user', content: userPrompt }],
+                                response_format: { type: 'json_object' }
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        const res = JSON.parse(data.choices[0].message.content);
+                        dimensions.value = Object.entries(res.dimensions).map(([name, value]) => ({ name, value }));
+                        result.value = { analysis: res.analysis, suggestions: res.suggestions };
+                    } catch (error) {
+                        alert('分析失败：' + error.message);
+                    } finally {
+                        isAnalyzing.value = false;
+                        // Refresh icons for normal state
+                    }
+                };
+
+                const getRadarPolygonPoints = (radius) => {
+                    return Array.from({ length: 6 }, (_, i) => {
+                        const angle = (i * 2 * Math.PI / 6) - Math.PI / 2;
+                        return `${150 + radius * Math.cos(angle)},${150 + radius * Math.sin(angle)}`;
+                    }).join(' ');
+                };
+
+                const getDataPoints = () => {
+                    return dimensions.value.map((d, i) => {
+                        const angle = (i * 2 * Math.PI / 6) - Math.PI / 2;
+                        const radius = d.value / 100 * 60;
+                        return `${150 + radius * Math.cos(angle)},${150 + radius * Math.sin(angle)}`;
+                    }).join(' ');
+                };
+
+                return {
+                    showSettings, isAnalyzing, result, apiConfig, answers, questions, dimensions, allAnswered,
+                    saveConfig, resetPrompt, analyzeRelationship, getRadarPolygonPoints, getDataPoints,
+                    marked: window.marked
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/psychological_relationship_checkup.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

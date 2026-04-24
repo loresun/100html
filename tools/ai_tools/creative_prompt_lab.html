@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创意提示语实验台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top, #f0f9ff 0%, #f8fafc 60%, #dbeafe 100%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            backdrop-filter: blur(12px);
+        }
+
+        .tag {
+            background: #dbeafe;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen">
+        <header class="py-10 px-4">
+            <div class="max-w-4xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center">
+                        <i class="fa-solid fa-flask w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-900">创意提示语实验台</h1>
+                        <p class="text-slate-500">组合提示词维度，快速生成创意方向。</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button @click="showSettings = true"
+                        class="p-2 rounded-full bg-white border border-slate-200 text-slate-500 hover:text-blue-600">
+                        <i class="fa-solid fa-gear w-5 h-5"></i>
+                    </button>
+                    <a href="../../index.html" class="text-sm text-slate-500 hover:text-blue-600">返回首页</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="px-4 pb-16">
+            <div class="max-w-4xl mx-auto glass-card rounded-3xl p-8 shadow-lg">
+                <input v-model="topic" class="w-full border border-slate-200 rounded-xl px-4 py-3" placeholder="创作主题">
+                <div class="flex flex-wrap gap-2 mt-4">
+                    <span v-for="tag in tags" :key="tag" class="tag">{{ tag }}</span>
+                </div>
+                <button @click="generate"
+                    class="mt-4 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-500 transition-all flex items-center justify-center gap-2"
+                    :disabled="isLoading">
+                    <i v-if="isLoading" class="fa-solid fa-spinner animate-spin w-4 h-4"></i>
+                    {{ isLoading ? '正在生成...' : '生成提示语' }} </button>
+                <p v-if="error" class="text-sm text-red-500 mt-3">{{ error }}</p>
+                <div class="mt-4 bg-blue-50 rounded-2xl p-4 text-slate-700 whitespace-pre-line min-h-[200px]"> {{ result
+                    || '等待生成。' }}
+                </div>
+            </div>
+        </main>
+
+        <div v-if="showSettings" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-slate-900">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                    <input v-model="apiConfig.deepseek" type="password"
+                        class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                    <select v-model="apiConfig.model" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                        <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    </select>
+                </div>
+                <button @click="saveConfig"
+                    class="mt-6 w-full px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+
+                const topic = ref('城市夜生活');
+                const tags = ref(['反差', '情绪', '镜头语言', '故事']);
+                const result = ref('');
+                const error = ref('');
+                const isLoading = ref(false);
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+
+                const callLLM = async (prompt) => {
+                    if (!apiConfig.value.deepseek) {
+                        error.value = '请先配置 DeepSeek API Key。';
+                        return '';
+                    }
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${apiConfig.value.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.value.model,
+                                messages: [
+                                    { role: 'system', content: '你是创意提示词设计师，输出 5 条提示语。' },
+                                    { role: 'user', content: prompt }
+                                ],
+                                temperature: 0.8
+                            })
+                        });
+                        if (!response.ok) throw new Error(`API 请求失败: ${response.status}`);
+                        const data = await response.json();
+                        return data.choices?.[0]?.message?.content || '';
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+                };
+
+                const generate = async () => {
+                    error.value = '';
+                    isLoading.value = true;
+                    try {
+                        const prompt = `主题：${topic.value}\n维度：${tags.value.join('、')}\n请输出 5 条可用于创作的提示语。`;
+                        result.value = await callLLM(prompt);
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+
+                const saveConfig = () => {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                onMounted(() => {
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                });
+
+                return {
+                    topic,
+                    tags,
+                    result,
+                    error,
+                    isLoading,
+                    showSettings,
+                    apiConfig,
+                    generate,
+                    saveConfig
+                };
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_tools_creative_prompt_lab.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

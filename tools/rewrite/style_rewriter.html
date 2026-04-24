@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百变风格改写器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #8b5cf6;
+            --bg-color: #f8fafc;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Custom Checkbox for Styles */
+        .style-checkbox:checked+div {
+            background-color: #f3e8ff;
+            border-color: #8b5cf6;
+            color: #6d28d9;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Top Navigation -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-wand-magic-sparkles text-violet-600 text-xl"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">Style Morph</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-violet-600': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-violet-600': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-violet-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear"></i> API 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Layout -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- Left: Input & Controls -->
+            <div
+                class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-lg">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+
+                    <!-- Input Content -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700">原始内容</label>
+                        <textarea v-model="input.content" rows="6" placeholder="在此粘贴需要改写的文章、段落或草稿..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-violet-500 focus:outline-none transition resize-none text-sm leading-relaxed"></textarea>
+                    </div>
+
+                    <!-- Style Selection -->
+                    <div class="space-y-3 flex-grow flex flex-col min-h-0">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-bold text-slate-700">选择风格 ({{ selectedStyles.length
+                                }})</label>
+                            <button @click="selectedStyles = []" v-if="selectedStyles.length > 0"
+                                class="text-xs text-red-500 hover:underline">清空</button>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div class="flex border-b border-slate-200 mb-2">
+                            <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
+                                :class="{'border-b-2 border-violet-600 text-violet-700 font-bold': currentTab === tab.id, 'text-slate-500 hover:text-slate-700': currentTab !== tab.id}"
+                                class="flex-1 py-2 text-xs text-center transition">
+                                {{ tab.name }}
+                            </button>
+                        </div>
+
+                        <!-- Search -->
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+                            <input v-model="searchQuery" type="text" placeholder="搜索风格..."
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-violet-500">
+                        </div>
+
+                        <!-- Style List -->
+                        <div class="flex-grow overflow-y-auto border border-slate-100 rounded-lg p-2 bg-slate-50">
+                            <div class="grid grid-cols-2 gap-2">
+                                <label v-for="style in filteredStyles" :key="style.id" class="cursor-pointer group">
+                                    <input type="checkbox" :value="style.id" v-model="selectedStyles"
+                                        class="hidden style-checkbox">
+                                    <div
+                                        class="border border-slate-200 bg-white rounded-md p-2 text-center hover:shadow-sm transition h-full flex flex-col justify-center items-center">
+                                        <span class="text-sm font-medium block">{{ style.name }}</span>
+                                        <span class="text-[10px] text-slate-400 mt-1 line-clamp-1">{{ style.desc
+                                            }}</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div v-if="filteredStyles.length === 0" class="text-center text-slate-400 py-4 text-xs">
+                                未找到相关风格
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button @click="startRewrite"
+                        :disabled="isGenerating || !input.content || selectedStyles.length === 0"
+                        class="w-full bg-violet-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin"></i>
+                        <span v-else>✨ 开始百变改写</span>
+                    </button>
+
+                    <!-- Status -->
+                    <div class="text-xs text-center text-slate-400">
+                        {{ statusText }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Output Grid -->
+            <div class="flex-grow bg-[#f8fafc] p-4 md:p-8 overflow-y-auto h-full relative">
+
+                <!-- Empty State -->
+                <div v-if="results.length === 0 && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                    <i class="fa-solid fa-palette text-6xl mb-4 text-slate-300"></i>
+                    <p class="text-lg">选择多种风格，一键生成百变文案</p>
+                </div>
+
+                <!-- Results Grid -->
+                <div v-else class="max-w-7xl mx-auto">
+                    <div class="flex justify-between items-end mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800">改写结果</h2>
+                        <div v-if="results.length > 0" class="flex gap-3">
+                            <button @click="exportAll"
+                                class="text-violet-600 text-sm font-medium hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-download"></i> 导出全部
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                        <div v-for="res in results" :key="res.styleId"
+                            class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]">
+
+                            <!-- Card Header -->
+                            <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <div class="flex items-center gap-2 overflow-hidden">
+                                    <span
+                                        class="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs font-bold shrink-0">
+                                        {{ getStyle(res.styleId).name[0] }}
+                                    </span>
+                                    <div class="flex flex-col overflow-hidden">
+                                        <span class="font-bold text-slate-700 text-sm truncate">{{
+                                            getStyle(res.styleId).name }}</span>
+                                        <span class="text-[10px] text-slate-400 truncate">{{ getStyle(res.styleId).desc
+                                            }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button v-if="res.content" @click="copyContent(res.content)"
+                                        class="p-1.5 hover:bg-white rounded-md text-slate-500 hover:text-violet-600 transition"
+                                        title="复制">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                    <button @click="retryStyle(res.styleId)"
+                                        class="p-1.5 hover:bg-white rounded-md text-slate-500 hover:text-violet-600 transition"
+                                        title="重试">
+                                        <i class="fa-solid fa-rotate"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Card Content -->
+                            <div class="flex-grow p-4 overflow-y-auto bg-white">
+                                <!-- Reasoning Box -->
+                                <div v-if="res.reasoning"
+                                    class="mb-4 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                                    <details class="group">
+                                        <summary
+                                            class="flex items-center justify-between p-2 cursor-pointer bg-slate-100 hover:bg-slate-200 transition text-xs font-bold text-slate-600 select-none">
+                                            <div class="flex items-center gap-1">
+                                                <i class="fa-solid fa-brain"></i>
+                                                <span>深度思考过程</span>
+                                            </div>
+                                            <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+                                        </summary>
+                                        <div
+                                            class="p-3 bg-slate-50 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-200 max-h-48 overflow-y-auto">
+                                            {{ res.reasoning }}
+                                        </div>
+                                    </details>
+                                </div>
+
+                                <div v-if="res.content"
+                                    class="prose prose-sm max-w-none whitespace-pre-wrap text-slate-600 text-sm"
+                                    v-html="renderMarkdown(res.content)"></div>
+                                <div v-else-if="res.status === 'loading'"
+                                    class="h-full flex flex-col items-center justify-center text-slate-300 space-y-3">
+                                    <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+                                    <span class="text-xs">正在创作中...</span>
+                                </div>
+                                <div v-else-if="res.status === 'error'"
+                                    class="h-full flex flex-col items-center justify-center text-red-400 space-y-2">
+                                    <i class="fa-solid fa-circle-exclamation text-2xl"></i>
+                                    <span class="text-xs">生成失败</span>
+                                    <p class="text-[10px] text-center px-2">{{ res.error }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- API Settings Modal -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Key 会存储在本地，与其他应用共享。</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick, computed, watch } = Vue;
+
+        // --- Style Definitions ---
+        const STYLES_DATA = {
+            character: [
+                { id: 'luxun', name: '鲁迅', desc: '犀利、批判、冷幽默、呐喊' },
+                { id: 'jinyong', name: '金庸', desc: '侠义、江湖、古风、豪情' },
+                { id: 'gulong', name: '古龙', desc: '短句、哲理、浪子、孤独' },
+                { id: 'qiongyao', name: '琼瑶', desc: '深情、纠结、排比、煽情' },
+                { id: 'wangshuo', name: '王朔', desc: '京味、调侃、痞气、解构' },
+                { id: 'shakespeare', name: '莎士比亚', desc: '戏剧、华丽、隐喻、独白' },
+                { id: 'marktwain', name: '马克吐温', desc: '幽默、讽刺、口语化' },
+                { id: 'jobs', name: '乔布斯', desc: '极简、现实扭曲力场、激情' },
+                { id: 'musk', name: '马斯克', desc: '第一性原理、硬核、未来感' },
+                { id: 'trump', name: '特朗普', desc: '简单词汇、重复、强调、自信' },
+                { id: 'kongzi', name: '孔子', desc: '教诲、仁义、文言、语录体' },
+                { id: 'laozi', name: '老子', desc: '道家、辩证、玄妙、无为' },
+                { id: 'zengguofan', name: '曾国藩', desc: '家书、劝诫、沉稳、修身' },
+                { id: 'murakami', name: '村上春树', desc: '小资、爵士乐、孤独、隐喻' },
+                { id: 'zhangailing', name: '张爱玲', desc: '苍凉、细腻、华丽、比喻' },
+                { id: 'wangxiaobo', name: '王小波', desc: '黑色幽默、理性、特立独行' },
+                { id: 'sanguo', name: '三国演义', desc: '半文半白、宏大、谋略' },
+                { id: 'shuihu', name: '水浒传', desc: '豪爽、江湖气、白话' },
+                { id: 'honglou', name: '红楼梦', desc: '细腻、诗词、儿女情长' },
+                { id: 'xiyou', name: '西游记', desc: '神话、诙谐、打油诗' },
+                { id: 'qianzhongshu', name: '钱钟书', desc: '博学、讽刺、比喻精妙' },
+                { id: 'yuhua', name: '余华', desc: '冷峻、苦难、简洁、直白' },
+                { id: 'moyan', name: '莫言', desc: '魔幻现实、浓墨重彩、感官描写' },
+                { id: 'liucixin', name: '刘慈欣', desc: '宏大、硬科幻、冷酷理性' },
+                { id: 'oscarn', name: '王尔德', desc: '唯美、毒舌、悖论、金句' },
+                { id: 'hemingway', name: '海明威', desc: '冰山理论、简洁、硬汉' },
+                { id: 'kafka', name: '卡夫卡', desc: '荒诞、压抑、异化、迷宫' },
+                { id: 'sherlock', name: '福尔摩斯', desc: '演绎法、冷静、观察、逻辑' },
+                { id: 'godfather', name: '教父', desc: '威严、家族、交易、哲理' },
+                { id: 'lixiaolong', name: '李小龙', desc: '哲学、如水、直接、武道' },
+                { id: 'zhugeliang', name: '诸葛亮', desc: '鞠躬尽瘁、智谋、出师表' },
+                { id: 'caocao', name: '曹操', desc: '霸气、豪迈、短歌行' },
+                { id: 'sunwukong', name: '孙悟空', desc: '桀骜、顽皮、俺老孙' },
+                { id: 'zhubajie', name: '猪八戒', desc: '憨厚、贪吃、抱怨、散伙' },
+                { id: 'lindaiyu', name: '林黛玉', desc: '多愁善感、葬花、尖刻' },
+                { id: 'xuebaochai', name: '薛宝钗', desc: '端庄、圆滑、世故' },
+                { id: 'jiabaoyu', name: '贾宝玉', desc: '痴情、叛逆、女儿是水' },
+                { id: 'lubinxun', name: '鲁滨逊', desc: '生存、日记、理性、孤独' },
+                { id: 'harrypotter', name: '哈利波特', desc: '魔法、勇气、友谊' },
+                { id: 'voldemort', name: '伏地魔', desc: '黑暗、恐惧、永生、傲慢' }
+            ],
+            literary: [
+                { id: 'prose', name: '优美散文', desc: '形散神不散、意境、抒情' },
+                { id: 'poetry', name: '现代诗歌', desc: '分行、意象、节奏、跳跃' },
+                { id: 'ancient_poetry', name: '古诗词', desc: '韵律、对仗、古风、凝练' },
+                { id: 'script', name: '电影剧本', desc: '场景、动作、对白、镜头' },
+                { id: 'scifi', name: '硬核科幻', desc: '技术细节、未来、宇宙、理论' },
+                { id: 'suspense', name: '悬疑推理', desc: '伏笔、反转、紧张、逻辑' },
+                { id: 'horror', name: '克苏鲁', desc: '不可名状、恐惧、疯狂、古神' },
+                { id: 'romance', name: '言情小说', desc: '甜蜜、虐心、心理描写' },
+                { id: 'reportage', name: '新闻纪实', desc: '客观、数据、采访、现场' },
+                { id: 'stream', name: '意识流', desc: '内心独白、跳跃、梦境' },
+                { id: 'magic_realism', name: '魔幻现实', desc: '荒诞与真实交织' },
+                { id: 'fairytale', name: '暗黑童话', desc: '童真外衣、成人隐喻' },
+                { id: 'cyberpunk', name: '赛博朋克', desc: '高科技低生活、霓虹、义体' },
+                { id: 'steampunk', name: '蒸汽朋克', desc: '机械、齿轮、维多利亚风格' },
+                { id: 'wuxia', name: '传统武侠', desc: '招式、内功、门派、恩怨' },
+                { id: 'xianxia', name: '修真玄幻', desc: '境界、法宝、逆天、长生' },
+                { id: 'history', name: '正史笔法', desc: '纪传体、严谨、考据' },
+                { id: 'speech', name: '演讲稿', desc: '煽情、排比、号召、互动' },
+                { id: 'letter', name: '书信体', desc: '亲切、倾诉、第二人称' },
+                { id: 'diary', name: '日记体', desc: '私密、碎片、真实感' },
+                { id: 'fable', name: '寓言故事', desc: '短小、拟人、哲理' },
+                { id: 'myth', name: '神话传说', desc: '远古、起源、神力' },
+                { id: 'drama', name: '话剧独白', desc: '戏剧张力、情感爆发' },
+                { id: 'review', name: '专业书评', desc: '分析、引用、评价' },
+                { id: 'academic', name: '学术论文', desc: '严谨、术语、引用、论证' },
+                { id: 'legal', name: '法律文书', desc: '严密、法条、逻辑、客观' },
+                { id: 'medical', name: '病历报告', desc: '客观、术语、症状描述' },
+                { id: 'cookbook', name: '美食菜谱', desc: '色香味、步骤、诱人' },
+                { id: 'travel', name: '旅行游记', desc: '景点、感受、攻略、风景' },
+                { id: 'advert', name: '经典文案', desc: '洞察、痛点、转化' },
+                { id: 'minimalism', name: '极简主义', desc: '少即是多、留白、克制' },
+                { id: 'noir', name: '黑色电影', desc: '阴郁、独白、宿命、冷硬' },
+                { id: 'haiku', name: '俳句', desc: '三句、自然、禅意、瞬间' },
+                { id: 'sonnet', name: '十四行诗', desc: '格律、爱情、转折' },
+                { id: 'absurdist', name: '荒诞派', desc: '无意义、重复、循环' }
+            ],
+            media: [
+                { id: 'xhs', name: '小红书', desc: 'Emoji、集美、种草、干货' },
+                { id: 'douyin', name: '抖音口播', desc: '黄金三秒、快节奏、反转' },
+                { id: 'gzh', name: '公众号', desc: '深度、排版、金句、共鸣' },
+                { id: 'zhihu', name: '知乎体', desc: '谢邀、刚下飞机、利益相关' },
+                { id: 'hupu', name: '虎扑体', desc: '家人们、理性讨论、福利' },
+                { id: 'douban', name: '豆瓣文青', desc: '评分、长难句、情绪化' },
+                { id: 'uc', name: '震惊体', desc: '震惊、竟然、男人看了沉默' },
+                { id: 'marketing', name: '营销号', desc: '三遍、注意看、这个男人' },
+                { id: 'weibo', name: '微博吃瓜', desc: '热搜、吃瓜、实锤、反转' },
+                { id: 'linkedin', name: '领英职场', desc: '专业、人脉、洞察、感谢' },
+                { id: 'bilibili', name: 'B站弹幕', desc: '高能、玩梗、下次一定' },
+                { id: 'tieba', name: '贴吧老哥', desc: '暴躁、滑稽、楼主、层主' },
+                { id: 'taobao', name: '淘宝客服', desc: '亲、包邮、好评、返现' },
+                { id: 'weishang', name: '微商朋友圈', desc: '喜提、感恩、正能量' },
+                { id: 'news', name: '新闻联播', desc: '庄重、官方、正能量' },
+                { id: 'variety', name: '综艺花字', desc: '夸张、音效、吐槽' },
+                { id: 'live', name: '直播带货', desc: '321上链接、家人们、炸' },
+                { id: 'tech', name: '科技测评', desc: '参数、体验、跑分、手感' },
+                { id: 'beauty', name: '美妆博主', desc: '绝绝子、显白、氛围感' },
+                { id: 'finance', name: '财经分析', desc: '大盘、K线、利好、割韭菜' },
+                { id: 'game', name: '游戏解说', desc: '操作、走位、输出、GG' },
+                { id: 'sport', name: '体育解说', desc: '激情、战术、绝杀' },
+                { id: 'car', name: '汽车测评', desc: '零百、推背感、底盘' },
+                { id: 'foodie', name: '探店博主', desc: '碳水快乐、排队、隐藏吃法' },
+                { id: 'pet', name: '萌宠博主', desc: '治愈、铲屎官、喵星人' },
+                { id: 'parent', name: '育儿专家', desc: '焦虑、起跑线、科学育儿' },
+                { id: 'health', name: '养生专家', desc: '湿气、排毒、忌口' },
+                { id: 'constellation', name: '星座运势', desc: '水逆、桃花、上升星座' },
+                { id: 'emotional', name: '情感导师', desc: '原生家庭、PUA、安全感' },
+                { id: 'counseling', name: '心理咨询', desc: '接纳、疗愈、潜意识' },
+                { id: 'xianyu', name: '闲鱼文案', desc: '回血、舔狗、我是学生' },
+                { id: 'dianping', name: '大众点评', desc: '打卡、绝绝子、避雷' },
+                { id: 'baike', name: '百科词条', desc: '定义、摘要、目录、中立' },
+                { id: 'buyershow', name: '买家秀', desc: '实物、色差、追评' },
+                { id: 'system', name: '系统通知', desc: '机械、指令、警告' },
+                { id: 'nonsense', name: '废话文学', desc: '听君一席话、如听一席话' }
+            ]
+        };
+
+        createApp({
+            setup() {
+
+                // State
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+                const statusText = ref('准备就绪');
+
+                const input = reactive({
+                    content: ''
+                });
+
+                const tabs = [
+                    { id: 'character', name: '人物风格' },
+                    { id: 'literary', name: '文学风格' },
+                    { id: 'media', name: '自媒体风格' }
+                ];
+                const currentTab = ref('character');
+                const searchQuery = ref('');
+
+                const selectedStyles = ref([]);
+                const results = ref([]); // { styleId, content, status, error }
+
+                // Computed
+                const allStyles = computed(() => {
+                    let styles = [];
+                    for (const key in STYLES_DATA) {
+                        styles = styles.concat(STYLES_DATA[key]);
+                    }
+                    return styles;
+                });
+
+                const filteredStyles = computed(() => {
+                    let styles = STYLES_DATA[currentTab.value];
+                    if (searchQuery.value) {
+                        const query = searchQuery.value.toLowerCase();
+                        return styles.filter(s => s.name.toLowerCase().includes(query) || s.desc.toLowerCase().includes(query));
+                    }
+                    return styles;
+                });
+
+                // Initialization
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    const savedConfig = localStorage.getItem('global_llm_config');
+                    if (savedConfig) apiConfig.value = { ...apiConfig.value, ...JSON.parse(savedConfig) };
+                });
+
+                // Helpers
+                const getStyle = (id) => allStyles.value.find(s => s.id === id) || { name: '未知', desc: '' };
+
+                const renderMarkdown = (text) => {
+                    if (!text || typeof text !== 'string') return '';
+                    if (window.marked && typeof window.marked.parse === 'function') {
+                        return window.marked.parse(text);
+                    }
+                    return text;
+                };
+
+                // Settings Logic
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                // Core Logic
+                const startRewrite = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!input.content) return;
+
+                    isGenerating.value = true;
+                    statusText.value = '正在分发任务...';
+
+                    // Initialize results
+                    results.value = selectedStyles.value.map(sid => ({
+                        styleId: sid,
+                        content: '',
+                        reasoning: '', // Initialize reasoning
+                        status: 'loading',
+                        error: null
+                    }));
+
+                    // Create async tasks
+                    const tasks = results.value.map(res => processStyle(res));
+
+                    try {
+                        await Promise.all(tasks);
+                        statusText.value = '所有任务完成';
+                    } catch (e) {
+                        console.error('Batch processing error:', e);
+                        statusText.value = '部分任务可能失败';
+                    } finally {
+                        isGenerating.value = false;
+                        nextTick(() => {
+                        });
+                    }
+                };
+
+                const retryStyle = async (styleId) => {
+                    const res = results.value.find(r => r.styleId === styleId);
+                    if (!res) return;
+
+                    res.status = 'loading';
+                    res.content = '';
+                    res.reasoning = '';
+                    res.error = null;
+
+                    await processStyle(res);
+                };
+
+                const processStyle = async (res) => {
+                    const style = getStyle(res.styleId);
+
+                    const systemPrompt = `你是一个专业的写作风格模仿大师。你的任务是将用户输入的内容，用【${style.name}】的风格重新改写。
+风格特点：${style.desc}
+
+要求：
+1. 深度模仿该风格的用词、句式、语气和修辞习惯。
+2. 保持原意不变，但形式上要完全沉浸在目标风格中。
+3. 如果是人物风格，请想象该人物在说话或写作。
+4. 如果是自媒体风格，请符合该平台的排版和调性（如emoji、标签等）。
+5. 直接输出改写后的内容，不要包含"改写如下"等引导语。`;
+
+                    const userContent = input.content;
+
+                    try {
+                        await callDeepSeek(systemPrompt, userContent, true,
+                            (chunk) => {
+                                res.content += chunk;
+                            },
+                            (reasoningChunk) => {
+                                if (!res.reasoning) res.reasoning = '';
+                                res.reasoning += reasoningChunk;
+                            }
+                        );
+                        res.status = 'done';
+                    } catch (e) {
+                        console.error(`Style ${style.name} failed:`, e);
+                        res.status = 'error';
+                        res.error = e.message;
+                    }
+                };
+
+                // API Call
+                const callDeepSeek = async (systemPrompt, userContent, stream = false, onChunk = null, onReasoning = null) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 未配置");
+
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: model.value,
+                            messages: [
+                                { "role": "system", "content": systemPrompt },
+                                { "role": "user", "content": userContent }
+                            ],
+                            stream: stream
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    if (!stream) {
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+
+                                    // Handle Reasoning Content (DeepSeek V4 Pro)
+                                    const reasoning = json.choices[0].delta.reasoning_content;
+                                    if (reasoning && onReasoning) {
+                                        onReasoning(reasoning);
+                                    }
+
+                                    // Handle Normal Content
+                                    const content = json.choices[0].delta.content || "";
+                                    if (onChunk) onChunk(content);
+
+                                } catch (e) {
+                                    console.error("Stream parse error", e);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                const copyContent = (text) => {
+                    if (!text || typeof text !== 'string') return;
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('已复制到剪贴板');
+                    });
+                };
+
+                const exportAll = () => {
+                    let text = "";
+                    results.value.forEach(res => {
+                        if (res.content) {
+                            const style = getStyle(res.styleId);
+                            text += `=== ${style.name}风格 ===\n(特点：${style.desc})\n\n`;
+                            if (res.reasoning) {
+                                text += `[思考过程]:\n${res.reasoning}\n\n`;
+                            }
+                            text += `${res.content}\n\n-------------------\n\n`;
+                        }
+                    });
+
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `百变风格改写_${new Date().toLocaleDateString()}.txt`;
+                    a.click();
+                };
+
+                return {
+                    showSettings, apiConfig, saveConfig, model,
+                    input, tabs, currentTab, searchQuery, filteredStyles, selectedStyles,
+                    results, isGenerating, statusText, startRewrite, retryStyle,
+                    getStyle, renderMarkdown, copyContent, exportAll
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/rewrite_style_rewriter.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

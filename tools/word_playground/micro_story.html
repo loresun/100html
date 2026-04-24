@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics（项目统一测量 ID） -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一句话小说 · 微型故事扩写</title>
+    <!-- 艺术标题 + 正文衬线：与「书页」气质一致 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* 页面基底：琥珀暖色渐变 */
+        body {
+            background: linear-gradient(165deg, #fffbeb 0%, #fef3c7 25%, #fde68a 45%, #fcd34d 70%, #fbbf24 100%);
+            font-family: 'Noto Serif SC', 'PingFang SC', 'Songti SC', Georgia, serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.35); }
+        ::-webkit-scrollbar-thumb { background: #d97706; border-radius: 3px; }
+
+        [x-cloak] { display: none !important; }
+
+        /* 打字机光标闪烁 */
+        @keyframes caretBlink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+        .typewriter-caret {
+            display: inline-block;
+            margin-left: 2px;
+            color: #b45309;
+            font-weight: 700;
+            animation: caretBlink 1s step-end infinite;
+            vertical-align: baseline;
+        }
+
+        /* 打开的书：中间书脊 + 双页阴影 */
+        .book-shell {
+            position: relative;
+            perspective: 1200px;
+        }
+        .book-spread {
+            position: relative;
+            background: linear-gradient(90deg,
+                rgba(254, 243, 199, 0.95) 0%,
+                rgba(255, 251, 235, 0.98) 48%,
+                rgba(254, 252, 247, 1) 50%,
+                rgba(255, 252, 245, 1) 100%);
+            border-radius: 0.75rem 1.25rem 1.25rem 0.75rem;
+            box-shadow:
+                inset 12px 0 24px -12px rgba(120, 53, 15, 0.12),
+                inset -4px 0 12px rgba(255, 255, 255, 0.8),
+                0 25px 50px -12px rgba(146, 64, 14, 0.25),
+                0 0 0 1px rgba(180, 83, 9, 0.15);
+        }
+        .book-spine {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 14px;
+            background: linear-gradient(90deg, #92400e 0%, #b45309 40%, #d97706 100%);
+            border-radius: 0.5rem 0 0 0.5rem;
+            opacity: 0.85;
+            box-shadow: inset -3px 0 6px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+
+        /* 纸张纹理（细噪点） */
+        .paper-texture {
+            background-image:
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+        }
+
+        /* 艺术字标题 */
+        .art-title {
+            font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
+            font-size: clamp(1.75rem, 5vw, 2.75rem);
+            line-height: 1.25;
+            color: #431407;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+        }
+
+        /* Markdown 正文（书页内） */
+        .story-md { font-size: 1.05rem; line-height: 1.9; color: #44403c; }
+        .story-md p { margin: 0.65rem 0; text-align: justify; }
+        .story-md strong { color: #292524; }
+        .story-md em { color: #57534e; }
+        .story-md blockquote {
+            border-left: 3px solid #d97706;
+            margin: 0.75rem 0;
+            padding: 0.35rem 0 0.35rem 1rem;
+            color: #78716c;
+            font-style: italic;
+        }
+
+        /* 一句话点评区 */
+        .one-line-review {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px dashed rgba(180, 83, 9, 0.45);
+            font-size: 0.95rem;
+            color: #92400e;
+            font-style: italic;
+        }
+
+        /* 灵感横向滚动卡片 */
+        .inspire-scroll {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+        .inspire-scroll::-webkit-scrollbar { height: 5px; }
+        .inspire-card {
+            flex: 0 0 min(300px, 85vw);
+            scroll-snap-align: start;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .inspire-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px -8px rgba(146, 64, 14, 0.35);
+        }
+
+        /* 流式输出时的等宽感（未完成解析前） */
+        .stream-raw {
+            font-family: 'Noto Serif SC', Georgia, serif;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.85;
+            color: #44403c;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-stone-800">
+    <div x-data="microStoryApp()" x-init="init()" class="min-h-screen flex flex-col pb-16">
+
+        <!-- 顶部导航：左侧返回站点首页 -->
+        <nav class="bg-amber-50/90 backdrop-blur-md sticky top-0 z-50 border-b border-amber-200/80 shadow-sm">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer hover:opacity-90 transition"
+                    onclick="location.href='../../index.html'">
+                    <div class="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-md">
+                        <i data-lucide="book-open-text" class="text-white h-5 w-5"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg text-stone-900">一句话小说</span>
+                        <span class="hidden sm:inline text-xs text-amber-900/70 ml-2">一句开篇 · 一篇故事</span>
+                    </div>
+                </div>
+                <button type="button" @click="showSettings = true"
+                    class="text-stone-600 hover:text-amber-900 flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-xl hover:bg-amber-100/80 transition">
+                    <i data-lucide="settings" class="h-4 w-4"></i>
+                    <span class="hidden sm:inline">设置</span>
+                </button>
+            </div>
+        </nav>
+
+        <main class="flex-grow max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-10">
+
+            <header class="text-center space-y-2">
+                <h1 class="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
+                    用一句话，打开一整篇小说
+                </h1>
+                <p class="text-sm sm:text-base text-stone-600 max-w-xl mx-auto">
+                    输入开篇金句，选择类型与篇幅，AI 流式扩写为完整微型小说，并附一句自评。
+                </p>
+            </header>
+
+            <!-- 输入区 -->
+            <section class="bg-white/90 backdrop-blur rounded-2xl border border-amber-200/90 shadow-lg p-5 sm:p-6 space-y-4">
+                <label class="flex items-center gap-2 text-sm font-bold text-stone-800">
+                    <i data-lucide="pen-line" class="w-4 h-4 text-amber-600"></i>
+                    你的开篇一句话
+                </label>
+                <textarea x-model="hook" rows="3"
+                    placeholder="例如：他关上门，发现屋里多了一个人。"
+                    class="w-full rounded-xl border border-amber-200 bg-amber-50/30 p-4 text-sm sm:text-base outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-y min-h-[5.5rem]"></textarea>
+
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <span class="block text-xs font-bold text-amber-900/80 mb-2">故事类型</span>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="t in storyTypes" :key="t.value">
+                                <button type="button"
+                                    @click="storyType = t.value"
+                                    class="rounded-full px-3 py-1.5 text-xs sm:text-sm font-semibold border transition"
+                                    :class="storyType === t.value
+                                        ? 'bg-amber-600 text-white border-amber-600 shadow'
+                                        : 'bg-white border-amber-200 text-stone-700 hover:bg-amber-50'">
+                                    <span x-text="t.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="block text-xs font-bold text-amber-900/80 mb-2">目标篇幅（汉字约数）</span>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="w in wordOptions" :key="w">
+                                <button type="button"
+                                    @click="wordCount = w"
+                                    class="rounded-xl px-4 py-2 text-sm font-bold border transition"
+                                    :class="wordCount === w
+                                        ? 'bg-orange-600 text-white border-orange-600'
+                                        : 'bg-white border-amber-200 text-stone-700 hover:bg-amber-50'">
+                                    <span x-text="w + ' 字'"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button type="button"
+                        @click="expandStory(false)"
+                        :disabled="isStreaming || !hook.trim()"
+                        class="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold py-3.5 shadow-md hover:from-amber-700 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                        <template x-if="!isStreaming">
+                            <span class="flex items-center gap-2">
+                                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                                展开故事
+                            </span>
+                        </template>
+                        <template x-if="isStreaming">
+                            <span class="flex items-center gap-2">
+                                <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                正在书写…
+                            </span>
+                        </template>
+                    </button>
+                    <button type="button"
+                        @click="expandStory(true)"
+                        :disabled="isStreaming || !hook.trim() || !lastRawOutput"
+                        class="sm:w-auto rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-3.5 text-sm font-bold text-amber-950 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                        title="需先成功生成一篇故事">
+                        <i data-lucide="shuffle" class="w-4 h-4"></i>
+                        换一个结局
+                    </button>
+                </div>
+                <p class="text-xs text-stone-500" x-show="!lastRawOutput && hook.trim()" x-cloak>
+                    首次点击「展开故事」生成正文后，可使用「换一个结局」保留开篇、改写走向。
+                </p>
+            </section>
+
+            <!-- V4 Pro 推理折叠区 -->
+            <details x-show="reasoningBuffer" class="bg-stone-900/5 rounded-xl border border-stone-200 p-4" x-cloak>
+                <summary class="cursor-pointer text-sm font-semibold text-stone-700 flex items-center gap-2">
+                    <i data-lucide="brain" class="w-4 h-4 text-amber-600"></i>
+                    深度思考过程（V4 Pro 模型，点击展开）
+                </summary>
+                <pre class="mt-3 text-xs text-stone-600 whitespace-pre-wrap font-mono leading-relaxed" x-text="reasoningBuffer"></pre>
+            </details>
+
+            <!-- 输出区：打开的书 -->
+            <section class="book-shell">
+                <div class="book-spread paper-texture pl-4 sm:pl-6 pr-4 sm:pr-8 py-8 sm:py-10">
+                    <div class="book-spine hidden sm:block" aria-hidden="true"></div>
+                    <div class="relative z-[2] sm:ml-4 min-h-[200px]">
+
+                        <template x-if="!streamBuffer && !isStreaming">
+                            <div class="flex flex-col items-center justify-center text-center py-16 text-stone-400">
+                                <i data-lucide="book-marked" class="w-14 h-14 mb-4 opacity-40"></i>
+                                <p class="text-sm">在左侧写下开篇，点击「展开故事」</p>
+                                <p class="text-xs mt-2 opacity-80">流式生成时会显示打字机光标；完成后自动拆分为标题、正文与点评</p>
+                            </div>
+                        </template>
+
+                        <!-- 流式中：原始文本 + 打字机光标 -->
+                        <div x-show="isStreaming && streamBuffer" x-cloak class="stream-raw text-base">
+                            <span x-text="streamBuffer"></span><span class="typewriter-caret" aria-hidden="true">▍</span>
+                        </div>
+                        <div x-show="isStreaming && !streamBuffer" x-cloak class="flex items-center gap-2 text-amber-800 text-sm py-8">
+                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                            正在连接灵感…
+                        </div>
+
+                        <!-- 完成后：标题 + Markdown 正文 + 点评 -->
+                        <div x-show="!isStreaming && parsed.title" x-cloak class="space-y-6">
+                            <h2 class="art-title text-center sm:text-left px-1" x-text="parsed.title"></h2>
+                            <div class="story-md" x-html="renderMarkdown(parsed.bodyMd || '')"></div>
+                            <div class="one-line-review" x-show="parsed.review">
+                                <span class="font-semibold not-italic text-amber-900">一句话点评：</span>
+                                <span x-text="parsed.review"></span>
+                            </div>
+                        </div>
+
+                        <!-- 解析失败时的兜底：全文 Markdown -->
+                        <div x-show="!isStreaming && streamBuffer && !parsed.title && doneFlag" x-cloak
+                            class="story-md border-t border-amber-200/60 pt-6 mt-2">
+                            <p class="text-xs text-amber-800 mb-2">未识别到标准标题格式，以下为全文渲染：</p>
+                            <div x-html="renderMarkdown(streamBuffer)"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 复制 / 下载 -->
+                <div x-show="!isStreaming && streamBuffer" class="flex flex-wrap justify-center gap-3 mt-6" x-cloak>
+                    <button type="button" @click="copyAll()"
+                        class="inline-flex items-center gap-2 rounded-xl bg-stone-800 text-white px-5 py-2.5 text-sm font-semibold hover:bg-stone-900 transition shadow">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        复制全文
+                    </button>
+                    <button type="button" @click="downloadMd()"
+                        class="inline-flex items-center gap-2 rounded-xl border-2 border-amber-500 bg-amber-50 text-amber-950 px-5 py-2.5 text-sm font-semibold hover:bg-amber-100 transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        下载 Markdown
+                    </button>
+                    <button type="button" @click="clearOutput()"
+                        class="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-600 hover:bg-stone-50 transition">
+                        <i data-lucide="eraser" class="w-4 h-4"></i>
+                        清空输出
+                    </button>
+                </div>
+            </section>
+
+            <!-- 经典一句话小说 · 横向滚动灵感 -->
+            <section class="space-y-4">
+                <h3 class="text-lg font-bold text-stone-900 flex items-center gap-2">
+                    <i data-lucide="lightbulb" class="w-5 h-5 text-amber-600"></i>
+                    经典示例 · 点击填入开篇
+                </h3>
+                <div class="inspire-scroll pb-1">
+                    <template x-for="(ex, i) in classicExamples" :key="i">
+                        <button type="button"
+                            @click="hook = ex.line"
+                            class="inspire-card text-left rounded-2xl border border-amber-200/90 bg-white/95 p-4 shadow-md">
+                            <p class="text-sm text-stone-800 leading-relaxed line-clamp-4" x-text="ex.line"></p>
+                            <p class="text-xs text-amber-800/70 mt-2" x-text="ex.note"></p>
+                        </button>
+                    </template>
+                </div>
+            </section>
+        </main>
+
+        <!-- 设置：API Key + 模型 -->
+        <div x-show="showSettings"
+            x-transition
+            class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-amber-100" @click.stop>
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-stone-900">
+                    <i data-lucide="key-round" class="w-5 h-5 text-amber-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-stone-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border border-stone-200 p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-stone-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-stone-200 p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false"
+                        class="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-lg transition">取消</button>
+                    <button type="button" @click="saveConfig()"
+                        class="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div x-show="toast.show"
+            x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-stone-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium">
+            <i :data-lucide="toast.icon" class="w-4 h-4 text-amber-400"></i>
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 一句话小说 · Alpine 应用
+         * 职责：读取/合并 global_llm_config、流式调用 DeepSeek、解析标题/正文/点评、复制与导出。
+         */
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('microStoryApp', () => ({
+                /** 用户输入的开篇一句话 */
+                hook: '',
+                /** 选中的故事类型 value */
+                storyType: 'suspense',
+                /** 目标字数：100 / 300 / 500 */
+                wordCount: 300,
+                /** 是否正在流式请求 */
+                isStreaming: false,
+                /** 当前流式累积的原始文本（完整 Markdown） */
+                streamBuffer: '',
+                /** 上一次成功生成的原文（用于「换一个结局」） */
+                lastRawOutput: '',
+                /** 本轮是否已成功结束（用于兜底 UI） */
+                doneFlag: false,
+                /** V4 Pro 推理过程累积 */
+                reasoningBuffer: '',
+                showSettings: false,
+                toast: { show: false, message: '', icon: 'check' },
+
+                /** 与全站统一的 LLM 配置字段 */
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                /** 解析后的结构化结果 */
+                parsed: {
+                    title: '',
+                    bodyMd: '',
+                    review: ''
+                },
+
+                /** 类型选项：value 用于 prompt，label 展示中文 */
+                storyTypes: [
+                    { value: 'suspense', label: '悬疑' },
+                    { value: 'sci-fi', label: '科幻' },
+                    { value: 'romance', label: '爱情' },
+                    { value: 'horror', label: '恐怖' },
+                    { value: 'warm', label: '温情' },
+                    { value: 'absurd', label: '荒诞' },
+                    { value: 'twist', label: '反转' }
+                ],
+                wordOptions: [100, 300, 500],
+
+                /**
+                 * 经典一句话小说示例（含出处或说明）
+                 * 供用户点击快速填入开篇
+                 */
+                classicExamples: [
+                    { line: '地球上最后一个人独自坐在房间里，这时，响起了敲门声。', note: '科幻微小说经典极短范例' },
+                    { line: '他关上门，发现屋里多了一个人。', note: '悬疑氛围开篇' },
+                    { line: '她收到一束花，卡片上写着明天的日期。', note: '时间悬念' },
+                    { line: '墓志铭只有两个字：谢谢。', note: '温情 / 人生浓缩' },
+                    { line: '闹钟响了，他发现自己还在昨天的梦里。', note: '荒诞 / 循环感' },
+                    { line: '离婚协议签完，对方递来一张结婚请柬——名字写的是我。', note: '反转' },
+                    { line: '飞船着陆了，窗外是另一艘一模一样的飞船。', note: '科幻惊悚' },
+                    { line: '镜子里的我眨了眨眼，而我并没有动。', note: '恐怖细思极恐' }
+                ],
+
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                        } catch (e) {
+                            console.warn('[micro_story] 配置解析失败', e);
+                        }
+                    }
+                    this.refreshIcons();
+                },
+
+                refreshIcons() {
+                    setTimeout(() => {
+                        try { lucide.createIcons(); } catch (e) { /* 忽略图标错误 */ }
+                    }, 40);
+                },
+
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 2600);
+                },
+
+                /**
+                 * 保存配置：合并写入 localStorage，禁止整对象覆盖以免冲掉其他工具字段
+                 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'check-circle');
+                },
+
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    try {
+                        return marked.parse(text);
+                    } catch (e) {
+                        return text;
+                    }
+                },
+
+                /** 类型 value → 中文说明（写入 prompt） */
+                typeLabelZh() {
+                    const f = this.storyTypes.find((t) => t.value === this.storyType);
+                    return f ? f.label : '悬疑';
+                },
+
+                /**
+                 * 从模型输出中解析：一级标题 = 小说标题；文末 blockquote 点评 = 一句话点评；中间为正文
+                 * @param {string} raw - 完整模型输出
+                 * @returns {{ title: string, bodyMd: string, review: string }}
+                 */
+                parseStructuredOutput(raw) {
+                    const text = (raw || '').trim();
+                    let title = '';
+                    let bodyMd = text;
+                    let review = '';
+
+                    const titleMatch = text.match(/^#\s+(.+)$/m);
+                    if (titleMatch) {
+                        title = titleMatch[1].trim();
+                    }
+
+                    /* 优先匹配标准点评格式：--- 换行 > **一句话点评**： */
+                    const reviewStd = text.match(/---\s*\n>\s*\*\*一句话点评\*\*[：:]\s*(.+?)(?:\n{2,}|\n*$)/s);
+                    if (reviewStd) {
+                        review = reviewStd[1].replace(/\n/g, ' ').trim();
+                        bodyMd = text.slice(0, reviewStd.index).trim();
+                    } else {
+                        /* 宽松：任意行含 **一句话点评** */
+                        const loose = text.match(/\*\*一句话点评\*\*[：:]\s*(.+)$/m);
+                        if (loose) {
+                            review = loose[1].trim();
+                            bodyMd = text.slice(0, loose.index).trim();
+                        }
+                    }
+
+                    /* 从正文中去掉标题行，避免正文重复大标题 */
+                    bodyMd = bodyMd.replace(/^#\s+[^\n]+\n*/, '').trim();
+
+                    return { title, bodyMd, review };
+                },
+
+                /**
+                 * 构建系统提示：约束输出结构（Markdown）与篇幅
+                 */
+                buildSystemPrompt() {
+                    return `你是一位中文微型小说作家，擅长从「一句话开篇」扩写成完整短篇。
+
+【输出格式 — 必须严格遵守】
+1) 第一行必须是小说标题，格式为 Markdown 一级标题，例如：\`# 夜色敲门声\`（标题 4～14 个汉字为宜）。
+2) 空一行后写正文：可使用分段、**加粗**、对话引号等 Markdown，但不要再用一级标题 \`#\`。
+3) 正文结束后空一行，写一行分隔线 \`---\`，再空一行，写固定格式的点评（blockquote）：
+\`> **一句话点评**：\` 后接你作为作者的一句自评（不超过 60 字，点题或点出韵味）。
+
+【写作要求】
+- 全文只用中文。
+- 类型风格由用户指定，请贯彻到底。
+- 目标字数约为用户指定汉字数，允许 ±15% 浮动。
+- 不要用代码围栏（\`\`\`）包裹全文。`;
+                },
+
+                /**
+                 * 构建用户提示
+                 * @param {boolean} alternateEnding - 是否为「换结局」模式
+                 */
+                buildUserPrompt(alternateEnding) {
+                    const typeZh = this.typeLabelZh();
+                    let base = `【开篇句子】（必须作为故事真正的开头或核心悬念起点，可稍作润色嵌入正文，但不可丢弃原意）\n「${this.hook.trim()}」\n\n【类型】${typeZh}\n【目标篇幅】约 ${this.wordCount} 字（汉字）\n`;
+
+                    if (alternateEnding && this.lastRawOutput) {
+                        base += `\n【已生成版本 — 仅供你参考，禁止照抄】\n以下是你之前写出的版本。请保留开篇句子的氛围与人物处境，从故事中段开始改写情节走向，给出**截然不同的结局**。标题可以更换以更贴合新走向。\n\n----------\n${this.lastRawOutput.slice(0, 8000)}\n----------\n\n请输出**完整新版**（含新标题、新正文、新的一句话点评），结构与系统说明一致。`;
+                    }
+
+                    return base;
+                },
+
+                /**
+                 * DeepSeek 流式聊天
+                 * @param {Array<{role:string,content:string}>} messages
+                 * @param {(chunk:string)=>void} onContent
+                 * @param {(chunk:string)=>void} [onReasoning]
+                 */
+                async callAPIStream(messages, onContent, onReasoning) {
+                    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model || 'deepseek-v4-flash',
+                            messages,
+                            stream: true,
+                            temperature: 0.82
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`API 请求失败 (${response.status}): ${err}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices?.[0]?.delta;
+                                if (!delta) continue;
+                                if (delta.reasoning_content && onReasoning) {
+                                    onReasoning(delta.reasoning_content);
+                                }
+                                if (delta.content && onContent) {
+                                    onContent(delta.content);
+                                }
+                            } catch (e) { /* 忽略单行解析错误 */ }
+                        }
+                    }
+                },
+
+                /**
+                 * 主入口：展开故事 / 换结局
+                 * @param {boolean} alternateEnding
+                 */
+                async expandStory(alternateEnding) {
+                    if (!this.hook.trim()) {
+                        this.showToast('请先输入开篇一句话', 'alert-circle');
+                        return;
+                    }
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return;
+                    }
+                    if (alternateEnding && !this.lastRawOutput) {
+                        this.showToast('请先生成一篇故事', 'alert-circle');
+                        return;
+                    }
+
+                    this.isStreaming = true;
+                    this.streamBuffer = '';
+                    this.parsed = { title: '', bodyMd: '', review: '' };
+                    this.doneFlag = false;
+                    this.reasoningBuffer = alternateEnding
+                        ? '### 换结局 · 思考过程\n'
+                        : '### 展开故事 · 思考过程\n';
+
+                    const sys = this.buildSystemPrompt();
+                    const usr = this.buildUserPrompt(alternateEnding);
+
+                    try {
+                        await this.callAPIStream(
+                            [
+                                { role: 'system', content: sys },
+                                { role: 'user', content: usr }
+                            ],
+                            (chunk) => { this.streamBuffer += chunk; },
+                            (r) => { this.reasoningBuffer += r; }
+                        );
+
+                        this.lastRawOutput = this.streamBuffer;
+                        this.parsed = this.parseStructuredOutput(this.streamBuffer);
+                        this.doneFlag = true;
+                        this.showToast(alternateEnding ? '新结局已生成' : '故事已展开', 'book-open');
+                    } catch (err) {
+                        console.error('[micro_story]', err);
+                        this.showToast(err.message || '生成失败', 'alert-circle');
+                    } finally {
+                        this.isStreaming = false;
+                        this.refreshIcons();
+                    }
+                },
+
+                /** 复制标题 + 正文 + 点评 为纯文本/Markdown */
+                copyAll() {
+                    let text = '';
+                    if (this.parsed.title) {
+                        text += `# ${this.parsed.title}\n\n`;
+                    }
+                    text += (this.parsed.bodyMd || this.streamBuffer) + '\n\n';
+                    if (this.parsed.review) {
+                        text += `---\n> **一句话点评**：${this.parsed.review}\n`;
+                    }
+                    const finalText = text.trim() || this.streamBuffer;
+
+                    const runCopy = async () => {
+                        try {
+                            await navigator.clipboard.writeText(finalText);
+                            this.showToast('已复制到剪贴板', 'copy');
+                        } catch (e) {
+                            const ta = document.createElement('textarea');
+                            ta.value = finalText;
+                            document.body.appendChild(ta);
+                            ta.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            this.showToast('已复制到剪贴板', 'copy');
+                        }
+                    };
+                    runCopy();
+                },
+
+                /** 下载为 .md 文件 */
+                downloadMd() {
+                    let text = '';
+                    if (this.parsed.title) {
+                        text += `# ${this.parsed.title}\n\n`;
+                    }
+                    text += (this.parsed.bodyMd || this.streamBuffer) + '\n\n';
+                    if (this.parsed.review) {
+                        text += `---\n> **一句话点评**：${this.parsed.review}\n`;
+                    }
+                    const content = text.trim() || this.streamBuffer;
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `micro_story_${new Date().toISOString().slice(0, 10)}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    this.showToast('已下载 Markdown', 'download');
+                },
+
+                /** 清空输出区（保留开篇输入与上次原文，便于再点换结局） */
+                clearOutput() {
+                    this.streamBuffer = '';
+                    this.parsed = { title: '', bodyMd: '', review: '' };
+                    this.doneFlag = false;
+                    this.reasoningBuffer = '';
+                    this.showToast('已清空输出', 'eraser');
+                    this.refreshIcons();
+                }
+            }));
+        });
+    </script>
+</body>
+
+</html>

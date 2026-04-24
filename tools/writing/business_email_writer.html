@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商务邮件写作助手 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Lucide Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* 基础样式 - 现代商务风格 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        
+        /* 邮件预览样式 */
+        .email-preview {
+            background: linear-gradient(to bottom, #fefefe 0%, #f8f9fa 100%);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        /* 邮件头部模拟 */
+        .email-header-bar {
+            background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+        }
+        
+        /* 打字机效果 */
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        /* 卡片悬浮效果 */
+        .template-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .template-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .template-card.selected {
+            border-color: #6366f1;
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+        }
+        
+        /* 渐变按钮 */
+        .btn-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        .btn-gradient:disabled {
+            background: #94a3b8;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* 思考过程折叠样式 */
+        details summary {
+            cursor: pointer;
+            user-select: none;
+        }
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+        
+        /* Prose 样式增强 */
+        .prose-email {
+            line-height: 1.8;
+        }
+        .prose-email p {
+            margin-bottom: 1em;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="text-slate-800">
+    <div x-data="businessEmailWriter" class="min-h-screen flex flex-col">
+        
+        <!-- ==================== 导航栏 ==================== -->
+        <nav class="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <!-- 左侧: 首页链接 + 标题 -->
+                <a href="../../index.html" class="flex items-center gap-3 group">
+                    <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-indigo-300 transition-shadow">
+                        <i class="fa-solid fa-envelope w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg text-slate-800">商务邮件写作助手</span>
+                        <span class="hidden sm:inline text-xs text-slate-400 ml-2">Business Email Writer</span>
+                    </div>
+                </a>
+                
+                <!-- 右侧: 模型选择 + 设置 -->
+                <div class="flex items-center gap-3">
+                    <!-- 模型切换器 -->
+                    <div class="flex bg-slate-100 rounded-lg p-1">
+                        <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                            :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-white shadow-sm text-indigo-600 font-medium' : 'text-slate-500 hover:text-slate-700'"
+                            class="px-3 py-1.5 text-xs rounded-md transition-all duration-200">V4 Flash</button>
+                        <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                            :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-white shadow-sm text-indigo-600 font-medium' : 'text-slate-500 hover:text-slate-700'"
+                            class="px-3 py-1.5 text-xs rounded-md transition-all duration-200">V4 Pro</button>
+                    </div>
+                    
+                    <!-- 提示词设置 -->
+                    <button @click="showPromptSettings = true" 
+                        class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="自定义提示词">
+                        <i class="fa-solid fa-file-lines w-5 h-5"></i>
+                    </button>
+                    
+                    <!-- API 设置 -->
+                    <button @click="showSettings = true" 
+                        class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="API 设置">
+                        <i class="fa-solid fa-gear w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ==================== 主内容区 ==================== -->
+        <main class="flex-grow p-4 md:p-6">
+            <div class="max-w-7xl mx-auto">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <!-- ========== 左侧: 输入区域 ========== -->
+                    <div class="space-y-5">
+                        
+                        <!-- 邮件类型选择卡片 -->
+                        <div class="bg-white rounded-2xl p-5 shadow-lg border border-slate-100">
+                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-table-columns w-5 h-5 text-indigo-500"></i>
+                                选择邮件类型
+                            </h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <template x-for="(template, key) in emailTemplates" :key="key">
+                                    <button @click="selectTemplate(key)"
+                                        :class="selectedTemplate === key ? 'selected' : 'border-slate-200 hover:border-indigo-300'"
+                                        class="template-card p-3 rounded-xl border-2 text-left transition-all">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <i :class="'fa-solid fa-' + template.icon + ' w-4 h-4 text-indigo-500'"></i>
+                                            <span class="font-medium text-sm text-slate-700" x-text="template.name"></span>
+                                        </div>
+                                        <p class="text-xs text-slate-500 line-clamp-1" x-text="template.desc"></p>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                        
+                        <!-- 邮件参数输入 -->
+                        <div class="bg-white rounded-2xl p-5 shadow-lg border border-slate-100">
+                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-pen-to-square w-5 h-5 text-indigo-500"></i>
+                                邮件详情
+                            </h3>
+                            
+                            <div class="space-y-4">
+                                <!-- 收件人身份 -->
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">收件人身份</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="role in recipientRoles" :key="role.value">
+                                            <button @click="input.recipientRole = role.value"
+                                                :class="input.recipientRole === role.value ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-indigo-300'"
+                                                class="px-3 py-1.5 text-sm rounded-lg border transition-all"
+                                                x-text="role.label">
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                                
+                                <!-- 邮件主题 -->
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                                        邮件主题/目的 <span class="text-red-400">*</span>
+                                    </label>
+                                    <input type="text" x-model="input.subject"
+                                        class="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                        placeholder="例如：申请下周一调休、项目进度汇报、合作邀请...">
+                                </div>
+                                
+                                <!-- 关键信息 -->
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                                        关键信息点
+                                        <span class="text-slate-400 font-normal">(每行一点)</span>
+                                    </label>
+                                    <textarea x-model="input.keyPoints"
+                                        class="w-full border border-slate-200 rounded-xl px-4 py-3 h-28 resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                        placeholder="请输入邮件中需要包含的关键信息，例如：&#10;- 会议时间：周三下午3点&#10;- 会议地点：3号会议室&#10;- 参会人员：产品、研发、设计"></textarea>
+                                </div>
+                                
+                                <!-- 语气风格 -->
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">语气风格</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="tone in toneStyles" :key="tone.value">
+                                            <button @click="input.tone = tone.value"
+                                                :class="input.tone === tone.value ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-indigo-300'"
+                                                class="px-3 py-1.5 text-sm rounded-lg border transition-all"
+                                                x-text="tone.label">
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                                
+                                <!-- 附加要求 -->
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">附加要求 <span class="text-slate-400 font-normal">(可选)</span></label>
+                                    <input type="text" x-model="input.extraRequirements"
+                                        class="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                        placeholder="例如：简洁一些、需要英文版、控制在200字以内...">
+                                </div>
+                            </div>
+                            
+                            <!-- 生成按钮 -->
+                            <button @click="generateEmail()"
+                                :disabled="isGenerating || !input.subject.trim()"
+                                class="btn-gradient mt-6 w-full text-white py-4 rounded-xl font-medium text-base flex items-center justify-center gap-2 disabled:cursor-not-allowed">
+                                <template x-if="!isGenerating">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-wand-magic w-5 h-5"></i>
+                                        生成邮件
+                                    </span>
+                                </template>
+                                <template x-if="isGenerating">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-spinner w-5 h-5 animate-spin"></i>
+                                        正在生成...
+                                    </span>
+                                </template>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- ========== 右侧: 结果预览 ========== -->
+                    <div class="space-y-5">
+                        <!-- 邮件预览卡片 -->
+                        <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden min-h-[500px] flex flex-col">
+                            <!-- 模拟邮件头部 -->
+                            <div class="email-header-bar px-5 py-3 flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex gap-1.5">
+                                        <div class="w-3 h-3 rounded-full bg-red-400"></div>
+                                        <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                        <div class="w-3 h-3 rounded-full bg-green-400"></div>
+                                    </div>
+                                    <span class="text-white/90 text-sm font-medium">邮件预览</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <template x-if="result.content">
+                                        <button @click="copyEmail()" 
+                                            class="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                                            title="复制邮件">
+                                            <i class="fa-solid fa-copy w-4 h-4"></i>
+                                        </button>
+                                    </template>
+                                    <template x-if="result.content">
+                                        <button @click="exportEmail()" 
+                                            class="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                                            title="导出邮件">
+                                            <i class="fa-solid fa-download w-4 h-4"></i>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            
+                            <!-- 邮件内容区 -->
+                            <div class="flex-grow p-5 overflow-y-auto">
+                                <!-- 空状态 -->
+                                <template x-if="!result.content && !isGenerating">
+                                    <div class="h-full flex flex-col items-center justify-center text-slate-400">
+                                        <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                                            <i class="fa-solid fa-envelope-open w-10 h-10 text-slate-300"></i>
+                                        </div>
+                                        <p class="text-center">
+                                            选择邮件类型并填写详情<br>
+                                            <span class="text-sm">AI 将为您生成专业的商务邮件</span>
+                                        </p>
+                                    </div>
+                                </template>
+                                
+                                <!-- 生成中状态 -->
+                                <template x-if="isGenerating && !result.content">
+                                    <div class="h-full flex flex-col items-center justify-center text-slate-400">
+                                        <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
+                                            <i class="fa-solid fa-spinner w-10 h-10 text-indigo-400 animate-spin"></i>
+                                        </div>
+                                        <p class="text-center text-indigo-500">
+                                            正在撰写邮件...<br>
+                                            <span class="text-sm text-slate-400">请稍候片刻</span>
+                                        </p>
+                                    </div>
+                                </template>
+                                
+                                <!-- 邮件结果 -->
+                                <template x-if="result.content">
+                                    <div class="email-preview rounded-xl p-5">
+                                        <!-- 邮件元信息 -->
+                                        <div class="border-b border-slate-200 pb-4 mb-4 space-y-2">
+                                            <div class="flex items-center gap-2 text-sm">
+                                                <span class="text-slate-500 w-16">收件人:</span>
+                                                <span class="text-slate-700" x-text="getRecipientLabel()"></span>
+                                            </div>
+                                            <div class="flex items-center gap-2 text-sm">
+                                                <span class="text-slate-500 w-16">主题:</span>
+                                                <span class="font-medium text-slate-800" x-text="result.subject || input.subject"></span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 邮件正文 -->
+                                        <div class="prose-email text-slate-700 whitespace-pre-wrap" 
+                                            :class="{'typing-cursor': isGenerating}"
+                                            x-text="result.content">
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        
+                        <!-- 深度思考过程（V4 Pro 模型） -->
+                        <template x-if="result.reasoning">
+                            <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+                                <details class="group">
+                                    <summary class="px-5 py-4 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between">
+                                        <div class="flex items-center gap-2 text-slate-700 font-medium">
+                                            <i class="fa-solid fa-brain w-5 h-5 text-purple-500"></i>
+                                            深度思考过程
+                                        </div>
+                                        <i class="fa-solid fa-chevron-down w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform"></i>
+                                    </summary>
+                                    <div class="px-5 pb-5">
+                                        <div class="bg-purple-50 rounded-xl p-4 text-sm text-purple-900 max-h-60 overflow-y-auto whitespace-pre-wrap" x-text="result.reasoning"></div>
+                                    </div>
+                                </details>
+                            </div>
+                        </template>
+                        
+                        <!-- 快捷操作 -->
+                        <template x-if="result.content">
+                            <div class="bg-white rounded-2xl p-5 shadow-lg border border-slate-100">
+                                <h4 class="font-medium text-slate-700 mb-3 flex items-center gap-2">
+                                    <i class="fa-solid fa-wand-magic-sparkles w-4 h-4 text-indigo-500"></i>
+                                    快捷操作
+                                </h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <button @click="regenerateWith('更简洁')"
+                                        class="px-3 py-2 text-sm bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-1">
+                                        <i class="fa-solid fa-compress w-4 h-4"></i>
+                                        更简洁
+                                    </button>
+                                    <button @click="regenerateWith('更正式')"
+                                        class="px-3 py-2 text-sm bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-1">
+                                        <i class="fa-solid fa-briefcase w-4 h-4"></i>
+                                        更正式
+                                    </button>
+                                    <button @click="regenerateWith('更友好')"
+                                        class="px-3 py-2 text-sm bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-1">
+                                        <i class="fa-solid fa-face-smile w-4 h-4"></i>
+                                        更友好
+                                    </button>
+                                    <button @click="regenerateWith('翻译成英文')"
+                                        class="px-3 py-2 text-sm bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-1">
+                                        <i class="fa-solid fa-language w-4 h-4"></i>
+                                        翻译成英文
+                                    </button>
+                                    <button @click="generateEmail()"
+                                        class="px-3 py-2 text-sm bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-1">
+                                        <i class="fa-solid fa-rotate w-4 h-4"></i>
+                                        重新生成
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ==================== API 设置弹窗 ==================== -->
+        <div x-show="showSettings" x-transition.opacity
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            @click.self="showSettings = false">
+            <div x-show="showSettings" 
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+                <div class="p-6 border-b border-slate-100">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-gear w-5 h-5 text-indigo-500"></i>
+                            API 设置
+                        </h3>
+                        <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg transition-colors">
+                            <i class="fa-solid fa-xmark w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                            placeholder="sk-...">
+                        <p class="mt-2 text-xs text-slate-500">
+                            <a href="https://platform.deepseek.com/" target="_blank" class="text-indigo-500 hover:underline">获取 API Key →</a>
+                        </p>
+                    </div>
+                </div>
+                <div class="p-6 border-t border-slate-100 flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-4 py-2 text-slate-500 hover:text-slate-700 transition-colors">取消</button>
+                    <button @click="saveConfig()" class="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 提示词设置弹窗 ==================== -->
+        <div x-show="showPromptSettings" x-transition.opacity
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            @click.self="showPromptSettings = false">
+            <div x-show="showPromptSettings"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-slate-100">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-file-lines w-5 h-5 text-indigo-500"></i>
+                            自定义提示词
+                        </h3>
+                        <button @click="showPromptSettings = false" class="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg transition-colors">
+                            <i class="fa-solid fa-xmark w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6 flex-grow overflow-y-auto">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">系统提示词</label>
+                            <textarea x-model="customPrompt.system"
+                                class="w-full border border-slate-200 rounded-xl px-4 py-3 h-48 resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono text-sm"
+                                placeholder="输入自定义的系统提示词..."></textarea>
+                            <p class="mt-2 text-xs text-slate-500">留空则使用默认提示词</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-4">
+                            <h4 class="text-sm font-medium text-slate-700 mb-2">可用变量</h4>
+                            <div class="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                                <code class="bg-white px-2 py-1 rounded">{emailType}</code>
+                                <span>邮件类型</span>
+                                <code class="bg-white px-2 py-1 rounded">{recipient}</code>
+                                <span>收件人身份</span>
+                                <code class="bg-white px-2 py-1 rounded">{subject}</code>
+                                <span>邮件主题</span>
+                                <code class="bg-white px-2 py-1 rounded">{keyPoints}</code>
+                                <span>关键信息</span>
+                                <code class="bg-white px-2 py-1 rounded">{tone}</code>
+                                <span>语气风格</span>
+                                <code class="bg-white px-2 py-1 rounded">{extra}</code>
+                                <span>附加要求</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 border-t border-slate-100 flex justify-between">
+                    <button @click="resetPrompt()" class="px-4 py-2 text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-left w-4 h-4"></i>
+                        重置默认
+                    </button>
+                    <div class="flex gap-3">
+                        <button @click="showPromptSettings = false" class="px-4 py-2 text-slate-500 hover:text-slate-700 transition-colors">取消</button>
+                        <button @click="savePrompt()" class="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Toast 提示 ==================== -->
+        <div x-show="toast.show"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-2"
+            class="fixed bottom-6 right-6 bg-white rounded-xl shadow-lg border border-slate-200 px-5 py-4 flex items-center gap-3 z-50">
+            <div :class="{
+                'bg-green-100 text-green-600': toast.type === 'success',
+                'bg-red-100 text-red-600': toast.type === 'error',
+                'bg-blue-100 text-blue-600': toast.type === 'info'
+            }" class="w-8 h-8 rounded-full flex items-center justify-center">
+                <i :class="'fa-solid fa-' + toast.icon + ' w-4 h-4'"></i>
+            </div>
+            <span class="text-slate-700" x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <!-- ==================== JavaScript ==================== -->
+    <script>
+        /**
+         * 商务邮件写作助手 - Alpine.js 组件
+         * 功能：根据用户输入的邮件类型、收件人、主题等信息，生成专业的商务邮件
+         */
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('businessEmailWriter', () => ({
+                // ==================== 状态变量 ====================
+                showSettings: false,           // API 设置弹窗
+                showPromptSettings: false,     // 提示词设置弹窗
+                isGenerating: false,           // 是否正在生成
+                selectedTemplate: 'cooperation', // 当前选中的邮件类型
+                
+                // API 配置
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+                
+                // 用户输入
+                input: {
+                    recipientRole: 'partner',  // 收件人身份
+                    subject: '',               // 邮件主题
+                    keyPoints: '',             // 关键信息点
+                    tone: 'formal',            // 语气风格
+                    extraRequirements: ''      // 附加要求
+                },
+                
+                // 生成结果
+                result: {
+                    subject: '',               // 生成的邮件主题
+                    content: '',               // 邮件正文
+                    reasoning: ''              // V4 Pro 模型的思考过程
+                },
+                
+                // 自定义提示词
+                customPrompt: {
+                    system: ''
+                },
+                
+                // Toast 提示
+                toast: {
+                    show: false,
+                    message: '',
+                    icon: 'check',
+                    type: 'success'
+                },
+                
+                // ==================== 邮件模板配置 ====================
+                emailTemplates: {
+                    cooperation: { name: '商务合作', icon: 'handshake', desc: '合作邀请、洽谈' },
+                    report: { name: '工作汇报', icon: 'file-invoice', desc: '进度汇报、总结' },
+                    meeting: { name: '会议通知', icon: 'calendar', desc: '会议邀请、纪要' },
+                    leave: { name: '请假申请', icon: 'calendar-xmark', desc: '请假、调休' },
+                    handover: { name: '工作交接', icon: 'arrow-right-arrow-left', desc: '交接、移交' },
+                    thanks: { name: '感谢信', icon: 'heart', desc: '致谢、答谢' },
+                    reminder: { name: '催办催款', icon: 'bell', desc: '催促、提醒' },
+                    apology: { name: '道歉信', icon: 'face-frown', desc: '致歉、说明' },
+                    application: { name: '求职申请', icon: 'user-plus', desc: '求职、自荐' },
+                    followup: { name: '客户跟进', icon: 'users', desc: '维护、跟进' },
+                    complaint: { name: '投诉处理', icon: 'message', desc: '回复、处理' },
+                    quotation: { name: '询价报价', icon: 'receipt', desc: '询价、报价' }
+                },
+                
+                // 收件人身份选项
+                recipientRoles: [
+                    { value: 'superior', label: '上级领导' },
+                    { value: 'colleague', label: '同事' },
+                    { value: 'subordinate', label: '下属' },
+                    { value: 'client', label: '客户' },
+                    { value: 'partner', label: '合作伙伴' },
+                    { value: 'supplier', label: '供应商' },
+                    { value: 'hr', label: 'HR/人事' }
+                ],
+                
+                // 语气风格选项
+                toneStyles: [
+                    { value: 'formal', label: '正式专业' },
+                    { value: 'friendly', label: '友好亲切' },
+                    { value: 'urgent', label: '紧急' },
+                    { value: 'polite', label: '礼貌谦和' },
+                    { value: 'direct', label: '简洁直接' }
+                ],
+                
+                // ==================== 生命周期 ====================
+                /**
+                 * 组件初始化
+                 * 加载配置并初始化图标
+                 */
+                init() {
+                    this.loadConfig();
+                    this.loadPrompt();
+                    
+                },
+                
+                // ==================== 配置管理方法 ====================
+                /**
+                 * 从 localStorage 加载 API 配置
+                 * 使用合并策略，保留默认值
+                 */
+                loadConfig() {
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                        }
+                    } catch (e) {
+
+                    }
+                },
+                
+                /**
+                 * 保存 API 配置到 localStorage
+                 * 先读取现有配置再合并，避免覆盖其他工具的配置
+                 */
+                saveConfig() {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        ...this.apiConfig
+                    }));
+                    this.showToast('配置已保存', 'check', 'success');
+                    this.showSettings = false;
+                },
+                
+                /**
+                 * 加载自定义提示词
+                 */
+                loadPrompt() {
+                    const saved = localStorage.getItem('business_email_prompt');
+                    if (saved) {
+                        try {
+                            this.customPrompt = JSON.parse(saved);
+                        } catch (e) {
+
+                        }
+                    }
+                },
+                
+                /**
+                 * 保存自定义提示词
+                 */
+                savePrompt() {
+                    localStorage.setItem('business_email_prompt', JSON.stringify(this.customPrompt));
+                    this.showToast('提示词已保存', 'check', 'success');
+                    this.showPromptSettings = false;
+                },
+                
+                /**
+                 * 重置提示词为默认值
+                 */
+                resetPrompt() {
+                    this.customPrompt.system = '';
+                    this.showToast('已重置为默认提示词', 'rotate-left', 'info');
+                },
+                
+                // ==================== UI 辅助方法 ====================
+                /**
+                 * 显示 Toast 提示
+                 * @param {string} message - 提示消息
+                 * @param {string} icon - Lucide 图标名称
+                 * @param {string} type - 提示类型: success/error/info
+                 */
+                showToast(message, icon = 'check', type = 'success') {
+                    this.toast = { show: true, message, icon, type };
+                    this.refreshIcons();
+                    setTimeout(() => { this.toast.show = false; }, 3000);
+                },
+                
+                /**
+                 * 刷新 Lucide 图标
+                 * 延迟执行以确保 DOM 已更新
+                 */
+                refreshIcons() {
+                    setTimeout(() => {
+                        try {  } catch (e) { /* 忽略 */ }
+                    }, 50);
+                },
+                
+                /**
+                 * 选择邮件模板
+                 * @param {string} key - 模板键名
+                 */
+                selectTemplate(key) {
+                    this.selectedTemplate = key;
+                    this.refreshIcons();
+                },
+                
+                /**
+                 * 获取收件人身份的显示标签
+                 * @returns {string} 收件人身份标签
+                 */
+                getRecipientLabel() {
+                    const role = this.recipientRoles.find(r => r.value === this.input.recipientRole);
+                    return role ? role.label : '收件人';
+                },
+                
+                /**
+                 * 获取当前选中的邮件类型名称
+                 * @returns {string} 邮件类型名称
+                 */
+                getEmailTypeName() {
+                    return this.emailTemplates[this.selectedTemplate]?.name || '商务邮件';
+                },
+                
+                /**
+                 * 获取语气风格的显示标签
+                 * @returns {string} 语气风格标签
+                 */
+                getToneLabel() {
+                    const tone = this.toneStyles.find(t => t.value === this.input.tone);
+                    return tone ? tone.label : '正式';
+                },
+                
+                // ==================== 核心功能方法 ====================
+                /**
+                 * 生成邮件主函数
+                 * 构建提示词并调用 API 生成邮件内容
+                 */
+                async generateEmail() {
+                    // 验证 API Key
+                    if (!this.apiConfig.deepseek) {
+                        this.showToast('请先配置 API Key', 'circle-exclamation', 'error');
+                        this.showSettings = true;
+                        return;
+                    }
+                    
+                    // 验证必填项
+                    if (!this.input.subject.trim()) {
+                        this.showToast('请输入邮件主题', 'circle-exclamation', 'error');
+                        return;
+                    }
+                    
+                    this.isGenerating = true;
+                    this.result = { subject: '', content: '', reasoning: '' };
+                    
+                    try {
+                        // 构建系统提示词
+                        const systemPrompt = this.buildSystemPrompt();
+                        // 构建用户消息
+                        const userMessage = this.buildUserMessage();
+                        
+
+
+                        
+                        // 调用 API 进行流式生成
+                        await this.streamChat([
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userMessage }
+                        ]);
+                        
+                        this.showToast('邮件生成完成', 'check', 'success');
+                    } catch (error) {
+
+                        this.showToast('生成失败: ' + error.message, 'x-circle', 'error');
+                    } finally {
+                        this.isGenerating = false;
+                        this.refreshIcons();
+                    }
+                },
+                
+                /**
+                 * 构建系统提示词
+                 * 如果用户有自定义提示词则使用，否则使用默认提示词
+                 * @returns {string} 系统提示词
+                 */
+                buildSystemPrompt() {
+                    if (this.customPrompt.system && this.customPrompt.system.trim()) {
+                        // 替换变量
+                        return this.customPrompt.system
+                            .replace('{emailType}', this.getEmailTypeName())
+                            .replace('{recipient}', this.getRecipientLabel())
+                            .replace('{subject}', this.input.subject)
+                            .replace('{keyPoints}', this.input.keyPoints)
+                            .replace('{tone}', this.getToneLabel())
+                            .replace('{extra}', this.input.extraRequirements);
+                    }
+                    
+                    // 默认系统提示词
+                    return `你是一位专业的商务邮件写作专家，擅长撰写各类商务邮件。你的任务是根据用户提供的信息，生成一封专业、得体、高效的商务邮件。
+
+写作要求：
+1. 邮件结构清晰，包含恰当的称呼、开场白、正文、结束语和落款
+2. 语言表达准确、专业，符合商务写作规范
+3. 根据收件人身份和语气风格要求调整措辞
+4. 内容简洁有力，突出重点信息
+5. 保持礼貌和专业性，同时体现诚意
+
+输出格式：
+- 直接输出邮件正文内容
+- 不要包含"主题:"或"收件人:"等元信息
+- 不要使用 Markdown 格式
+- 称呼和落款要符合中文商务习惯`;
+                },
+                
+                /**
+                 * 构建用户消息
+                 * @returns {string} 用户消息内容
+                 */
+                buildUserMessage() {
+                    let message = `请帮我写一封${this.getEmailTypeName()}类型的商务邮件。
+
+邮件信息：
+- 收件人身份：${this.getRecipientLabel()}
+- 邮件主题/目的：${this.input.subject}
+- 语气风格：${this.getToneLabel()}`;
+                    
+                    if (this.input.keyPoints.trim()) {
+                        message += `\n- 需要包含的关键信息：\n${this.input.keyPoints}`;
+                    }
+                    
+                    if (this.input.extraRequirements.trim()) {
+                        message += `\n- 附加要求：${this.input.extraRequirements}`;
+                    }
+                    
+                    return message;
+                },
+                
+                /**
+                 * 流式调用 DeepSeek API
+                 * 支持 V4 Flash 和 V4 Pro 模型，V4 Pro 模型会解析 reasoning_content
+                 * @param {Array} messages - 消息数组
+                 */
+                async streamChat(messages) {
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: this.apiConfig.model,
+                                messages: messages,
+                                stream: true
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`网络请求失败: ${e.message}`);
+                    }
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullContent = '';
+                    let reasoningContent = '';
+                    let lastUpdate = Date.now();
+                    const UPDATE_INTERVAL = 80; // 节流间隔（毫秒）
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+                        
+                        for (const line of lines) {
+                            if (line === 'data: [DONE]') continue;
+                            
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                const delta = data.choices[0]?.delta;
+                                
+                                // 处理推理内容（V4 Pro 模型）
+                                if (delta?.reasoning_content) {
+                                    reasoningContent += delta.reasoning_content;
+                                }
+                                
+                                // 处理正常内容
+                                if (delta?.content) {
+                                    fullContent += delta.content;
+                                    
+                                    // 节流更新 UI
+                                    if (Date.now() - lastUpdate >= UPDATE_INTERVAL) {
+                                        this.result.content = fullContent;
+                                        this.result.reasoning = reasoningContent;
+                                        lastUpdate = Date.now();
+                                    }
+                                }
+                            } catch (e) {
+                                // 忽略解析错误
+                            }
+                        }
+                    }
+                    
+                    // 最终更新
+                    this.result.content = fullContent;
+                    this.result.reasoning = reasoningContent;
+                },
+                
+                /**
+                 * 使用特定要求重新生成邮件
+                 * @param {string} requirement - 附加要求
+                 */
+                async regenerateWith(requirement) {
+                    const originalExtra = this.input.extraRequirements;
+                    this.input.extraRequirements = requirement + (originalExtra ? '，' + originalExtra : '');
+                    await this.generateEmail();
+                    this.input.extraRequirements = originalExtra; // 恢复原始值
+                },
+                
+                // ==================== 导出功能 ====================
+                /**
+                 * 复制邮件内容到剪贴板
+                 */
+                async copyEmail() {
+                    if (!this.result.content) return;
+                    
+                    try {
+                        await navigator.clipboard.writeText(this.result.content);
+                        this.showToast('邮件已复制到剪贴板', 'copy', 'success');
+                    } catch (e) {
+                        // 降级方案
+                        const textarea = document.createElement('textarea');
+                        textarea.value = this.result.content;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        this.showToast('邮件已复制到剪贴板', 'copy', 'success');
+                    }
+                },
+                
+                /**
+                 * 导出邮件为 TXT 文件
+                 * 包含邮件元信息、正文和思考过程（如有）
+                 */
+                exportEmail() {
+                    if (!this.result.content) return;
+                    
+                    let content = `商务邮件导出\n`;
+                    content += `${'='.repeat(50)}\n\n`;
+                    content += `邮件类型：${this.getEmailTypeName()}\n`;
+                    content += `收件人：${this.getRecipientLabel()}\n`;
+                    content += `主题：${this.input.subject}\n`;
+                    content += `语气：${this.getToneLabel()}\n`;
+                    content += `生成时间：${new Date().toLocaleString('zh-CN')}\n\n`;
+                    content += `${'='.repeat(50)}\n\n`;
+                    content += `【邮件正文】\n\n${this.result.content}\n`;
+                    
+                    // 如果有思考过程（V4 Pro 模型）
+                    if (this.result.reasoning) {
+                        content += `\n${'='.repeat(50)}\n\n`;
+                        content += `【AI 思考过程】\n\n${this.result.reasoning}\n`;
+                    }
+                    
+                    // 创建并下载文件
+                    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `商务邮件_${this.getEmailTypeName()}_${new Date().toISOString().slice(0,10)}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    this.showToast('邮件已导出', 'download', 'success');
+                }
+            }));
+        });
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/writing_business_email_writer.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>
+
+
+

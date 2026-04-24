@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>赛博解签 · 摇签问事</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+
+    /**
+     * 页面基底：深庙堂色 + 径向香火光晕
+     */
+    body.cyber-temple {
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Songti SC', serif, sans-serif;
+      min-height: 100vh;
+      color: #f5e6c8;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(180, 40, 40, 0.35) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 20% 80%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 35% at 85% 70%, rgba(0, 255, 255, 0.04) 0%, transparent 45%),
+        linear-gradient(165deg, #1a0a0c 0%, #2d0f12 28%, #1c080a 55%, #0d0506 100%);
+    }
+
+    /* 赛博霓虹描边：寺庙匾额感 */
+    .neon-frame {
+      box-shadow:
+        0 0 0 1px rgba(212, 175, 55, 0.35),
+        0 0 24px rgba(255, 0, 128, 0.12),
+        0 0 48px rgba(0, 255, 255, 0.06),
+        inset 0 1px 0 rgba(255, 230, 200, 0.08);
+    }
+
+    /**
+     * 香火烟雾层：多层模糊圆 + 缓慢位移动画
+     */
+    .smoke-wrap {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .smoke-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(48px);
+      opacity: 0.22;
+      animation: smoke-drift 18s ease-in-out infinite;
+    }
+    .smoke-blob:nth-child(1) {
+      width: 45vw; height: 45vw;
+      left: -10%; top: 20%;
+      background: radial-gradient(circle, rgba(200, 180, 160, 0.5) 0%, transparent 70%);
+      animation-delay: 0s;
+    }
+    .smoke-blob:nth-child(2) {
+      width: 38vw; height: 38vw;
+      right: -5%; top: 45%;
+      background: radial-gradient(circle, rgba(120, 40, 50, 0.35) 0%, transparent 65%);
+      animation-delay: -6s;
+      animation-duration: 22s;
+    }
+    .smoke-blob:nth-child(3) {
+      width: 50vw; height: 30vw;
+      left: 25%; bottom: -10%;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.15) 0%, transparent 70%);
+      animation-delay: -12s;
+      animation-duration: 25s;
+    }
+    @keyframes smoke-drift {
+      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.18; }
+      33% { transform: translate(4%, -3%) scale(1.05); opacity: 0.28; }
+      66% { transform: translate(-3%, 4%) scale(0.96); opacity: 0.2; }
+    }
+
+    /**
+     * 签筒整体：左右摇晃
+     */
+    @keyframes tube-shake {
+      0%, 100% { transform: rotate(0deg) translateX(0); }
+      12% { transform: rotate(-14deg) translateX(-4px); }
+      24% { transform: rotate(12deg) translateX(4px); }
+      36% { transform: rotate(-10deg) translateX(-3px); }
+      48% { transform: rotate(9deg) translateX(3px); }
+      60% { transform: rotate(-7deg) translateX(-2px); }
+      72% { transform: rotate(6deg) translateX(2px); }
+      84% { transform: rotate(-3deg) translateX(-1px); }
+    }
+    .tube-stage.is-shaking {
+      animation: tube-shake 1.35s ease-in-out;
+    }
+
+    /**
+     * 竹筒柱体：纵向木节纹理 + 侧向高光模拟圆柱
+     */
+    .bamboo-tube {
+      position: relative;
+      width: 104px;
+      height: 200px;
+      margin: 0 auto;
+      border-radius: 6px 6px 14px 14px;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          #4a3228 0px,
+          #5c3f32 2px,
+          #3d281f 5px,
+          #5a3d30 8px,
+          #4a3228 11px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(0, 0, 0, 0.45) 0%,
+          rgba(255, 255, 255, 0.06) 35%,
+          rgba(0, 0, 0, 0.25) 100%
+        );
+      box-shadow:
+        inset 10px 0 20px rgba(0, 0, 0, 0.35),
+        inset -6px 0 14px rgba(255, 255, 255, 0.04),
+        0 16px 40px rgba(0, 0, 0, 0.65),
+        0 0 20px rgba(255, 0, 100, 0.08);
+    }
+    /* 筒口椭圆金边 */
+    .tube-mouth {
+      position: absolute;
+      left: 50%;
+      top: -12px;
+      transform: translateX(-50%);
+      width: 118px;
+      height: 36px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at 50% 30%, #8b6914 0%, #5c3d1e 45%, #2a1a0e 100%);
+      box-shadow:
+        inset 0 3px 6px rgba(255, 220, 150, 0.25),
+        inset 0 -8px 16px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(212, 175, 55, 0.35);
+    }
+    .tube-mouth-inner {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 72px;
+      height: 22px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse, #0a0505 0%, #1a0d0d 100%);
+      box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.9);
+    }
+
+    /**
+     * 灵签条：红底金字，自筒口飞出
+     */
+    @keyframes stick-eject {
+      0% {
+        transform: translate(-50%, 48px) rotate(2deg) scale(0.35);
+        opacity: 0;
+      }
+      35% { opacity: 1; }
+      100% {
+        transform: translate(-50%, -132px) rotate(-6deg) scale(1);
+        opacity: 1;
+      }
+    }
+    .fortune-stick {
+      position: absolute;
+      left: 50%;
+      bottom: 28px;
+      width: 44px;
+      min-height: 180px;
+      padding: 8px 4px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 5px;
+      background: linear-gradient(180deg, #9b1c1c 0%, #5c0a0a 55%, #3d0606 100%);
+      border: 2px solid #d4af37;
+      border-radius: 3px;
+      box-shadow:
+        0 0 16px rgba(255, 60, 120, 0.25),
+        0 8px 24px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 220, 180, 0.2);
+      font-size: 9px;
+      line-height: 1.3;
+      color: #ffe9a8;
+      text-shadow: 0 0 8px rgba(255, 215, 120, 0.5);
+      z-index: 5;
+      transform: translate(-50%, 48px) scale(0.35);
+      opacity: 0;
+      pointer-events: none;
+      text-align: center;
+    }
+    .fortune-stick .stick-lines {
+      font-size: 8px;
+      line-height: 1.25;
+      word-break: break-all;
+    }
+    .fortune-stick.is-out {
+      animation: stick-eject 0.85s cubic-bezier(0.22, 0.82, 0.22, 1) forwards;
+    }
+
+    /* Markdown 解签区 */
+    .prose-fortune :where(h2) {
+      color: #f0d78c;
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin: 1em 0 0.4em;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+      padding-bottom: 0.25em;
+    }
+    .prose-fortune :where(p, li) {
+      color: rgba(250, 235, 210, 0.9);
+      margin: 0.35em 0;
+      line-height: 1.65;
+    }
+    .prose-fortune :where(strong) {
+      color: #ffd78a;
+    }
+    .prose-fortune :where(ul) {
+      padding-left: 1.2em;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #8b2942, #5c1a28);
+      border-radius: 4px;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="cyber-temple">
+  <!--
+    赛博解签：Alpine.js 单页
+    - 本地随机签号 + 签诗池，DeepSeek 流式解签
+    - global_llm_config 合并读写
+  -->
+  <div x-data="cyberFortuneApp()" x-cloak class="relative z-10 min-h-screen flex flex-col">
+
+    <!-- 背景烟雾 -->
+    <div class="smoke-wrap" aria-hidden="true">
+      <div class="smoke-blob"></div>
+      <div class="smoke-blob"></div>
+      <div class="smoke-blob"></div>
+    </div>
+
+    <nav class="sticky top-0 z-50 border-b border-amber-900/40 bg-black/40 backdrop-blur-md neon-frame">
+      <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3 cursor-pointer group" @click="goHome()">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600/90 to-rose-900 flex items-center justify-center shadow-lg group-hover:shadow-cyan-500/20 transition">
+            <i data-lucide="sparkles" class="text-amber-100 w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="font-bold text-lg text-amber-100 tracking-wide">赛博解签</div>
+            <div class="text-[10px] text-cyan-300/70 hidden sm:block">NEON TEMPLE · 问事摇签</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="showHistory = !showHistory"
+            class="text-amber-200/80 hover:text-amber-100 text-sm px-3 py-2 rounded-lg hover:bg-rose-950/40 flex items-center gap-1">
+            <i data-lucide="history" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">签簿</span>
+          </button>
+          <button type="button" @click="showSettings = true"
+            class="text-amber-200/80 hover:text-amber-100 text-sm px-3 py-2 rounded-lg hover:bg-rose-950/40 flex items-center gap-1">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">设置</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
+
+      <!-- 所问之事 -->
+      <section class="rounded-2xl border border-amber-800/35 bg-black/30 p-4 neon-frame">
+        <label class="block text-sm font-bold text-amber-200/90 mb-2 flex items-center gap-2">
+          <i data-lucide="message-circle-question" class="w-4 h-4 text-cyan-400/80"></i>
+          所问之事（可选，留空则作「运势总观」）
+        </label>
+        <textarea
+          x-model="userQuestion"
+          rows="2"
+          placeholder="例：今年能升职吗？本月 KPI 能完成吗？相亲对象靠谱吗？"
+          class="w-full rounded-xl bg-rose-950/30 border border-amber-900/40 text-amber-50 placeholder:text-amber-200/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 resize-none"
+        ></textarea>
+      </section>
+
+      <!-- 中央舞台：签筒 + 签 -->
+      <section class="flex flex-col items-center justify-center py-4 min-h-[320px]">
+        <div
+          class="tube-stage relative cursor-pointer select-none"
+          :class="{ 'is-shaking': phase === 'shaking' }"
+          @click="requestShake()"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="requestShake()"
+          :aria-busy="phase === 'shaking' || phase === 'streaming'"
+        >
+          <!-- 签条（在筒前层叠显示） -->
+          <div
+            class="fortune-stick"
+            :class="{ 'is-out': stickOut }"
+            x-show="stickVisible"
+          >
+            <span class="font-bold text-yellow-200 shrink-0" x-text="currentSignLabel"></span>
+            <div class="stick-lines text-amber-100/95">
+              <template x-for="(line, idx) in currentPoemLines" :key="idx">
+                <div x-text="line"></div>
+              </template>
+            </div>
+          </div>
+
+          <div class="bamboo-tube mt-16">
+            <div class="tube-mouth">
+              <div class="tube-mouth-inner"></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="mt-6 text-xs text-amber-200/50 text-center max-w-sm">
+          点击竹筒或下方按钮摇签 · 签诗为仿古创作，解签由 AI 半文半白演绎，仅供娱乐与自省
+        </p>
+
+        <div class="mt-4 flex flex-wrap gap-3 justify-center">
+          <button
+            type="button"
+            @click="requestShake()"
+            :disabled="phase === 'shaking' || phase === 'streaming'"
+            class="px-6 py-3 rounded-xl font-bold text-rose-950 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500 hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-amber-900/30 border border-amber-200/50"
+          >
+            <span x-show="phase !== 'shaking'">摇签</span>
+            <span x-show="phase === 'shaking'">摇签中…</span>
+          </button>
+          <button
+            type="button"
+            @click="resetDraw()"
+            :disabled="phase === 'shaking' || phase === 'streaming'"
+            class="px-5 py-3 rounded-xl font-medium text-amber-200 border border-cyan-500/30 bg-cyan-950/20 hover:bg-cyan-900/30 disabled:opacity-40"
+          >
+            再摇一签
+          </button>
+        </div>
+
+        <p x-show="errorMsg" class="mt-3 text-sm text-rose-300 text-center" x-text="errorMsg"></p>
+      </section>
+
+      <!-- AI 解签 -->
+      <section class="rounded-2xl border border-amber-800/35 bg-black/35 p-4 neon-frame min-h-[120px]">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h2 class="text-sm font-bold text-amber-100 flex items-center gap-2">
+            <i data-lucide="scroll-text" class="w-4 h-4 text-amber-400"></i>
+            解签
+          </h2>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              x-show="stickVisible && !isAiLoading"
+              @click="streamInterpretation()"
+              class="text-xs px-3 py-1 rounded-lg border border-amber-600/50 text-amber-200 hover:bg-amber-900/30"
+            >
+              <span x-text="aiMarkdown ? '重新解签' : '生成解签'"></span>
+            </button>
+            <span x-show="isAiLoading" class="text-xs text-cyan-300/80 flex items-center gap-1">
+              <i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i>
+              灵文流转中…
+            </span>
+          </div>
+        </div>
+
+        <!-- V4 Pro 思考过程（可折叠） -->
+        <details x-show="reasoningBuffer" class="mb-3 text-xs border border-amber-900/40 rounded-lg p-2 bg-black/20">
+          <summary class="cursor-pointer text-amber-200/70">深度思考（点击展开）</summary>
+          <pre class="mt-2 whitespace-pre-wrap text-amber-100/50 font-sans text-[11px]" x-text="reasoningBuffer"></pre>
+        </details>
+
+        <div class="prose-fortune text-sm" x-html="renderedAi"></div>
+        <div x-show="!aiMarkdown && !isAiLoading && phase === 'idle' && !stickVisible" class="text-amber-200/35 text-sm text-center py-8">
+          请先摇签，得见签文后此处现解
+        </div>
+      </section>
+    </main>
+
+    <!-- 签簿侧栏 -->
+    <div
+      x-show="showHistory"
+      x-transition.opacity
+      class="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex justify-end"
+      @click.self="showHistory = false"
+    >
+      <div
+        class="w-full max-w-md h-full bg-gradient-to-b from-rose-950 to-black border-l border-amber-800/40 shadow-2xl overflow-y-auto p-4 neon-frame"
+        @click.stop
+      >
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-amber-100 flex items-center gap-2">
+            <i data-lucide="book-marked" class="w-5 h-5"></i>
+            签簿（最近记录）
+          </h3>
+          <button type="button" @click="showHistory = false" class="p-2 rounded-lg hover:bg-white/10">
+            <i data-lucide="x" class="w-5 h-5 text-amber-200"></i>
+          </button>
+        </div>
+        <button
+          type="button"
+          @click="clearHistory()"
+          class="mb-3 text-xs text-rose-300/80 hover:text-rose-200 underline"
+        >
+          清空签簿
+        </button>
+        <template x-if="history.length === 0">
+          <p class="text-amber-200/40 text-sm">暂无记录</p>
+        </template>
+        <ul class="space-y-3">
+          <template x-for="(item, i) in history" :key="i">
+            <li class="rounded-xl border border-amber-900/35 bg-black/25 p-3 text-xs">
+              <div class="text-amber-300 font-bold" x-text="item.signLabel"></div>
+              <div class="text-amber-100/60 mt-1" x-text="item.time"></div>
+              <div class="text-amber-200/50 mt-1 line-clamp-2" x-show="item.question" x-text="'问：' + item.question"></div>
+              <div class="text-amber-100/70 mt-2 font-serif leading-relaxed" x-text="item.poemPreview"></div>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div
+      x-show="showSettings"
+      class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4"
+      x-transition.opacity
+    >
+      <div class="bg-gradient-to-b from-rose-950 to-black border border-amber-700/40 rounded-2xl w-full max-w-md p-6 neon-frame shadow-2xl">
+        <h3 class="text-lg font-bold text-amber-100 mb-4">API 配置</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-amber-200/70 mb-1">DeepSeek API Key</label>
+            <input
+              type="password"
+              x-model="apiConfig.deepseek"
+              class="w-full rounded-lg bg-black/40 border border-amber-900/50 text-amber-50 px-3 py-2 text-sm"
+              placeholder="sk-..."
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-amber-200/70 mb-1">模型</label>
+            <select
+              x-model="apiConfig.model"
+              class="w-full rounded-lg bg-black/40 border border-amber-900/50 text-amber-50 px-3 py-2 text-sm"
+            >
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-amber-200/70 hover:bg-white/5">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-amber-500 text-black font-bold hover:brightness-110">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div
+      x-show="toast.show"
+      x-transition.opacity.duration.200ms
+      class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-full bg-amber-500 text-black text-sm font-bold shadow-lg"
+      x-text="toast.message"
+    ></div>
+  </div>
+
+  <script>
+    /**
+     * 将 1–100 的阿拉伯数字转为中文数字串（用于「第×签」）
+     * @param {number} n
+     * @returns {string}
+     */
+    function numberToChineseOrdinal(n) {
+      const d = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+      if (n <= 10) {
+        if (n === 10) return '十';
+        return d[n];
+      }
+      if (n < 20) return '十' + d[n % 10];
+      if (n < 100) {
+        const t = Math.floor(n / 10);
+        const o = n % 10;
+        return d[t] + '十' + (o ? d[o] : '');
+      }
+      if (n === 100) return '一百';
+      return String(n);
+    }
+
+    /**
+     * 签诗池：仿古七言四句，供随机抽选（非特定寺庙实签，避免版权与迷信误导）
+     */
+    const FORTUNE_POEMS = [
+      { lines: ['云开雾散见青霄', '久伏终当有一朝', '莫道前程多险阻', '贵人暗助路非遥'] },
+      { lines: ['逆水行舟用力撑', '一篙松劲退千寻', '若教今日勤无怠', '明日江心自在行'] },
+      { lines: ['井底观天只见方', '出门一步即苍茫', '虚心求教多闻道', '格局自宽大路长'] },
+      { lines: ['花开未必在阳春', '迟桂偏能满院馨', '守得云开明月现', '晚成亦是大吉辰'] },
+      { lines: ['烈火炼金金更纯', '风波过后见真淳', '平生磊落行正道', '终得清名与众亲'] },
+      { lines: ['双鸟分林各自飞', '聚合原非一时机', '且把相思化笔砚', '他年同案话斜晖'] },
+      { lines: ['囊中羞涩莫羞惭', '志士从来耐岁寒', '但使寸心长似火', '穷通皆是眼中看'] },
+      { lines: ['棋到中盘费思量', '一着不慎满盘伤', '静听内心真声音', '退半步时天更光'] },
+      { lines: ['舟行急水浪拍舷', '掌舵还须手自坚', '同事如篙同着力', '共渡难关到岸前'] },
+      { lines: ['镜里朱颜容易老', '书中日月自长春', '投资己身胜金玉', '岁岁年年不负人'] },
+      { lines: ['门前枯树又逢春', '旧事重提须审因', '若是前缘非善果', '不如斩缆另寻津'] },
+      { lines: ['三更灯火五更鸡', '正是男儿立志时', '报表虽繁心不乱', '一朝功就众人知'] },
+      { lines: ['山重水复疑无路', '柳暗花明又一村', '且将焦虑化清单', '步步为营可入门'] },
+      { lines: ['欲速不达古有训', '磨刀不误砍柴工', '先把根基扎深处', '高楼万丈自从容'] },
+      { lines: ['口舌是非因语多', '沉默有时胜高歌', '会议先听三句半', '再陈己见免风波'] },
+      { lines: ['鸳鸯偶戏碧波间', '真假须观日久天', '相亲如读未拆信', '耐心方见字里缘'] },
+      { lines: ['龙困浅滩暂敛鳞', '一遇风云便化神', '职场低谷休自弃', '韬光养晦待时新'] },
+      { lines: ['满招损兮谦受益', '功成仍须让三分', '老板面前知进退', '长久安身是智仁'] },
+      { lines: ['病树前头万木春', '淘汰未必是沉沦', '转行恰似换江河', '别有洞天可问津'] },
+      { lines: ['千金散尽还复来', '莫为铜臭损襟怀', '理财有道心有尺', '细水长流福自偕'] },
+      { lines: ['画虎画皮难画骨', '知人知面不知心', '合作须立纸上约', '君子防身亦防侵'] },
+      { lines: ['长风破浪会有时', '直挂云帆济沧海', 'KPI 如山分解之', '颗粒归仓终不怠'] },
+      { lines: ['不经一番寒彻骨', '怎得梅花扑鼻香', '加班虽苦心有梦', '来年回首笑风霜'] },
+      { lines: ['福兮祸所伏', '祸兮福所倚', '今日小挫非终局', '调整心态再振起'] }
+    ];
+
+    const HISTORY_KEY = 'cyber_fortune_stick_history';
+    const HISTORY_MAX = 40;
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('cyberFortuneApp', () => ({
+        /** 用户所问，可为空 */
+        userQuestion: '',
+        /** API 配置（与 global_llm_config 字段对齐） */
+        apiConfig: {
+          deepseek: '',
+          model: 'deepseek-v4-flash'
+        },
+        showSettings: false,
+        showHistory: false,
+        toast: { show: false, message: '' },
+
+        /** 流程：idle | shaking | revealed | streaming */
+        phase: 'idle',
+        stickVisible: false,
+        stickOut: false,
+        /** 当前签号 1–100 */
+        currentSignNum: 1,
+        currentSignLabel: '',
+        currentPoemLines: [],
+        /** AI 输出 */
+        aiMarkdown: '',
+        renderedAi: '',
+        reasoningBuffer: '',
+        isAiLoading: false,
+        errorMsg: '',
+
+        /** 签簿 */
+        history: [],
+
+        init() {
+          this.loadConfig();
+          this.loadHistory();
+          this.$watch('aiMarkdown', (v) => {
+            this.renderedAi = this.safeMarkdown(v);
+          });
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 返回首页（相对路径 ../../index.html） */
+        goHome() {
+          window.location.href = '../../index.html';
+        },
+
+        /**
+         * 从 localStorage 合并加载 global_llm_config，避免覆盖其他工具字段
+         */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存配置：先读旧对象再合并写入，禁止整表覆盖
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.toast = { show: true, message: '配置已保存' };
+          setTimeout(() => { this.toast.show = false; }, 2000);
+          this.showSettings = false;
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 读取签簿
+         */
+        loadHistory() {
+          try {
+            const raw = localStorage.getItem(HISTORY_KEY);
+            if (raw) this.history = JSON.parse(raw);
+          } catch (e) {
+            console.error('签簿解析失败:', e);
+            this.history = [];
+          }
+        },
+
+        /**
+         * 写入签簿并截断条数
+         * @param {object} entry
+         */
+        persistHistory(entry) {
+          this.history.unshift(entry);
+          if (this.history.length > HISTORY_MAX) {
+            this.history = this.history.slice(0, HISTORY_MAX);
+          }
+          try {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(this.history));
+          } catch (e) {
+            console.error('签簿保存失败:', e);
+          }
+        },
+
+        clearHistory() {
+          this.history = [];
+          localStorage.removeItem(HISTORY_KEY);
+          this.toast = { show: true, message: '签簿已清空' };
+          setTimeout(() => { this.toast.show = false; }, 1600);
+        },
+
+        /**
+         * Markdown 安全渲染
+         * @param {string} md
+         */
+        safeMarkdown(md) {
+          const raw = (md || '').trim();
+          if (!raw) return '';
+          if (typeof marked === 'undefined') return this.escapeHtml(raw);
+          const html = marked.parse(raw, { breaks: true });
+          if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+          return html;
+        },
+
+        escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        },
+
+        /**
+         * 触发摇签：校验 API（解签需要），播放筒摇与出签动画，再流式请求
+         */
+        requestShake() {
+          this.errorMsg = '';
+          /** 摇签与出签不依赖 API；解签阶段再校验 Key */
+          if (this.phase === 'shaking' || this.phase === 'streaming') return;
+
+          /** 新一轮：清空解签与签条状态 */
+          this.aiMarkdown = '';
+          this.reasoningBuffer = '';
+          this.stickOut = false;
+          this.stickVisible = false;
+          this.phase = 'shaking';
+
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+
+          /** 随机签号与签诗 */
+          this.currentSignNum = 1 + Math.floor(Math.random() * 100);
+          const cn = numberToChineseOrdinal(this.currentSignNum);
+          this.currentSignLabel = '第' + cn + '签';
+          const poem = FORTUNE_POEMS[Math.floor(Math.random() * FORTUNE_POEMS.length)];
+          this.currentPoemLines = poem.lines.slice();
+
+          /** 筒摇结束后再显示签条并播放飞出 */
+          setTimeout(() => {
+            this.stickVisible = true;
+            this.phase = 'revealed';
+            this.$nextTick(() => {
+              requestAnimationFrame(() => {
+                this.stickOut = true;
+              });
+            });
+          }, 1350);
+
+          /** 签条动画后再请求 AI */
+          setTimeout(() => {
+            this.streamInterpretation();
+          }, 1350 + 900);
+        },
+
+        /**
+         * 再摇一签：复位 UI，不自动摇
+         */
+        resetDraw() {
+          if (this.phase === 'shaking' || this.phase === 'streaming') return;
+          this.phase = 'idle';
+          this.stickVisible = false;
+          this.stickOut = false;
+          this.aiMarkdown = '';
+          this.reasoningBuffer = '';
+          this.errorMsg = '';
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 调用 DeepSeek 流式解签：半文半白 + 打工人场景
+         */
+        async streamInterpretation() {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先配置 DeepSeek API Key 以生成解签';
+            this.phase = 'idle';
+            return;
+          }
+          /** 防止连点或定时器与按钮重复触发并发请求 */
+          if (this.isAiLoading) return;
+
+          this.phase = 'streaming';
+          this.isAiLoading = true;
+          this.aiMarkdown = '';
+          this.reasoningBuffer = '';
+
+          const q = (this.userQuestion || '').trim();
+          const qLine = q ? ('施主所问：「' + q + '」') : '施主未言所问，作「近日运势总观」而论。';
+          const poemText = this.currentPoemLines.join('，');
+
+          const system = `你是「赛博观音殿」的解签师，通晓半文半白的说话方式，又熟悉当代职场打工人的处境（KPI、周报、PPT、相亲、内卷、副业、摸鱼等）。
+请根据给定的签号与四句签诗，结合用户所问（若有），输出解签文字。
+
+要求：
+1. 语气庄重中带一点赛博幽默感，但不要低俗；明确这是文化娱乐与心理暗示，非迷信断言。
+2. 必须使用 Markdown，且包含以下二级标题（##）与小节：
+## 签断
+（一行，如：上上签 / 上吉 / 中上 / 中平 / 中下 / 下签 等，自酌其当）
+
+## 古文签诗原文
+（逐行列出四句，保持原句）
+
+## 白话浅释
+（现代汉语简短翻译诗意）
+
+## 打工人情境解读
+（紧密结合用户所问；若用户未问，则泛论职场与心态。要有具体场景比喻，可半文半白。）
+
+## 开运小建议
+（3～5 条列表，务实可执行：作息、沟通、理财、学习、社交等）
+
+文末加一行小字斜体：*签文随机生成，解签仅供娱乐与自省，请理性抉择。*`;
+
+          const user = qLine + '\n\n' + this.currentSignLabel + '\n签诗：' + poemText + '\n\n请按 system 要求输出完整 Markdown。';
+
+          try {
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + key
+              },
+              body: JSON.stringify({
+                model: this.apiConfig.model || 'deepseek-v4-flash',
+                messages: [
+                  { role: 'system', content: system },
+                  { role: 'user', content: user }
+                ],
+                stream: true,
+                temperature: 0.85,
+                max_tokens: 2200
+              })
+            });
+
+            if (!res.ok) {
+              const errText = await res.text().catch(() => '');
+              throw new Error('API 错误 ' + res.status + (errText ? ': ' + errText.slice(0, 140) : ''));
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const t = line.trim();
+                if (!t.startsWith('data:')) continue;
+                const data = t.slice(5).trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta;
+                  if (!delta) continue;
+                  if (delta.reasoning_content) {
+                    this.reasoningBuffer += delta.reasoning_content;
+                  }
+                  if (delta.content) {
+                    this.aiMarkdown += delta.content;
+                  }
+                } catch (parseErr) {
+                  console.warn('流式 JSON 解析跳过:', parseErr);
+                }
+              }
+            }
+
+            /** 写入签簿（摘要） */
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', { hour12: false });
+            this.persistHistory({
+              signLabel: this.currentSignLabel,
+              time: timeStr,
+              question: q,
+              poemPreview: this.currentPoemLines.join('；')
+            });
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '解签失败，请重试';
+            this.aiMarkdown = '**灵路暂断**\n\n' + (this.errorMsg || '') + '\n\n请检查网络与 API Key 后，点「再摇一签」重来。';
+          } finally {
+            this.isAiLoading = false;
+            this.phase = 'idle';
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

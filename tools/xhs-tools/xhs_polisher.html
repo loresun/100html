@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书文案润色器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --xhs-red: #ff2442;
+            --xhs-bg: #fbfbfb;
+        }
+
+        body {
+            background-color: var(--xhs-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Custom Checkbox for Options */
+        .option-checkbox:checked+div {
+            background-color: #fff1f2;
+            border-color: #ff2442;
+            color: #ff2442;
+        }
+
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #ff2442;
+        }
+
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: #ff2442;
+        }
+
+        .slide-fade-enter-active {
+            transition: all 0.3s ease-out;
+        }
+
+        .slide-fade-leave-active {
+            transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+        }
+
+        .slide-fade-enter-from,
+        .slide-fade-leave-to {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Top Navigation -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-wand-magic-sparkles text-[#ff2442] text-xl"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">XHS Polisher</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-[#ff2442]': model === 'deepseek-v4-flash', 'text-slate-500': model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-[#ff2442]': model === 'deepseek-v4-pro', 'text-slate-500': model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-[#ff2442] transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear"></i> API 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Layout -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- Left: Input & Controls -->
+            <div class="w-full md:w-2/5 bg-white border-r border-slate-200 flex flex-col h-full z-20 shadow-xl">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+
+                    <!-- Input Content -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-bold text-slate-700">原始文案</label>
+                            <span class="text-xs text-slate-400">{{ input.content.length }} 字</span>
+                        </div>
+                        <textarea v-model="input.content" rows="6" placeholder="在此粘贴需要润色的小红书文案..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-red-500 focus:outline-none transition resize-none text-sm leading-relaxed"></textarea>
+                    </div>
+
+                    <!-- Rewriting Options (Grid) -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-bold text-slate-700">
+                                改写方向 <span class="text-xs font-normal text-slate-500">(最多选3项)</span>
+                            </label>
+                            <button @click="selectedOptions = []" v-if="selectedOptions.length > 0"
+                                class="text-xs text-red-500 hover:underline">清空</button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <label v-for="opt in rewritingOptions" :key="opt.id" class="cursor-pointer group relative">
+                                <input type="checkbox" :value="opt.id" v-model="selectedOptions"
+                                    :disabled="selectedOptions.length >= 3 && !selectedOptions.includes(opt.id)"
+                                    class="hidden option-checkbox">
+                                <div class="border border-slate-200 bg-slate-50 rounded-lg p-3 hover:shadow-sm transition h-full flex flex-col justify-center"
+                                    :class="{'opacity-50 cursor-not-allowed': selectedOptions.length >= 3 && !selectedOptions.includes(opt.id)}">
+                                    <span class="text-sm font-bold text-slate-700 mb-1">{{ opt.name }}</span>
+                                    <span class="text-[10px] text-slate-500 leading-tight">{{ opt.desc }}</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Structural Adjustments -->
+                    <div class="space-y-3 pt-4 border-t border-slate-100">
+                        <label class="block text-sm font-bold text-slate-700">结构与细节调整</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" v-model="structure.format" class="accent-red-500 w-4 h-4">
+                                <span class="text-sm text-slate-600">格式优化 (分段/空行)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" v-model="structure.emoji" class="accent-red-500 w-4 h-4">
+                                <span class="text-sm text-slate-600">增加 Emoji 表情</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" v-model="structure.shorten" class="accent-red-500 w-4 h-4">
+                                <span class="text-sm text-slate-600">长句变短句</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" v-model="structure.titles" class="accent-red-500 w-4 h-4">
+                                <span class="text-sm text-slate-600">生成3个网感标题</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Other Settings -->
+                    <div class="space-y-3 pt-4 border-t border-slate-100">
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-bold text-slate-700">字数调整</label>
+                            <select v-model="settings.length"
+                                class="text-xs bg-slate-100 border-none rounded px-2 py-1 outline-none">
+                                <option value="normal">保持原长</option>
+                                <option value="short">精简 (更短)</option>
+                                <option value="long">扩充 (更长)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-bold text-slate-700">允许大幅改写</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-400">{{ settings.creative ? '创意优先' : '忠于原文' }}</span>
+                                <button @click="settings.creative = !settings.creative"
+                                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none"
+                                    :class="settings.creative ? 'bg-red-500' : 'bg-slate-300'">
+                                    <span
+                                        class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform"
+                                        :class="settings.creative ? 'translate-x-5' : 'translate-x-1'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button @click="startPolishing" :disabled="isGenerating || !input.content"
+                        class="w-full bg-[#ff2442] text-white font-bold py-3.5 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin"></i>
+                        <span v-else>✨ 开始润色</span>
+                    </button>
+
+                    <div class="text-xs text-center text-slate-400">
+                        {{ statusText }}
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Right: Output Area -->
+            <div class="flex-grow bg-[#fbfbfb] p-4 md:p-8 overflow-y-auto h-full relative">
+
+                <!-- Empty State -->
+                <div v-if="!result.content && !isGenerating"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                    <i class="fa-solid fa-pen-nib text-6xl mb-4 text-slate-300"></i>
+                    <p class="text-lg">配置选项，打造爆款文案</p>
+                </div>
+
+                <!-- Result Card -->
+                <div v-else class="max-w-3xl mx-auto">
+                    <div class="flex justify-between items-end mb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">润色结果</h2>
+                        <div class="flex gap-2">
+                            <button v-if="result.content" @click="copyContent"
+                                class="bg-white border border-slate-200 text-slate-600 hover:text-[#ff2442] px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-copy"></i> 复制
+                            </button>
+                            <button v-if="result.content" @click="exportResult"
+                                class="bg-white border border-slate-200 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-download"></i> 导出
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Reasoning Box (V4 Pro) -->
+                    <div v-if="result.reasoning"
+                        class="mb-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <details class="group">
+                            <summary
+                                class="flex items-center justify-between p-3 cursor-pointer bg-slate-50 hover:bg-slate-100 transition text-xs font-bold text-slate-600 select-none">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-brain text-violet-500"></i>
+                                    <span>AI 深度思考过程</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+                            </summary>
+                            <div
+                                class="p-4 bg-slate-50 text-xs text-slate-500 font-mono whitespace-pre-wrap border-t border-slate-200 max-h-60 overflow-y-auto leading-relaxed">
+                                {{ result.reasoning }}
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div
+                        class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px] flex flex-col">
+                        <!-- Header with Tags -->
+                        <div class="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap gap-2">
+                            <span v-for="optId in selectedOptions" :key="optId"
+                                class="px-2 py-1 bg-red-50 text-[#ff2442] text-xs font-bold rounded-md border border-red-100">
+                                {{ getOptionName(optId) }}
+                            </span>
+                            <span v-if="structure.titles"
+                                class="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-md border border-blue-100">
+                                含标题
+                            </span>
+                        </div>
+
+                        <!-- Content Body -->
+                        <div class="p-6 md:p-8 flex-grow">
+                            <div v-if="result.content"
+                                class="prose prose-slate max-w-none whitespace-pre-wrap leading-relaxed"
+                                v-html="renderMarkdown(result.content)"></div>
+
+                            <div v-else class="flex flex-col items-center justify-center h-48 text-slate-400">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-[#ff2442]"></i>
+                                <span class="text-sm animate-pulse">正在逐字润色中...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- API Settings Modal -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-red-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Key 会存储在本地，与其他应用共享。</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-[#ff2442] text-white px-4 py-2 rounded-lg hover:bg-red-600">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick, computed } = Vue;
+
+        const REWRITING_OPTIONS = [
+            { id: 'attraction', name: '增强吸引力', desc: '让标题和开头更吸睛' },
+            { id: 'examples', name: '替换案例', desc: '用更新、更相关的案例' },
+            { id: 'emotion', name: '增加真情实感', desc: '加入更多情感共鸣' },
+            { id: 'opening', name: '替换开头', desc: '更有冲击力的开场白' },
+            { id: 'ending', name: '替换结尾', desc: '增强余韵和互动引导' },
+            { id: 'logic', name: '逻辑重构', desc: '结构更清晰，逻辑更顺' },
+            { id: 'tone', name: '调整语气', desc: '改变整体语气的风格' },
+            { id: 'details', name: '细节丰富', desc: '增加生动的细节描述' },
+            { id: 'story', name: '故事化改写', desc: '用讲故事的方式呈现' },
+            { id: 'professional', name: '专业度提升', desc: '增加术语和深度观点' },
+            { id: 'simplify', name: '简化表达', desc: '更简洁、直接、有力' },
+            { id: 'creative', name: '创意角度', desc: '新颖角度重新诠释' }
+        ];
+
+        createApp({
+            setup() {
+
+                // State
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '' });
+                const model = ref('deepseek-v4-flash');
+                const isGenerating = ref(false);
+                const statusText = ref('准备就绪');
+
+                const input = reactive({
+                    content: ''
+                });
+
+                const selectedOptions = ref([]);
+                const rewritingOptions = REWRITING_OPTIONS;
+
+                const structure = reactive({
+                    format: true,
+                    emoji: true,
+                    shorten: false,
+                    titles: true
+                });
+
+                const settings = reactive({
+                    length: 'normal',
+                    creative: false
+                });
+
+                const result = reactive({
+                    content: '',
+                    reasoning: ''
+                });
+
+                // Init
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            apiConfig.value = { ...apiConfig.value, ...JSON.parse(saved) };
+                        } catch (e) {
+                            console.error('解析 global_llm_config 失败:', e);
+                        }
+                    }
+                });
+
+                // Helpers
+                const getOptionName = (id) => {
+                    const opt = rewritingOptions.find(o => o.id === id);
+                    return opt ? opt.name : id;
+                };
+
+                const renderMarkdown = (text) => {
+                    if (!text) return '';
+                    return marked.parse(text);
+                };
+
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('解析 global_llm_config 失败:', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                // Core Logic
+                const startPolishing = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+                    if (!input.content) return;
+
+                    isGenerating.value = true;
+                    statusText.value = '正在思考润色方案...';
+                    result.content = '';
+                    result.reasoning = '';
+
+                    // Construct Prompt
+                    const selectedNames = selectedOptions.value.map(id => {
+                        const opt = rewritingOptions.find(o => o.id === id);
+                        return `${opt.name} (${opt.desc})`;
+                    }).join('、');
+
+                    let prompt = `你是一个小红书文案润色专家。请对用户提供的原始文案进行润色。
+                    
+【原始文案】：
+${input.content}
+
+【核心润色要求】（重点执行）：
+${selectedNames || '综合优化文案质量'}
+
+【结构与细节要求】：
+`;
+                    if (structure.format) prompt += `- 优化排版：使用清晰的分段和空行，提升阅读体验。\n`;
+                    if (structure.emoji) prompt += `- 增加Emoji：在标题、段首和重点处加入符合小红书风格的Emoji。\n`;
+                    if (structure.shorten) prompt += `- 短句为主：将长难句拆分为短句，节奏轻快。\n`;
+                    if (structure.titles) prompt += `- 必须在文案最前方提供3个极具网感的备选标题。\n`;
+
+                    prompt += `\n【其他要求】：\n`;
+                    if (settings.length === 'short') prompt += `- 字数要求：精简内容，比原文更短。\n`;
+                    if (settings.length === 'long') prompt += `- 字数要求：适当扩充，增加细节。\n`;
+                    if (settings.creative) prompt += `- 改写幅度：可以大胆改写，不必拘泥于原文结构，优先保证吸引力。\n`;
+                    else prompt += `- 改写幅度：尽量保留原文核心逻辑和结构，仅做润色和优化。\n`;
+
+                    prompt += `\n请直接输出润色后的内容（包含标题和正文），不要包含"好的"、"以下是润色结果"等废话。`;
+
+                    try {
+                        await callDeepSeek(prompt, true,
+                            (chunk) => {
+                                result.content += chunk;
+                            },
+                            (reasoningChunk) => {
+                                result.reasoning += reasoningChunk;
+                            }
+                        );
+                        statusText.value = '润色完成';
+                    } catch (e) {
+                        console.error(e);
+                        statusText.value = '生成出错: ' + e.message;
+                        result.content += `\n\n[出错: ${e.message}]`;
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                const callDeepSeek = async (prompt, stream = false, onChunk = null, onReasoning = null) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 为空");
+
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: model.value,
+                            messages: [
+                                { "role": "system", "content": "You are a professional social media editor." },
+                                { "role": "user", "content": prompt }
+                            ],
+                            stream: stream
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    if (!stream) {
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+
+                                    // Reasoning
+                                    const reasoning = json.choices[0].delta.reasoning_content;
+                                    if (reasoning && onReasoning) onReasoning(reasoning);
+
+                                    // Content
+                                    const content = json.choices[0].delta.content || "";
+                                    if (onChunk) onChunk(content);
+                                } catch (e) {
+                                    console.error("Stream parse error", e);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                const copyContent = () => {
+                    navigator.clipboard.writeText(result.content).then(() => alert('已复制'));
+                };
+
+                const exportResult = () => {
+                    const blob = new Blob([result.content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `小红书润色_${new Date().toLocaleDateString()}.txt`;
+                    a.click();
+                };
+
+                return {
+                    showSettings, apiConfig, saveConfig, model,
+                    input, selectedOptions, rewritingOptions, structure, settings,
+                    result, isGenerating, statusText,
+                    startPolishing, getOptionName, renderMarkdown, copyContent, exportResult
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/rewrite_xhs_polisher.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具一致 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>震惊体转换器 - 爸妈朋友圈爆款生成</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /**
+     * 故意「土味标题党」视觉：高饱和红黄 + 闪烁，模仿家族群转发文章
+     * 非失误，为玩法与讽刺效果服务
+     */
+    body {
+      font-family: "SimHei", "Heiti SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: repeating-linear-gradient(
+        -5deg,
+        #fff200 0px,
+        #fff200 12px,
+        #ffeb3b 12px,
+        #ffeb3b 24px
+      );
+      min-height: 100vh;
+    }
+
+    @keyframes shock-blink {
+      0%, 100% { opacity: 1; filter: brightness(1); }
+      50% { opacity: 0.88; filter: brightness(1.15); }
+    }
+
+    @keyframes shock-pulse-border {
+      0%, 100% { box-shadow: 0 0 0 3px #d50000, 0 0 20px rgba(213, 0, 0, 0.45); }
+      50% { box-shadow: 0 0 0 6px #ff1744, 0 0 28px rgba(255, 23, 68, 0.55); }
+    }
+
+    @keyframes marquee-shock {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    .shock-title-blink {
+      animation: shock-blink 0.9s ease-in-out infinite;
+      text-shadow: 2px 2px 0 #ff0, -1px -1px 0 #000, 0 0 12px #f00;
+    }
+
+    .shock-box-ugly {
+      animation: shock-pulse-border 1.4s ease-in-out infinite;
+      border: 5px dashed #d50000;
+      background: linear-gradient(180deg, #fffde7 0%, #fff9c4 100%);
+    }
+
+    .shock-marquee-wrap {
+      overflow: hidden;
+      white-space: nowrap;
+      background: #d50000;
+      color: #ff0;
+      font-weight: 900;
+      border-top: 4px solid #000;
+      border-bottom: 4px solid #000;
+    }
+
+    .shock-marquee-inner {
+      display: inline-block;
+      padding-left: 100%;
+      animation: marquee-shock 14s linear infinite;
+    }
+
+    .prose-shock :where(h2) {
+      color: #b71c1c;
+      font-size: 1.35rem;
+      font-weight: 900;
+      margin: 0.75rem 0 0.35rem;
+      text-decoration: underline wavy #d50000;
+    }
+
+    .prose-shock :where(p, li) {
+      color: #3e2723;
+      font-size: 1.05rem;
+      line-height: 1.75;
+      font-weight: 700;
+    }
+
+    .prose-shock :where(strong) {
+      color: #d50000;
+      font-size: 1.08em;
+    }
+
+    .ugly-scroll::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .ugly-scroll::-webkit-scrollbar-thumb {
+      background: #d50000;
+      border-radius: 2px;
+      border: 2px solid #ff0;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-stone-900">
+  <div x-data="clickbaitFactory()" x-init="init()" class="min-h-screen flex flex-col pb-8">
+
+    <!-- 假跑马灯：强化「家族群谣言体」氛围 -->
+    <div class="shock-marquee-wrap py-1.5 text-sm sm:text-base" aria-hidden="true">
+      <!-- 重复两段用于无缝跑马灯循环 -->
+      <span class="shock-marquee-inner">
+        震惊！！！速看！！！转发保平安！！！不看后悔一辈子！！！99%的人都不知道！！！看完转给你关心的人！！！　
+        震惊！！！速看！！！转发保平安！！！不看后悔一辈子！！！99%的人都不知道！！！看完转给你关心的人！！！　
+      </span>
+    </div>
+
+    <!-- 顶栏：返回站点首页 -->
+    <nav class="sticky top-0 z-50 bg-red-700 border-b-4 border-black shadow-lg">
+      <div class="max-w-6xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 cursor-pointer min-w-0" onclick="location.href='../../index.html'">
+          <i data-lucide="flame" class="text-yellow-300 h-7 w-7 shrink-0"></i>
+          <span class="font-black text-yellow-300 text-base sm:text-xl truncate shock-title-blink">震惊体转换器</span>
+        </div>
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div class="hidden sm:flex bg-black/30 rounded p-0.5 text-[10px] border-2 border-yellow-400">
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-flash'"
+              :class="apiConfig.model === 'deepseek-v4-flash' ? 'bg-yellow-400 text-red-800' : 'text-yellow-200'"
+              class="px-2 py-1 rounded font-black">V4 Flash</button>
+            <button type="button" @click="apiConfig.model = 'deepseek-v4-pro'"
+              :class="apiConfig.model === 'deepseek-v4-pro' ? 'bg-yellow-400 text-red-800' : 'text-yellow-200'"
+              class="px-2 py-1 rounded font-black">V4 Pro</button>
+          </div>
+          <button type="button" @click="showSettings = true" class="p-2 rounded bg-yellow-400 text-red-800 border-2 border-black hover:bg-yellow-300"
+            title="API 设置">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 pt-4 space-y-4">
+
+      <p class="text-center text-red-800 font-black text-sm sm:text-base px-2">
+        把一句人话变成爸妈朋友圈「震惊！不看后悔」体 — 纯属娱乐，请勿当真转发造谣。
+      </p>
+
+      <div class="grid lg:grid-cols-2 gap-4 items-start">
+
+        <!-- 左侧：输入与参数 -->
+        <section class="shock-box-ugly rounded-none p-4 space-y-4 ugly-scroll">
+          <h2 class="text-2xl font-black text-red-700 text-center shock-title-blink">输入原文</h2>
+
+          <textarea x-model="inputText" rows="5"
+            class="w-full border-4 border-red-600 bg-yellow-100 p-3 text-red-900 font-bold text-base placeholder-red-300 focus:ring-4 focus:ring-yellow-400 resize-y min-h-[120px]"
+            placeholder="例如：今天天气不错 / 我吃了一碗面 / 小区装了新路灯"></textarea>
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-black text-red-800 mb-1">震惊程度</label>
+              <select x-model="shockLevel"
+                class="w-full border-4 border-black bg-yellow-300 font-black text-red-900 py-2 px-2 text-sm">
+                <option value="微震">微震（略夸张）</option>
+                <option value="中震">中震（很上头）</option>
+                <option value="巨震">巨震（全家群炸锅）</option>
+                <option value="核弹级">核弹级（宇宙级紧急）</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-black text-red-800 mb-1">目标受众</label>
+              <select x-model="audience"
+                class="w-full border-4 border-black bg-yellow-300 font-black text-red-900 py-2 px-2 text-sm">
+                <option value="退休长辈">退休长辈</option>
+                <option value="养生圈">养生圈</option>
+                <option value="家长群">家长群</option>
+                <option value="相亲群">相亲群</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button type="button" @click="convert(false)" :disabled="isLoading"
+              class="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-yellow-300 font-black py-4 text-lg border-4 border-black disabled:opacity-50">
+              <i x-show="!isLoading" data-lucide="zap" class="w-6 h-6"></i>
+              <i x-show="isLoading" data-lucide="loader-2" class="w-6 h-6 animate-spin"></i>
+              <span x-text="isLoading ? '震惊生成中…' : '震惊转换！！！'"></span>
+            </button>
+            <button type="button" @click="clearAll()"
+              class="sm:w-32 py-3 font-black border-4 border-red-700 bg-yellow-200 text-red-800 hover:bg-yellow-100 text-sm">
+              清空
+            </button>
+          </div>
+
+          <p x-show="errorMsg" class="text-sm font-bold text-white bg-red-800 border-4 border-black p-2" x-text="errorMsg"></p>
+        </section>
+
+        <!-- 右侧：原文 vs 震惊体 对照（生成后显示） -->
+        <section class="shock-box-ugly rounded-none p-4 space-y-3 min-h-[200px] flex flex-col">
+          <h2 class="text-xl font-black text-red-700 text-center">原文 VS 震惊体</h2>
+
+          <div class="grid grid-cols-1 gap-3 flex-1 min-h-0">
+            <div class="border-4 border-dotted border-red-600 bg-white/90 p-3">
+              <p class="text-xs font-black text-red-600 mb-1">【平淡原文】</p>
+              <p class="text-sm font-bold text-stone-800 whitespace-pre-wrap break-words" x-text="lockedOriginal || '（点「震惊转换」后显示）'"></p>
+            </div>
+            <div class="border-4 border-red-700 bg-yellow-50 p-3 flex-1 overflow-y-auto max-h-[min(50vh,420px)] ugly-scroll">
+              <p class="text-xs font-black text-red-700 mb-1">【对照速览】（AI 生成）</p>
+              <div class="prose-shock text-sm" x-html="compareHtml || '<p class=\'text-red-400 font-bold\'>暂无</p>'"></div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button type="button" @click="escalate()" :disabled="isLoading || !lastFullMd"
+              class="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 bg-black text-yellow-300 font-black py-3 border-4 border-red-600 hover:bg-red-900 disabled:opacity-40 text-sm">
+              <i data-lucide="bomb" class="w-5 h-5"></i>
+              更震惊一点！！！
+            </button>
+            <button type="button" @click="copyShare()" :disabled="!lastFullMd"
+              class="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 bg-yellow-400 text-red-800 font-black py-3 border-4 border-black hover:bg-yellow-300 disabled:opacity-40 text-sm">
+              <i data-lucide="copy" class="w-5 h-5"></i>
+              复制分享
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- 全文输出区 -->
+      <section class="shock-box-ugly p-4 space-y-2">
+        <h2 class="text-2xl font-black text-center text-red-700 shock-title-blink">震惊体全文</h2>
+
+        <details x-show="reasoningText" class="border-4 border-black bg-stone-900 text-yellow-200 p-2 text-xs">
+          <summary class="cursor-pointer font-black">🧠 深度思考（V4 Pro，点击展开）</summary>
+          <pre class="mt-2 whitespace-pre-wrap max-h-40 overflow-y-auto ugly-scroll" x-text="reasoningText"></pre>
+        </details>
+
+        <div x-show="isLoading" class="border-4 border-red-600 bg-black p-3">
+          <p class="text-yellow-300 font-black text-sm mb-2 flex items-center gap-2">
+            <i data-lucide="radio" class="w-4 h-4 animate-pulse"></i> 正在流式输出…
+          </p>
+          <pre class="text-green-400 font-mono text-xs whitespace-pre-wrap break-words max-h-[40vh] overflow-y-auto ugly-scroll" x-text="streamBuffer"></pre>
+        </div>
+
+        <div x-show="!isLoading && articleHtml" class="border-4 border-black bg-yellow-100 p-4 prose-shock max-h-[min(65vh,640px)] overflow-y-auto ugly-scroll"
+          x-html="articleHtml">
+        </div>
+
+        <div x-show="!isLoading && !articleHtml && !streamBuffer"
+          class="text-center text-red-600 font-black py-16 border-4 border-dashed border-red-400 bg-yellow-200/80">
+          快输入一句话，点上面红按钮，见证奇迹！！！
+        </div>
+      </section>
+    </main>
+
+    <!-- API 设置弹窗 -->
+    <div x-show="showSettings" x-transition.opacity
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70"
+      @keydown.escape.window="showSettings = false">
+      <div @click.away="showSettings = false" class="bg-yellow-300 border-4 border-red-600 shadow-2xl w-full max-w-md p-5 space-y-3">
+        <h3 class="text-xl font-black text-red-800">API 配置</h3>
+        <p class="text-xs font-bold text-red-900">密钥存浏览器本地；与其他工具共用 <code class="bg-white px-1 border border-black">global_llm_config</code>，保存时<strong>合并</strong>、不覆盖其他字段。</p>
+        <div>
+          <label class="block text-sm font-black text-red-800 mb-1">DeepSeek API Key</label>
+          <input type="password" x-model="apiConfig.deepseek"
+            class="w-full border-4 border-black bg-white p-2 font-mono text-sm" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="block text-sm font-black text-red-800 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full border-4 border-black bg-white p-2 font-bold text-sm">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 font-black border-2 border-black bg-white hover:bg-stone-100">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 font-black border-2 border-black bg-red-600 text-yellow-300 hover:bg-red-500">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 border-4 border-black bg-yellow-300 text-red-800 text-sm font-black shadow-lg flex items-center gap-2">
+      <i :data-lucide="toast.icon" class="w-4 h-4"></i>
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * HTML 转义：在 marked 不可用时兜底
+     * @param {string} s
+     * @returns {string}
+     */
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /**
+     * 将模型 Markdown 拆成「震惊体全文」与「对照速览」两块，便于分开展示
+     * 按二级标题截取，从标题下一行起到下一个 ## 标题或文末
+     * @param {string} md
+     * @returns {{ article: string, compare: string }}
+     */
+    function parseShockSections(md) {
+      const raw = String(md || '');
+      /**
+       * @param {string} title 二级标题纯文本，不含 ##
+       */
+      const sliceAfterH2 = (title) => {
+        const re = new RegExp('^##\\s*' + title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'm');
+        const match = raw.match(re);
+        if (!match) return '';
+        const start = match.index + match[0].length;
+        const tail = raw.slice(start);
+        const nextIdx = tail.search(/^##\s+/m);
+        const body = nextIdx === -1 ? tail : tail.slice(0, nextIdx);
+        return body.trim();
+      };
+      let article = sliceAfterH2('震惊体全文');
+      let compare = sliceAfterH2('对照速览');
+      if (!article && !compare) {
+        article = raw.trim();
+      }
+      return { article, compare };
+    }
+
+    /**
+     * Markdown → 安全 HTML（依赖 marked）
+     * @param {string} text
+     * @returns {string}
+     */
+    function mdToHtml(text) {
+      const t = (text || '').trim();
+      if (!t) return '';
+      if (typeof marked === 'undefined') return '<p>' + escapeHtml(t) + '</p>';
+      return marked.parse(t, { breaks: true });
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('clickbaitFactory', () => ({
+        /** 用户输入的一句「人话」 */
+        inputText: '',
+        /** 震惊档位 */
+        shockLevel: '中震',
+        /** 受众圈子，影响话术风格 */
+        audience: '退休长辈',
+        streamBuffer: '',
+        reasoningText: '',
+        isLoading: false,
+        errorMsg: '',
+        showSettings: false,
+        apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+        toast: { show: false, message: '', icon: 'check' },
+
+        /** 点击转换时锁定的原文，用于左侧对照展示 */
+        lockedOriginal: '',
+        /** 最近一次完整模型输出（Markdown） */
+        lastFullMd: '',
+        /** 震惊体正文 HTML */
+        articleHtml: '',
+        /** 对照速览 HTML */
+        compareHtml: '',
+
+        init() {
+          this.loadConfig();
+          if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true });
+          }
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /** 从 localStorage 合并加载全局 LLM 配置 */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) {
+              this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+            }
+          } catch (e) {
+            console.error('解析 global_llm_config 失败:', e);
+          }
+        },
+
+        /**
+         * 保存 API 配置：合并策略，禁止整对象覆盖其他工具字段
+         */
+        saveConfig() {
+          let current = {};
+          try {
+            current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) {
+            console.error('读取旧配置失败:', e);
+          }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+          this.showToast('配置已保存');
+          this.showSettings = false;
+        },
+
+        showToast(message, icon = 'check') {
+          this.toast = { show: true, message, icon };
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          setTimeout(() => { this.toast.show = false; }, 2600);
+        },
+
+        /** 清空输入与生成结果 */
+        clearAll() {
+          this.inputText = '';
+          this.streamBuffer = '';
+          this.lastFullMd = '';
+          this.articleHtml = '';
+          this.compareHtml = '';
+          this.lockedOriginal = '';
+          this.reasoningText = '';
+          this.errorMsg = '';
+          this.showToast('已清空', 'trash-2');
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 系统提示词：约束震惊体结构与必备话术（娱乐向）
+         */
+        getSystemPrompt() {
+          return `你是中文互联网「家族群 / 朋友圈」震惊体段子手，只做讽刺性仿写，不传播谣言、不捏造新闻事实、不针对真实个人。内容必须明显夸张搞笑，让读者看出是玩笑。
+
+【输出格式】必须严格使用 Markdown，且包含以下两个二级标题（标题文字一字不差）：
+
+## 震惊体全文
+（一篇完整的「爸妈朋友圈」风格长文，多段。）
+
+## 对照速览
+（至少 3 条列表，每条格式：- 原文要点：…… → 震惊表述：……）
+
+【震惊体全文 · 硬性要求】
+1. 开篇第一行或第一段必须以「震惊！」开头（可紧跟更多字）。
+2. 文中必须出现以下话术至少一种（可改写同义，但要一眼能看出）：「不看后悔一辈子」「99%的人都不知道」。
+3. 全文至少出现 3 个独立感叹号「！」（连续「！！！」算多个）。
+4. 文中自然穿插一次「转发保平安」（可加 emoji）。
+5. 文末必须以「看完转给你关心的人」收尾（句末可加感叹号）。
+6. 整体风格需匹配用户选择的震惊程度与受众（更养生/更焦虑相亲/更家长里短等），但不要涉及真实医疗承诺或诈骗话术。
+
+不要输出 JSON。不要使用一级标题 #。`;
+        },
+
+        /**
+         * 流式调用 DeepSeek Chat Completions
+         * @param {Array<{role:string,content:string}>} messages
+         * @param {function(string):void} onDelta
+         * @param {function(string):void} [onReasoning]
+         */
+        async streamDeepSeek(messages, onDelta, onReasoning) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            throw new Error('请先配置 DeepSeek API Key');
+          }
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.85
+            })
+          });
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || ('HTTP ' + response.status));
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content && onReasoning) onReasoning(delta.reasoning_content);
+                if (delta.content) onDelta(delta.content);
+              } catch (e) {
+                console.warn('SSE 解析跳过:', e);
+              }
+            }
+          }
+        },
+
+        /**
+         * 根据流结束后的 Markdown 更新拆分视图
+         * @param {string} fullMd
+         */
+        applyParsedOutput(fullMd) {
+          this.lastFullMd = fullMd;
+          const { article, compare } = parseShockSections(fullMd);
+          this.articleHtml = mdToHtml(article);
+          this.compareHtml = mdToHtml(compare || '_（若模型未分节，请查看下方全文区）_');
+        },
+
+        /**
+         * 首次震惊转换
+         * @param {boolean} isEscalate 是否为「更震惊一点」续写
+         */
+        async convert(isEscalate) {
+          this.errorMsg = '';
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.errorMsg = '请先在设置中填写 DeepSeek API Key。';
+            return;
+          }
+
+          let userMsg;
+          if (!isEscalate) {
+            const original = (this.inputText || '').trim();
+            if (!original) {
+              this.errorMsg = '请先输入一句正常的话。';
+              return;
+            }
+            this.lockedOriginal = original;
+            userMsg = this.buildUserPrompt(original, false);
+          } else {
+            userMsg = this.buildUserPrompt('', true);
+          }
+
+          this.isLoading = true;
+          this.streamBuffer = '';
+          this.reasoningText = '';
+          if (!isEscalate) {
+            this.articleHtml = '';
+            this.compareHtml = '';
+          }
+
+          try {
+            await this.streamDeepSeek(
+              [
+                { role: 'system', content: this.getSystemPrompt() },
+                { role: 'user', content: userMsg }
+              ],
+              (chunk) => { this.streamBuffer += chunk; },
+              (r) => { this.reasoningText += r; }
+            );
+            this.applyParsedOutput(this.streamBuffer);
+            this.streamBuffer = '';
+            this.showToast(isEscalate ? '已加码震惊！！！' : '震惊体已生成！！！', 'sparkles');
+          } catch (e) {
+            console.error(e);
+            this.errorMsg = e.message || '生成失败';
+            this.showToast(this.errorMsg, 'alert-circle');
+          } finally {
+            this.isLoading = false;
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+          }
+        },
+
+        /**
+         * 拼接用户消息：含震惊程度、受众与原文/上一版全文
+         * @param {string} original 平淡原文
+         * @param {boolean} escalate 是否基于上一版再加强
+         */
+        buildUserPrompt(original, escalate) {
+          const level = this.shockLevel;
+          const aud = this.audience;
+          if (escalate) {
+            return `【任务】在上一版震惊体基础上「再震惊一档」：更多感叹号、更紧急语气、更长辈圈话术，但仍须满足系统提示里的全部硬性要求（震惊！开头、话术、转发保平安、文末句等）。禁止编造新闻与医疗功效。
+
+【震惊程度】${level}
+【目标受众】${aud}
+
+【上一版震惊体全文如下，请重写覆盖】
+"""${this.lastFullMd}"""`;
+          }
+          return `【平淡原文】
+"""${original}"""
+
+【震惊程度】${level}
+【目标受众】${aud}
+
+请按系统提示的 Markdown 结构输出。`;
+        },
+
+        /** 「更震惊一点」：依赖已有 lastFullMd */
+        escalate() {
+          if (!this.lastFullMd) {
+            this.showToast('请先生成一版震惊体', 'alert-circle');
+            return;
+          }
+          this.convert(true);
+        },
+
+        /**
+         * 复制分享：原文 + 全文 Markdown + 提示语
+         */
+        async copyShare() {
+          if (!this.lastFullMd) {
+            this.showToast('暂无内容可复制', 'alert-circle');
+            return;
+          }
+          const lines = [
+            '═══ 震惊体转换器 · 娱乐仿写 ═══',
+            '【平淡原文】',
+            this.lockedOriginal || '（未锁定）',
+            '',
+            '【生成正文 Markdown】',
+            this.lastFullMd,
+            '',
+            '—— 本内容纯属搞笑仿写，请勿当真实信息转发 ——'
+          ];
+          const text = lines.join('\n');
+          try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('已复制到剪贴板', 'copy');
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('已复制', 'copy');
+          }
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>

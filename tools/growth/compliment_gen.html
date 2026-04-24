@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>夸夸生成器 - AI 情绪价值专家</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans SC', sans-serif; background: linear-gradient(to bottom right, #fff1f2, #fff7ed); }
+        .bubble { animation: float 6s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+        /* Tab 切换动画 */
+        .tab-indicator { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* 渐入渐出效果 */
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        /* 卡片浮动阴影 */
+        .card-shadow { box-shadow: 0 25px 50px -12px rgba(236, 72, 153, 0.25); }
+        
+        /* ===== 加载动画 ===== */
+        /* 心跳动画 */
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.2); }
+            50% { transform: scale(1); }
+            75% { transform: scale(1.15); }
+        }
+        .heart-beat { animation: heartbeat 1s ease-in-out infinite; }
+        
+        /* 波浪动画 - 三个点 */
+        @keyframes wave {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+        .wave-dot { animation: wave 1.2s ease-in-out infinite; }
+        .wave-dot:nth-child(2) { animation-delay: 0.1s; }
+        .wave-dot:nth-child(3) { animation-delay: 0.2s; }
+        
+        /* 渐变流动动画 */
+        @keyframes gradient-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .gradient-animate {
+            background: linear-gradient(-45deg, #ec4899, #f43f5e, #fb7185, #ec4899);
+            background-size: 300% 300%;
+            animation: gradient-flow 2s ease infinite;
+        }
+        
+        /* 闪烁星星动画 */
+        @keyframes twinkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .twinkle { animation: twinkle 0.8s ease-in-out infinite; }
+        .twinkle-delay-1 { animation-delay: 0.2s; }
+        .twinkle-delay-2 { animation-delay: 0.4s; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <div id="app" class="w-full max-w-2xl">
+        <div class="bg-white/80 backdrop-blur card-shadow rounded-3xl p-8 border border-white relative overflow-hidden">
+            <!-- 装饰背景 -->
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-pink-200 rounded-full blur-3xl opacity-30"></div>
+            <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-orange-200 rounded-full blur-3xl opacity-30"></div>
+
+            <div class="relative z-10 flex flex-col items-center">
+                <!-- Logo图标 -->
+                <div class="w-16 h-16 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-pink-200 bubble">
+                    <i class="fa-solid fa-wand-magic-sparkles w-10 h-10"></i>
+                </div>
+                <h1 class="text-3xl font-black text-slate-800 mb-2">夸夸生成器</h1>
+                <p class="text-slate-500 mb-6">每一份努力，都值得被温柔以待</p>
+
+                <!-- 主 Tab 切换: 夸自己 / 夸别人 -->
+                <div class="w-full bg-slate-100 rounded-2xl p-1.5 flex mb-6 relative">
+                    <!-- 指示器滑块 -->
+                    <div class="tab-indicator absolute h-[calc(100%-12px)] top-1.5 rounded-xl bg-white shadow-md"
+                         :style="{ 
+                             left: mainTab === 'self' ? '6px' : 'calc(50% + 3px)', 
+                             width: 'calc(50% - 9px)' 
+                         }">
+                    </div>
+                    <!-- Tab 按钮 -->
+                    <button @click="mainTab = 'self'" 
+                            :class="['flex-1 py-3 rounded-xl font-bold text-sm z-10 transition-colors flex items-center justify-center gap-2', 
+                                     mainTab === 'self' ? 'text-pink-600' : 'text-slate-400 hover:text-slate-600']">
+                        <i class="fa-solid fa-heart w-4 h-4"></i>
+                        夸自己
+                    </button>
+                    <button @click="mainTab = 'others'" 
+                            :class="['flex-1 py-3 rounded-xl font-bold text-sm z-10 transition-colors flex items-center justify-center gap-2', 
+                                     mainTab === 'others' ? 'text-pink-600' : 'text-slate-400 hover:text-slate-600']">
+                        <i class="fa-solid fa-users w-4 h-4"></i>
+                        夸别人
+                    </button>
+                </div>
+
+                <div class="w-full space-y-6">
+                    <!-- 夸自己的输入区域 -->
+                    <div v-if="mainTab === 'self'">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                            <i class="fa-solid fa-cloud-showers-heavy w-4 h-4 inline-block mr-1 text-pink-400"></i>
+                            最近发生了什么？或者你觉得自己哪里不够好？
+                        </label>
+                        <textarea v-model="selfInput" 
+                                  class="w-full h-32 p-4 rounded-2xl border border-slate-200 bg-white/50 focus:ring-4 focus:ring-pink-100 outline-none transition resize-none placeholder-slate-400" 
+                                  placeholder="例如：今天被老板骂了；考研没考上；觉得自己太胖了..."></textarea>
+                    </div>
+
+                    <!-- 夸别人的输入区域 -->
+                    <div v-if="mainTab === 'others'">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                            <i class="fa-solid fa-user-plus w-4 h-4 inline-block mr-1 text-pink-400"></i>
+                            你要夸的人是谁？他/她做了什么值得夸奖的事？
+                        </label>
+                        <textarea v-model="othersInput" 
+                                  class="w-full h-32 p-4 rounded-2xl border border-slate-200 bg-white/50 focus:ring-4 focus:ring-pink-100 outline-none transition resize-none placeholder-slate-400" 
+                                  placeholder="例如：我女朋友今天给我做了爱心便当；我同事帮我完成了项目；我妈妈一直很辛苦..."></textarea>
+                        
+                        <!-- 夸别人的关系选择 -->
+                        <div class="mt-4">
+                            <label class="block text-xs font-bold text-slate-500 mb-2">你们的关系是？</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button v-for="rel in relationships" :key="rel.id" 
+                                        @click="selectedRelation = rel.id"
+                                        :class="['px-3 py-1.5 text-xs rounded-full border transition', 
+                                                 selectedRelation === rel.id ? 'bg-pink-500 text-white border-pink-500 font-bold' : 'bg-white text-slate-500 border-slate-200 hover:border-pink-300']">
+                                    {{ rel.emoji }} {{ rel.name }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 风格选择 -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-2">选择夸奖风格</label>
+                        <div class="flex gap-2">
+                            <button v-for="mode in modes" :key="mode.id" 
+                                    @click="activeMode = mode.id" 
+                                    :class="['flex-1 py-2 text-xs rounded-full border transition', 
+                                             activeMode === mode.id ? 'bg-pink-500 text-white border-pink-500 font-bold' : 'bg-white text-slate-500 border-slate-200 hover:border-pink-300']">
+                                {{ mode.emoji }} {{ mode.name }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 生成按钮 -->
+                    <button @click="generateCompliment" 
+                            :disabled="isGenerating || !currentInput" 
+                            :class="['w-full py-4 text-white rounded-2xl font-bold shadow-xl shadow-pink-200 transition flex items-center justify-center gap-2',
+                                     isGenerating ? 'gradient-animate cursor-wait' : 'bg-gradient-to-r from-pink-500 to-rose-500 hover:scale-[1.02] active:scale-95',
+                                     (!isGenerating && !currentInput) ? 'opacity-50 cursor-not-allowed hover:scale-100' : '']">
+                        <!-- 加载中状态 -->
+                        <template v-if="isGenerating">
+                            <span class="heart-beat text-xl">💗</span>
+                            <span>{{ loadingText }}</span>
+                            <span class="flex gap-0.5">
+                                <span class="wave-dot inline-block w-1 h-1 bg-white rounded-full"></span>
+                                <span class="wave-dot inline-block w-1 h-1 bg-white rounded-full"></span>
+                                <span class="wave-dot inline-block w-1 h-1 bg-white rounded-full"></span>
+                            </span>
+                        </template>
+                        <!-- 正常状态 -->
+                        <template v-else>
+                            <span class="flex gap-1">
+                                <span class="twinkle">✨</span>
+                                <span class="twinkle twinkle-delay-1">💕</span>
+                                <span class="twinkle twinkle-delay-2">✨</span>
+                            </span>
+                            <span>{{ mainTab === 'self' ? '获得温暖抱抱' : '生成走心夸奖' }}</span> </template> </button> </div> <!-- 结果展示 --> <transition name="fade"> <div v-if="result" class="mt-8 w-full p-6 bg-gradient-to-br from-pink-50 to-rose-50 rounded-3xl border border-pink-100 relative"> <i class="fa-solid fa-quote-left absolute top-4 left-4 w-6 h-6 text-pink-200"></i> <p class="text-lg text-pink-900 leading-relaxed italic text-center px-6 py-2">{{ result }}</p>
+                        <div class="mt-4 flex justify-center gap-4">
+                            <button @click="copyResult" class="text-xs text-pink-500 hover:text-pink-600 flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/50 hover:bg-white transition">
+                                <i class="fa-solid fa-copy w-3 h-3"></i> 复制这段话
+                            </button>
+                            <button @click="regenerate" class="text-xs text-pink-500 hover:text-pink-600 flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/50 hover:bg-white transition">
+                                <i class="fa-solid fa-rotate w-3 h-3"></i> 换一个说法
+                            </button>
+                        </div>
+                    </div>
+                </transition>
+                
+                <!-- 返回首页 -->
+                <a href="../../index.html" class="mt-8 text-slate-400 hover:text-pink-500 text-sm flex items-center gap-1 transition">
+                    <i class="fa-solid fa-arrow-left w-4 h-4"></i> 返回首页
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+        createApp({
+            setup() {
+                // ==================== 状态定义 ====================
+                const mainTab = ref('self');         // 主Tab: 'self' 或 'others'
+                const selfInput = ref('');           // 夸自己的输入
+                const othersInput = ref('');         // 夸别人的输入
+                const activeMode = ref('warm');      // 夸奖风格
+                const selectedRelation = ref('lover'); // 选择的关系
+                const isGenerating = ref(false);
+                const result = ref('');
+                const loadingText = ref('正在酝酿温暖');  // 加载提示文字
+                
+                // 加载提示文字列表（随机显示）
+                const loadingTexts = [
+                    '正在酝酿温暖',
+                    '正在编织爱意',
+                    '用心感受中',
+                    '温柔正在路上',
+                    '收集小确幸中',
+                    '为你写情书ing',
+                    '爱意正在发酵',
+                    '幸福配方调制中'
+                ];
+                
+                // API 配置
+                const apiConfig = ref({ apiKey: '', model: 'deepseek-v4-flash' });
+
+                // ==================== 选项定义 ====================
+                // 夸奖风格
+                const modes = [
+                    { id: 'warm', name: '治愈暖心', emoji: '🌸' },
+                    { id: 'fancy', name: '彩虹屁', emoji: '🌈' },
+                    { id: 'wisdom', name: '深度哲理', emoji: '🌙' }
+                ];
+
+                // 关系类型（夸别人时使用）
+                const relationships = [
+                    { id: 'lover', name: '恋人/伴侣', emoji: '💕' },
+                    { id: 'friend', name: '朋友', emoji: '🤝' },
+                    { id: 'family', name: '家人', emoji: '👨‍👩‍👧' },
+                    { id: 'colleague', name: '同事', emoji: '💼' },
+                    { id: 'stranger', name: '陌生人', emoji: '🌟' }
+                ];
+
+                // ==================== 计算属性 ====================
+                // 当前有效输入（根据主Tab）
+                const currentInput = computed(() => {
+                    return mainTab.value === 'self' ? selfInput.value : othersInput.value;
+                });
+
+                // ==================== 图标渲染函数 ====================
+
+
+                // ==================== API Key 加载 ====================
+                /**
+                 * 从 localStorage 加载 API Key
+                 * 支持多种 key 名称，兼容不同工具
+                 */
+                const loadConfig = () => {
+                    try {
+                        // 优先从 global_llm_config 加载
+                        const globalConfig = localStorage.getItem('global_llm_config');
+                        if (globalConfig) {
+                            const parsed = JSON.parse(globalConfig);
+                            if (parsed.apiKey || parsed.deepseek) {
+                                apiConfig.value.apiKey = parsed.apiKey || parsed.deepseek;
+                                if (parsed.model) apiConfig.value.model = parsed.model;
+                                return;
+                            }
+                        }
+                        // 兼容其他可能的 key 名称
+                        const possibleKeys = ['apiKey', 'deepseek', 'deepseek_key', 'sk'];
+                        for (const key of possibleKeys) {
+                            const value = localStorage.getItem(key);
+                            if (value && value.startsWith('sk-')) {
+                                apiConfig.value.apiKey = value;
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('加载配置失败:', e);
+                    }
+                };
+
+                // ==================== 生成夸奖 ====================
+                /**
+                 * 根据当前模式生成夸奖内容
+                 * 夸自己和夸别人使用不同的 prompt
+                 */
+                const generateCompliment = async () => {
+                    if (!apiConfig.value.apiKey) { 
+                        alert('请先在首页配置 API Key'); 
+                        return; 
+                    }
+                    if (!currentInput.value.trim()) {
+                        alert('请先输入内容');
+                        return;
+                    }
+
+                    isGenerating.value = true;
+                    result.value = '';
+                    // 随机选择一个加载提示
+                    loadingText.value = loadingTexts[Math.floor(Math.random() * loadingTexts.length)];
+
+                    let prompt = '';
+                    
+                    if (mainTab.value === 'self') {
+                        // 夸自己的 prompt：安慰、肯定、鼓励（符合中国人审美）
+                        prompt = `你是一个温暖贴心的朋友，擅长给人情绪价值。
+
+## 情况
+用户现在有些难过或自我怀疑，他/她说：
+"${selfInput.value}"
+
+## 表达风格
+当前选择的风格是【${getModeName(activeMode.value)}】：
+- 治愈暖心：温柔理解，让人感到被接纳
+- 彩虹屁：热情夸赞，把优点放大让人开心
+- 深度哲理：有深度的安慰，让人豁然开朗
+
+## 核心要求
+1. **像朋友说话**：用口语化的方式，不要书面语，不要"老师语气"
+2. **先共情再肯定**：先理解对方的感受，再找到值得肯定的点
+3. **不说教不鸡汤**：不要"你要学会..."、"人生就是..."这种
+4. **真诚不敷衍**：结合用户说的具体情况来回应
+5. **给温暖不给压力**：不要"加油"、"努力"这种，就是单纯的接纳和认可
+
+## 参考语气
+像闺蜜/好兄弟在微信上安慰你一样自然
+
+## 字数
+80-120字左右
+
+## 输出
+只输出安慰/夸奖的话，不要任何解释。`;
+                    } else {
+                        // 夸别人的 prompt：赞美、感谢、表白（符合中国人审美）
+                        const relationName = relationships.find(r => r.id === selectedRelation.value)?.name || '朋友';
+                        
+                        // 根据不同关系类型，调整表达风格的提示
+                        const relationTips = {
+                            'lover': '恋人之间：可以甜蜜但不油腻，表达爱意要真诚自然，像情侣日常聊天的语气',
+                            'friend': '朋友之间：轻松随意，可以带点调侃但真心实意，像好兄弟/好闺蜜说话',
+                            'family': '家人之间：含蓄内敛，中国式亲情往往不善言辞但情深意重，表达关怀和感恩',
+                            'colleague': '同事之间：得体专业，适度赞赏对方的能力和付出，不过度不肉麻',
+                            'stranger': '表达善意：温和有礼，真诚但保持适当距离，让人感到舒适'
+                        };
+                        const relationTip = relationTips[selectedRelation.value] || relationTips['friend'];
+                        
+                        prompt = `你是一个深谙中国人情感表达方式的高情商沟通专家。
+
+## 背景
+用户想夸奖/感谢一个人，对方是用户的【${relationName}】。
+
+## 用户描述的情况
+"${othersInput.value}"
+
+## 表达风格
+当前选择的风格是【${getModeName(activeMode.value)}】：
+- 治愈暖心：温柔细腻，让人感到被理解和珍视
+- 彩虹屁：热情洋溢，把优点放大但不浮夸
+- 深度哲理：有深度有内涵，让人觉得被看见
+
+## 关系特点
+${relationTip}
+
+## 核心要求
+1. **真诚自然**：像正常人说话，不要书面语，不要"文艺腔"
+2. **高情商表达**：夸人夸到点上，具体而非泛泛而谈
+3. **符合中国人审美**：含蓄中见真情，不过度肉麻不让人尴尬
+4. **可以直接发送**：生成的话可以直接复制发给对方，不突兀
+5. **结合具体事情**：根据用户描述的事情来夸，有针对性
+
+## 字数限制
+80-120字左右，不要太长，像微信消息一样自然
+
+## 输出
+只输出夸奖的话，不要有任何解释、前缀或后缀。`;
+                    }
+
+                    try {
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json', 
+                                'Authorization': `Bearer ${apiConfig.value.apiKey}` 
+                            },
+                            body: JSON.stringify({ 
+                                model: apiConfig.value.model, 
+                                messages: [{ role: 'user', content: prompt }],
+                                temperature: 0.8  // 稍微提高创意性
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error?.message || '请求失败');
+                        }
+                        
+                        const data = await response.json();
+                        result.value = data.choices[0].message.content.trim();
+                    } catch (e) { 
+                        console.error('生成失败:', e);
+                        alert('生成失败: ' + e.message); 
+                    } finally { 
+                        isGenerating.value = false; 
+                    }
+                };
+
+                /**
+                 * 获取风格模式的中文名称
+                 */
+                const getModeName = (modeId) => {
+                    return modes.find(m => m.id === modeId)?.name || '治愈暖心';
+                };
+
+                /**
+                 * 复制结果到剪贴板
+                 */
+                const copyResult = () => { 
+                    navigator.clipboard.writeText(result.value); 
+                    alert('已复制到剪贴板！'); 
+                };
+
+                /**
+                 * 重新生成（换一个说法）
+                 */
+                const regenerate = () => {
+                    generateCompliment();
+                };
+
+                // ==================== 生命周期 ====================
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+
+                    loadConfig();
+                });
+
+                // ==================== 返回模板需要的变量和方法 ====================
+                return {
+                    mainTab,
+                    selfInput,
+                    othersInput,
+                    currentInput,
+                    activeMode, 
+                    modes, 
+                    selectedRelation,
+                    relationships,
+                    isGenerating, 
+                    result,
+                    loadingText,
+                    generateCompliment, 
+                    copyResult,
+                    regenerate
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/growth_compliment_gen.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表情包制作器 - AI趣味创作助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #ffeef8 0%, #ffe5f5 50%, #ffd6f0 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .meme-card {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .meme-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(236, 72, 153, 0.3);
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .bounce-anim {
+            animation: bounce 2s infinite;
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen p-4">
+    <div x-data="memeApp()" x-init="init()" class="max-w-7xl mx-auto">
+        <!-- 导航栏 -->
+        <nav class="glass rounded-2xl shadow-2xl mb-6 p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='../../index.html'">
+                    <div class="p-2 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl bounce-anim">
+                        <i class="fa-solid fa-note-sticky text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-2xl text-slate-900">表情包制作器</h1>
+                        <p class="text-sm text-slate-500">AI趣味创作，批量生成专属表情包</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- 当前模型显示 -->
+                    <div class="flex items-center gap-2 px-3 py-2 bg-pink-50 rounded-lg border border-pink-200">
+                        <i class="fa-solid fa-brain text-pink-600"></i>
+                        <span class="text-xs text-pink-600">模型:</span>
+                        <span class="text-sm font-medium text-pink-900" x-text="getModelDisplayName()"></span>
+                    </div>
+                    <button @click="showSettings = true" class="flex items-center gap-2 px-4 py-2 bg-pink-100 hover:bg-pink-200 rounded-lg transition">
+                        <i class="fa-solid fa-key text-pink-600"></i>
+                        <span class="text-sm font-medium">配置 Key</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 模式选择标签 -->
+        <div class="glass rounded-2xl shadow-xl mb-6 p-2">
+            <div class="grid grid-cols-3 gap-2">
+                <button
+                    @click="mode = 'text'"
+                    :class="mode === 'text' ? 'bg-pink-500 text-white shadow-lg' : 'bg-white text-slate-700 hover:bg-slate-50'"
+                    class="py-3 px-4 rounded-xl font-medium transition flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-font text-lg"></i>
+                    <span>文字表情包</span>
+                </button>
+                <button
+                    @click="mode = 'ai'"
+                    :class="mode === 'ai' ? 'bg-pink-500 text-white shadow-lg' : 'bg-white text-slate-700 hover:bg-slate-50'"
+                    class="py-3 px-4 rounded-xl font-medium transition flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                    <span>AI生成表情包</span>
+                </button>
+                <button
+                    @click="mode = 'image'"
+                    :class="mode === 'image' ? 'bg-pink-500 text-white shadow-lg' : 'bg-white text-slate-700 hover:bg-slate-50'"
+                    class="py-3 px-4 rounded-xl font-medium transition flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-image text-lg"></i>
+                    <span>参考图模式</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧：配置面板 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 文字表情包模式 -->
+                <div x-show="mode === 'text'" class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-layer-group text-pink-600"></i>
+                        选择模板
+                    </h3>
+                    <div class="space-y-3">
+                        <template x-for="template in textTemplates" :key="template.id">
+                            <button
+                                @click="selectedTemplate = template.id"
+                                :class="selectedTemplate === template.id ? 'bg-pink-50 border-pink-500 ring-2 ring-pink-200' : 'bg-white border-slate-200 hover:bg-slate-50'"
+                                class="w-full text-left p-3 rounded-lg border-2 transition flex items-center gap-3"
+                            >
+                                <div class="w-12 h-12 bg-gradient-to-br from-pink-100 to-rose-100 rounded-lg flex items-center justify-center text-2xl">
+                                    <span x-text="template.emoji"></span>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-medium text-slate-900" x-text="template.name"></div>
+                                    <div class="text-xs text-slate-500" x-text="template.desc"></div>
+                                </div>
+                                <i x-show="selectedTemplate === template.id" class="fa-solid fa-circle-check text-pink-600 text-lg"></i>
+                            </button>
+                        </template>
+                    </div>
+
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">输入文字</label>
+                        <textarea
+                            x-model="textContent"
+                            rows="4"
+                            placeholder="输入你想要的文字..."
+                            class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- AI生成模式 -->
+                <div x-show="mode === 'ai'" class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-wand-sparkles text-pink-600"></i>
+                        AI创作配置
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">场景描述</label>
+                            <textarea
+                                x-model="aiPrompt"
+                                rows="4"
+                                placeholder="例如：一只可爱的橘猫在打工摸鱼"
+                                class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">表情包文字（可选）</label>
+                            <input
+                                type="text"
+                                x-model="aiText"
+                                placeholder="例如：摸鱼中，请勿打扰"
+                                class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            >
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">风格</label>
+                            <select x-model="aiStyle" class="w-full rounded-lg border-slate-200 border p-3">
+                                <option value="cute">可爱卡通</option>
+                                <option value="anime">动漫风格</option>
+                                <option value="realistic">写实风格</option>
+                                <option value="minimalist">简约扁平</option>
+                                <option value="pixel">像素风格</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 参考图模式 -->
+                <div x-show="mode === 'image'" class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-image text-pink-600"></i>
+                        参考图生成
+                    </h3>
+                    <div class="space-y-4">
+                        <!-- 上传参考图 -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">上传参考图片</label>
+                            <div 
+                                @click="$refs.imageUpload.click()"
+                                @dragover.prevent="dragOver = true"
+                                @dragleave.prevent="dragOver = false"
+                                @drop.prevent="handleDrop($event)"
+                                :class="dragOver ? 'border-pink-500 bg-pink-50' : 'border-slate-200 hover:border-pink-300'"
+                                class="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition"
+                            >
+                                <template x-if="!imageRef">
+                                    <div class="flex flex-col items-center">
+                                        <i class="fa-solid fa-image text-4xl text-slate-300 mb-2"></i>
+                                        <p class="text-sm text-slate-500">点击或拖拽图片到此区域上传</p>
+                                        <p class="text-xs text-slate-400 mt-1">支持 JPG、PNG，最大 10MB</p>
+                                    </div>
+                                </template>
+                                <template x-if="imageRef">
+                                    <div class="flex flex-col items-center">
+                                        <img :src="imageRef" class="w-32 h-32 object-contain rounded-lg mb-2 border border-slate-200">
+                                        <p class="text-xs text-slate-400">点击或拖拽可更换图片</p>
+                                    </div>
+                                </template>
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    class="hidden"
+                                    @change="handleFileSelect($event)"
+                                    x-ref="imageUpload"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- 场景描述 -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">场景描述</label>
+                            <textarea
+                                x-model="imagePrompt"
+                                rows="3"
+                                placeholder="描述参考图的场景或风格，例如：保持这只猫的动作和表情"
+                                class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                            ></textarea>
+                        </div>
+
+                        <!-- 表情包文字（多行） -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                表情包文字
+                                <span class="text-xs text-slate-400 ml-1">（每行一个，自动生成多张）</span>
+                            </label>
+                            <textarea
+                                x-model="imageTexts"
+                                rows="6"
+                                placeholder="摸鱼中，请勿打扰
+这破班是一天都上不下去了
+周一综合症晚期
+终于周五了！
+今天也是努力的一天呢
+工资已到账，确认收货"
+                                class="w-full rounded-lg border-slate-200 border p-3 focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                            ></textarea>
+                            <p class="text-xs text-slate-500 mt-1">
+                                当前 <span x-text="imageTexts.split('\\n').filter(t => t.trim()).length"></span> 行，将生成 <span x-text="imageTexts.split('\\n').filter(t => t.trim()).length"></span> 张表情包
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 批量生成设置（文字和AI模式） -->
+                <div x-show="mode !== 'image'" class="glass rounded-2xl shadow-xl p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-slate-900">
+                        <i class="fa-solid fa-border-all text-pink-600"></i>
+                        批量生成
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
+                                <span>生成数量</span>
+                                <span class="text-pink-600" x-text="batchCount"></span>
+                            </label>
+                            <input
+                                type="range"
+                                x-model.number="batchCount"
+                                min="1"
+                                max="16"
+                                step="1"
+                                class="w-full"
+                            >
+                            <div class="flex justify-between text-xs text-slate-500 mt-1">
+                                <span>1张</span>
+                                <span>16张</span>
+                            </div>
+                        </div>
+
+                        <div x-show="mode === 'ai'">
+                            <label class="flex items-center gap-2 text-sm text-slate-700">
+                                <input type="checkbox" x-model="autoVariation" class="rounded">
+                                <span>自动生成变体（不同角度/表情）</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 生成按钮 -->
+                <button
+                    @click="generate()"
+                    :disabled="isGenerating || !canGenerate()"
+                    :class="isGenerating ? 'bg-slate-400' : 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600'"
+                    class="w-full text-white font-bold py-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2"
+                >
+                    <i :class="isGenerating ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-rocket'" class="text-lg"></i>
+                    <span x-text="isGenerating ? `生成中... ${generatedCount}/${totalCount}` : '开始生成表情包'"></span>
+                </button>
+
+                <!-- 进度显示 -->
+                <div x-show="isGenerating" class="glass rounded-2xl shadow-xl p-4">
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm text-slate-700">
+                            <span>生成进度</span>
+                            <span><span x-text="generatedCount"></span> / <span x-text="totalCount"></span></span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div :style="`width: ${progress}%`" class="bg-gradient-to-r from-pink-500 to-rose-500 h-full transition-all duration-500"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：结果展示 -->
+            <div class="lg:col-span-2">
+                <div class="glass rounded-2xl shadow-xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-xl flex items-center gap-2 text-slate-900">
+                            <i class="fa-solid fa-images text-pink-600 text-xl"></i>
+                            表情包库
+                        </h3>
+                        <div x-show="results.length > 0" class="flex gap-2">
+                            <button @click="downloadAll()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-download"></i>
+                                下载全部
+                            </button>
+                            <button @click="clearResults()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-trash-can"></i>
+                                清空
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 空状态 -->
+                    <div x-show="results.length === 0 && !isGenerating" class="flex flex-col items-center justify-center py-20 text-slate-400">
+                        <i class="fa-solid fa-note-sticky text-6xl mb-4 opacity-50"></i>
+                        <p class="text-lg font-medium">还没有表情包</p>
+                        <p class="text-sm">选择模式，开始创作吧</p>
+                    </div>
+
+                    <!-- 加载状态 - 动态显示正在生成的占位 -->
+                    <div x-show="isGenerating" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <template x-for="(result, idx) in results" :key="result.id || idx">
+                            <div class="aspect-square bg-gradient-to-br from-pink-100 to-rose-100 flex flex-col items-center justify-center rounded-xl">
+                                <i class="fa-solid fa-puzzle-piece text-4xl text-pink-300 mb-2 animate-pulse"></i>
+                                <span class="text-xs text-pink-400">生成中...</span>
+                                <span class="text-xs text-pink-300 mt-1">(<span x-text="idx + 1"></span>/<span x-text="totalCount"></span>)</span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- 结果网格 -->
+                    <div x-show="!isGenerating && results.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <template x-for="(result, idx) in results" :key="result.id || idx">
+                            <div class="meme-card glass rounded-xl overflow-hidden">
+                                <!-- 加载中占位 -->
+                                <template x-if="result.placeholder">
+                                    <div class="aspect-square bg-gradient-to-br from-pink-100 to-rose-100 flex flex-col items-center justify-center">
+                                        <i class="fa-solid fa-puzzle-piece text-4xl text-pink-300 mb-2 animate-pulse"></i>
+                                        <span class="text-xs text-pink-400">生成中...</span>
+                                        <span class="text-xs text-pink-300 mt-1">(<span x-text="idx + 1"></span>/<span x-text="totalCount"></span>)</span>
+                                    </div>
+                                </template>
+                                <!-- 错误状态 -->
+                                <template x-if="result.error">
+                                    <div class="aspect-square bg-red-50 flex flex-col items-center justify-center">
+                                        <i class="fa-solid fa-triangle-exclamation text-4xl text-red-300 mb-2"></i>
+                                        <span class="text-xs text-red-400">生成失败</span>
+                                    </div>
+                                </template>
+                                <!-- 正常结果 - 可点击放大 -->
+                                <template x-if="!result.placeholder && !result.error">
+                                    <div>
+                                        <img 
+                                            :src="result.url" 
+                                            :alt="result.prompt" 
+                                            class="w-full aspect-square object-cover cursor-pointer"
+                                            @click="openPreview(result.url)"
+                                        >
+                                        <div class="p-3 border-t border-slate-100">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs text-slate-500">#<span x-text="idx + 1"></span></span>
+                                                <div class="flex gap-1">
+                                                    <button @click="downloadImage(result)" class="p-1.5 bg-pink-100 hover:bg-pink-200 rounded transition" title="下载">
+                                                        <i class="fa-solid fa-download text-pink-600 text-xs"></i>
+                                                    </button>
+                                                    <button @click="copyImage(result)" class="p-1.5 bg-blue-100 hover:bg-blue-200 rounded transition" title="复制">
+                                                        <i class="fa-solid fa-copy text-blue-600 text-xs"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div x-show="showSettings" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-900">
+                    <i class="fa-solid fa-key text-pink-600 text-xl"></i>
+                    API 配置
+                </h3>
+
+                <div class="space-y-4 mb-6">
+                    <!-- 豆包 API Key -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            豆包 API Key
+                            <a href="https://console.volcengine.com/ark" target="_blank" class="text-xs text-blue-600 ml-2">(获取Key)</a>
+                        </label>
+                        <input
+                            type="password"
+                            x-model="apiConfig.apiKey"
+                            placeholder="请输入火山引擎API Key"
+                            class="w-full rounded-lg border-slate-300 border p-3"
+                        >
+                    </div>
+
+                    <!-- 模型选择 -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">模型选择</label>
+                        <select x-model="apiConfig.model" class="w-full rounded-lg border-slate-300 border p-3 bg-white">
+                            <option value="doubao-seedream-4-0-250828">Seedream 4.0（推荐）</option>
+                            <option value="doubao-seedream-4-5-251128">Seedream 4.5</option>
+                        </select>
+                    </div>
+
+                    <!-- 高级设置 -->
+                    <div>
+                        <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">图片分辨率</label>
+                        <select x-model="apiConfig.size" class="w-full rounded-lg border-slate-300 border p-3 bg-white">
+                            <option value="1K">1K (1024x1024)</option>
+                            <option value="2K">2K (2048x2048)</option>
+                            <option value="4K">4K (4096x4096)</option>
+                        </select>
+                    </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">水印开关</label>
+                                <div class="flex items-center h-[50px]">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" x-model="apiConfig.disableWatermark" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                                        <span class="ml-3 text-sm font-medium text-slate-700" x-text="apiConfig.disableWatermark ? '关闭水印' : '开启水印'"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button @click="showSettings = false" class="px-6 py-2 hover:bg-slate-100 rounded-lg text-slate-700">
+                        取消
+                    </button>
+                    <button @click="saveConfig()" class="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700">
+                        保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图片预览弹窗 -->
+        <div x-show="previewImage" x-cloak class="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4" @click="previewImage = ''">
+            <div @click.stop class="max-w-full max-h-full">
+                <img :src="previewImage" class="max-w-[90vw] max-h-[80vh] object-contain rounded-lg">
+                <div class="flex justify-center gap-4 mt-4">
+                    <button @click="downloadCurrentPreview()" class="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 flex items-center gap-2">
+                        <i class="fa-solid fa-download"></i>下载
+                    </button>
+                    <button @click="copyCurrentPreview()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                        <i class="fa-solid fa-copy"></i>复制
+                    </button>
+                    <button @click="previewImage = ''" class="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">
+                        关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function memeApp() {
+            return {
+                // 状态
+                showSettings: false,
+                isGenerating: false,
+                mode: 'text', // text | ai | image
+                dragOver: false,
+
+                // 进度
+                generatedCount: 0,
+                totalCount: 0,
+                progress: 0,
+
+                // 数据
+                results: [],
+                selectedTemplate: 'panda',
+                textContent: '',
+                aiPrompt: '',
+                aiText: '',
+                aiStyle: 'cute',
+                batchCount: 4,
+                autoVariation: true,
+
+                // 参考图模式数据
+                imageRef: '',
+                imagePrompt: '',
+                imageTexts: '',
+
+                // 预览状态
+                previewImage: '',
+
+                // 配置
+                apiConfig: {
+                    model: 'doubao-seedream-4-0-250828',
+                    apiKey: '',
+                    disableWatermark: true,
+                    size: '2K'
+                },
+
+                // 文字表情包模板
+                textTemplates: [
+                    { id: 'panda', name: '熊猫头', desc: '经典表情包', emoji: '🐼' },
+                    { id: 'cat', name: '猫猫头', desc: '可爱猫咪', emoji: '🐱' },
+                    { id: 'doge', name: 'Doge', desc: '柴犬表情', emoji: '🐕' },
+                    { id: 'pepe', name: '青蛙佩佩', desc: '悲伤蛙', emoji: '🐸' },
+                    { id: 'wojak', name: 'Wojak', desc: '我就是', emoji: '😭' },
+                    { id: 'thinking', name: '思考中', desc: '思考表情', emoji: '🤔' }
+                ],
+
+                // 初始化
+                init() {
+                    this.loadConfig();
+                },
+
+                // 加载配置
+                loadConfig() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        // 兼容旧配置
+                        if (data.apiKey) {
+                            this.apiConfig.apiKey = data.apiKey;
+                        }
+                        if (data.doubao) {
+                            this.apiConfig.apiKey = data.doubao;
+                        }
+                        if (data.doubaoImageModel && data.doubaoImageModel.startsWith('doubao-')) {
+                            this.apiConfig.model = data.doubaoImageModel;
+                        }
+                        // 加载水印设置
+                        if (typeof data.doubaoDisableWatermark === 'boolean') {
+                            this.apiConfig.disableWatermark = data.doubaoDisableWatermark;
+                        }
+                    }
+                },
+
+                // 保存配置
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    // 只保存豆包相关配置，不污染全局 model 字段
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        doubao: this.apiConfig.apiKey,
+                        doubaoImageModel: this.apiConfig.model,
+                        doubaoDisableWatermark: this.apiConfig.disableWatermark
+                    }));
+                    this.showSettings = false;
+                },
+
+                // 获取模型显示名称
+                getModelDisplayName() {
+                    const modelNames = {
+                        'doubao-seedream-4-5-251128': 'Seedream 4.5',
+                        'doubao-seedream-4-0-250828': 'Seedream 4.0'
+                    };
+                    return modelNames[this.apiConfig.model] || '未选择';
+                },
+
+                // 验证配置
+                validateApiConfig() {
+                    if (!this.apiConfig.apiKey) {
+                        alert('请先配置API Key');
+                        return false;
+                    }
+                    return true;
+                },
+
+                // 检查是否可以生成
+                canGenerate() {
+                    if (this.mode === 'text') {
+                        return this.textContent.trim().length > 0;
+                    } else if (this.mode === 'ai') {
+                        return this.aiPrompt.trim().length > 0;
+                    } else {
+                        // 参考图模式
+                        const texts = this.imageTexts.split('\n').filter(t => t.trim());
+                        return this.imageRef.trim().length > 0 && texts.length > 0;
+                    }
+                },
+
+                // 主生成函数
+                async generate() {
+                    if (!this.validateApiConfig()) {
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    this.isGenerating = true;
+                    this.results = [];
+                    this.generatedCount = 0;
+                    
+                    try {
+                        if (this.mode === 'text') {
+                            this.totalCount = this.batchCount;
+                            await this.generateTextMemes();
+                        } else if (this.mode === 'ai') {
+                            this.totalCount = this.batchCount;
+                            await this.generateAIMemes();
+                        } else {
+                            // 参考图模式
+                            const texts = this.imageTexts.split('\n').filter(t => t.trim());
+                            this.totalCount = texts.length;
+                            await this.generateImageMemes(texts);
+                        }
+                    } catch (error) {
+                        console.error('生成失败:', error);
+                        alert(error.message || '生成失败，请重试');
+                    } finally {
+                        this.isGenerating = false;
+                    }
+                },
+
+                // 生成文字表情包
+                async generateTextMemes() {
+                    const template = this.textTemplates.find(t => t.id === this.selectedTemplate);
+
+                    for (let i = 0; i < this.batchCount; i++) {
+                        const prompt = `Create a meme image with ${template.name} style.
+Add text: "${this.textContent}"
+Style: Cute cartoon meme, square format, high quality.
+The text should be clearly visible and well-positioned.`;
+
+                        // 添加占位动画
+                        const placeholderId = Date.now() + i;
+                        this.results.push({
+                            placeholder: true,
+                            id: placeholderId,
+                            prompt: prompt
+                        });
+
+                        try {
+                            const result = await this.callImageAPI(prompt);
+                            // 替换占位为真实结果
+                            const idx = this.results.findIndex(r => r.id === placeholderId);
+                            if (idx !== -1) {
+                                this.results[idx] = { ...result, id: placeholderId };
+                            }
+                        } catch (error) {
+                            const idx = this.results.findIndex(r => r.id === placeholderId);
+                            if (idx !== -1) {
+                                this.results[idx] = { error: true, id: placeholderId, prompt: prompt };
+                            }
+                        }
+
+                        this.generatedCount++;
+                        this.progress = (this.generatedCount / this.totalCount) * 100;
+                    }
+                },
+
+                // 生成AI表情包
+                async generateAIMemes() {
+                    const basePrompt = `${this.aiPrompt}. Style: ${this.aiStyle}, meme format, square image.`;
+
+                    for (let i = 0; i < this.batchCount; i++) {
+                        let prompt = basePrompt;
+
+                        if (this.autoVariation) {
+                            const variations = ['different angle', 'different expression', 'different pose', 'different lighting'];
+                            prompt += ` ${variations[i % variations.length]}`;
+                        }
+
+                        if (this.aiText) {
+                            prompt += ` Add text overlay: "${this.aiText}"`;
+                        }
+
+                        // 添加占位动画
+                        const placeholderId = Date.now() + i;
+                        this.results.push({
+                            placeholder: true,
+                            id: placeholderId,
+                            prompt: prompt
+                        });
+
+                        try {
+                            const result = await this.callImageAPI(prompt);
+                            // 替换占位为真实结果
+                            const idx = this.results.findIndex(r => r.id === placeholderId);
+                            if (idx !== -1) {
+                                this.results[idx] = { ...result, id: placeholderId };
+                            }
+                        } catch (error) {
+                            const idx = this.results.findIndex(r => r.id === placeholderId);
+                            if (idx !== -1) {
+                                this.results[idx] = { error: true, id: placeholderId, prompt: prompt };
+                            }
+                        }
+
+                        this.generatedCount++;
+                        this.progress = (this.generatedCount / this.totalCount) * 100;
+                    }
+                },
+
+                // 生成参考图表情包
+                async generateImageMemes(texts) {
+                    for (let i = 0; i < texts.length; i++) {
+                        const text = texts[i].trim();
+                        if (!text) continue;
+
+                        const prompt = `${this.imagePrompt}. 
+Add text overlay: "${text}".
+Keep the style consistent with the reference image.
+Meme format, square image, high quality.`;
+
+                        // 添加占位动画
+                        const placeholderId = Date.now() + i;
+                        this.results.push({
+                            placeholder: true,
+                            id: placeholderId,
+                            prompt: prompt
+                        });
+
+                        try {
+                            const result = await this.callImageAPIWithImage(prompt, this.imageRef);
+                            const idx = this.results.findIndex(r => r.id === placeholderId);
+                            if (idx !== -1) {
+                                this.results[idx] = { ...result, id: placeholderId };
+                            }
+                        } catch (error) {
+                            const idx = this.results.findIndex(r => r.id === placeholderId);
+                            if (idx !== -1) {
+                                this.results[idx] = { error: true, id: placeholderId, prompt: prompt };
+                            }
+                        }
+
+                        this.generatedCount++;
+                        this.progress = (this.generatedCount / this.totalCount) * 100;
+                    }
+                },
+
+                // 处理文件选择
+                handleFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.processFile(file);
+                    }
+                },
+
+                // 处理拖拽
+                handleDrop(event) {
+                    this.dragOver = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.processFile(file);
+                    }
+                },
+
+                // 处理文件
+                processFile(file) {
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('图片大小不能超过 10MB');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.imageRef = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                // 获取尺寸字符串
+                getSizeString() {
+                    const sizeMap = {
+                        '1K': '1024x1024',
+                        '2K': '2048x2048',
+                        '4K': '4096x4096'
+                    };
+                    return sizeMap[this.apiConfig.size] || '2048x2048';
+                },
+
+                // 调用图像生成API
+                async callImageAPI(prompt) {
+                    const endpoint = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
+
+                    const requestBody = {
+                        model: this.apiConfig.model,
+                        prompt: prompt,
+                        size: this.getSizeString(),
+                        watermark: !this.apiConfig.disableWatermark,
+                        quality: 'standard',
+                        response_format: 'b64_json'
+                    };
+
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.apiKey}`
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`API错误: ${errorData.error?.message || errorData.message || response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.data && data.data[0]) {
+                        const imageData = data.data[0];
+                        return {
+                            url: imageData.b64_json ? `data:image/jpeg;base64,${imageData.b64_json}` : imageData.url,
+                            prompt: prompt,
+                            timestamp: Date.now()
+                        };
+                    }
+
+                    throw new Error('API返回格式错误');
+                },
+
+                // 调用图像生成API（带参考图）
+                async callImageAPIWithImage(prompt, imageBase64) {
+                    const endpoint = 'https://ark.cn-beijing.volces.com/api/v3/images/generations';
+
+                    const requestBody = {
+                        model: this.apiConfig.model,
+                        prompt: prompt,
+                        image: imageBase64,
+                        size: this.getSizeString(),
+                        watermark: !this.apiConfig.disableWatermark,
+                        quality: 'standard',
+                        response_format: 'b64_json'
+                    };
+
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.apiKey}`
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`API错误: ${errorData.error?.message || errorData.message || response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.data && data.data[0]) {
+                        const imageData = data.data[0];
+                        return {
+                            url: imageData.b64_json ? `data:image/jpeg;base64,${imageData.b64_json}` : imageData.url,
+                            prompt: prompt,
+                            timestamp: Date.now()
+                        };
+                    }
+
+                    throw new Error('API返回格式错误');
+                },
+
+                // 下载图片
+                downloadImage(result) {
+                    const a = document.createElement('a');
+                    a.href = result.url;
+                    a.download = `meme_${result.timestamp}.png`;
+                    a.click();
+                },
+
+                // 下载全部
+                downloadAll() {
+                    this.results.forEach((result, idx) => {
+                        setTimeout(() => {
+                            this.downloadImage(result);
+                        }, idx * 500);
+                    });
+                },
+
+                // 复制图片
+                async copyImage(result) {
+                    try {
+                        const response = await fetch(result.url);
+                        const blob = await response.blob();
+                        await navigator.clipboard.write([
+                            new ClipboardItem({ [blob.type]: blob })
+                        ]);
+                        alert('已复制到剪贴板');
+                    } catch (err) {
+                        alert('复制失败，请尝试下载');
+                    }
+                },
+
+                // 清空结果
+                clearResults() {
+                    if (confirm('确定要清空所有表情包吗？')) {
+                        this.results = [];
+                    }
+                },
+
+                // 打开图片预览
+                openPreview(url) {
+                    this.previewImage = url;
+                },
+
+                // 下载当前预览图
+                downloadCurrentPreview() {
+                    if (!this.previewImage) return;
+                    const a = document.createElement('a');
+                    a.href = this.previewImage;
+                    a.download = `meme_preview_${Date.now()}.png`;
+                    a.click();
+                },
+
+                // 复制当前预览图
+                async copyCurrentPreview() {
+                    if (!this.previewImage) return;
+                    try {
+                        const response = await fetch(this.previewImage);
+                        const blob = await response.blob();
+                        await navigator.clipboard.write([
+                            new ClipboardItem({ [blob.type]: blob })
+                        ]);
+                        alert('已复制到剪贴板');
+                    } catch (err) {
+                        alert('复制失败，请尝试下载');
+                    }
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_meme_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <!-- Google Analytics：与项目其他工具统一 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-M09H8GY78X');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 密室逃脱 · 沉浸式</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <style>
+    /**
+     * 全局：沉浸式暗色全屏，消除「网页工具」观感
+     */
+    [x-cloak] { display: none !important; }
+
+    html, body {
+      margin: 0;
+      min-height: 100vh;
+      height: 100%;
+      overflow-x: hidden;
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .escape-root {
+      min-height: 100vh;
+      color: #e2e8f0;
+      background:
+        radial-gradient(ellipse 100% 80% at 50% -20%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 50% at 100% 50%, rgba(239, 68, 68, 0.06) 0%, transparent 45%),
+        linear-gradient(180deg, #0a0a12 0%, #12101c 40%, #0d0b14 100%);
+    }
+
+    /* ---------- 微粒浮动背景 ---------- */
+    .particle-layer {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgba(148, 163, 184, 0.35);
+      animation: float-particle linear infinite;
+      box-shadow: 0 0 6px rgba(99, 102, 241, 0.25);
+    }
+    @keyframes float-particle {
+      0% { transform: translateY(100vh) translateX(0) scale(0.6); opacity: 0; }
+      10% { opacity: 0.7; }
+      90% { opacity: 0.5; }
+      100% { transform: translateY(-10vh) translateX(20px) scale(1); opacity: 0; }
+    }
+
+    /* ---------- 危险：边缘泛红 ---------- */
+    .vignette-danger {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      box-shadow: inset 0 0 80px 20px rgba(220, 38, 38, 0.45);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .vignette-danger.is-on {
+      opacity: 1;
+      animation: danger-pulse 2.2s ease-in-out infinite;
+    }
+    @keyframes danger-pulse {
+      0%, 100% { box-shadow: inset 0 0 70px 16px rgba(220, 38, 38, 0.35); }
+      50% { box-shadow: inset 0 0 100px 28px rgba(239, 68, 68, 0.55); }
+    }
+
+    /* ---------- 线索金光闪烁 ---------- */
+    .gold-flash-overlay {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 55;
+      background: radial-gradient(circle at 50% 50%, rgba(250, 204, 21, 0.35) 0%, transparent 55%);
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
+    }
+    .gold-flash-overlay.is-flash {
+      opacity: 1;
+      animation: gold-burst 0.85s ease-out forwards;
+    }
+    @keyframes gold-burst {
+      0% { opacity: 0; transform: scale(0.92); }
+      25% { opacity: 1; }
+      100% { opacity: 0; transform: scale(1.08); }
+    }
+
+    /* ---------- 进入密室按钮：脉冲光效 ---------- */
+    @keyframes btn-pulse-glow {
+      0%, 100% {
+        box-shadow:
+          0 0 0 1px rgba(129, 140, 248, 0.5),
+          0 0 24px rgba(99, 102, 241, 0.45),
+          0 0 48px rgba(139, 92, 246, 0.25);
+      }
+      50% {
+        box-shadow:
+          0 0 0 2px rgba(196, 181, 253, 0.7),
+          0 0 40px rgba(99, 102, 241, 0.65),
+          0 0 72px rgba(168, 85, 247, 0.35);
+      }
+    }
+    .btn-enter-pulse {
+      animation: btn-pulse-glow 2.2s ease-in-out infinite;
+    }
+
+    /* ---------- 倒计时：低於 5 分鐘閃爍 ---------- */
+    @keyframes timer-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .timer-critical {
+      animation: timer-blink 1s ease-in-out infinite;
+      color: #f87171 !important;
+      text-shadow: 0 0 20px rgba(248, 113, 113, 0.6);
+    }
+
+    /* ---------- 打字机光标 ---------- */
+    .type-cursor::after {
+      content: '▍';
+      margin-left: 2px;
+      color: rgba(129, 140, 248, 0.85);
+      animation: cursor-blink 0.9s step-end infinite;
+    }
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ---------- Markdown 叙事区 ---------- */
+    .prose-escape :where(h1, h2, h3) {
+      color: #c7d2fe;
+      font-weight: 700;
+      margin: 0.75em 0 0.35em;
+    }
+    .prose-escape :where(p, li) {
+      color: rgba(226, 232, 240, 0.92);
+      line-height: 1.7;
+      margin: 0.4em 0;
+    }
+    .prose-escape :where(strong) {
+      color: #fde68a;
+    }
+    .prose-escape :where(blockquote) {
+      border-left: 3px solid rgba(129, 140, 248, 0.5);
+      padding-left: 0.85em;
+      color: rgba(203, 213, 225, 0.88);
+      font-style: italic;
+    }
+
+    /* ---------- 背包格子 ---------- */
+    .inv-slot {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      border: 1px solid rgba(71, 85, 105, 0.65);
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #94a3b8;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      cursor: pointer;
+      overflow: hidden;
+      padding: 2px;
+    }
+    .inv-slot:hover {
+      border-color: rgba(129, 140, 248, 0.55);
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+    }
+    .inv-slot.has-item {
+      background: rgba(30, 27, 75, 0.45);
+      border-color: rgba(167, 139, 250, 0.4);
+    }
+    .inv-slot.selected {
+      outline: 2px solid #a78bfa;
+      outline-offset: 2px;
+    }
+
+    /* ---------- 彩带（通关） ---------- */
+    .confetti-canvas {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+    }
+
+    /* ---------- 滚动条 ---------- */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #4f46e5, #7c3aed);
+      border-radius: 4px;
+    }
+
+    /* ---------- 顶栏极简 ---------- */
+    .mini-nav-btn {
+      backdrop-filter: blur(10px);
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(51, 65, 85, 0.5);
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .mini-nav-btn:hover {
+      background: rgba(30, 41, 59, 0.65);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    /* ---------- 解锁提示弹出 ---------- */
+    @keyframes pop-in {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .toast-game {
+      animation: pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="escape-root">
+  <!-- 背景粒子层：由 Alpine 生成多个 .particle -->
+  <div class="particle-layer" aria-hidden="true" id="particleHost"></div>
+
+  <div id="app" x-data="escapeRoomGame()" x-init="init()" class="relative z-10 min-h-screen flex flex-col">
+
+    <!-- 危险与金光层（绑定主组件状态） -->
+    <div class="vignette-danger" :class="{ 'is-on': dangerActive }" aria-hidden="true"></div>
+    <div class="gold-flash-overlay" :class="{ 'is-flash': goldFlash }" aria-hidden="true"></div>
+
+    <!-- 极简顶栏：返回 + 设置 -->
+    <header class="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-3 py-2 pointer-events-none">
+      <div class="pointer-events-auto flex items-center gap-2">
+        <a href="../../index.html"
+           class="mini-nav-btn inline-flex items-center justify-center w-9 h-9 rounded-full text-slate-300 hover:text-white"
+           title="返回首页">
+          <i data-lucide="chevron-left" class="w-5 h-5"></i>
+        </a>
+      </div>
+      <div class="pointer-events-auto">
+        <button type="button"
+                @click="showSettings = true"
+                class="mini-nav-btn inline-flex items-center justify-center w-9 h-9 rounded-full text-slate-300 hover:text-white"
+                title="API 设置">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ========== 开始界面 ========== -->
+    <section x-show="phase === 'menu'" x-cloak
+             class="flex-1 flex flex-col items-center justify-center px-6 pt-14 pb-10 text-center">
+      <div class="max-w-lg w-full space-y-8">
+        <div class="space-y-3">
+          <h1 class="text-4xl sm:text-5xl font-black tracking-tight bg-gradient-to-r from-indigo-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent drop-shadow-lg">
+            AI 密室逃脱
+          </h1>
+          <p class="text-slate-400 text-lg sm:text-xl font-medium">
+            你能在 30 分钟内逃出去吗？
+          </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-4 text-left">
+          <div class="rounded-2xl bg-slate-900/60 border border-slate-700/60 p-4 backdrop-blur-sm">
+            <label class="block text-xs uppercase tracking-wider text-slate-500 mb-2">难度</label>
+            <select x-model="difficulty"
+                    class="w-full bg-slate-950/80 border border-slate-600 rounded-xl px-3 py-2.5 text-slate-200 focus:ring-2 focus:ring-violet-500 outline-none">
+              <option value="easy">简单（提示较多）</option>
+              <option value="normal">普通</option>
+              <option value="hard">困难（线索更隐晦）</option>
+            </select>
+          </div>
+          <div class="rounded-2xl bg-slate-900/60 border border-slate-700/60 p-4 backdrop-blur-sm">
+            <label class="block text-xs uppercase tracking-wider text-slate-500 mb-2">密室主题</label>
+            <select x-model="theme"
+                    class="w-full bg-slate-950/80 border border-slate-600 rounded-xl px-3 py-2.5 text-slate-200 focus:ring-2 focus:ring-violet-500 outline-none">
+              <option value="castle">古堡迷踪</option>
+              <option value="lab">地下实验室</option>
+              <option value="haunted">废弃鬼屋</option>
+              <option value="space">轨道空间站</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="button"
+                @click="enterRoom()"
+                :disabled="isStreaming"
+                class="btn-enter-pulse w-full sm:w-auto min-w-[240px] mx-auto px-10 py-4 rounded-2xl font-bold text-lg text-white
+                       bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:via-violet-500 hover:to-purple-500
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-[0.98]">
+          进入密室
+        </button>
+
+        <p class="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+          本游戏为 AI 生成剧情，每次体验可能不同。请自备 DeepSeek API Key（设置中配置）。错误操作不会惩罚，只会得到叙事提示。
+        </p>
+      </div>
+    </section>
+
+    <!-- ========== 游戏主界面：三栏 ========== -->
+    <section x-show="phase === 'playing'" x-cloak class="flex-1 flex flex-col pt-12 pb-4 px-2 sm:px-4 min-h-0">
+      <div class="flex flex-col lg:flex-row gap-3 flex-1 min-h-0 max-w-[1600px] mx-auto w-full">
+
+        <!-- 左侧 60%：房间 + 倒计时 + 输入 -->
+        <div class="flex flex-col min-h-0 lg:w-[60%] lg:flex-none rounded-2xl border border-slate-700/50 bg-slate-950/40 backdrop-blur-md overflow-hidden shadow-xl shadow-black/30">
+          <!-- 倒计时 -->
+          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 bg-slate-900/50">
+            <span class="text-xs text-slate-500 uppercase tracking-wider">剩余时间</span>
+            <span class="font-mono text-2xl font-bold tabular-nums"
+                  :class="secondsLeft <= 300 ? 'timer-critical' : 'text-red-400'"
+                  x-text="formatTime(secondsLeft)"></span>
+          </div>
+
+          <!-- 叙事滚动区 -->
+          <div class="flex-1 min-h-[220px] lg:min-h-0 overflow-y-auto px-4 py-3 space-y-4" id="narrativeScroll">
+            <template x-for="(block, idx) in narrativeLog" :key="'log-' + idx">
+              <article class="rounded-xl border border-slate-800/80 bg-slate-900/30 p-3">
+                <div class="prose prose-invert prose-sm max-w-none prose-escape" x-html="safeMarkdown(block)"></div>
+              </article>
+            </template>
+            <article x-show="streamNarrativeDisplay || isStreaming" class="rounded-xl border border-violet-900/50 bg-violet-950/20 p-3">
+              <div class="prose prose-invert prose-sm max-w-none prose-escape type-cursor"
+                   x-html="safeMarkdown(streamNarrativeDisplay)"></div>
+            </article>
+          </div>
+
+          <!-- 快捷动作 + 输入 -->
+          <div class="border-t border-slate-700/50 p-3 space-y-2 bg-slate-900/40">
+            <div class="flex flex-wrap gap-2">
+              <button type="button" @click="quickAct('查看四周环境，描述可见细节')"
+                      class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600">查看四周</button>
+              <button type="button" @click="quickAct('仔细检查墙上的画或装饰')"
+                      class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600">检查墙面</button>
+              <button type="button" @click="quickAct('尝试打开附近的柜子或抽屉')"
+                      class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600">打开柜体</button>
+              <button type="button" @click="quickAct('清点背包并思考如何组合使用物品')"
+                      class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600">使用物品</button>
+            </div>
+            <div class="flex gap-2">
+              <input type="text" x-model="userInput" @keydown.enter.prevent="submitAction()"
+                     placeholder="输入你的行动…"
+                     class="flex-1 min-w-0 bg-slate-950/80 border border-slate-600 rounded-xl px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:ring-2 focus:ring-violet-500 outline-none" />
+              <button type="button" @click="submitAction()"
+                      :disabled="isStreaming || !userInput.trim()"
+                      class="shrink-0 px-5 py-2.5 rounded-xl font-semibold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-40">
+                发送
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧 40%：背包上 + 线索板下 -->
+        <div class="flex flex-col gap-3 lg:w-[40%] lg:flex-none min-h-0">
+          <!-- 背包 4x3 -->
+          <div class="rounded-2xl border border-slate-700/50 bg-slate-950/40 backdrop-blur-md p-3 shadow-lg shadow-black/25 flex flex-col min-h-0">
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="text-sm font-bold text-indigo-200 flex items-center gap-2">
+                <i data-lucide="backpack" class="w-4 h-4"></i> 背包
+              </h2>
+              <span class="text-[10px] text-slate-500" x-show="combineMode">点选两个物品组合</span>
+            </div>
+            <div class="grid grid-cols-4 gap-2">
+              <template x-for="(slot, i) in inventory" :key="'inv-' + i">
+                <div class="inv-slot"
+                     :class="{ 'has-item': slot, 'selected': selectedSlots.includes(i) }"
+                     @click="onSlotClick(i)">
+                  <template x-if="slot">
+                    <div class="text-center w-full">
+                      <div class="text-xl leading-none" x-text="slot.emoji"></div>
+                      <div class="mt-1 leading-tight line-clamp-2" x-text="slot.name"></div>
+                    </div>
+                  </template>
+                  <template x-if="!slot">
+                    <span class="opacity-30">空</span>
+                  </template>
+                </div>
+              </template>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button type="button" @click="toggleCombine()"
+                      class="text-xs px-2 py-1 rounded-lg border border-slate-600 text-slate-400 hover:text-white"
+                      x-text="combineMode ? '取消组合' : '组合物品'"></button>
+              <button type="button" x-show="combineMode && selectedSlots.length === 2" @click="combineSelected()"
+                      class="text-xs px-2 py-1 rounded-lg border border-violet-500/60 text-violet-200 hover:bg-violet-950/50">
+                确认组合
+              </button>
+              <button type="button" @click="useSelectedItem()"
+                      class="text-xs px-2 py-1 rounded-lg border border-amber-700/50 text-amber-200/90 hover:bg-amber-950/40">
+                使用选中
+              </button>
+            </div>
+          </div>
+
+          <!-- 线索板 -->
+          <div class="flex-1 min-h-[180px] rounded-2xl border border-slate-700/50 bg-slate-950/40 backdrop-blur-md p-3 shadow-lg shadow-black/25 flex flex-col">
+            <h2 class="text-sm font-bold text-amber-200/90 flex items-center gap-2 mb-2">
+              <i data-lucide="layout-dashboard" class="w-4 h-4"></i> 线索板
+            </h2>
+            <ul class="flex-1 overflow-y-auto text-sm space-y-2 mb-3">
+              <template x-for="(c, ci) in clues" :key="'clue-' + ci">
+                <li class="flex gap-2 text-slate-300 border-l-2 border-amber-600/40 pl-2">
+                  <span class="text-amber-500/90">◆</span>
+                  <span x-text="c"></span>
+                </li>
+              </template>
+              <li x-show="!clues.length" class="text-slate-600 text-xs italic">暂无线索，继续探索…</li>
+            </ul>
+            <div class="border-t border-slate-700/50 pt-2">
+              <p class="text-xs text-slate-500 mb-2">谜题进度</p>
+              <ul class="space-y-1">
+                <template x-for="(p, pi) in puzzleTitles" :key="'puz-' + pi">
+                  <li class="flex items-center gap-2 text-xs"
+                      :class="pi < puzzlesSolved ? 'text-emerald-400' : 'text-slate-500'">
+                    <i :data-lucide="pi < puzzlesSolved ? 'check-circle-2' : 'circle'" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span x-text="p"></span>
+                  </li>
+                </template>
+              </ul>
+              <p class="mt-2 text-center text-sm font-mono text-violet-300" x-text="puzzlesSolved + ' / 5 谜题已解'"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 胜利全屏 ========== -->
+    <div x-show="phase === 'won'" x-cloak
+         class="fixed inset-0 z-[60] flex flex-col items-center justify-center px-6 bg-slate-950/95 backdrop-blur-xl">
+      <canvas id="confettiCanvas" class="confetti-canvas" width="400" height="300" style="display:none"></canvas>
+      <div class="max-w-lg text-center space-y-4 relative z-[61]">
+        <div class="text-5xl mb-2">🎉</div>
+        <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300">成功逃脱</h2>
+        <div class="prose prose-invert prose-sm max-w-none text-left rounded-2xl border border-emerald-800/40 bg-emerald-950/20 p-4 max-h-[50vh] overflow-y-auto"
+             x-html="safeMarkdown(endingText)"></div>
+        <button type="button" @click="backToMenu()"
+                class="mt-4 px-8 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-white">
+          返回标题
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== 失败 / 超时 ========== -->
+    <div x-show="phase === 'lost'" x-cloak
+         class="fixed inset-0 z-[60] flex flex-col items-center justify-center px-6 bg-slate-950/95 backdrop-blur-xl">
+      <div class="max-w-lg text-center space-y-4">
+        <div class="text-5xl mb-2">⏳</div>
+        <h2 class="text-3xl font-black text-red-300">未能逃脱</h2>
+        <div class="prose prose-invert prose-sm max-w-none text-left rounded-2xl border border-red-900/40 bg-red-950/10 p-4 max-h-[50vh] overflow-y-auto"
+             x-html="safeMarkdown(endingText)"></div>
+        <button type="button" @click="backToMenu()"
+                class="mt-4 px-8 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 font-semibold text-white">
+          返回标题
+        </button>
+      </div>
+    </div>
+
+    <!-- 游戏内事件 Toast -->
+    <div x-show="eventToast.show" x-transition
+         class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-xl toast-game
+                bg-violet-900/90 border border-violet-500/50 text-sm text-violet-100 shadow-lg max-w-[90vw]"
+         x-text="eventToast.message"></div>
+
+    <!-- ========== 设置弹窗 ========== -->
+    <div x-show="showSettings" x-cloak
+         class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+         @keydown.escape.window="showSettings = false">
+      <div class="bg-slate-900 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-md p-6 text-slate-200"
+           @click.outside="showSettings = false">
+        <h3 class="text-lg font-bold mb-4 text-white flex items-center gap-2">
+          <i data-lucide="key-round" class="w-5 h-5 text-violet-400"></i>
+          API 配置
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">DeepSeek API Key</label>
+            <input type="password" x-model="apiConfig.deepseek"
+                   class="w-full rounded-xl border border-slate-600 bg-slate-950 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">模型</label>
+            <select x-model="apiConfig.model"
+                    class="w-full rounded-xl border border-slate-600 bg-slate-950 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-800">取消</button>
+          <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-medium">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 各主题下 5 道谜题的展示名称（顺序与剧情一致，供 UI 打钩）
+     */
+    const THEME_PUZZLES = {
+      castle: ['石门机关', '书架暗格', '钟表密码', '地下室钥匙', '主厅逃脱'],
+      lab: ['门禁权限', '培养皿编号', '通风暗道', '实验日志', '紧急出口'],
+      haunted: ['镜中残影', '灵牌方位', '铜铃节拍', '血色日记', '封印之门'],
+      space: ['舱压面板', '氧气序列', '货运编码', '核心口令', '逃生舱']
+    };
+
+    const THEME_LABEL = {
+      castle: '古堡迷踪',
+      lab: '地下实验室',
+      haunted: '废弃鬼屋',
+      space: '轨道空间站'
+    };
+
+    const DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难' };
+
+    /**
+     * 在指定容器内生成若干浮动微粒 DOM
+     * @param {HTMLElement} host
+     * @param {number} count
+     */
+    function spawnParticles(host, count) {
+      if (!host) return;
+      host.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        el.className = 'particle';
+        el.style.left = Math.random() * 100 + '%';
+        el.style.animationDuration = (12 + Math.random() * 16) + 's';
+        el.style.animationDelay = (Math.random() * -20) + 's';
+        host.appendChild(el);
+      }
+    }
+
+    /**
+     * 简单彩带动画：通关时调用
+     * @param {HTMLCanvasElement} canvas
+     * @param {number} durationMs
+     */
+    function runConfetti(canvas, durationMs) {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.style.display = 'block';
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      const pieces = [];
+      const colors = ['#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#38bdf8', '#fb923c'];
+      for (let i = 0; i < 120; i++) {
+        pieces.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * -canvas.height,
+          w: 6 + Math.random() * 8,
+          h: 8 + Math.random() * 10,
+          vy: 2 + Math.random() * 4,
+          vx: -1 + Math.random() * 2,
+          rot: Math.random() * Math.PI,
+          vr: -0.1 + Math.random() * 0.2,
+          c: colors[i % colors.length]
+        });
+      }
+      const start = performance.now();
+      function frame(t) {
+        const elapsed = t - start;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const p of pieces) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vr;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.c;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }
+        if (elapsed < durationMs) requestAnimationFrame(frame);
+        else canvas.style.display = 'none';
+      }
+      requestAnimationFrame(frame);
+    }
+
+    /**
+     * 从模型完整输出中拆分叙事与 JSON 状态块
+     * 约定：叙事为 Markdown；单独一行 <<<GAME_STATE>>> 后为 JSON
+     * @param {string} full
+     * @returns {{ narrative: string, jsonStr: string }}
+     */
+    function splitGameResponse(full) {
+      const marker = '<<<GAME_STATE>>>';
+      const idx = full.indexOf(marker);
+      if (idx === -1) {
+        return { narrative: full.trim(), jsonStr: '' };
+      }
+      return {
+        narrative: full.slice(0, idx).trim(),
+        jsonStr: full.slice(idx + marker.length).trim()
+      };
+    }
+
+    /**
+     * 尝试解析游戏状态 JSON，失败则返回 null
+     * @param {string} jsonStr
+     */
+    function parseGameJson(jsonStr) {
+      if (!jsonStr) return null;
+      let s = jsonStr.trim();
+      // 若模型包了 markdown 代码块，剥掉
+      const fence = /^```(?:json)?\s*([\s\S]*?)```$/im.exec(s);
+      if (fence) s = fence[1].trim();
+      try {
+        return JSON.parse(s);
+      } catch (e) {
+        console.warn('GAME_STATE JSON 解析失败', e);
+        return null;
+      }
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('escapeRoomGame', () => ({
+        /** 界面阶段：menu | playing | won | lost */
+        phase: 'menu',
+        difficulty: 'normal',
+        theme: 'castle',
+
+        apiConfig: {
+          deepseek: '',
+          model: 'deepseek-v4-flash'
+        },
+        showSettings: false,
+
+        /** 倒计时：30 分钟 */
+        secondsLeft: 30 * 60,
+        timerId: null,
+
+        /** 叙事历史（已完成回合的 Markdown） */
+        narrativeLog: [],
+        /** 当前流式叙事展示（打字机目标文本） */
+        streamNarrativeRaw: '',
+        streamNarrativeDisplay: '',
+        typewriterTimer: null,
+        isStreaming: false,
+        reasoningBuffer: '',
+
+        userInput: '',
+        /** 12 格背包 */
+        inventory: Array(12).fill(null),
+        clues: [],
+        puzzleTitles: THEME_PUZZLES.castle,
+        puzzlesSolved: 0,
+
+        selectedSlots: [],
+        combineMode: false,
+
+        dangerActive: false,
+        goldFlash: false,
+
+        eventToast: { show: false, message: '' },
+        endingText: '',
+
+        conversation: [],
+
+        init() {
+          this.loadConfig();
+          spawnParticles(document.getElementById('particleHost'), 48);
+          this.$watch('phase', (v) => {
+            this.$nextTick(() => {
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+              if (v === 'won') {
+                const c = document.getElementById('confettiCanvas');
+                runConfetti(c, 4500);
+              }
+            });
+          });
+          this.$nextTick(() => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        },
+
+        /**
+         * 合并读取 global_llm_config
+         */
+        loadConfig() {
+          try {
+            const saved = localStorage.getItem('global_llm_config');
+            if (saved) this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+          } catch (e) {
+            console.error('解析 global_llm_config 失败', e);
+          }
+        },
+
+        /**
+         * 保存配置：禁止整对象覆盖，先读后合并
+         */
+        saveConfig() {
+          let cur = {};
+          try {
+            cur = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+          } catch (e) { /* ignore */ }
+          localStorage.setItem('global_llm_config', JSON.stringify({ ...cur, ...this.apiConfig }));
+          this.showSettings = false;
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        safeMarkdown(md) {
+          const raw = (md || '').trim();
+          if (!raw) return '';
+          if (typeof marked === 'undefined') return this.escapeHtml(raw);
+          const html = marked.parse(raw, { breaks: true });
+          if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+          return html;
+        },
+
+        escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        },
+
+        formatTime(sec) {
+          const m = Math.floor(Math.max(0, sec) / 60);
+          const s = Math.max(0, sec) % 60;
+          return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        },
+
+        /**
+         * 启动或重置倒计时器
+         */
+        startTimer() {
+          if (this.timerId) clearInterval(this.timerId);
+          this.secondsLeft = 30 * 60;
+          this.timerId = setInterval(() => {
+            if (this.phase !== 'playing') return;
+            if (this.secondsLeft <= 0) return;
+            this.secondsLeft--;
+            if (this.secondsLeft <= 0) this.onTimeUp();
+          }, 1000);
+        },
+
+        stopTimer() {
+          if (this.timerId) {
+            clearInterval(this.timerId);
+            this.timerId = null;
+          }
+        },
+
+        /**
+         * 时间耗尽：请求 AI 写结局，进入失败态
+         */
+        async onTimeUp() {
+          if (this.phase !== 'playing') return;
+          this.stopTimer();
+          this.phase = 'lost';
+          this.endingText = '时间耗尽，正在生成结局…';
+          this.isStreaming = true;
+          this.streamNarrativeRaw = '';
+          this.streamNarrativeDisplay = '';
+          /** 超时结局单独用简短 system，避免与主游戏规则混淆 */
+          const sys = '你是密室逃脱叙事旁白。主题：' + (THEME_LABEL[this.theme] || '密室') + '。用第二人称「你」写作。';
+          const user = '【系统事件】30 分钟已到，玩家未能解开全部谜题。请用富有氛围的 Markdown 写一段「时间耗尽」的结局。200～350 字。';
+          try {
+            const text = await this.streamCompletion(sys, user);
+            this.endingText = text || '钟声戛然而止。黑暗吞没了最后一丝希望……你未能在这场密室中脱身。';
+          } catch (e) {
+            this.endingText = '钟声戛然而止。黑暗吞没了最后一丝希望……你未能在这场密室中脱身。';
+          }
+          this.isStreaming = false;
+          this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        /**
+         * 进入游戏：重置状态并请求开场叙事
+         */
+        async enterRoom() {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            this.flashToast('请先配置 DeepSeek API Key');
+            return;
+          }
+
+          this.puzzleTitles = THEME_PUZZLES[this.theme] || THEME_PUZZLES.castle;
+          this.puzzlesSolved = 0;
+          this.clues = [];
+          this.inventory = Array(12).fill(null);
+          this.narrativeLog = [];
+          this.conversation = [];
+          this.selectedSlots = [];
+          this.combineMode = false;
+          this.dangerActive = false;
+          this.endingText = '';
+          this.phase = 'playing';
+          this.startTimer();
+
+          await this.sendAction('【新游戏开始】玩家刚进入密室。请描述第一个房间、氛围与可调查点，并给出初始 GAME_STATE（inventory_changes 可为空）。');
+        },
+
+        quickAct(text) {
+          this.userInput = text;
+          this.submitAction();
+        },
+
+        /**
+         * 提交玩家行动，流式获取叙事 + 状态
+         */
+        async submitAction() {
+          const t = (this.userInput || '').trim();
+          if (!t || this.isStreaming || this.phase !== 'playing') return;
+          this.userInput = '';
+          await this.sendAction(t);
+        },
+
+        /**
+         * 核心：构造上下文并调用 DeepSeek 流式接口
+         * @param {string} action 玩家或系统指令
+         */
+        async sendAction(action) {
+          const key = (this.apiConfig.deepseek || '').trim();
+          if (!key) {
+            this.showSettings = true;
+            return;
+          }
+
+          const sys = this.buildSystemPrompt();
+          /** 记入对话历史，供后续回合引用 */
+          this.conversation.push({ role: 'user', content: action });
+
+          this.isStreaming = true;
+          this.streamNarrativeRaw = '';
+          this.streamNarrativeDisplay = '';
+          this.reasoningBuffer = '';
+          this.clearTypewriter();
+
+          const stateSummary = this.buildStateSummary();
+          /** 最后一条 user 已是 action，此处仅追加结构化存档摘要，避免重复「玩家行动」 */
+          const messages = [
+            { role: 'system', content: sys },
+            ...this.conversation.slice(-14),
+            { role: 'user', content: '【当前存档摘要】\n' + stateSummary + '\n\n请接上述玩家消息继续剧情（遵守 <<<GAME_STATE>>> 与 JSON 约定）。' }
+          ];
+
+          try {
+            const fullText = await this.streamMessages(messages, { silent: false });
+            const { narrative, jsonStr } = splitGameResponse(fullText);
+            const state = parseGameJson(jsonStr);
+
+            if (narrative) {
+              this.narrativeLog.push(narrative);
+            }
+            this.applyGameState(state);
+
+            this.conversation.push({
+              role: 'assistant',
+              content: fullText.slice(0, 12000)
+            });
+
+            this.scrollNarrativeToEnd();
+
+            if (state && state.game_over === 'win') {
+              this.stopTimer();
+              await this.playVictory(state);
+            }
+          } catch (e) {
+            console.error(e);
+            this.flashToast(e.message || '请求失败');
+            this.narrativeLog.push('**通讯中断**\n\n' + (e.message || '请检查网络与 API Key 后重试。'));
+          } finally {
+            this.isStreaming = false;
+            this.clearTypewriter();
+            this.streamNarrativeRaw = '';
+            this.streamNarrativeDisplay = '';
+            this.$nextTick(() => {
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            });
+          }
+        },
+
+        /**
+         * 组装发予模型的系统提示：规则 + 输出格式
+         */
+        buildSystemPrompt() {
+          const tlabel = THEME_LABEL[this.theme] || '密室';
+          const dlabel = DIFF_LABEL[this.difficulty] || '普通';
+          const pnames = (THEME_PUZZLES[this.theme] || THEME_PUZZLES.castle).join(' → ');
+
+          return `你是沉浸式密室逃脱游戏的地下城主（DM），主题：${tlabel}；难度：${dlabel}。
+游戏机制：
+- 共有 5 道谜题，必须按顺序推进：${pnames}
+- 玩家用自然语言行动；错误操作不惩罚，用叙事给出温和提示或红鲱鱼
+- 可奖励道具；道具可组合；背包最多 12 件
+- 保持紧张氛围但避免过度血腥描写
+
+输出格式（极其重要）：
+1) 先输出一段 Markdown 叙事（环境、感官、NPC/旁白、结果），不要在此部分出现 JSON。
+2) 单独一行精确写入：<<<GAME_STATE>>>
+3) 下一行起输出**唯一一个** JSON 对象（不要有其他文字），字段如下：
+{
+  "narrative": "可与上文叙事一致或留空字符串",
+  "inventory_changes": {
+    "add": [ { "id": "string", "emoji": "🔑", "name": "短名称" } ],
+    "remove": [ "id" ]
+  },
+  "clues": [ "新线索句子" ],
+  "puzzle_status": { "solved_count": 0, "max": 5 },
+  "flags": { "danger": false, "gold_flash": false },
+  "game_over": null,
+  "toast": "可选短提示，如 获得：铜钥匙",
+  "room_name": "当前房间名可选"
+}
+- solved_count 为已解开谜题数量（0-5），须单调不减，且符合顺序
+- game_over 仅当 5 谜题全解并逃出时为 "win"；否则 null
+- danger=true 时玩家处于紧张情境；gold_flash=true 表示刚发现重要线索
+
+难度说明：
+- 简单：多给可调查方向暗示
+- 普通：平衡
+- 困难：线索更隐晦，但仍可解`;
+        },
+
+        /**
+         * 将当前背包、线索、进度压缩给模型
+         */
+        buildStateSummary() {
+          const items = this.inventory.filter(Boolean).map((x) => x.id + ':' + x.name);
+          return [
+            '主题=' + this.theme,
+            '已解谜题数=' + this.puzzlesSolved,
+            '线索=' + JSON.stringify(this.clues),
+            '背包=' + JSON.stringify(items),
+            '剩余秒=' + this.secondsLeft
+          ].join('\n');
+        },
+
+        /**
+         * DeepSeek 流式 chat，返回完整文本
+         * @param {object[]} messages OpenAI 格式 messages
+         * @param {{ silent?: boolean }} opts silent 时不更新主界面流式叙事区（用于结局/评价纯文本）
+         */
+        async streamMessages(messages, opts) {
+          const silent = opts && opts.silent === true;
+          const key = (this.apiConfig.deepseek || '').trim();
+          const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + key
+            },
+            body: JSON.stringify({
+              model: this.apiConfig.model || 'deepseek-v4-flash',
+              messages,
+              stream: true,
+              temperature: 0.75,
+              max_tokens: 4096
+            })
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new Error('API 错误 ' + res.status + (errText ? ': ' + errText.slice(0, 160) : ''));
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let full = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const t = line.trim();
+              if (!t.startsWith('data:')) continue;
+              const data = t.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.reasoning_content) {
+                  this.reasoningBuffer += delta.reasoning_content;
+                }
+                if (delta.content) {
+                  full += delta.content;
+                  if (!silent) this.onStreamChunk(full);
+                }
+              } catch (parseErr) {
+                console.warn('流式片段跳过', parseErr);
+              }
+            }
+          }
+
+          return full;
+        },
+
+        /**
+         * 单轮 system + user（用于超时结局、通关评价等纯 Markdown）
+         */
+        async streamCompletion(system, user) {
+          return this.streamMessages([
+            { role: 'system', content: system },
+            { role: 'user', content: user + '\n仅输出 Markdown 正文，不要输出 <<<GAME_STATE>>> 与 JSON。' }
+          ], { silent: true });
+        },
+
+        /**
+         * 流式过程中：隐藏 GAME_STATE 之后内容；叙事部分可选打字机显示
+         * @param {string} full 当前累积全文
+         */
+        onStreamChunk(full) {
+          const marker = '<<<GAME_STATE>>>';
+          const idx = full.indexOf(marker);
+          const narr = idx === -1 ? full : full.slice(0, idx);
+          this.streamNarrativeRaw = narr;
+          // 打字机：将显示追赶至 raw（减轻闪烁，步进）
+          this.scheduleTypewriter(narr);
+        },
+
+        /**
+         * 节流打字机效果：使叙事区有逐字显现感
+         * @param {string} target
+         */
+        scheduleTypewriter(target) {
+          if (this.typewriterTimer) return;
+          this.typewriterTimer = setInterval(() => {
+            const t = this.streamNarrativeRaw;
+            if (this.streamNarrativeDisplay.length >= t.length) {
+              clearInterval(this.typewriterTimer);
+              this.typewriterTimer = null;
+              return;
+            }
+            const nextLen = Math.min(t.length, this.streamNarrativeDisplay.length + Math.max(2, Math.floor(t.length / 80)));
+            this.streamNarrativeDisplay = t.slice(0, nextLen);
+          }, 28);
+        },
+
+        clearTypewriter() {
+          if (this.typewriterTimer) {
+            clearInterval(this.typewriterTimer);
+            this.typewriterTimer = null;
+          }
+        },
+
+        scrollNarrativeToEnd() {
+          this.$nextTick(() => {
+            const el = document.getElementById('narrativeScroll');
+            if (el) el.scrollTop = el.scrollHeight;
+          });
+        },
+
+        /**
+         * 根据 JSON 更新背包、线索、特效、胜负
+         * @param {object|null} state
+         */
+        applyGameState(state) {
+          if (!state) return;
+
+          if (state.flags) {
+            this.dangerActive = !!state.flags.danger;
+            if (state.flags.gold_flash) {
+              this.goldFlash = true;
+              setTimeout(() => { this.goldFlash = false; }, 900);
+            }
+          }
+
+          if (Array.isArray(state.clues)) {
+            for (const c of state.clues) {
+              if (c && !this.clues.includes(c)) this.clues.push(c);
+            }
+          }
+
+          if (state.puzzle_status && typeof state.puzzle_status.solved_count === 'number') {
+            const n = Math.min(5, Math.max(this.puzzlesSolved, state.puzzle_status.solved_count));
+            this.puzzlesSolved = n;
+          }
+
+          const changes = state.inventory_changes;
+          if (changes) {
+            if (Array.isArray(changes.remove)) {
+              for (const rid of changes.remove) {
+                const idx = this.inventory.findIndex((s) => s && s.id === rid);
+                if (idx >= 0) this.inventory[idx] = null;
+              }
+            }
+            if (Array.isArray(changes.add)) {
+              for (const item of changes.add) {
+                if (!item || !item.id) continue;
+                const empty = this.inventory.findIndex((s) => !s);
+                if (empty >= 0) {
+                  this.inventory[empty] = {
+                    id: item.id,
+                    emoji: item.emoji || '📦',
+                    name: item.name || '物品'
+                  };
+                } else {
+                  this.flashToast('背包已满');
+                }
+              }
+            }
+            /** 触发 Alpine 对背包格子的依赖更新 */
+            this.inventory = this.inventory.slice();
+          }
+
+          if (state.toast) {
+            this.flashToast(state.toast);
+          }
+        },
+
+        /**
+         * 胜利后追加 AI 评价
+         */
+        async playVictory(lastState) {
+          this.phase = 'won';
+          this.endingText = '正在生成通关评价…';
+          const sys = '你是密室逃脱主持人。玩家已通关。根据主题「' + (THEME_LABEL[this.theme] || '') + '」写一段 Markdown：祝贺、亮点回顾、幽默点评。150～280 字。不要输出 JSON。';
+          const user = '谜题进度 5/5。请写通关评价。';
+          try {
+            const text = await this.streamCompletion(sys, user);
+            this.endingText = text || '你做到了。门在身后缓缓合上，自由的风终于再次拂过你的脸颊。';
+          } catch (e) {
+            this.endingText = '你成功逃出了密室。真正的奖励，是这段惊心动魄的回忆。';
+          }
+        },
+
+        flashToast(msg) {
+          this.eventToast = { show: true, message: msg };
+          setTimeout(() => { this.eventToast.show = false; }, 2600);
+        },
+
+        onSlotClick(i) {
+          const slot = this.inventory[i];
+          if (this.combineMode) {
+            if (!slot) return;
+            const pos = this.selectedSlots.indexOf(i);
+            if (pos >= 0) {
+              this.selectedSlots.splice(pos, 1);
+            } else if (this.selectedSlots.length < 2) {
+              this.selectedSlots.push(i);
+            }
+            return;
+          }
+          if (slot) {
+            this.selectedSlots = [i];
+          }
+        },
+
+        toggleCombine() {
+          this.combineMode = !this.combineMode;
+          this.selectedSlots = [];
+        },
+
+        /**
+         * 将选中物品提交给 AI 使用
+         */
+        useSelectedItem() {
+          if (this.combineMode) {
+            this.flashToast('组合模式下请点「确认组合」，或先取消组合');
+            return;
+          }
+          if (this.selectedSlots.length !== 1) {
+            this.flashToast('请先选中一个物品');
+            return;
+          }
+          const i = this.selectedSlots[0];
+          const item = this.inventory[i];
+          if (!item) return;
+          this.quickAct('我尝试使用物品：「' + item.name + '」');
+          this.selectedSlots = [];
+        },
+
+        /**
+         * 两个物品组合
+         */
+        async combineSelected() {
+          if (this.selectedSlots.length !== 2) {
+            this.flashToast('请选择两个物品进行组合');
+            return;
+          }
+          const [a, b] = this.selectedSlots.map((i) => this.inventory[i]).filter(Boolean);
+          if (!a || !b) return;
+          this.combineMode = false;
+          this.selectedSlots = [];
+          await this.sendAction('我尝试将「' + a.name + '」与「' + b.name + '」组合使用。');
+        },
+
+        backToMenu() {
+          this.stopTimer();
+          this.phase = 'menu';
+          this.dangerActive = false;
+        }
+      }));
+    });
+
+  </script>
+</body>
+</html>

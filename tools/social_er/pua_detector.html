@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- Google Analytics：站点统计 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-M09H8GY78X');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>渣男/绿茶鉴定中心 - PUA 浓度与养鱼概率分析</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /**
+         * 页面基调：玫瑰粉渐变 + 医疗化验单质感
+         */
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(165deg, #fff1f2 0%, #fce7f3 38%, #fdf2f8 72%, #ffe4e6 100%);
+            color: #881337;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #fff1f2; }
+        ::-webkit-scrollbar-thumb { background: #fda4af; border-radius: 3px; }
+
+        /* ========== 半圆仪表盘：类似血压计圆弧，0=左端安全，100=右端高危 ========== */
+        .gauge-wrap {
+            position: relative;
+            width: 220px;
+            height: 110px;
+            margin: 0 auto;
+        }
+
+        .gauge-disk {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 180deg at 50% 50%,
+                #86efac 0deg,
+                #fde047 54deg,
+                #fb923c 108deg,
+                #f43f5e 180deg
+            );
+            mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+            -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+            clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+        }
+
+        .gauge-pointer {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            width: 4px;
+            height: 88px;
+            margin-left: -2px;
+            background: linear-gradient(to top, #be123c, #fff);
+            border-radius: 2px;
+            transform-origin: bottom center;
+            box-shadow: 0 0 10px rgba(244, 63, 94, 0.65);
+            transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 2;
+        }
+
+        .gauge-hub {
+            position: absolute;
+            left: 50%;
+            bottom: -6px;
+            width: 16px;
+            height: 16px;
+            margin-left: -8px;
+            background: #9f1239;
+            border: 2px solid #ffe4e6;
+            border-radius: 50%;
+            z-index: 3;
+        }
+
+        .gauge-score {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+
+        /* 医疗化验单：表格式行 */
+        .lab-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.65rem 0;
+            border-bottom: 1px dashed rgba(190, 18, 60, 0.2);
+            font-size: 0.875rem;
+        }
+
+        .lab-row:last-child { border-bottom: none; }
+
+        /* 危险句子：红色下划线强调 */
+        .danger-line {
+            text-decoration: underline;
+            text-decoration-color: #dc2626;
+            text-decoration-thickness: 2px;
+            text-underline-offset: 3px;
+        }
+
+        .prose-pua h2 { font-size: 1.05rem; font-weight: 700; color: #9f1239; margin-top: 0.75rem; }
+        .prose-pua p { margin: 0.35rem 0; line-height: 1.65; color: #4c0519; }
+        .prose-pua ul { padding-left: 1.2rem; margin: 0.35rem 0; }
+        .prose-pua li { margin: 0.2rem 0; }
+        .prose-pua strong { color: #881337; }
+
+        .toast-enter {
+            animation: toastIn 0.28s ease-out;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body>
+    <div x-data="puaDetector()" x-init="init()" class="min-h-screen pb-24">
+
+        <!-- 顶部导航：返回项目首页 -->
+        <nav class="bg-white/85 backdrop-blur-md sticky top-0 z-50 border-b border-rose-200/80 shadow-sm shadow-rose-100/50">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+                <div class="flex items-center gap-2 cursor-pointer select-none" onclick="location.href='../../index.html'">
+                    <i data-lucide="flask-conical" class="text-rose-600 h-6 w-6"></i>
+                    <span class="font-bold text-lg text-rose-950">渣男/绿茶鉴定中心</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="showSettings = true"
+                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-rose-800/80 hover:bg-rose-50 border border-rose-200/80 transition">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">API 设置</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+
+            <p class="text-sm text-rose-800/75 text-center leading-relaxed">
+                粘贴对方聊天记录，AI 估算 PUA 话术浓度、养鱼概率，并标注可疑句式与红旗清单。
+                <span class="text-rose-600/90">（娱乐向参考，不构成心理或法律意见）</span>
+            </p>
+
+            <div class="grid lg:grid-cols-5 gap-6">
+
+                <!-- 左侧：输入区 -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="rounded-2xl border border-rose-200 bg-white/90 shadow-lg shadow-rose-100/60 overflow-hidden">
+                        <label class="block px-4 pt-4 text-xs font-semibold text-rose-700 uppercase tracking-wider">
+                            聊天记录 / 消息全文
+                        </label>
+                        <textarea x-model="chatText" rows="14" :disabled="isAnalyzing"
+                            placeholder="在此粘贴微信/短信/社交 App 的对话原文（可含时间戳与昵称）…"
+                            class="w-full bg-transparent border-0 rounded-b-2xl px-4 py-3 text-sm text-rose-950 placeholder-rose-300 resize-y min-h-[260px] focus:ring-0 focus:outline-none"></textarea>
+                    </div>
+
+                    <!-- 鉴定类型 -->
+                    <div class="rounded-2xl border border-rose-200 bg-white/90 p-4 shadow-md">
+                        <label class="block text-xs font-semibold text-rose-700 mb-2">鉴定类型</label>
+                        <select x-model="scanType"
+                            class="w-full rounded-xl border border-rose-200 bg-rose-50/50 px-3 py-2.5 text-sm text-rose-950 outline-none focus:ring-2 focus:ring-rose-400">
+                            <option value="scumbag">渣男鉴定</option>
+                            <option value="green_tea">绿茶鉴定</option>
+                            <option value="playboy">海王鉴定</option>
+                            <option value="full">综合扫描</option>
+                        </select>
+                    </div>
+
+                    <button type="button" @click="startAnalyze()"
+                        :disabled="isAnalyzing || !chatText.trim()"
+                        class="w-full py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-rose-600 via-pink-600 to-rose-500 hover:from-rose-500 hover:via-pink-500 hover:to-rose-400 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-rose-300/50 border border-rose-400/30 flex items-center justify-center gap-2 transition">
+                        <i data-lucide="microscope" class="w-5 h-5" :class="{ 'animate-pulse': isAnalyzing }"></i>
+                        <span x-text="isAnalyzing ? '化验分析中…' : '开始鉴定'"></span>
+                    </button>
+
+                    <div x-show="isAnalyzing && streamCharCount > 0" class="text-xs text-rose-600/80 font-mono">
+                        已接收报告数据 <span x-text="streamCharCount"></span> 字符…
+                    </div>
+                </div>
+
+                <!-- 右侧：报告区 -->
+                <div class="lg:col-span-3 space-y-4">
+
+                    <template x-if="!report && !isAnalyzing && !errorMsg">
+                        <div class="rounded-2xl border border-dashed border-rose-300 bg-white/60 p-10 text-center">
+                            <i data-lucide="heart-pulse" class="w-14 h-14 mx-auto text-rose-300 mb-3 opacity-80"></i>
+                            <p class="text-rose-600/70 text-sm">左侧粘贴记录并选择类型，点击「开始鉴定」生成化验单</p>
+                        </div>
+                    </template>
+
+                    <div x-show="isAnalyzing && !report" x-cloak
+                        class="rounded-2xl border border-rose-200 bg-white/80 p-8 text-center min-h-[200px] flex flex-col items-center justify-center">
+                        <i data-lucide="loader-2" class="w-10 h-10 text-rose-500 animate-spin mb-3"></i>
+                        <p class="text-rose-800 font-medium">情感关系化验室分析中…</p>
+                        <p class="text-xs text-rose-500/80 mt-2">流式 JSON 解析，请稍候</p>
+                    </div>
+
+                    <div x-show="errorMsg" x-cloak class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900">
+                        <span x-text="errorMsg"></span>
+                    </div>
+
+                    <!-- 鉴定报告：医疗检查单风格 -->
+                    <div x-show="report" x-cloak class="space-y-4 animate-[toastIn_0.4s_ease-out]">
+
+                        <!-- 化验单抬头 -->
+                        <div class="rounded-2xl border-2 border-rose-300 bg-white shadow-xl shadow-rose-200/40 overflow-hidden">
+                            <div class="bg-gradient-to-r from-rose-100 via-pink-50 to-rose-50 px-5 py-4 border-b border-rose-200">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <i data-lucide="clipboard-list" class="w-5 h-5 text-rose-700"></i>
+                                        <span class="font-bold text-rose-950 text-lg">情感关系化验单</span>
+                                    </div>
+                                    <span class="text-xs font-mono text-rose-600/90" x-text="'NO. PUA-' + reportNo"></span>
+                                </div>
+                                <p class="text-xs text-rose-700/80 mt-1">
+                                    鉴定项目：<span class="font-semibold" x-text="currentScanLabel"></span>
+                                </p>
+                            </div>
+
+                            <!-- 仪表盘 + 核心指标 -->
+                            <div class="p-5 sm:p-6">
+                                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-8">
+                                    <div class="flex-1 text-center sm:text-left">
+                                        <p class="text-xs text-rose-600 mb-2 text-center">PUA 浓度指数</p>
+                                        <div class="gauge-wrap mb-1">
+                                            <div class="gauge-disk" aria-hidden="true"></div>
+                                            <div class="gauge-pointer" :style="'transform: rotate(' + gaugeRotation + 'deg)'"></div>
+                                            <div class="gauge-hub"></div>
+                                        </div>
+                                        <p class="text-center gauge-score tabular-nums text-rose-700"
+                                            x-text="report ? (report.puaConcentration + '%') : '--'"></p>
+                                        <p class="text-center text-[11px] text-rose-500/90 mt-1">越高表示话术操控感越强（娱乐指标）</p>
+                                    </div>
+                                    <div class="flex-1 space-y-0">
+                                        <div class="lab-row">
+                                            <span class="text-rose-700/90 shrink-0">养鱼概率</span>
+                                            <span class="font-bold text-xl text-pink-700 tabular-nums text-right"
+                                                x-text="report ? (report.fishPondProbability + '%') : '--'"></span>
+                                        </div>
+                                        <div class="lab-row">
+                                            <span class="text-rose-700/90">服从性测试</span>
+                                            <span class="font-semibold text-right"
+                                                :class="report?.complianceTest?.detected ? 'text-red-600' : 'text-emerald-600'"
+                                                x-text="report?.complianceTest?.detected ? '检测到' : '未明显检测'"></span>
+                                        </div>
+                                        <div class="lab-row items-start" x-show="report?.complianceTest?.detected && (report?.complianceTest?.quotes || []).length">
+                                            <span class="text-rose-700/90 shrink-0">疑似原句</span>
+                                            <ul class="text-right text-sm space-y-2 max-w-[min(100%,280px)] ml-auto">
+                                                <template x-for="(q, qi) in (report?.complianceTest?.quotes || [])" :key="'cq'+qi">
+                                                    <li>
+                                                        <span class="danger-line text-red-800 leading-snug block" x-text="q.sentence"></span>
+                                                        <span class="text-[11px] text-red-700/75 block mt-0.5" x-show="q.note" x-text="q.note"></span>
+                                                    </li>
+                                                </template>
+                                            </ul>
+                                        </div>
+                                        <div class="lab-row border-0 pt-2">
+                                            <span class="text-rose-700/90">综合风险等级</span>
+                                            <span class="px-3 py-1 rounded-full text-xs font-bold border-2 whitespace-nowrap"
+                                                :class="riskBadgeClass" x-text="riskLabel"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 逐句分析 -->
+                        <div class="rounded-2xl border border-rose-200 bg-white/95 overflow-hidden shadow-md">
+                            <h3 class="px-4 py-3 text-sm font-bold text-rose-900 border-b border-rose-100 flex items-center gap-2 bg-rose-50/80">
+                                <i data-lucide="message-square-warning" class="w-4 h-4 text-rose-600"></i>
+                                逐句分析（潜台词）
+                            </h3>
+                            <div class="divide-y divide-rose-100 max-h-[320px] overflow-y-auto">
+                                <template x-for="(row, ri) in (report?.sentenceAnalysis || [])" :key="'s'+ri">
+                                    <div class="px-4 py-3 text-sm">
+                                        <p class="text-rose-950 mb-1"
+                                            :class="{ 'danger-line': row.isSuspicious }"
+                                            x-text="row.text"></p>
+                                        <p class="text-xs text-rose-700/85 leading-relaxed" x-text="row.subtext"></p>
+                                    </div>
+                                </template>
+                            </div>
+                            <p class="px-4 py-2 text-xs text-rose-500/80" x-show="!(report?.sentenceAnalysis || []).length">未拆分出独立句式（可尝试粘贴更完整对话）</p>
+                        </div>
+
+                        <!-- 红旗清单 -->
+                        <div class="rounded-2xl border border-red-200 bg-gradient-to-b from-red-50/90 to-white p-4 shadow-md">
+                            <h3 class="text-sm font-bold text-red-900 mb-3 flex items-center gap-2">
+                                <i data-lucide="flag" class="w-4 h-4 text-red-600"></i>
+                                危险信号清单（红旗）
+                            </h3>
+                            <ul class="space-y-2 text-sm">
+                                <template x-for="(f, fi) in (report?.redFlags || [])" :key="'rf'+fi">
+                                    <li class="pl-3 border-l-2 border-red-500">
+                                        <span class="font-semibold text-red-900" x-text="f.title"></span>
+                                        <p class="text-red-800/80 text-xs mt-0.5" x-text="f.detail"></p>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+
+                        <!-- 综合诊断 + 建议 -->
+                        <div class="rounded-2xl border border-rose-200 bg-white/95 p-4 shadow-md space-y-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-rose-900 mb-2 flex items-center gap-2">
+                                    <i data-lucide="stethoscope" class="w-4 h-4 text-rose-600"></i>
+                                    综合诊断结论
+                                </h3>
+                                <div class="prose-pua text-sm" x-html="renderDiagnosis"></div>
+                            </div>
+                            <div class="border-t border-rose-100 pt-3">
+                                <h3 class="text-sm font-bold text-rose-900 mb-2 flex items-center gap-2">
+                                    <i data-lucide="sparkles" class="w-4 h-4 text-pink-600"></i>
+                                    给你的建议
+                                </h3>
+                                <div class="prose-pua text-sm" x-html="renderSuggestions"></div>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮：复制给闺蜜 -->
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" @click="copyReport()"
+                                class="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm shadow-md transition">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                                复制报告（分享给闺蜜）
+                            </button>
+                            <button type="button" @click="shareReport()"
+                                class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-800 text-sm border border-rose-200 transition">
+                                <i data-lucide="share-2" class="w-4 h-4"></i>
+                                系统分享
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- V4 Pro 推理过程（可折叠） -->
+        <div x-show="reasoningBuffer" x-cloak class="max-w-5xl mx-auto px-4 pb-6">
+            <details class="rounded-xl border border-rose-200 bg-white/80 p-3 text-sm">
+                <summary class="cursor-pointer text-rose-800 font-medium">深度推理过程（点击展开）</summary>
+                <pre class="mt-2 whitespace-pre-wrap text-xs text-rose-700/80 max-h-48 overflow-y-auto" x-text="reasoningBuffer"></pre>
+            </details>
+        </div>
+
+        <!-- 页脚免责声明 -->
+        <footer class="max-w-5xl mx-auto px-4 pb-8 text-center text-[11px] text-rose-600/70 leading-relaxed">
+            本工具仅供娱乐参考，基于文本模式的启发式分析，不能替代专业心理咨询或事实认定。请理性看待结果，保护个人隐私与边界。
+        </footer>
+
+        <!-- API 设置弹窗 -->
+        <div x-show="showSettings" x-cloak
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            @keydown.escape.window="showSettings = false">
+            <div class="bg-white border border-rose-200 rounded-2xl shadow-2xl w-full max-w-md p-6" @click.outside="showSettings = false">
+                <h3 class="text-lg font-bold text-rose-950 mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-rose-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-950 placeholder-rose-300 focus:ring-2 focus:ring-rose-400 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-rose-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-950 outline-none">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" @click="showSettings = false" class="px-4 py-2 rounded-lg text-rose-700 hover:bg-rose-50 text-sm">取消</button>
+                    <button type="button" @click="saveConfig()" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-xl text-sm font-medium shadow-lg toast-enter"
+            :class="toast.type === 'error' ? 'bg-red-800 text-red-50 border border-red-600' : 'bg-emerald-800 text-emerald-50 border border-emerald-600'"
+            x-text="toast.msg"></div>
+    </div>
+
+    <script>
+        /**
+         * 渣男/绿茶鉴定中心 — Alpine 根组件
+         * DeepSeek：stream + response_format json_object，流式拼完整 JSON 后解析
+         */
+        function puaDetector() {
+            return {
+                chatText: '',
+                /** 鉴定类型：渣男 / 绿茶 / 海王 / 综合 */
+                scanType: 'full',
+                scanOptions: [
+                    { value: 'scumbag', label: '渣男鉴定' },
+                    { value: 'green_tea', label: '绿茶鉴定' },
+                    { value: 'playboy', label: '海王鉴定' },
+                    { value: 'full', label: '综合扫描' }
+                ],
+                isAnalyzing: false,
+                streamCharCount: 0,
+                rawJsonBuffer: '',
+                reasoningBuffer: '',
+                errorMsg: '',
+                report: null,
+                showSettings: false,
+                toast: { show: false, msg: '', type: 'info' },
+                reportNo: '',
+
+                apiConfig: {
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                },
+
+                /** 初始化：合并读取 global_llm_config，初始化图标 */
+                init() {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            this.apiConfig = { ...this.apiConfig, ...parsed };
+                        } catch (e) { /* 忽略损坏配置 */ }
+                    }
+                    this.reportNo = String(Date.now()).slice(-10);
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                /** 当前选中的鉴定类型中文名（展示在化验单上） */
+                get currentScanLabel() {
+                    const o = this.scanOptions.find(x => x.value === this.scanType);
+                    return o ? o.label : '综合扫描';
+                },
+
+                /** 合并写入 localStorage，禁止整对象覆盖以免冲掉其他工具字段 */
+                saveConfig() {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('已保存', 'success');
+                },
+
+                showToast(msg, type = 'info') {
+                    this.toast = { show: true, msg, type };
+                    setTimeout(() => { this.toast.show = false; }, 2800);
+                },
+
+                /** 圆弧指针角度：0% → -90°，100% → +90° */
+                get gaugeRotation() {
+                    if (!this.report || typeof this.report.puaConcentration !== 'number') return -90;
+                    const s = Math.max(0, Math.min(100, this.report.puaConcentration));
+                    return -90 + s * 1.8;
+                },
+
+                /** 风险等级展示文案 */
+                get riskLabel() {
+                    const m = {
+                        green: '绿色安全',
+                        yellow: '黄色警惕',
+                        orange: '橙色危险',
+                        red: '红色快跑'
+                    };
+                    return m[this.report?.riskLevel] || '—';
+                },
+
+                /** 风险等级徽章样式 */
+                get riskBadgeClass() {
+                    const lv = this.report?.riskLevel;
+                    if (lv === 'green') return 'border-emerald-500 text-emerald-800 bg-emerald-50';
+                    if (lv === 'yellow') return 'border-amber-400 text-amber-900 bg-amber-50';
+                    if (lv === 'orange') return 'border-orange-500 text-orange-900 bg-orange-50';
+                    if (lv === 'red') return 'border-red-600 text-red-900 bg-red-50';
+                    return 'border-rose-300 text-rose-800 bg-rose-50';
+                },
+
+                /** 诊断结论 Markdown 渲染 */
+                get renderDiagnosis() {
+                    if (!this.report?.diagnosis) return '<p class="text-rose-500">—</p>';
+                    try {
+                        return marked.parse(this.report.diagnosis);
+                    } catch {
+                        return this.report.diagnosis;
+                    }
+                },
+
+                /** 建议 Markdown 渲染 */
+                get renderSuggestions() {
+                    if (!this.report?.suggestions) return '<p class="text-rose-500">—</p>';
+                    try {
+                        return marked.parse(this.report.suggestions);
+                    } catch {
+                        return this.report.suggestions;
+                    }
+                },
+
+                /**
+                 * 调用 DeepSeek：根据鉴定类型与聊天记录生成结构化 JSON 报告
+                 */
+                async startAnalyze() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 DeepSeek API Key', 'error');
+                        return;
+                    }
+                    const text = this.chatText.trim();
+                    if (!text) {
+                        this.showToast('请粘贴聊天记录', 'error');
+                        return;
+                    }
+
+                    this.isAnalyzing = true;
+                    this.errorMsg = '';
+                    this.report = null;
+                    this.rawJsonBuffer = '';
+                    this.reasoningBuffer = '';
+                    this.streamCharCount = 0;
+                    this.reportNo = String(Date.now()).slice(-10);
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+
+                    const typeLine = this.currentScanLabel;
+                    const systemPrompt = `你是亲密关系与沟通模式分析助手（娱乐向）。用户会粘贴聊天记录，请你从「话术模式、边界感、一致性、尊重程度」等角度做启发式解读，避免武断人身定性、避免诽谤具体个人。
+请仅输出一个合法 JSON 对象（不要 Markdown 代码块），字段必须齐全：
+
+{
+  "scanTypeEcho": "回显用户选择的鉴定类型中文名（与输入一致）",
+  "puaConcentration": 0-100 整数，表示「PUA 话术/操控感」浓度指数，数值越高越需警惕（娱乐化命名，勿恐吓）,
+  "fishPondProbability": 0-100 整数，表示「多线暧昧/养鱼」主观概率估计,
+  "riskLevel": 仅允许四选一字符串：green、yellow、orange、red（对应 绿色安全/黄色警惕/橙色危险/红色快跑）,
+  "complianceTest": {
+    "detected": 布尔，是否疑似出现服从性测试（如故意越界看反应、无理要求试探顺从等）,
+    "quotes": [ { "sentence": "原话摘录（尽量短）", "note": "为何像服从性测试（一句）" } ]
+  },
+  "sentenceAnalysis": [
+    { "text": "从记录中摘取的一句或一小段原话", "isSuspicious": 布尔, "subtext": "潜台词或沟通模式解读（中文）" }
+  ],
+  "redFlags": [ { "title": "短标题", "detail": "说明" } ],
+  "diagnosis": "综合诊断结论，使用 Markdown（可含小标题与列表）",
+  "suggestions": "给当事人的建议，使用 Markdown，语气支持性、不羞辱"
+}
+
+硬性要求：
+1. sentenceAnalysis 至少 4 条（若原文很短可合理合并相邻句，仍保持多条）；
+2. redFlags 至少 3 条；
+3. complianceTest.quotes 若无则输出空数组，detected 为 false；
+4. 所有判断尽量引用或可追溯到聊天记录中的表述，不要编造未出现的具体事件；
+5. 保持中立、避免绝对化医学或法律结论。`;
+
+                    const userPrompt = `鉴定类型：${typeLine}\n\n以下是需要化验的聊天记录：\n\n---\n${text}\n---`;
+
+                    try {
+                        const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + this.apiConfig.deepseek
+                            },
+                            body: JSON.stringify({
+                                model: this.apiConfig.model,
+                                messages: [
+                                    { role: 'system', content: systemPrompt },
+                                    { role: 'user', content: userPrompt }
+                                ],
+                                stream: true,
+                                response_format: { type: 'json_object' },
+                                temperature: 0.5
+                            })
+                        });
+
+                        if (!resp.ok) {
+                            const errData = await resp.json().catch(() => ({}));
+                            throw new Error(errData.error?.message || 'HTTP ' + resp.status);
+                        }
+
+                        const reader = resp.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+
+                            for (const line of lines) {
+                                if (!line.startsWith('data: ')) continue;
+                                const raw = line.slice(6).trim();
+                                if (raw === '[DONE]') continue;
+                                try {
+                                    const chunk = JSON.parse(raw);
+                                    const delta = chunk.choices?.[0]?.delta;
+                                    if (!delta) continue;
+                                    if (delta.reasoning_content) {
+                                        this.reasoningBuffer += delta.reasoning_content;
+                                    }
+                                    if (delta.content) {
+                                        this.rawJsonBuffer += delta.content;
+                                        this.streamCharCount = this.rawJsonBuffer.length;
+                                    }
+                                } catch (e) { /* 单行 SSE 解析失败则跳过 */ }
+                            }
+                        }
+
+                        const parsed = JSON.parse(this.rawJsonBuffer);
+                        this.normalizeReport(parsed);
+                        this.report = parsed;
+                        this.showToast('鉴定完成', 'success');
+                    } catch (e) {
+                        console.error(e);
+                        this.errorMsg = e.message || '解析失败，请重试';
+                        if (this.rawJsonBuffer) {
+                            this.errorMsg += '（若使用 V4 Pro，可尝试切换到 V4 Flash 模型）';
+                        }
+                        this.showToast(this.errorMsg, 'error');
+                    } finally {
+                        this.isAnalyzing = false;
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    }
+                },
+
+                /**
+                 * 归一化模型返回：补全缺省字段、钳制数值、修正枚举
+                 * @param {object} obj - 解析后的 JSON
+                 */
+                normalizeReport(obj) {
+                    if (typeof obj.puaConcentration !== 'number') {
+                        obj.puaConcentration = parseInt(obj.puaConcentration, 10);
+                    }
+                    if (Number.isNaN(obj.puaConcentration)) obj.puaConcentration = 0;
+                    obj.puaConcentration = Math.max(0, Math.min(100, obj.puaConcentration));
+
+                    if (typeof obj.fishPondProbability !== 'number') {
+                        obj.fishPondProbability = parseInt(obj.fishPondProbability, 10);
+                    }
+                    if (Number.isNaN(obj.fishPondProbability)) obj.fishPondProbability = 0;
+                    obj.fishPondProbability = Math.max(0, Math.min(100, obj.fishPondProbability));
+
+                    const okRisk = ['green', 'yellow', 'orange', 'red'];
+                    if (!okRisk.includes(obj.riskLevel)) obj.riskLevel = 'yellow';
+
+                    if (!obj.complianceTest || typeof obj.complianceTest !== 'object') {
+                        obj.complianceTest = { detected: false, quotes: [] };
+                    }
+                    if (typeof obj.complianceTest.detected !== 'boolean') {
+                        obj.complianceTest.detected = !!obj.complianceTest.detected;
+                    }
+                    obj.complianceTest.quotes = Array.isArray(obj.complianceTest.quotes)
+                        ? obj.complianceTest.quotes.map(q => ({
+                            sentence: q.sentence || q.text || '',
+                            note: q.note || q.context || ''
+                        })).filter(q => q.sentence)
+                        : [];
+
+                    obj.sentenceAnalysis = Array.isArray(obj.sentenceAnalysis) ? obj.sentenceAnalysis : [];
+                    obj.sentenceAnalysis = obj.sentenceAnalysis.map(row => ({
+                        text: row.text || '',
+                        isSuspicious: !!row.isSuspicious,
+                        subtext: row.subtext || ''
+                    })).filter(row => row.text);
+
+                    obj.redFlags = Array.isArray(obj.redFlags) ? obj.redFlags : [];
+                    obj.diagnosis = typeof obj.diagnosis === 'string' ? obj.diagnosis : '';
+                    obj.suggestions = typeof obj.suggestions === 'string' ? obj.suggestions : '';
+                },
+
+                /**
+                 * 组装纯文本报告：用于复制或 Web Share 降级
+                 * @returns {string}
+                 */
+                buildPlainReport() {
+                    if (!this.report) return '';
+                    const r = this.report;
+                    let t = '【渣男/绿茶鉴定中心 · 化验报告】\n';
+                    t += '单号：PUA-' + this.reportNo + '\n';
+                    t += '鉴定类型：' + this.currentScanLabel + '\n';
+                    t += 'PUA 浓度：' + r.puaConcentration + '%\n';
+                    t += '养鱼概率：' + r.fishPondProbability + '%\n';
+                    t += '风险等级：' + this.riskLabel + '\n';
+                    t += '服从性测试：' + (r.complianceTest?.detected ? '有' : '无') + '\n';
+                    (r.complianceTest?.quotes || []).forEach(q => {
+                        t += '  · ' + q.sentence + (q.note ? '（' + q.note + '）' : '') + '\n';
+                    });
+                    t += '\n--- 逐句分析 ---\n';
+                    (r.sentenceAnalysis || []).forEach(row => {
+                        t += (row.isSuspicious ? '⚠ ' : '· ') + row.text + '\n  ' + row.subtext + '\n';
+                    });
+                    t += '\n--- 红旗 ---\n';
+                    (r.redFlags || []).forEach(f => { t += '· ' + f.title + '：' + f.detail + '\n'; });
+                    t += '\n--- 综合诊断 ---\n' + (r.diagnosis || '') + '\n';
+                    t += '\n--- 给你的建议 ---\n' + (r.suggestions || '');
+                    t += '\n\n【免责声明】本报告仅供娱乐参考，请理性看待。';
+                    return t;
+                },
+
+                async copyReport() {
+                    const text = this.buildPlainReport();
+                    if (!text) return;
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        this.showToast('报告已复制', 'success');
+                    } catch {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        this.showToast('报告已复制', 'success');
+                    }
+                },
+
+                async shareReport() {
+                    const text = this.buildPlainReport();
+                    if (!text) {
+                        this.showToast('暂无报告', 'error');
+                        return;
+                    }
+                    if (navigator.share) {
+                        try {
+                            await navigator.share({ title: '情感关系化验报告', text });
+                            this.showToast('已唤起分享', 'success');
+                            return;
+                        } catch (e) {
+                            if (e.name === 'AbortError') return;
+                        }
+                    }
+                    await this.copyReport();
+                    this.showToast('已复制（当前环境不支持系统分享）', 'success');
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

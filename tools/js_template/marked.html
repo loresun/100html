@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marked Markdown解析器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #6366f1 0%, #0f172a 100%); min-height: 100vh; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+    .preview h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; border-bottom: 1px solid #444; padding-bottom: 0.3em; }
+    .preview h2 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; }
+    .preview h3 { font-size: 1.2em; font-weight: bold; margin: 0.5em 0; }
+    .preview p { margin: 0.5em 0; line-height: 1.6; }
+    .preview code { background: #374151; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    .preview pre { background: #1f2937; padding: 1em; border-radius: 8px; overflow-x: auto; }
+    .preview pre code { background: none; padding: 0; }
+    .preview ul, .preview ol { padding-left: 2em; margin: 0.5em 0; }
+    .preview li { margin: 0.25em 0; }
+    .preview blockquote { border-left: 4px solid #6366f1; padding-left: 1em; color: #9ca3af; margin: 1em 0; }
+    .preview a { color: #60a5fa; text-decoration: underline; }
+    .preview table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    .preview th, .preview td { border: 1px solid #4b5563; padding: 8px 12px; text-align: left; }
+    .preview th { background: #374151; }
+    .preview hr { border: none; border-top: 1px solid #4b5563; margin: 1.5em 0; }
+    .preview img { max-width: 100%; border-radius: 8px; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-6xl mx-auto flex justify-between items-center mb-6">
+  <div>
+    <h1 class="text-3xl font-bold">📝 Marked</h1>
+    <p class="text-white/60 mt-1">高性能 Markdown 解析器 - 快速、轻量</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-6xl mx-auto space-y-6">
+  <!-- 编辑器 -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="glass p-4 rounded-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <span class="font-bold">📝 Markdown 输入</span>
+        <button onclick="insertSample()" class="text-xs px-2 py-1 bg-slate-700 rounded hover:bg-slate-600">插入示例</button>
+      </div>
+      <textarea id="md-input" rows="20" class="w-full px-4 py-3 bg-slate-900/80 border border-white/20 rounded-xl text-white font-mono text-sm resize-none" oninput="render()"># Marked 快速指南
+
+## 基础语法
+这是一段**粗体**和*斜体*文本。
+
+## 列表
+- 项目一
+- 项目二
+  - 子项目
+
+## 代码
+`行内代码`示例
+
+```javascript
+function greet(name) {
+  return `Hello, ${name}!`;
+}
+```
+
+## 引用
+> 简单快速的 Markdown 解析
+
+## 链接和图片
+[访问链接](https://example.com)
+
+## 表格
+| 名称 | 价格 |
+|------|------|
+| 产品A | ¥100 |
+| 产品B | ¥200 |</textarea>
+    </div>
+    
+    <div class="glass p-4 rounded-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <span class="font-bold">👁️ 预览</span>
+        <div class="flex gap-2">
+          <button onclick="showPreview()" id="btn-preview" class="text-xs px-2 py-1 bg-indigo-600 rounded">预览</button>
+          <button onclick="showHtml()" id="btn-html" class="text-xs px-2 py-1 bg-slate-700 rounded hover:bg-slate-600">HTML</button>
+        </div>
+      </div>
+      <div class="h-[500px] overflow-auto">
+        <div id="preview" class="preview bg-white text-slate-800 p-4 rounded-xl min-h-full"></div>
+        <pre id="html-output" class="hidden font-mono text-xs text-emerald-300 bg-slate-900/80 p-4 rounded-xl whitespace-pre-wrap min-h-full"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配置选项 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚙️ 解析选项</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="opt-breaks" onchange="render()" class="w-4 h-4">
+        <span class="text-sm">换行符转 &lt;br&gt;</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="opt-gfm" checked onchange="render()" class="w-4 h-4">
+        <span class="text-sm">GFM (GitHub风格)</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="opt-headerIds" checked onchange="render()" class="w-4 h-4">
+        <span class="text-sm">标题ID</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="opt-mangle" onchange="render()" class="w-4 h-4">
+        <span class="text-sm">邮件混淆</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- 性能对比 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚡ Marked 特点</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-2xl mb-2">🚀</div>
+        <div class="font-bold text-indigo-300">极速解析</div>
+        <div class="text-xs text-white/50">比同类快数倍</div>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-2xl mb-2">📦</div>
+        <div class="font-bold text-indigo-300">轻量</div>
+        <div class="text-xs text-white/50">~28KB min</div>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-2xl mb-2">🔧</div>
+        <div class="font-bold text-indigo-300">可扩展</div>
+        <div class="text-xs text-white/50">自定义渲染器</div>
+      </div>
+      <div class="bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-2xl mb-2">✅</div>
+        <div class="font-bold text-indigo-300">兼容性</div>
+        <div class="text-xs text-white/50">CommonMark + GFM</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 代码示例 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📝 使用方法</h3>
+    <div class="bg-slate-900/80 p-4 rounded-xl overflow-x-auto">
+      <pre class="text-sm font-mono text-slate-300">// 基础用法
+const html = marked.parse('# Hello World');
+
+// 配置选项
+marked.setOptions({
+  gfm: true,
+  breaks: false,
+  headerIds: true
+});
+
+// 自定义渲染器
+const renderer = new marked.Renderer();
+renderer.link = (href, title, text) => {
+  return `&lt;a href="${href}" target="_blank"&gt;${text}&lt;/a&gt;`;
+};
+marked.use({ renderer });</pre>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
+<script>
+function render() {
+  const md = document.getElementById('md-input').value;
+  
+  marked.setOptions({
+    breaks: document.getElementById('opt-breaks').checked,
+    gfm: document.getElementById('opt-gfm').checked,
+    headerIds: document.getElementById('opt-headerIds').checked,
+    mangle: document.getElementById('opt-mangle').checked
+  });
+  
+  const html = marked.parse(md);
+  document.getElementById('preview').innerHTML = html;
+  document.getElementById('html-output').textContent = html;
+}
+
+function showPreview() {
+  document.getElementById('preview').classList.remove('hidden');
+  document.getElementById('html-output').classList.add('hidden');
+  document.getElementById('btn-preview').className = 'text-xs px-2 py-1 bg-indigo-600 rounded';
+  document.getElementById('btn-html').className = 'text-xs px-2 py-1 bg-slate-700 rounded hover:bg-slate-600';
+}
+
+function showHtml() {
+  document.getElementById('preview').classList.add('hidden');
+  document.getElementById('html-output').classList.remove('hidden');
+  document.getElementById('btn-html').className = 'text-xs px-2 py-1 bg-indigo-600 rounded';
+  document.getElementById('btn-preview').className = 'text-xs px-2 py-1 bg-slate-700 rounded hover:bg-slate-600';
+}
+
+function insertSample() {
+  document.getElementById('md-input').value = `# 完整 Markdown 示例
+
+## 文本格式
+普通文本、**粗体**、*斜体*、~~删除线~~
+
+## 代码
+行内 \`code\` 和代码块:
+
+\`\`\`javascript
+const x = 1;
+console.log(x);
+\`\`\`
+
+## 列表
+1. 第一项
+2. 第二项
+   - 子项A
+   - 子项B
+
+## 任务列表
+- [x] 已完成
+- [ ] 待完成
+
+## 引用
+> 引用内容
+>> 嵌套引用
+
+## 表格
+| 左对齐 | 居中 | 右对齐 |
+|:-------|:----:|-------:|
+| 数据1 | 数据2 | 数据3 |
+
+## 链接
+[链接文字](https://example.com)
+
+---
+*水平分割线*`;
+  render();
+}
+
+// 初始化
+render();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

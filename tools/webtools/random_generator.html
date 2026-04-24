@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全能随机生成器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-indigo-50 min-h-screen font-sans" x-data="randomApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-indigo-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-indigo-100/50 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+                    🎲 全能随机生成器
+                </h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-20">
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            
+            <!-- Sidebar Navigation -->
+            <div class="md:col-span-1 space-y-2">
+                <template x-for="mode in modes" :key="mode.id">
+                    <button @click="currentMode = mode.id" 
+                            class="w-full text-left px-4 py-3 rounded-xl font-medium transition-all flex items-center gap-3"
+                            :class="currentMode === mode.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-slate-600 hover:bg-indigo-50 border border-slate-100'">
+                        <i :class="mode.icon"></i>
+                        <span x-text="mode.label"></span>
+                    </button>
+                </template>
+            </div>
+
+            <!-- Content Area -->
+            <div class="md:col-span-3 space-y-6">
+                
+                <!-- Display Area -->
+                <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm min-h-[200px] flex flex-col items-center justify-center text-center relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4">
+                        <button @click="copyResult()" x-show="result" class="p-2 text-slate-400 hover:text-indigo-600 transition-colors" title="复制结果">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="text-xs font-bold text-indigo-400 tracking-widest uppercase mb-4" x-text="getCurrentLabel()"></div>
+                    
+                    <div class="text-4xl md:text-5xl font-black text-slate-800 break-all transition-all" x-text="result || 'Ready'"></div>
+                    
+                    <div class="mt-8">
+                        <button @click="generate()" class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 active:scale-95 transition-all">
+                            生成 / Generate
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Settings Area -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders"></i>
+                        参数设置
+                    </h3>
+
+                    <!-- Number Settings -->
+                    <div x-show="currentMode === 'number'" class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">最小值</label>
+                            <input type="number" x-model.number="settings.number.min" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">最大值</label>
+                            <input type="number" x-model.number="settings.number.max" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-500 outline-none">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="flex items-center gap-2 text-sm text-slate-600">
+                                <input type="checkbox" x-model="settings.number.integer" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                只生成整数
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- String Settings -->
+                    <div x-show="currentMode === 'string'" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">长度</label>
+                            <input type="number" min="1" max="100" x-model.number="settings.string.length" class="w-24 px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-500 outline-none">
+                        </div>
+                        <div class="flex flex-wrap gap-4">
+                            <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" x-model="settings.string.upper" class="rounded"> An upper</label>
+                            <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" x-model="settings.string.lower" class="rounded"> sn lower</label>
+                            <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" x-model="settings.string.number" class="rounded"> 123 Number</label>
+                            <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" x-model="settings.string.symbol" class="rounded"> !@# Symbol</label>
+                        </div>
+                    </div>
+
+                    <!-- List Picker Settings -->
+                    <div x-show="currentMode === 'picker'" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">选项列表 (每行一个)</label>
+                            <textarea x-model="settings.picker.list" rows="5" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-500 outline-none placeholder-slate-300" placeholder="选项 A&#10;选项 B&#10;选项 C"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- UUID Settings -->
+                    <div x-show="currentMode === 'uuid'" class="space-y-3">
+                        <p class="text-sm text-slate-500">生成标准 UUID v4 (通用唯一识别码)</p>
+                    </div>
+
+                    <!-- Color Settings -->
+                    <div x-show="currentMode === 'color'" class="space-y-3">
+                        <p class="text-sm text-slate-500">生成随机 Hex / RGB 颜色代码</p>
+                        <div x-show="result" class="w-full h-12 rounded-lg shadow-inner" :style="`background-color: ${result}`"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Fallback for generateUUID() in non-secure contexts
+        function generateUUID() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return generateUUID();
+            }
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function randomApp() {
+            return {
+                currentMode: 'number',
+                result: '',
+                
+                modes: [
+                    { id: 'number', label: '随机数字', icon: 'fa-solid fa-hashtag' },
+                    { id: 'string', label: '随机字符串', icon: 'fa-solid fa-font' },
+                    { id: 'picker', label: '列表抽签', icon: 'fa-solid fa-list' },
+                    { id: 'uuid', label: 'UUID', icon: 'fa-solid fa-fingerprint' },
+                    { id: 'color', label: '随机颜色', icon: 'fa-solid fa-palette' }
+                ],
+
+                settings: {
+                    number: { min: 1, max: 100, integer: true },
+                    string: { length: 12, upper: true, lower: true, number: true, symbol: false },
+                    picker: { list: '' }
+                },
+
+                init() {
+                    const savedList = localStorage.getItem('webtools_random_list');
+                    if (savedList) this.settings.picker.list = savedList;
+
+                    this.$watch('settings.picker.list', (val) => {
+                        localStorage.setItem('webtools_random_list', val);
+                    });
+                    
+
+                },
+
+                getCurrentLabel() {
+                    return this.modes.find(m => m.id === this.currentMode)?.label;
+                },
+
+                generate() {
+                    switch(this.currentMode) {
+                        case 'number':
+                            const min = this.settings.number.min;
+                            const max = this.settings.number.max;
+                            if (min >= max) {
+                                alert('最小值必须小于最大值');
+                                return;
+                            }
+                            let num = Math.random() * (max - min) + min;
+                            if (this.settings.number.integer) num = Math.floor(num);
+                            else num = parseFloat(num.toFixed(2));
+                            this.result = num;
+                            break;
+                            
+                        case 'string':
+                            const chars = [];
+                            if (this.settings.string.upper) chars.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+                            if (this.settings.string.lower) chars.push('abcdefghijklmnopqrstuvwxyz');
+                            if (this.settings.string.number) chars.push('0123456789');
+                            if (this.settings.string.symbol) chars.push('!@#$%^&*()_+~`|}{[]');
+                            
+                            if (chars.length === 0) {
+                                alert('请至少选择一种字符类型');
+                                return;
+                            }
+                            
+                            const pool = chars.join('');
+                            let str = '';
+                            for (let i = 0; i < this.settings.string.length; i++) {
+                                str += pool.charAt(Math.floor(Math.random() * pool.length));
+                            }
+                            this.result = str;
+                            break;
+                            
+                        case 'picker':
+                            const items = this.settings.picker.list.split('\n').filter(i => i.trim());
+                            if (items.length === 0) {
+                                alert('列表不能为空');
+                                return;
+                            }
+                            this.result = items[Math.floor(Math.random() * items.length)];
+                            break;
+                            
+                        case 'uuid':
+                            this.result = generateUUID();
+                            break;
+                            
+                        case 'color':
+                            const hex = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+                            this.result = hex.toUpperCase();
+                            break;
+                    }
+                },
+
+                copyResult() {
+                    if (!this.result) return;
+                    navigator.clipboard.writeText(this.result.toString()).then(() => {
+                        // Toast or visual feedback could go here
+                        const el = document.querySelector('.bg-white button i.fa-copy');
+                        if(el && el.parentElement) {
+                            const original = el.parentElement.innerHTML;
+                            el.parentElement.innerHTML = '<span class="text-xs text-green-600">已复制</span>';
+                            setTimeout(() => el.parentElement.innerHTML = original, 1000);
+                        }
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_random_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

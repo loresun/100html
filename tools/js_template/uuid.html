@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UUID 生成器 (uuid)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #feebb6; color: #78350f; } /* Yellowish */
+    .glass { background: white; border: 1px solid #fcd34d; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.05); }
+    .code { font-family: 'Fira Code', 'JetBrains Mono', monospace; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-3xl mx-auto flex justify-between items-center mb-12">
+  <div>
+    <h1 class="text-3xl font-bold text-amber-900">🆔 UUID</h1>
+    <p class="text-amber-800/60 mt-2 text-lg">通用唯一识别码生成器</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-amber-200 text-amber-800 rounded-lg hover:bg-amber-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-3xl mx-auto space-y-8">
+
+  <!-- 生成器核心 -->
+  <div class="glass p-10 rounded-2xl text-center shadow-lg relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-2 bg-amber-400"></div>
+    
+    <div class="mb-4 text-amber-600 text-sm font-bold uppercase tracking-widest">Random UUID v4</div>
+    <div id="uuid-display" class="text-2xl md:text-4xl font-bold text-amber-900 code break-all">
+      Click Generate
+    </div>
+    
+    <div class="mt-8 flex gap-4 justify-center">
+      <button onclick="generate()" class="px-8 py-3 bg-amber-500 text-white rounded-full text-lg font-bold shadow-lg shadow-amber-500/30 hover:bg-amber-600 hover:scale-105 transition-all active:scale-95">
+        🔄 生成新的
+      </button>
+      <button onclick="copyUUID()" class="px-6 py-3 bg-white border border-amber-200 text-amber-800 rounded-full font-bold hover:bg-amber-50 shadow-sm transition-all active:scale-95">
+        📋 复制
+      </button>
+    </div>
+    
+    <div id="toast" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-1 rounded-full text-sm opacity-0 transition-opacity pointer-events-none">
+      已复制到剪贴板！
+    </div>
+  </div>
+
+  <!-- 版本说明 -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="glass p-6 rounded-xl">
+      <h3 class="font-bold text-amber-900 text-lg mb-2">V4 (随机)</h3>
+      <p class="text-amber-700/70 text-sm">基于随机数的 UUID，最常用的版本。</p>
+      <div class="mt-2 text-xs text-amber-400 code">2f009b0c-352a-4467-9c98-4443cc9b0b41</div>
+    </div>
+    <div class="glass p-6 rounded-xl">
+      <h3 class="font-bold text-amber-900 text-lg mb-2">V1 (时间戳)</h3>
+      <p class="text-amber-700/70 text-sm">基于当前时间和 MAC 地址生成的 UUID。</p>
+      <div class="mt-2 text-xs text-amber-400 code">e39757f4-a8e0-11ed-afa1-0242ac120002</div>
+    </div>
+  </div>
+
+  <!-- 批量生成 -->
+  <div class="glass p-8 rounded-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-bold text-amber-900 text-lg">🚚 批量生成</h3>
+      <div>
+        <input type="number" id="batch-count" value="5" min="1" max="100" class="w-16 p-1 border border-amber-200 rounded text-center">
+        <button onclick="batchGenerate()" class="ml-2 px-3 py-1 bg-amber-100 text-amber-800 rounded hover:bg-amber-200 text-sm font-bold">生成</button>
+      </div>
+    </div>
+    <textarea id="batch-area" class="w-full h-32 p-4 bg-amber-50 border border-amber-100 rounded-xl code text-sm text-amber-900/80 resize-none outline-none" readonly></textarea>
+  </div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+<script>
+  // uuid 库暴露为 uuid 对象
+  // 有些 CDN 可能暴露为 uuidv4 等，这里尝试兼容
+  
+  function getUUIDv4() {
+    if (typeof uuid !== 'undefined' && uuid.v4) return uuid.v4();
+    // Fallback if CDN differs
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  function generate() {
+    const id = getUUIDv4();
+    document.getElementById('uuid-display').textContent = id;
+  }
+
+  function copyUUID() {
+    const text = document.getElementById('uuid-display').textContent.trim();
+    if(text === 'Click Generate') return;
+    
+    navigator.clipboard.writeText(text);
+    const toast = document.getElementById('toast');
+    toast.classList.remove('opacity-0');
+    setTimeout(() => toast.classList.add('opacity-0'), 2000);
+  }
+
+  function batchGenerate() {
+    const count = document.getElementById('batch-count').value;
+    const lines = [];
+    for(let i=0; i<count; i++) {
+      lines.push(getUUIDv4());
+    }
+    document.getElementById('batch-area').value = lines.join('\n');
+  }
+
+  // Init
+  generate();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

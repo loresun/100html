@@ -1,0 +1,6 @@
+window.toolCollections = window.toolCollections || {};
+window.toolCollections.rewrite = [
+    { id: 'content_rewriter', name: '多平台内容改写', desc: '一键将内容异步改写为小红书、公众号、Twitter 等多平台风格。支持自定义提示词和并行生成。', href: 'tools/rewrite/content_rewriter.html', icon: 'fa-solid fa-arrows-rotate', category: 'rewrite', tags: ['小红书', '公众号', '短视频'], isNew: false, iconBg: 'bg-purple-50', iconColor: 'text-purple-600', borderColor: 'purple-200', hoverTextColor: 'text-purple-600', linkColor: 'text-purple-600' },
+    { id: 'style_rewriter', name: '百变风格改写器', desc: '内置 100+ 种人物、文学及自媒体风格。支持多选风格并行改写，一键生成百变文案。', href: 'tools/rewrite/style_rewriter.html',         icon: 'fa-solid fa-wand-magic-sparkles', category: 'rewrite', tags: ['小红书', '公众号', '短视频'], isNew: true, iconBg: 'bg-violet-50', iconColor: 'text-violet-600', borderColor: 'violet-200', hoverTextColor: 'text-violet-600', linkColor: 'text-violet-600', badgeStyle: 'bg-violet-100 text-violet-700' },
+    { id: 'knowledge_distiller', name: '知识碎片提取器', desc: '长文杀手。一键从文章/字幕中提炼金句或拆解为小红书卡片大纲。支持联动生成图片。', href: 'tools/rewrite/knowledge_distiller.html', icon: 'fa-solid fa-scissors', category: 'rewrite', tags: ['小红书', '短视频'], isNew: true, iconBg: 'bg-purple-50', iconColor: 'text-purple-600', borderColor: 'purple-200', hoverTextColor: 'text-purple-600', linkColor: 'text-purple-600' },
+];

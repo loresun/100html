@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食谱搭配师 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 50%, #fef2f2 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e11d48; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.5s ease-out forwards; }
+
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-scale { animation: fadeInScale 0.4s ease-out forwards; }
+
+        .step-transition {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 芯片选择样式 */
+        .chip {
+            transition: all 0.25s ease;
+            border: 2px solid transparent;
+            cursor: pointer;
+            user-select: none;
+        }
+        .chip.active {
+            background: linear-gradient(135deg, #e11d48, #be123c);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 14px -4px rgba(225, 29, 72, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* 菜品卡片 */
+        .dish-card {
+            transition: all 0.3s ease;
+            border: 2px solid #fecdd3;
+            cursor: pointer;
+        }
+        .dish-card:hover {
+            box-shadow: 0 8px 30px -10px rgba(225, 29, 72, 0.25);
+            transform: translateY(-3px);
+            border-color: #fda4af;
+        }
+        .dish-card.selected {
+            border-color: #e11d48;
+            background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+            box-shadow: 0 8px 25px -8px rgba(225, 29, 72, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* 食材标签 */
+        .ingredient-tag {
+            transition: all 0.2s ease;
+        }
+        .ingredient-tag:hover {
+            transform: scale(1.05);
+        }
+
+        /* 步骤指示器 */
+        .step-dot {
+            transition: all 0.4s ease;
+        }
+        .step-dot.active {
+            background: #e11d48;
+            box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.2);
+        }
+        .step-dot.completed {
+            background: #e11d48;
+        }
+        .step-connector {
+            transition: all 0.6s ease;
+        }
+        .step-connector.active {
+            background: #e11d48;
+        }
+
+        /* Toast 通知 */
+        .toast-enter { animation: fadeInUp 0.3s ease-out; }
+
+        /* Markdown 渲染 */
+        .prose-recipe h3 { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-top: 1rem; margin-bottom: 0.4rem; }
+        .prose-recipe h4 { font-size: 0.95rem; font-weight: 600; color: #374151; margin-top: 0.8rem; }
+        .prose-recipe p { margin: 0.3rem 0; line-height: 1.7; }
+        .prose-recipe ul { padding-left: 1.2rem; margin: 0.3rem 0; }
+        .prose-recipe ol { padding-left: 1.4rem; margin: 0.3rem 0; }
+        .prose-recipe li { margin: 0.2rem 0; line-height: 1.6; }
+        .prose-recipe strong { color: #e11d48; }
+        .prose-recipe table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+        .prose-recipe th { background: #fff1f2; padding: 0.5rem; text-align: left; font-weight: 600; border-bottom: 2px solid #fecdd3; }
+        .prose-recipe td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #f1f5f9; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="recipeBuilderApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-rose-200/60">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="utensils" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">食谱搭配师</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 智能菜谱推荐</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-rose-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-rose-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤指示器 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-rose-100">
+            <div class="max-w-3xl mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <template x-for="(s, idx) in steps" :key="idx">
+                        <div class="flex items-center" :class="idx < steps.length - 1 ? 'flex-1' : ''">
+                            <div class="flex flex-col items-center relative">
+                                <div :class="[
+                                    'step-dot w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all',
+                                    currentStep > idx + 1 ? 'completed text-white' : '',
+                                    currentStep === idx + 1 ? 'active text-white' : '',
+                                    currentStep < idx + 1 ? 'bg-slate-200 text-slate-500' : ''
+                                ]">
+                                    <template x-if="currentStep > idx + 1">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="currentStep <= idx + 1">
+                                        <span x-text="idx + 1"></span>
+                                    </template>
+                                </div>
+                                <span class="text-xs mt-1.5 font-medium whitespace-nowrap"
+                                    :class="currentStep >= idx + 1 ? 'text-rose-700' : 'text-slate-400'"
+                                    x-text="s.label"></span>
+                            </div>
+                            <div x-show="idx < steps.length - 1"
+                                class="flex-1 h-1 rounded mx-3 mt-[-18px]"
+                                :class="currentStep > idx + 1 ? 'step-connector active' : 'bg-slate-200'">
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow overflow-y-auto">
+
+            <!-- ==================== 步骤1: 输入食材和偏好 ==================== -->
+            <div x-show="currentStep === 1" x-transition:enter="step-transition"
+                x-transition:enter-start="opacity-0 translate-x-8"
+                x-transition:enter-end="opacity-100 translate-x-0"
+                class="max-w-4xl mx-auto px-4 py-8">
+
+                <div class="text-center mb-8 animate-fade-in">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-2">🍳 告诉我你有什么食材</h2>
+                    <p class="text-slate-500">AI 将根据你的食材和偏好，推荐最合适的菜品</p>
+                </div>
+
+                <div class="space-y-5">
+                    <!-- 食材输入 -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm animate-fade-in">
+                        <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                            <i data-lucide="carrot" class="w-4 h-4 text-rose-600"></i>
+                            现有食材 <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" x-model="tagInput"
+                                @keydown.enter.prevent="addIngredient"
+                                @keydown.comma.prevent="addIngredient"
+                                placeholder="输入食材名称，回车添加..."
+                                class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition">
+                            <button @click="addIngredient"
+                                class="px-4 py-2 bg-rose-100 text-rose-700 rounded-xl hover:bg-rose-200 transition text-sm font-medium whitespace-nowrap">
+                                添加
+                            </button>
+                        </div>
+                        <!-- 已添加的食材标签 -->
+                        <div class="flex flex-wrap gap-2 min-h-[32px]" x-show="input.ingredients.length > 0">
+                            <template x-for="(ing, i) in input.ingredients" :key="i">
+                                <span class="ingredient-tag inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-full px-3 py-1 text-sm">
+                                    <span x-text="ing"></span>
+                                    <button @click="input.ingredients.splice(i, 1)"
+                                        class="hover:text-rose-900 ml-0.5">×</button>
+                                </span>
+                            </template>
+                        </div>
+                        <p x-show="input.ingredients.length === 0" class="text-xs text-slate-400 mt-1">💡 提示：输入食材如"鸡胸肉"、"西红柿"、"鸡蛋"等，回车或点击添加</p>
+                        <!-- 常见食材快选 -->
+                        <div class="mt-3 flex flex-wrap gap-1.5">
+                            <span class="text-xs text-slate-400 leading-7">快选:</span>
+                            <template x-for="q in quickIngredients" :key="q">
+                                <button @click="addQuickIngredient(q)"
+                                    :class="['px-2.5 py-1 rounded-full text-xs font-medium border transition',
+                                        input.ingredients.includes(q) ? 'bg-rose-600 text-white border-rose-600' : 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100']"
+                                    x-text="q"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 用餐人数 + 烹饪时间 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm animate-fade-in">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="users" class="w-4 h-4 text-rose-600"></i>
+                                用餐人数
+                            </label>
+                            <div class="flex items-center gap-3">
+                                <button @click="input.diners = Math.max(1, input.diners - 1)"
+                                    class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition text-xl font-bold">−</button>
+                                <div class="flex-1 bg-rose-50 border border-rose-200 rounded-xl py-2 text-center">
+                                    <span class="text-2xl font-bold text-rose-700" x-text="input.diners"></span>
+                                    <span class="text-sm text-rose-500 ml-1">人</span>
+                                </div>
+                                <button @click="input.diners = Math.min(10, input.diners + 1)"
+                                    class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition text-xl font-bold">+</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-6 shadow-sm animate-fade-in">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="clock" class="w-4 h-4 text-rose-600"></i>
+                                烹饪时间
+                            </label>
+                            <select x-model="input.cookTime"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-rose-500 transition">
+                                <option value="15分钟">15分钟</option>
+                                <option value="30分钟">30分钟</option>
+                                <option value="1小时">1小时</option>
+                                <option value="不限">不限</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 菜系偏好 -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm animate-fade-in">
+                        <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                            <i data-lucide="globe" class="w-4 h-4 text-rose-600"></i>
+                            菜系偏好
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="c in cuisineOptions" :key="c.value">
+                                <button @click="input.cuisine = c.value"
+                                    :class="['chip px-4 py-2 rounded-full text-sm font-medium',
+                                        input.cuisine === c.value ? 'active' : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-600']"
+                                    x-text="c.emoji + ' ' + c.label"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 口味偏好 -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm animate-fade-in">
+                        <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                            <i data-lucide="flame" class="w-4 h-4 text-rose-600"></i>
+                            口味偏好
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="t in tasteOptions" :key="t.value">
+                                <button @click="input.taste = t.value"
+                                    :class="['chip px-4 py-2 rounded-full text-sm font-medium',
+                                        input.taste === t.value ? 'active' : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-600']"
+                                    x-text="t.emoji + ' ' + t.label"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 饮食限制 -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm animate-fade-in">
+                        <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-rose-600"></i>
+                            饮食限制
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="d in dietOptions" :key="d.value">
+                                <button @click="toggleDiet(d.value)"
+                                    :class="['chip px-4 py-2 rounded-full text-sm font-medium',
+                                        input.diet.includes(d.value) ? 'active' : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-600']"
+                                    x-text="d.emoji + ' ' + d.label"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 厨艺水平 -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm animate-fade-in">
+                        <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                            <i data-lucide="chef-hat" class="w-4 h-4 text-rose-600"></i>
+                            厨艺水平
+                        </label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <template x-for="s in skillOptions" :key="s.value">
+                                <button @click="input.skill = s.value"
+                                    :class="['p-4 rounded-xl text-center border-2 transition-all',
+                                        input.skill === s.value ? 'border-rose-500 bg-gradient-to-br from-rose-50 to-pink-50 shadow-md' : 'border-slate-200 bg-white hover:border-rose-300']">
+                                    <div class="text-2xl mb-1" x-text="s.emoji"></div>
+                                    <div class="text-sm font-bold" :class="input.skill === s.value ? 'text-rose-700' : 'text-slate-700'" x-text="s.label"></div>
+                                    <div class="text-xs mt-0.5" :class="input.skill === s.value ? 'text-rose-500' : 'text-slate-400'" x-text="s.desc"></div>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 开始推荐按钮 -->
+                    <div class="pt-2 pb-8">
+                        <button @click="generateDishSuggestions"
+                            :disabled="input.ingredients.length === 0 || isGenerating"
+                            class="w-full bg-gradient-to-r from-rose-600 to-pink-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:from-rose-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                            <i x-show="!isGenerating" data-lucide="sparkles" class="w-5 h-5"></i>
+                            <i x-show="isGenerating" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                            <span x-text="isGenerating ? '正在思考菜品...' : '🍽️ AI 推荐菜品'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 步骤2: AI推荐菜品 ==================== -->
+            <div x-show="currentStep === 2" x-transition:enter="step-transition"
+                x-transition:enter-start="opacity-0 translate-x-8"
+                x-transition:enter-end="opacity-100 translate-x-0"
+                class="max-w-4xl mx-auto px-4 py-8">
+
+                <div class="text-center mb-8 animate-fade-in">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-2">🍱 为你推荐以下菜品</h2>
+                    <p class="text-slate-500">点击选择你想做的菜，可多选</p>
+                </div>
+
+                <!-- 加载中 -->
+                <div x-show="isGenerating" class="flex flex-col items-center py-16">
+                    <div class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                        <i data-lucide="chef-hat" class="w-8 h-8 text-rose-600"></i>
+                    </div>
+                    <p class="text-rose-600 font-medium">AI 正在搭配菜品...</p>
+                    <p class="text-slate-400 text-sm mt-1">根据你的食材和偏好，精心挑选中</p>
+                </div>
+
+                <!-- 菜品卡片网格 -->
+                <div x-show="!isGenerating && suggestedDishes.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <template x-for="(dish, idx) in suggestedDishes" :key="idx">
+                        <div @click="toggleDishSelection(idx)"
+                            :class="['dish-card bg-white rounded-2xl p-5 relative overflow-hidden',
+                                selectedDishes.includes(idx) ? 'selected' : '']"
+                            :style="'animation-delay:' + (idx * 0.1) + 's'"
+                            class="animate-fade-scale">
+                            <!-- 选中标记 -->
+                            <div x-show="selectedDishes.includes(idx)"
+                                class="absolute top-3 right-3 w-7 h-7 bg-rose-600 rounded-full flex items-center justify-center">
+                                <i data-lucide="check" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <!-- 菜品信息 -->
+                            <div class="flex items-start gap-3">
+                                <div class="text-4xl flex-shrink-0" x-text="dish.emoji || '🍽️'"></div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-bold text-lg text-slate-900 mb-1" x-text="dish.name"></h3>
+                                    <p class="text-sm text-slate-500 leading-relaxed mb-3" x-text="dish.description"></p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+                                            :class="getDifficultyClass(dish.difficulty)">
+                                            <span x-text="getDifficultyStars(dish.difficulty)"></span>
+                                            <span x-text="dish.difficulty"></span>
+                                        </span>
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-medium">
+                                            ⏱️ <span x-text="dish.time"></span>
+                                        </span>
+                                        <span x-show="dish.calories" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium">
+                                            🔥 <span x-text="dish.calories"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div x-show="!isGenerating && suggestedDishes.length > 0" class="flex flex-col sm:flex-row gap-3 pb-8">
+                    <button @click="currentStep = 1; $nextTick(() => refreshIcons())"
+                        class="px-6 py-3 bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 transition font-medium flex items-center justify-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        修改偏好
+                    </button>
+                    <button @click="generateDishSuggestions"
+                        class="px-6 py-3 bg-white text-rose-600 rounded-xl border border-rose-200 hover:bg-rose-50 transition font-medium flex items-center justify-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        换一批推荐
+                    </button>
+                    <button @click="generateDetailedRecipes"
+                        :disabled="selectedDishes.length === 0 || isGenerating"
+                        class="flex-1 bg-gradient-to-r from-rose-600 to-pink-600 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                        查看详细菜谱 (<span x-text="selectedDishes.length"></span>道)
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== 步骤3: AI详细菜谱 ==================== -->
+            <div x-show="currentStep === 3" x-transition:enter="step-transition"
+                x-transition:enter-start="opacity-0 translate-x-8"
+                x-transition:enter-end="opacity-100 translate-x-0"
+                class="max-w-4xl mx-auto px-4 py-8">
+
+                <div class="text-center mb-8 animate-fade-in">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-2">📖 详细菜谱</h2>
+                    <p class="text-slate-500">手把手教你做出美味佳肴</p>
+                </div>
+
+                <!-- 加载状态 -->
+                <div x-show="isGenerating && !recipeContent" class="flex flex-col items-center py-16">
+                    <div class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                        <i data-lucide="book-open" class="w-8 h-8 text-rose-600"></i>
+                    </div>
+                    <p class="text-rose-600 font-medium">正在编写详细菜谱...</p>
+                </div>
+
+                <!-- 菜谱内容 -->
+                <div x-show="recipeContent" class="space-y-4">
+                    <div class="bg-white rounded-2xl p-6 md:p-8 shadow-sm animate-fade-in">
+                        <!-- V4 Pro 推理过程 -->
+                        <details x-show="reasoningContent" class="mb-4">
+                            <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-rose-600 transition">
+                                🧠 深度思考过程 (点击展开)
+                            </summary>
+                            <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm text-slate-600 whitespace-pre-wrap max-h-60 overflow-y-auto"
+                                x-text="reasoningContent"></div>
+                        </details>
+                        <div class="prose-recipe" x-html="renderMarkdown(recipeContent)"></div>
+                        <div x-show="isGenerating" class="mt-4 flex items-center gap-2 text-rose-500 text-sm">
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                            <span>继续生成中...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div x-show="recipeContent && !isGenerating" class="flex flex-col sm:flex-row gap-3 mt-6 pb-8">
+                    <button @click="currentStep = 2; $nextTick(() => refreshIcons())"
+                        class="px-6 py-3 bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 transition font-medium flex items-center justify-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        返回菜品列表
+                    </button>
+                    <button @click="copyText(recipeContent)"
+                        class="px-6 py-3 bg-white text-rose-600 rounded-xl border border-rose-200 hover:bg-rose-50 transition font-medium flex items-center justify-center gap-2">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        复制菜谱
+                    </button>
+                    <button @click="generateNutritionAnalysis"
+                        :disabled="isGenerating"
+                        class="flex-1 bg-gradient-to-r from-rose-600 to-pink-600 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                        营养分析 & 采购清单
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== 步骤4: 营养分析+采购清单 ==================== -->
+            <div x-show="currentStep === 4" x-transition:enter="step-transition"
+                x-transition:enter-start="opacity-0 translate-x-8"
+                x-transition:enter-end="opacity-100 translate-x-0"
+                class="max-w-4xl mx-auto px-4 py-8">
+
+                <div class="text-center mb-8 animate-fade-in">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-2">📊 营养分析 & 采购清单</h2>
+                    <p class="text-slate-500">科学搭配，轻松采购</p>
+                </div>
+
+                <!-- 加载状态 -->
+                <div x-show="isGenerating && !nutritionContent" class="flex flex-col items-center py-16">
+                    <div class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                        <i data-lucide="bar-chart-3" class="w-8 h-8 text-rose-600"></i>
+                    </div>
+                    <p class="text-rose-600 font-medium">正在分析营养成分和生成采购清单...</p>
+                </div>
+
+                <!-- 营养分析内容 -->
+                <div x-show="nutritionContent" class="space-y-4">
+                    <div class="bg-white rounded-2xl p-6 md:p-8 shadow-sm animate-fade-in">
+                        <details x-show="nutritionReasoning" class="mb-4">
+                            <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-rose-600 transition">
+                                🧠 深度思考过程 (点击展开)
+                            </summary>
+                            <div class="mt-2 p-4 bg-slate-50 rounded-lg text-sm text-slate-600 whitespace-pre-wrap max-h-60 overflow-y-auto"
+                                x-text="nutritionReasoning"></div>
+                        </details>
+                        <div class="prose-recipe" x-html="renderMarkdown(nutritionContent)"></div>
+                        <div x-show="isGenerating" class="mt-4 flex items-center gap-2 text-rose-500 text-sm">
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                            <span>继续生成中...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div x-show="nutritionContent && !isGenerating" class="flex flex-col sm:flex-row gap-3 mt-6 pb-8">
+                    <button @click="currentStep = 3; $nextTick(() => refreshIcons())"
+                        class="px-6 py-3 bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 transition font-medium flex items-center justify-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        返回菜谱
+                    </button>
+                    <button @click="copyText(nutritionContent)"
+                        class="px-6 py-3 bg-white text-rose-600 rounded-xl border border-rose-200 hover:bg-rose-50 transition font-medium flex items-center justify-center gap-2">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        复制内容
+                    </button>
+                    <button @click="exportMarkdown"
+                        class="flex-1 bg-gradient-to-r from-rose-600 to-pink-600 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="download" class="w-5 h-5"></i>
+                        导出 Markdown
+                    </button>
+                    <button @click="resetAll"
+                        class="px-6 py-3 bg-white text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 transition font-medium flex items-center justify-center gap-2">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        重新开始
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Settings Modal ==================== -->
+        <div x-show="showSettings" x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+            @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-rose-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-rose-500 transition">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl transition font-medium">
+                        取消
+                    </button>
+                    <button @click="saveConfig"
+                        class="bg-rose-600 text-white px-6 py-2 rounded-xl hover:bg-rose-700 transition font-medium">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== Toast ==================== -->
+        <div x-show="toast.show" x-transition:enter="toast-enter"
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-medium">
+            <span x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('recipeBuilderApp', () => ({
+            // 步骤
+            currentStep: 1,
+            steps: [
+                { label: '食材输入' },
+                { label: 'AI推荐' },
+                { label: '详细菜谱' },
+                { label: '营养采购' }
+            ],
+
+            // UI 状态
+            showSettings: false,
+            isGenerating: false,
+            toast: { show: false, message: '' },
+            tagInput: '',
+
+            // API 配置
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            // 输入数据
+            input: {
+                ingredients: [],
+                diners: 2,
+                cuisine: '不限',
+                taste: '不限',
+                diet: ['无'],
+                cookTime: '30分钟',
+                skill: '进阶'
+            },
+
+            // 选项配置
+            cuisineOptions: [
+                { value: '中式', label: '中式', emoji: '🥢' },
+                { value: '西式', label: '西式', emoji: '🍝' },
+                { value: '日式', label: '日式', emoji: '🍣' },
+                { value: '韩式', label: '韩式', emoji: '🍲' },
+                { value: '东南亚', label: '东南亚', emoji: '🍜' },
+                { value: '不限', label: '不限', emoji: '🌍' }
+            ],
+            tasteOptions: [
+                { value: '清淡', label: '清淡', emoji: '🥬' },
+                { value: '麻辣', label: '麻辣', emoji: '🌶️' },
+                { value: '酸甜', label: '酸甜', emoji: '🍋' },
+                { value: '咸鲜', label: '咸鲜', emoji: '🧂' },
+                { value: '不限', label: '不限', emoji: '✨' }
+            ],
+            dietOptions: [
+                { value: '无', label: '无', emoji: '✅' },
+                { value: '素食', label: '素食', emoji: '🥦' },
+                { value: '低糖', label: '低糖', emoji: '🚫🍬' },
+                { value: '低脂', label: '低脂', emoji: '💧' },
+                { value: '无麸质', label: '无麸质', emoji: '🌾' },
+                { value: '高蛋白', label: '高蛋白', emoji: '💪' }
+            ],
+            skillOptions: [
+                { value: '新手', label: '新手', emoji: '🔰', desc: '简单易上手' },
+                { value: '进阶', label: '进阶', emoji: '👨‍🍳', desc: '有一定基础' },
+                { value: '大厨', label: '大厨', emoji: '⭐', desc: '挑战高难度' }
+            ],
+            quickIngredients: ['鸡蛋', '西红柿', '土豆', '鸡胸肉', '豆腐', '青椒', '米饭', '面条', '虾仁', '牛肉', '猪肉', '白菜', '胡萝卜', '蘑菇', '洋葱', '大蒜'],
+
+            // 步骤2：推荐菜品
+            suggestedDishes: [],
+            selectedDishes: [],
+            dishesRaw: '',
+
+            // 步骤3：详细菜谱
+            recipeContent: '',
+            reasoningContent: '',
+
+            // 步骤4：营养分析
+            nutritionContent: '',
+            nutritionReasoning: '',
+
+            /** 初始化 */
+            init() {
+                this.loadConfig();
+                this.$nextTick(() => this.refreshIcons());
+            },
+
+            /** 从 localStorage 加载配置（合并策略） */
+            loadConfig() {
+                try {
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    }
+                } catch (e) {
+                    console.warn('配置加载失败:', e);
+                }
+            },
+
+            /** 保存配置（合并策略，不覆盖其他工具的配置） */
+            saveConfig() {
+                try {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存');
+                } catch (e) {
+                    console.error('保存配置失败:', e);
+                }
+            },
+
+            /** 添加食材标签 */
+            addIngredient() {
+                const val = this.tagInput.trim().replace(/,|，/g, '');
+                if (val && !this.input.ingredients.includes(val)) {
+                    this.input.ingredients.push(val);
+                }
+                this.tagInput = '';
+            },
+
+            /** 快速添加/移除食材 */
+            addQuickIngredient(name) {
+                const idx = this.input.ingredients.indexOf(name);
+                if (idx === -1) {
+                    this.input.ingredients.push(name);
+                } else {
+                    this.input.ingredients.splice(idx, 1);
+                }
+            },
+
+            /** 切换饮食限制（多选，但"无"与其他互斥） */
+            toggleDiet(val) {
+                if (val === '无') {
+                    this.input.diet = ['无'];
+                    return;
+                }
+                const noIdx = this.input.diet.indexOf('无');
+                if (noIdx !== -1) this.input.diet.splice(noIdx, 1);
+
+                const idx = this.input.diet.indexOf(val);
+                if (idx === -1) {
+                    this.input.diet.push(val);
+                } else {
+                    this.input.diet.splice(idx, 1);
+                }
+                if (this.input.diet.length === 0) this.input.diet = ['无'];
+            },
+
+            /** 切换菜品选择 */
+            toggleDishSelection(idx) {
+                const pos = this.selectedDishes.indexOf(idx);
+                if (pos === -1) {
+                    this.selectedDishes.push(idx);
+                } else {
+                    this.selectedDishes.splice(pos, 1);
+                }
+            },
+
+            /** 获取难度样式 */
+            getDifficultyClass(diff) {
+                if (diff === '简单' || diff === '★') return 'bg-green-50 text-green-700';
+                if (diff === '中等' || diff === '★★') return 'bg-amber-50 text-amber-700';
+                return 'bg-red-50 text-red-700';
+            },
+
+            /** 获取难度星级 */
+            getDifficultyStars(diff) {
+                if (diff === '简单') return '★';
+                if (diff === '中等') return '★★';
+                if (diff === '困难') return '★★★';
+                return '';
+            },
+
+            /** 渲染 Markdown */
+            renderMarkdown(text) {
+                if (!text) return '';
+                try {
+                    return marked.parse(text);
+                } catch (e) {
+                    return text.replace(/\n/g, '<br>');
+                }
+            },
+
+            /** Toast 通知 */
+            showToast(msg) {
+                this.toast.message = msg;
+                this.toast.show = true;
+                setTimeout(() => { this.toast.show = false; }, 2500);
+            },
+
+            /** 刷新图标 */
+            refreshIcons() {
+                setTimeout(() => {
+                    try { lucide.createIcons(); } catch(e) {}
+                }, 100);
+            },
+
+            /** 复制文本 */
+            async copyText(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    this.showToast('已复制到剪贴板');
+                } catch (e) {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    this.showToast('已复制到剪贴板');
+                }
+            },
+
+            /** 重置所有状态 */
+            resetAll() {
+                this.currentStep = 1;
+                this.input.ingredients = [];
+                this.suggestedDishes = [];
+                this.selectedDishes = [];
+                this.dishesRaw = '';
+                this.recipeContent = '';
+                this.reasoningContent = '';
+                this.nutritionContent = '';
+                this.nutritionReasoning = '';
+                this.$nextTick(() => this.refreshIcons());
+            },
+
+            // ===================================================================
+            //  步骤2: AI推荐菜品（JSON 模式）
+            // ===================================================================
+
+            async generateDishSuggestions() {
+                if (this.input.ingredients.length === 0) return;
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isGenerating = true;
+                this.dishesRaw = '';
+                this.suggestedDishes = [];
+                this.selectedDishes = [];
+                this.recipeContent = '';
+                this.reasoningContent = '';
+                this.nutritionContent = '';
+                this.nutritionReasoning = '';
+                this.currentStep = 2;
+                this.$nextTick(() => this.refreshIcons());
+
+                const dietLabel = this.input.diet.join('、');
+
+                const systemPrompt = `你是一位创意十足的美食搭配师，精通各国菜系。
+请根据用户提供的食材和偏好，推荐3-5道菜品。
+
+要求：
+1. 返回严格的 JSON 格式，不要包含其他文字
+2. JSON 结构如下：
+{
+  "dishes": [
+    {
+      "name": "菜品名称",
+      "emoji": "一个最能代表这道菜的食物emoji",
+      "description": "40-60字的菜品介绍，突出口感和特色",
+      "difficulty": "简单/中等/困难",
+      "time": "预计烹饪时间",
+      "calories": "大约热量（每人份）"
+    }
+  ]
+}
+3. 菜品必须能用提供的食材制作（可少量补充调料等基础材料）
+4. 根据厨艺水平推荐合适难度
+5. 每道菜的 emoji 要生动贴切`;
+
+                const userPrompt = `现有食材：${this.input.ingredients.join('、')}
+用餐人数：${this.input.diners}人
+菜系偏好：${this.input.cuisine}
+口味偏好：${this.input.taste}
+饮食限制：${dietLabel}
+烹饪时间：${this.input.cookTime}
+厨艺水平：${this.input.skill}
+
+请推荐菜品 JSON。`;
+
+                try {
+                    await this.streamAPI(
+                        [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        (chunk) => { this.dishesRaw += chunk; },
+                        true
+                    );
+                    this.parseDishes();
+                } catch (e) {
+                    console.error('推荐菜品失败:', e);
+                    this.showToast('生成失败: ' + (e.message || '请检查API配置'));
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => this.refreshIcons());
+                }
+            },
+
+            /** 解析推荐菜品 JSON */
+            parseDishes() {
+                try {
+                    let text = this.dishesRaw.trim();
+                    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+                    const data = JSON.parse(text);
+                    if (data.dishes && Array.isArray(data.dishes)) {
+                        this.suggestedDishes = data.dishes;
+                    } else if (Array.isArray(data)) {
+                        this.suggestedDishes = data;
+                    } else {
+                        throw new Error('未找到 dishes 数组');
+                    }
+                } catch (e) {
+                    console.warn('JSON 解析失败:', e);
+                    this.showToast('解析菜品失败，请重试');
+                    this.suggestedDishes = [];
+                }
+            },
+
+            // ===================================================================
+            //  步骤3: AI详细菜谱（流式）
+            // ===================================================================
+
+            async generateDetailedRecipes() {
+                if (this.selectedDishes.length === 0) return;
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isGenerating = true;
+                this.recipeContent = '';
+                this.reasoningContent = '';
+                this.currentStep = 3;
+                this.$nextTick(() => this.refreshIcons());
+
+                const selectedNames = this.selectedDishes.map(i => this.suggestedDishes[i]);
+                const dishList = selectedNames.map(d => `${d.emoji} ${d.name}（${d.description}）`).join('\n');
+
+                const systemPrompt = `你是一位专业的烹饪导师，善于用清晰、亲切的语言教学。
+请为用户编写详细菜谱。
+
+输出要求（Markdown 格式）：
+1. 每道菜用 ## 作为标题，加上对应的emoji
+2. 每道菜包含以下部分：
+   - **🥘 食材清单**：列出所有食材及用量（${this.input.diners}人份）
+   - **📝 烹饪步骤**：编号列出每一步，描述详细
+   - **💡 大厨贴士**：2-3条实用技巧
+3. 步骤描述要具体，包含火候、时间、判断标准
+4. 用量要精确（克/毫升/汤匙等）
+5. 语言亲切易懂，适合${this.input.skill}级别`;
+
+                const userPrompt = `请为以下菜品编写详细菜谱：
+${dishList}
+
+用餐人数：${this.input.diners}人
+现有食材：${this.input.ingredients.join('、')}
+厨艺水平：${this.input.skill}`;
+
+                try {
+                    await this.streamAPI(
+                        [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        (chunk, isReasoning) => {
+                            if (isReasoning) {
+                                this.reasoningContent += chunk;
+                            } else {
+                                this.recipeContent += chunk;
+                            }
+                        },
+                        false
+                    );
+                } catch (e) {
+                    console.error('生成菜谱失败:', e);
+                    this.showToast('生成失败: ' + (e.message || '请检查API配置'));
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => this.refreshIcons());
+                }
+            },
+
+            // ===================================================================
+            //  步骤4: 营养分析 + 采购清单（流式）
+            // ===================================================================
+
+            async generateNutritionAnalysis() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isGenerating = true;
+                this.nutritionContent = '';
+                this.nutritionReasoning = '';
+                this.currentStep = 4;
+                this.$nextTick(() => this.refreshIcons());
+
+                const selectedNames = this.selectedDishes.map(i => this.suggestedDishes[i]);
+                const dishList = selectedNames.map(d => `${d.emoji} ${d.name}`).join('、');
+
+                const systemPrompt = `你是一位营养学专家和采购规划师。
+请根据菜谱信息，提供营养分析和采购清单。
+
+输出要求（Markdown 格式）：
+
+## 🔬 营养分析
+- 对每道菜分析热量、蛋白质、脂肪、碳水化合物（每人份）
+- 用表格形式呈现
+- 给出整餐的营养评价和搭配建议
+
+## 🛒 采购清单
+按以下分类整理所有需要购买的食材（已有食材标注✅，需购买的标注🛒）：
+- **🥬 蔬菜类**
+- **🥩 肉蛋类**
+- **🧂 调味料**
+- **🛍️ 其他**
+
+每项标注估算用量（${this.input.diners}人份）和大约价格。
+
+## 💰 预估总花费
+给出采购总花费估算。
+
+## 🍽️ 搭配建议
+给出主食、汤品、饮品的搭配建议。`;
+
+                const userPrompt = `菜品：${dishList}
+用餐人数：${this.input.diners}人
+现有食材：${this.input.ingredients.join('、')}
+
+菜谱内容概要：
+${this.recipeContent.substring(0, 1500)}
+
+请提供营养分析和采购清单。`;
+
+                try {
+                    await this.streamAPI(
+                        [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        (chunk, isReasoning) => {
+                            if (isReasoning) {
+                                this.nutritionReasoning += chunk;
+                            } else {
+                                this.nutritionContent += chunk;
+                            }
+                        },
+                        false
+                    );
+                } catch (e) {
+                    console.error('营养分析失败:', e);
+                    this.showToast('生成失败: ' + (e.message || '请检查API配置'));
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => this.refreshIcons());
+                }
+            },
+
+            // ===================================================================
+            //  导出 Markdown
+            // ===================================================================
+
+            exportMarkdown() {
+                const selectedNames = this.selectedDishes.map(i => this.suggestedDishes[i]);
+                const dishNames = selectedNames.map(d => `${d.emoji} ${d.name}`).join('、');
+
+                let md = `# 🍳 食谱搭配 - ${dishNames}\n\n`;
+                md += `> 👥 ${this.input.diners}人份 | 🍽️ ${this.input.cuisine} | 🌶️ ${this.input.taste} | ⏱️ ${this.input.cookTime} | 👨‍🍳 ${this.input.skill}\n\n`;
+                md += `> 📦 食材：${this.input.ingredients.join('、')}\n\n`;
+                md += `---\n\n`;
+
+                if (this.recipeContent) {
+                    md += this.recipeContent + '\n\n';
+                    md += `---\n\n`;
+                }
+
+                if (this.nutritionContent) {
+                    md += this.nutritionContent + '\n\n';
+                }
+
+                md += `---\n*由 AI 食谱搭配师生成 | ${new Date().toLocaleDateString('zh-CN')}*\n`;
+
+                const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `食谱_${selectedNames.map(d => d.name).join('_')}.md`;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showToast('已导出 Markdown 文件');
+            },
+
+            // ===================================================================
+            //  核心：流式 API 调用
+            // ===================================================================
+
+            /**
+             * 调用 DeepSeek API（流式），支持 V4 Pro 推理内容回调
+             * @param {Array} messages - 消息数组
+             * @param {Function} onChunk - 回调 (chunk, isReasoning)
+             * @param {boolean} jsonMode - 是否启用 JSON 输出模式
+             */
+            async streamAPI(messages, onChunk, jsonMode = false) {
+                const body = {
+                    model: this.apiConfig.model,
+                    messages: messages,
+                    stream: true,
+                    temperature: 0.7
+                };
+
+                if (jsonMode) {
+                    body.response_format = { type: 'json_object' };
+                }
+
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    const errBody = await response.text();
+                    throw new Error(`API 请求失败 (${response.status}): ${errBody.substring(0, 200)}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') continue;
+
+                        try {
+                            const parsed = JSON.parse(data);
+                            const delta = parsed.choices?.[0]?.delta;
+                            if (delta?.reasoning_content) {
+                                onChunk(delta.reasoning_content, true);
+                            }
+                            if (delta?.content) {
+                                onChunk(delta.content, false);
+                            }
+                        } catch (e) {
+                            // 忽略非 JSON 行
+                        }
+                    }
+                }
+            }
+        }));
+    });
+    </script>
+</body>
+</html>

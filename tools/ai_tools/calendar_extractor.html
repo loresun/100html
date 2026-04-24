@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日历提取器 - AI 内容创作工坊</title>
+    <meta name="description" content="从文本中智能提取日历事件，生成 ICS 文件，支持导入到各种日历应用">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /**
+         * 日历提取器样式 - 蓝紫色渐变主题
+         * 设计理念：现代、专业、高效的日程管理工具视觉
+         */
+        body {
+            background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 50%, #fdf4ff 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 3px;
+        }
+
+        /* 淡入动画 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+
+        /* 浮动动画 */
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* 脉冲动画 */
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.8);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        .animate-pulse-ring {
+            animation: pulse-ring 1.5s ease-out infinite;
+        }
+
+        /* 日历事件卡片样式 */
+        .event-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 4px solid transparent;
+        }
+
+        .event-card:hover {
+            transform: translateX(4px);
+            border-left-color: #6366f1;
+            box-shadow: 0 8px 30px -10px rgba(99, 102, 241, 0.3);
+        }
+
+        /* 选中状态 */
+        .event-card.selected {
+            border-left-color: #22c55e;
+            background: linear-gradient(to right, rgba(34, 197, 94, 0.05), transparent);
+        }
+
+        /* 输入框聚焦效果 */
+        .input-focus:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
+        }
+
+        /* ICS 代码预览区域 */
+        .ics-preview {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            background: #1e1e2e;
+            color: #cdd6f4;
+        }
+
+        .ics-preview .ics-key {
+            color: #f38ba8;
+        }
+
+        .ics-preview .ics-value {
+            color: #a6e3a1;
+        }
+
+        .ics-preview .ics-section {
+            color: #89b4fa;
+            font-weight: bold;
+        }
+
+        /* 装饰背景 */
+        .decoration-pattern {
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 50%);
+        }
+
+        /* 日期时间选择器样式 */
+        input[type="datetime-local"] {
+            color-scheme: light;
+        }
+
+        /* 复选框样式 */
+        .checkbox-custom {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-custom:checked {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-color: #6366f1;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+            background-size: 14px;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <!--
+        日历提取器 - Alpine.js 应用
+        功能：
+        1. 输入文本，AI 智能提取日历事件
+        2. 预览事件列表，支持编辑修改
+        3. 预览 ICS 代码
+        4. 支持保存单个事件或批量保存系列日历
+    -->
+    <div x-data="calendarExtractorApp" class="min-h-screen flex flex-col decoration-pattern">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <!-- Logo 和标题 -->
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-calendar-plus text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">日历提取器</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">文本 → ICS 日历文件</span>
+                        </div>
+                    </div>
+                    <!-- 右侧按钮 -->
+                    <div class="flex items-center gap-2">
+                        <!-- V4 Flash/V4 Pro 模型切换器 -->
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-indigo-600': apiConfig.model === 'deepseek-v4-flash', 'text-slate-500': apiConfig.model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-indigo-600': apiConfig.model === 'deepseek-v4-pro', 'text-slate-500': apiConfig.model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showHelp = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-indigo-50">
+                            <i class="fa-solid fa-circle-question h-4 w-4"></i>
+                            <span class="hidden sm:inline">使用帮助</span>
+                        </button>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-indigo-50">
+                            <i class="fa-solid fa-gear h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：输入面板 -->
+            <div
+                class="w-full lg:w-2/5 bg-white/70 backdrop-blur-sm border-r border-indigo-100 p-5 overflow-y-auto space-y-5">
+
+                <!-- 输入文本区域 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-file-lines w-4 h-4 text-indigo-600"></i>
+                        输入包含日程信息的文本 <span class="text-red-500">*</span>
+                    </label>
+                    <textarea x-model="inputText" rows="8" placeholder="粘贴包含日程信息的文本，例如：
+
+明天下午3点在会议室A开项目评审会，预计2小时。
+
+下周三上午10:00-12:00 产品发布会，地点：公司大楼1层多功能厅
+
+2026年1月15日 19:30 年会晚宴 @ 希尔顿酒店宴会厅"
+                        class="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm outline-none input-focus transition resize-none"></textarea>
+                    <p class="text-xs text-slate-400 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-info w-3 h-3"></i>
+                        支持自然语言描述，AI 会自动识别时间、地点、事件等信息
+                    </p>
+                </div>
+
+                <!-- 参考日期设置 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days w-4 h-4 text-purple-600"></i>
+                        参考日期 <span class="text-xs text-slate-400 ml-1">(用于解析"明天"、"下周"等相对时间)</span>
+                    </label>
+                    <input type="date" x-model="referenceDate"
+                        class="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-sm outline-none input-focus transition">
+                </div>
+
+                <!-- 默认提醒设置 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-bell w-4 h-4 text-amber-500"></i>
+                        默认提醒 <span class="text-xs text-slate-400 ml-1">(可选)</span>
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="option in reminderOptions" :key="option.value">
+                            <button @click="toggleReminder(option.value)" :class="['px-3 py-1.5 text-xs font-medium rounded-full border transition',
+                                    selectedReminders.includes(option.value) 
+                                        ? 'bg-amber-500 text-white border-amber-500' 
+                                        : 'bg-white border-slate-200 text-slate-600 hover:border-amber-300']"
+                                x-text="option.label">
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 提取按钮 -->
+                <button @click="extractEvents" :disabled="isExtracting || !inputText.trim()"
+                    class="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_auto] hover:bg-right text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-500">
+                    <template x-if="isExtracting">
+                        <i class="fa-solid fa-spinner animate-spin w-5 h-5"></i>
+                    </template>
+                    <template x-if="!isExtracting">
+                        <i class="fa-solid fa-wand-magic-sparkles w-5 h-5"></i>
+                    </template>
+                    <span x-text="isExtracting ? '正在智能提取日程...' : '📅 提取日历事件'"></span>
+                </button>
+
+                <!-- 快捷示例 -->
+                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+                    <div class="flex items-start gap-2">
+                        <i data-lucide="lightbulb" class="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+                        <div class="text-xs text-indigo-800">
+                            <p class="font-medium mb-2">💡 示例文本</p>
+                            <div class="space-y-1">
+                                <button @click="loadExample('meeting')"
+                                    class="block text-left text-indigo-600 hover:underline">
+                                    → 会议日程示例
+                                </button>
+                                <button @click="loadExample('travel')"
+                                    class="block text-left text-indigo-600 hover:underline">
+                                    → 旅行行程示例
+                                </button>
+                                <button @click="loadExample('course')"
+                                    class="block text-left text-indigo-600 hover:underline">
+                                    → 课程安排示例
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 右侧：结果展示区 -->
+            <div
+                class="flex-grow bg-gradient-to-br from-indigo-50/30 via-purple-50/30 to-pink-50/30 overflow-hidden flex flex-col">
+
+                <!-- 空状态 -->
+                <div x-show="events.length === 0 && !isExtracting"
+                    class="flex-grow flex flex-col items-center justify-center text-slate-400 p-6">
+                    <div class="relative">
+                        <div
+                            class="w-28 h-28 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-6 animate-float">
+                            <span class="text-5xl">📅</span>
+                        </div>
+                        <div class="absolute -top-2 -right-2 text-2xl animate-pulse-ring">✨</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-600 mb-2">日历事件提取器</h3>
+                    <p class="text-center max-w-md text-slate-500">
+                        从文本中智能提取日程事件<br>
+                        生成标准 ICS 文件，导入任意日历应用
+                    </p>
+                </div>
+
+                <!-- 加载状态 -->
+                <div x-show="isExtracting && events.length === 0"
+                    class="flex-grow flex flex-col items-center justify-center">
+                    <div class="text-6xl animate-float">🔍</div>
+                    <p class="mt-6 text-slate-600 font-medium">AI 正在分析文本中的日程信息...</p>
+                    <p class="text-sm text-slate-400 mt-2">识别时间、地点、事件详情</p>
+                </div>
+
+                <!-- 结果展示 -->
+                <div x-show="events.length > 0" class="flex-grow flex flex-col overflow-hidden">
+
+                    <!-- 顶部工具栏 -->
+                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white flex-shrink-0">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-3xl">📅</span>
+                                <div>
+                                    <h2 class="text-xl font-bold">提取到 <span x-text="events.length"></span> 个日历事件</h2>
+                                    <p class="opacity-90 text-sm mt-0.5">
+                                        已选中 <span x-text="selectedEventIds.length"></span> 个
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="toggleSelectAll"
+                                    class="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition text-sm">
+                                    <i class="fa-solid fa-square-check w-4 h-4"></i>
+                                    <span x-text="selectedEventIds.length === events.length ? '取消全选' : '全选'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 标签页切换 -->
+                    <div class="bg-white border-b border-slate-200 px-4 flex-shrink-0">
+                        <div class="flex gap-4">
+                            <button @click="activeTab = 'events'" :class="['py-3 px-4 text-sm font-medium border-b-2 transition',
+                                    activeTab === 'events' 
+                                        ? 'border-indigo-600 text-indigo-600' 
+                                        : 'border-transparent text-slate-500 hover:text-slate-700']">
+                                <i class="fa-solid fa-list w-4 h-4 inline mr-1"></i>
+                                事件列表
+                            </button>
+                            <button @click="activeTab = 'preview'" :class="['py-3 px-4 text-sm font-medium border-b-2 transition',
+                                    activeTab === 'preview' 
+                                        ? 'border-indigo-600 text-indigo-600' 
+                                        : 'border-transparent text-slate-500 hover:text-slate-700']">
+                                <i class="fa-solid fa-code w-4 h-4 inline mr-1"></i>
+                                ICS 代码预览
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 事件列表视图 -->
+                    <div x-show="activeTab === 'events'" class="flex-grow overflow-y-auto p-4 space-y-3">
+                        <template x-for="(event, index) in events" :key="index">
+                            <div :class="['event-card bg-white rounded-xl p-4 shadow-sm',
+                                selectedEventIds.includes(index) ? 'selected' : '']"
+                                :style="'animation-delay: ' + (index * 0.05) + 's'">
+
+                                <!-- 事件头部 -->
+                                <div class="flex items-start gap-3">
+                                    <!-- 选择复选框 -->
+                                    <input type="checkbox" :checked="selectedEventIds.includes(index)"
+                                        @change="toggleEventSelection(index)"
+                                        class="checkbox-custom mt-1 flex-shrink-0">
+
+                                    <!-- 事件信息 -->
+                                    <div class="flex-grow">
+                                        <!-- 标题行 -->
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <h3 class="font-bold text-slate-900" x-text="event.summary"></h3>
+                                            <button @click="event.isEditing = !event.isEditing"
+                                                class="p-1 text-slate-400 hover:text-indigo-600 rounded transition">
+                                                <i class="fa-solid fa-pen w-3.5 h-3.5"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- 详情信息 -->
+                                        <div class="space-y-1.5 text-sm text-slate-600">
+                                            <!-- 时间 -->
+                                            <div class="flex items-center gap-2">
+                                                <i class="fa-regular fa-clock w-4 h-4 text-indigo-500"></i>
+                                                <span x-text="formatEventTime(event)"></span>
+                                            </div>
+                                            <!-- 地点 -->
+                                            <template x-if="event.location">
+                                                <div class="flex items-center gap-2">
+                                                    <i class="fa-solid fa-location-dot w-4 h-4 text-rose-500"></i>
+                                                    <span x-text="event.location"></span>
+                                                </div>
+                                            </template>
+                                            <!-- 描述 -->
+                                            <template x-if="event.description">
+                                                <div class="flex items-start gap-2">
+                                                    <i
+                                                        class="fa-solid fa-align-left w-4 h-4 text-emerald-500 mt-0.5"></i>
+                                                    <span x-text="event.description" class="text-slate-500"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                        <!-- 编辑表单 -->
+                                        <div x-show="event.isEditing" x-transition
+                                            class="mt-4 p-3 bg-slate-50 rounded-lg space-y-3">
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="text-xs text-slate-500 block mb-1">事件标题</label>
+                                                    <input type="text" x-model="event.summary"
+                                                        class="w-full text-sm border border-slate-200 rounded-lg p-2 input-focus">
+                                                </div>
+                                                <div>
+                                                    <label class="text-xs text-slate-500 block mb-1">地点</label>
+                                                    <input type="text" x-model="event.location"
+                                                        class="w-full text-sm border border-slate-200 rounded-lg p-2 input-focus">
+                                                </div>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="text-xs text-slate-500 block mb-1">开始时间</label>
+                                                    <input type="datetime-local" x-model="event.dtstart"
+                                                        class="w-full text-sm border border-slate-200 rounded-lg p-2 input-focus">
+                                                </div>
+                                                <div>
+                                                    <label class="text-xs text-slate-500 block mb-1">结束时间</label>
+                                                    <input type="datetime-local" x-model="event.dtend"
+                                                        class="w-full text-sm border border-slate-200 rounded-lg p-2 input-focus">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="text-xs text-slate-500 block mb-1">描述</label>
+                                                <textarea x-model="event.description" rows="2"
+                                                    class="w-full text-sm border border-slate-200 rounded-lg p-2 input-focus resize-none"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 单个事件操作按钮 -->
+                                    <div class="flex flex-col gap-1 flex-shrink-0">
+                                        <button @click="downloadSingleICS(index)"
+                                            class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                            title="下载此事件">
+                                            <i class="fa-solid fa-download w-4 h-4"></i>
+                                        </button>
+                                        <button @click="copyEventICS(index)"
+                                            class="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                                            title="复制 ICS 代码">
+                                            <i class="fa-regular fa-copy w-4 h-4"></i>
+                                        </button>
+                                        <button @click="removeEvent(index)"
+                                            class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                            title="删除此事件">
+                                            <i class="fa-solid fa-trash w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- ICS 代码预览视图 -->
+                    <div x-show="activeTab === 'preview'" class="flex-grow overflow-hidden flex flex-col p-4">
+                        <div class="bg-slate-800 rounded-xl overflow-hidden flex-grow flex flex-col">
+                            <!-- 预览头部 -->
+                            <div class="bg-slate-700 px-4 py-2 flex items-center justify-between">
+                                <span class="text-slate-300 text-sm font-medium">
+                                    <i class="fa-solid fa-file-code w-4 h-4 inline mr-1"></i>
+                                    calendar.ics
+                                </span>
+                                <button @click="copyAllICS"
+                                    class="text-slate-400 hover:text-white text-sm flex items-center gap-1 transition">
+                                    <i class="fa-regular fa-copy w-4 h-4"></i>
+                                    复制代码
+                                </button>
+                            </div>
+                            <!-- 代码内容 -->
+                            <div class="ics-preview flex-grow overflow-auto p-4 whitespace-pre-wrap"
+                                x-html="generateICSPreviewHTML()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 底部操作栏 -->
+                    <div class="bg-white border-t border-slate-200 p-4 flex-shrink-0">
+                        <div class="flex flex-wrap gap-3 justify-center">
+                            <!-- 下载选中事件 -->
+                            <button @click="downloadSelectedICS" :disabled="selectedEventIds.length === 0"
+                                class="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-download w-5 h-5"></i>
+                                下载选中 (<span x-text="selectedEventIds.length"></span>)
+                            </button>
+
+                            <!-- 下载全部（系列日历） -->
+                            <button @click="downloadAllAsSeriesICS"
+                                class="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition">
+                                <i class="fa-solid fa-calendar-week w-5 h-5"></i>
+                                下载系列日历 (<span x-text="events.length"></span>)
+                            </button>
+
+                            <!-- 分别下载每个事件 -->
+                            <button @click="downloadEachSeparately"
+                                class="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-indigo-500 text-indigo-600 font-medium rounded-xl hover:bg-indigo-50 transition">
+                                <i class="fa-solid fa-clone w-5 h-5"></i>
+                                分别下载每个
+                            </button>
+
+                            <!-- 清空 -->
+                            <button @click="clearEvents"
+                                class="flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-600 font-medium rounded-xl hover:bg-slate-200 transition">
+                                <i class="fa-solid fa-trash w-5 h-5"></i>
+                                清空
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div x-show="showSettings" x-transition
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in"
+                @click.outside="showSettings = false">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">API 设置</h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            placeholder="sk-...">
+                        <p class="text-xs text-slate-500 mt-1">
+                            <i class="fa-solid fa-lock w-3 h-3 inline-block mr-1"></i>
+                            Key 仅保存在本地浏览器，所有工具共享使用
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">默认模型</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 帮助弹窗 -->
+        <div x-show="showHelp" x-transition
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-fade-in max-h-[85vh] overflow-y-auto"
+                @click.outside="showHelp = false">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-question w-5 h-5 text-indigo-600"></i>
+                        如何使用 ICS 日历文件
+                    </h3>
+                    <button @click="showHelp = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Mac -->
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">🍎</span>
+                            <h4 class="font-bold text-slate-800">macOS</h4>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            <strong class="text-green-600">✅ 直接双击</strong> .ics 文件，系统会自动用「日历」应用打开，点击「添加」即可导入。
+                        </p>
+                    </div>
+
+                    <!-- Windows -->
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">🪟</span>
+                            <h4 class="font-bold text-slate-800">Windows</h4>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            <strong class="text-green-600">✅ 直接双击</strong> .ics 文件：
+                        </p>
+                        <ul class="text-sm text-slate-600 mt-2 space-y-1 pl-4">
+                            <li>• <strong>Windows 10/11</strong>: 自动用「日历」应用打开</li>
+                            <li>• <strong>安装了 Outlook</strong>: 自动导入到 Outlook 日历</li>
+                        </ul>
+                    </div>
+
+                    <!-- iOS -->
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">📱</span>
+                            <h4 class="font-bold text-slate-800">iPhone / iPad</h4>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            通过 AirDrop 或邮件发送 .ics 文件到手机，点击文件后选择「添加到日历」。
+                        </p>
+                    </div>
+
+                    <!-- Android -->
+                    <div class="bg-slate-50 rounded-xl p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">🤖</span>
+                            <h4 class="font-bold text-slate-800">Android</h4>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            通过文件管理器打开 .ics 文件，选择使用「Google 日历」或其他日历应用导入。
+                        </p>
+                    </div>
+
+                    <!-- 网页版日历 -->
+                    <div class="bg-indigo-50 rounded-xl p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-2xl">🌐</span>
+                            <h4 class="font-bold text-slate-800">网页版日历</h4>
+                        </div>
+                        <ul class="text-sm text-slate-600 space-y-2">
+                            <li>
+                                <strong>Google Calendar</strong>: 设置 → 导入与导出 → 导入
+                            </li>
+                            <li>
+                                <strong>Outlook Web</strong>: 日历 → 添加日历 → 从文件上传
+                            </li>
+                            <li>
+                                <strong>iCloud 日历</strong>: 设置 ⚙️ → 导入日历
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- 提示 -->
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="lightbulb" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+                            <div class="text-sm text-amber-800">
+                                <p class="font-medium">💡 小贴士</p>
+                                <p class="mt-1">ICS 是国际通用的日历格式标准 (iCalendar)，几乎所有日历应用都支持。「系列日历」可以一次性导入多个事件！</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button @click="showHelp = false"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">我知道了</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in z-[200]">
+            <i :class="toast.icon" class="w-4 h-4"></i>
+            <span class="text-sm" x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * 日历提取器 - Alpine.js 应用
+         * 功能：从文本中智能提取日历事件，生成标准 ICS 文件
+         * 
+         * 核心功能：
+         * 1. AI 解析自然语言日程描述
+         * 2. 生成符合 RFC 5545 标准的 ICS 文件
+         * 3. 支持单个事件和系列事件的保存
+         */
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('calendarExtractorApp', () => ({
+                // ==================== 状态管理 ====================
+                showSettings: false,
+                showHelp: false,               // 帮助弹窗
+                apiConfig: { deepseek: '', model: 'deepseek-v4-flash' },
+                isExtracting: false,
+                events: [],                    // 提取到的事件列表
+                selectedEventIds: [],          // 选中的事件索引
+                activeTab: 'events',           // 当前标签页：events / preview
+                toast: { show: false, message: '', icon: 'fa-solid fa-check' },
+
+                // 输入数据
+                inputText: '',
+                referenceDate: '',             // 参考日期，用于解析相对时间
+                selectedReminders: [15],       // 默认提醒：提前15分钟
+
+                // 提醒选项配置
+                reminderOptions: [
+                    { value: 0, label: '准时' },
+                    { value: 5, label: '5分钟前' },
+                    { value: 15, label: '15分钟前' },
+                    { value: 30, label: '30分钟前' },
+                    { value: 60, label: '1小时前' },
+                    { value: 1440, label: '1天前' }
+                ],
+
+                // 示例文本
+                examples: {
+                    meeting: `会议安排：
+
+1. 明天上午9:00-10:30 产品需求评审会，地点：3楼会议室A，参会人：产品、设计、研发
+2. 周三下午2:00 客户演示，地点：公司展厅，预计1.5小时
+3. 本周五 16:00-17:00 团队周会，线上会议，Zoom ID: 123-456-789`,
+
+                    travel: `北京之旅行程：
+
+Day 1 (1月20日)
+- 08:00 浦东机场出发，航班 MU5101
+- 10:30 抵达首都机场T2
+- 14:00-17:00 故宫博物院游览
+- 19:00 晚餐 @全聚德前门店
+
+Day 2 (1月21日)
+- 上午 长城一日游（八达岭）
+- 18:00 返回酒店`,
+
+                    course: `Python 进阶课程安排：
+
+第一周：
+- 周一晚 19:00-21:00 第1讲：Python高级特性
+- 周三晚 19:00-21:00 第2讲：装饰器与元类
+- 周六上午 10:00-12:00 实战练习
+
+第二周：
+- 周一晚 19:00-21:00 第3讲：并发编程
+- 周三晚 19:00-21:00 第4讲：网络编程`
+                },
+
+                // ==================== 生命周期 ====================
+                init() {
+                    // 加载保存的配置
+                    try {
+                        const saved = localStorage.getItem('global_llm_config');
+                        if (saved) {
+                            this.apiConfig = { ...this.apiConfig, ...JSON.parse(saved) };
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+
+                    // 设置默认参考日期为今天
+                    this.referenceDate = new Date().toISOString().split('T')[0];
+                },
+
+                // ==================== 工具方法 ====================
+
+                /**
+                 * 显示 Toast 提示
+                 * @param {string} message - 提示消息
+                 * @param {string} icon - 图标名称
+                 */
+                showToast(message, icon = 'fa-solid fa-check') {
+                    this.toast = { show: true, message, icon };
+                    setTimeout(() => { this.toast.show = false; }, 2500);
+                },
+
+                /**
+                 * 保存 API 配置到 localStorage
+                 */
+                saveConfig() {
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse global_llm_config', e);
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存', 'fa-solid fa-check');
+                },
+
+                /**
+                 * 切换提醒选项
+                 * @param {number} value - 提醒时间（分钟）
+                 */
+                toggleReminder(value) {
+                    const idx = this.selectedReminders.indexOf(value);
+                    if (idx > -1) {
+                        this.selectedReminders.splice(idx, 1);
+                    } else {
+                        this.selectedReminders.push(value);
+                    }
+                },
+
+                /**
+                 * 加载示例文本
+                 * @param {string} type - 示例类型
+                 */
+                loadExample(type) {
+                    this.inputText = this.examples[type] || '';
+                    this.showToast('已加载示例文本', 'fa-solid fa-file-lines');
+                },
+
+                // ==================== 核心方法 ====================
+
+                /**
+                 * 提取日历事件 - 调用 AI 解析文本
+                 */
+                async extractEvents() {
+                    // 检查 API Key
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'fa-solid fa-circle-exclamation');
+                        return;
+                    }
+
+                    this.isExtracting = true;
+                    this.events = [];
+                    this.selectedEventIds = [];
+
+                    try {
+                        // 构建系统提示词
+                        const systemPrompt = `You are an expert at extracting calendar events from natural language text.
+Extract all calendar events and return them in valid JSON format.
+
+IMPORTANT RULES:
+1. Output MUST be valid JSON only, no markdown or code blocks
+2. Parse relative dates (like "明天", "下周三") based on the reference date provided
+3. If end time is not specified, estimate a reasonable duration
+4. All times should be in ISO 8601 format for dtstart/dtend
+5. Extract location if mentioned
+6. Add any additional details to description`;
+
+                        // 构建用户提示词
+                        const userPrompt = `Reference date: ${this.referenceDate}
+
+Please extract all calendar events from the following text:
+
+"""
+${this.inputText}
+"""
+
+Output format (valid JSON):
+{
+  "events": [
+    {
+      "summary": "Event title",
+      "dtstart": "2026-01-15T14:00:00",
+      "dtend": "2026-01-15T15:30:00",
+      "location": "Location if any",
+      "description": "Additional details"
+    }
+  ]
+}
+
+IMPORTANT: 
+- dtstart and dtend MUST be in format "YYYY-MM-DDTHH:mm:ss"
+- If only date is mentioned without time, use 09:00:00 as default start time
+- If duration is not specified, use 1 hour as default
+- summary should be concise and descriptive
+- All text content should be in the original language (Chinese if input is Chinese)`;
+
+                        // 调用 API
+                        let response;
+                        try {
+                            response = await fetch('https://api.deepseek.com/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                                },
+                                body: JSON.stringify({
+                                    model: this.apiConfig.model || 'deepseek-v4-flash',
+                                    messages: [
+                                        { role: 'system', content: systemPrompt },
+                                        { role: 'user', content: userPrompt }
+                                    ],
+                                    response_format: { type: 'json_object' },
+                                    stream: false,
+                                    temperature: 0.3  // 低温度确保准确性
+                                })
+                            });
+                        } catch (e) {
+                            throw new Error(`网络请求失败: ${e.message}`);
+                        }
+
+                        if (!response.ok) {
+                            throw new Error(`API 请求失败: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        const content = data.choices?.[0]?.message?.content;
+
+                        if (content) {
+                            const parsed = JSON.parse(content);
+                            if (parsed && parsed.events && Array.isArray(parsed.events)) {
+                                // 处理每个事件，添加必要的字段
+                                this.events = parsed.events.map(event => ({
+                                    ...event,
+                                    uid: this.generateUID(),  // 生成唯一ID
+                                    isEditing: false          // 编辑状态
+                                }));
+
+                                // 默认选中所有事件
+                                this.selectedEventIds = this.events.map((_, i) => i);
+
+                                this.showToast(`成功提取 ${this.events.length} 个日历事件！`, 'fa-solid fa-circle-check');
+                            } else {
+                                throw new Error('未能提取到有效的日历事件');
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error('[Calendar Extractor] 提取失败:', error);
+                        this.showToast('提取失败: ' + error.message, 'fa-solid fa-circle-exclamation');
+                    } finally {
+                        this.isExtracting = false;
+                    }
+                },
+
+                /**
+                 * 生成唯一事件 ID
+                 * @returns {string} - 唯一 ID
+                 */
+                generateUID() {
+                    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}@calendar-extractor`;
+                },
+
+                /**
+                 * 格式化事件时间显示
+                 * @param {object} event - 事件对象
+                 * @returns {string} - 格式化的时间字符串
+                 */
+                formatEventTime(event) {
+                    try {
+                        const start = new Date(event.dtstart);
+                        const end = new Date(event.dtend);
+
+                        const dateOptions = { month: 'long', day: 'numeric', weekday: 'short' };
+                        const timeOptions = { hour: '2-digit', minute: '2-digit' };
+
+                        const startDate = start.toLocaleDateString('zh-CN', dateOptions);
+                        const startTime = start.toLocaleTimeString('zh-CN', timeOptions);
+                        const endTime = end.toLocaleTimeString('zh-CN', timeOptions);
+
+                        // 如果同一天
+                        if (start.toDateString() === end.toDateString()) {
+                            return `${startDate} ${startTime} - ${endTime}`;
+                        } else {
+                            const endDate = end.toLocaleDateString('zh-CN', dateOptions);
+                            return `${startDate} ${startTime} → ${endDate} ${endTime}`;
+                        }
+                    } catch (e) {
+                        return `${event.dtstart} - ${event.dtend}`;
+                    }
+                },
+
+                // ==================== 事件选择操作 ====================
+
+                /**
+                 * 切换单个事件的选择状态
+                 * @param {number} index - 事件索引
+                 */
+                toggleEventSelection(index) {
+                    const idx = this.selectedEventIds.indexOf(index);
+                    if (idx > -1) {
+                        this.selectedEventIds.splice(idx, 1);
+                    } else {
+                        this.selectedEventIds.push(index);
+                    }
+                },
+
+                /**
+                 * 全选 / 取消全选
+                 */
+                toggleSelectAll() {
+                    if (this.selectedEventIds.length === this.events.length) {
+                        this.selectedEventIds = [];
+                    } else {
+                        this.selectedEventIds = this.events.map((_, i) => i);
+                    }
+                },
+
+                /**
+                 * 删除单个事件
+                 * @param {number} index - 事件索引
+                 */
+                removeEvent(index) {
+                    this.events.splice(index, 1);
+                    // 更新选中列表
+                    this.selectedEventIds = this.selectedEventIds
+                        .filter(i => i !== index)
+                        .map(i => i > index ? i - 1 : i);
+                    this.showToast('已删除事件', 'fa-solid fa-trash');
+                },
+
+                /**
+                 * 清空所有事件
+                 */
+                clearEvents() {
+                    this.events = [];
+                    this.selectedEventIds = [];
+                },
+
+                // ==================== ICS 生成相关 ====================
+
+                /**
+                 * 格式化日期时间为 ICS 格式
+                 * @param {string} datetime - ISO 格式的日期时间
+                 * @returns {string} - ICS 格式的日期时间 (YYYYMMDDTHHMMSS)
+                 */
+                formatICSDateTime(datetime) {
+                    try {
+                        const dt = new Date(datetime);
+                        const y = dt.getFullYear();
+                        const m = String(dt.getMonth() + 1).padStart(2, '0');
+                        const d = String(dt.getDate()).padStart(2, '0');
+                        const h = String(dt.getHours()).padStart(2, '0');
+                        const min = String(dt.getMinutes()).padStart(2, '0');
+                        const s = String(dt.getSeconds()).padStart(2, '0');
+                        return `${y}${m}${d}T${h}${min}${s}`;
+                    } catch (e) {
+                        return datetime.replace(/[-:]/g, '').replace(/\.\d+/, '');
+                    }
+                },
+
+                /**
+                 * 转义 ICS 文本内容
+                 * @param {string} text - 原始文本
+                 * @returns {string} - 转义后的文本
+                 */
+                escapeICSText(text) {
+                    if (!text) return '';
+                    return text
+                        .replace(/\\/g, '\\\\')
+                        .replace(/;/g, '\\;')
+                        .replace(/,/g, '\\,')
+                        .replace(/\n/g, '\\n');
+                },
+
+                /**
+                 * 生成单个事件的 VEVENT 字符串
+                 * @param {object} event - 事件对象
+                 * @returns {string} - VEVENT 字符串
+                 */
+                generateVEVENT(event) {
+                    let vevent = 'BEGIN:VEVENT\r\n';
+                    vevent += `UID:${event.uid}\r\n`;
+                    vevent += `DTSTAMP:${this.formatICSDateTime(new Date().toISOString())}\r\n`;
+                    vevent += `DTSTART:${this.formatICSDateTime(event.dtstart)}\r\n`;
+                    vevent += `DTEND:${this.formatICSDateTime(event.dtend)}\r\n`;
+                    vevent += `SUMMARY:${this.escapeICSText(event.summary)}\r\n`;
+
+                    if (event.location) {
+                        vevent += `LOCATION:${this.escapeICSText(event.location)}\r\n`;
+                    }
+
+                    if (event.description) {
+                        vevent += `DESCRIPTION:${this.escapeICSText(event.description)}\r\n`;
+                    }
+
+                    // 添加提醒
+                    this.selectedReminders.forEach(minutes => {
+                        vevent += 'BEGIN:VALARM\r\n';
+                        vevent += 'ACTION:DISPLAY\r\n';
+                        vevent += `DESCRIPTION:${this.escapeICSText(event.summary)}\r\n`;
+                        vevent += `TRIGGER:-PT${minutes}M\r\n`;
+                        vevent += 'END:VALARM\r\n';
+                    });
+
+                    vevent += 'END:VEVENT\r\n';
+                    return vevent;
+                },
+
+                /**
+                 * 生成完整的 ICS 文件内容
+                 * @param {array} eventList - 事件列表
+                 * @returns {string} - ICS 文件内容
+                 */
+                generateICSContent(eventList) {
+                    let ics = 'BEGIN:VCALENDAR\r\n';
+                    ics += 'VERSION:2.0\r\n';
+                    ics += 'PRODID:-//AI Content Suite//Calendar Extractor//CN\r\n';
+                    ics += 'CALSCALE:GREGORIAN\r\n';
+                    ics += 'METHOD:PUBLISH\r\n';
+                    ics += 'X-WR-CALNAME:AI 提取的日程\r\n';
+
+                    eventList.forEach(event => {
+                        ics += this.generateVEVENT(event);
+                    });
+
+                    ics += 'END:VCALENDAR\r\n';
+                    return ics;
+                },
+
+                /**
+                 * 生成 ICS 代码预览的 HTML（带语法高亮）
+                 * @returns {string} - 带高亮的 HTML
+                 */
+                generateICSPreviewHTML() {
+                    const selectedEvents = this.selectedEventIds.length > 0
+                        ? this.selectedEventIds.map(i => this.events[i])
+                        : this.events;
+
+                    const icsContent = this.generateICSContent(selectedEvents);
+
+                    // 添加语法高亮
+                    return icsContent
+                        .replace(/^(BEGIN:|END:)/gm, '<span class="ics-section">$1</span>')
+                        .replace(/^(VCALENDAR|VEVENT|VALARM)/gm, '<span class="ics-section">$1</span>')
+                        .replace(/^(VERSION|PRODID|CALSCALE|METHOD|UID|DTSTAMP|DTSTART|DTEND|SUMMARY|LOCATION|DESCRIPTION|ACTION|TRIGGER|X-WR-CALNAME):/gm, '<span class="ics-key">$1</span>:')
+                        .replace(/:([^\r\n]+)/g, ':<span class="ics-value">$1</span>');
+                },
+
+                // ==================== 下载操作 ====================
+
+                /**
+                 * 触发文件下载
+                 * @param {string} content - 文件内容
+                 * @param {string} filename - 文件名
+                 */
+                triggerDownload(content, filename) {
+                    const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                },
+
+                /**
+                 * 下载单个事件的 ICS 文件
+                 * @param {number} index - 事件索引
+                 */
+                downloadSingleICS(index) {
+                    const event = this.events[index];
+                    const content = this.generateICSContent([event]);
+                    const filename = `${event.summary.replace(/[^\w\u4e00-\u9fff]/g, '_')}.ics`;
+                    this.triggerDownload(content, filename);
+                    this.showToast('已下载日历文件', 'fa-solid fa-download');
+                },
+
+                /**
+                 * 复制单个事件的 ICS 代码
+                 * @param {number} index - 事件索引
+                 */
+                copyEventICS(index) {
+                    const event = this.events[index];
+                    const content = this.generateICSContent([event]);
+                    navigator.clipboard.writeText(content).then(() => {
+                        this.showToast('已复制 ICS 代码', 'fa-regular fa-copy');
+                    });
+                },
+
+                /**
+                 * 下载选中事件的 ICS 文件（合并为一个文件）
+                 */
+                downloadSelectedICS() {
+                    if (this.selectedEventIds.length === 0) {
+                        this.showToast('请先选择事件', 'fa-solid fa-circle-exclamation');
+                        return;
+                    }
+
+                    const selectedEvents = this.selectedEventIds.map(i => this.events[i]);
+                    const content = this.generateICSContent(selectedEvents);
+                    const filename = `selected_events_${this.selectedEventIds.length}.ics`;
+                    this.triggerDownload(content, filename);
+                    this.showToast(`已下载 ${this.selectedEventIds.length} 个事件`, 'fa-solid fa-download');
+                },
+
+                /**
+                 * 下载所有事件为系列日历（合并到一个 ICS 文件）
+                 */
+                downloadAllAsSeriesICS() {
+                    const content = this.generateICSContent(this.events);
+                    const filename = `series_calendar_${this.events.length}_events.ics`;
+                    this.triggerDownload(content, filename);
+                    this.showToast(`已下载系列日历（${this.events.length} 个事件）`, 'fa-solid fa-calendar-week');
+                },
+
+                /**
+                 * 分别下载每个事件为独立的 ICS 文件
+                 */
+                downloadEachSeparately() {
+                    this.events.forEach((event, index) => {
+                        setTimeout(() => {
+                            this.downloadSingleICS(index);
+                        }, index * 200);  // 间隔200ms避免冲突
+                    });
+                    this.showToast(`正在下载 ${this.events.length} 个日历文件...`, 'fa-solid fa-clone');
+                },
+
+                /**
+                 * 复制所有 ICS 代码
+                 */
+                copyAllICS() {
+                    const selectedEvents = this.selectedEventIds.length > 0
+                        ? this.selectedEventIds.map(i => this.events[i])
+                        : this.events;
+
+                    const content = this.generateICSContent(selectedEvents);
+                    navigator.clipboard.writeText(content).then(() => {
+                        this.showToast('已复制 ICS 代码到剪贴板', 'fa-regular fa-copy');
+                    });
+                }
+
+            }));
+        });
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_tools_calendar_extractor.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

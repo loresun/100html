@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>学习方法库</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.0/index.css">
+  <style>
+    body {
+      font-family: "Noto Sans SC", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(140deg, #f7fee7 0%, #f8fafc 60%, #ecfccb 100%);
+    }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="min-h-screen text-slate-800">
+  <div x-data="learningMethods()" x-init="init()" class="min-h-screen flex flex-col">
+    <header class="bg-white/80 backdrop-blur border-b border-slate-200">
+      <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-lime-500 font-semibold">Study · 学习方法库</p>
+          <h1 class="text-xl font-bold">学习方法库</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1 bg-slate-100 rounded-full p-1">
+            <button @click="setModel('v4-flash')" class="px-3 py-1 text-xs rounded-full font-semibold"
+              :class="modelLabel === 'v4-flash' ? 'bg-white shadow text-lime-600' : 'text-slate-500'">V4 Flash</button>
+            <button @click="setModel('v4-pro')" class="px-3 py-1 text-xs rounded-full font-semibold"
+              :class="modelLabel === 'v4-pro' ? 'bg-white shadow text-lime-600' : 'text-slate-500'">V4 Pro</button>
+          </div>
+          <button @click="showSettings = true" class="text-sm text-slate-600 hover:text-lime-600">API 设置</button>
+          <a href="index.html" class="text-sm text-slate-500 hover:text-lime-600">返回学习中心</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <section class="bg-white rounded-2xl border border-slate-200 p-6">
+        <h2 class="text-lg font-semibold">核心学习方法</h2>
+        <p class="text-sm text-slate-500 mt-2">将学习方法转化成可执行的动作清单。</p>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+          <template x-for="method in methods" :key="method.title">
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
+              <h3 class="text-base font-semibold" x-text="method.title"></h3>
+              <p class="text-sm text-slate-500 mt-2" x-text="method.desc"></p>
+              <ul class="mt-3 space-y-1 text-xs text-slate-500">
+                <template x-for="(step, index) in method.steps" :key="index">
+                  <li class="flex gap-2">
+                    <span class="text-lime-500 font-semibold">•</span>
+                    <span x-text="step"></span>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 grid lg:grid-cols-[380px_1fr] gap-6">
+        <div>
+          <h2 class="text-lg font-semibold">方法匹配器</h2>
+          <p class="text-sm text-slate-500 mt-2">描述你的学习场景，AI 给出方法组合建议。</p>
+          <textarea x-model="profile" rows="5" class="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2" placeholder="例：备考英语口语，时间碎片化，喜欢任务清单"></textarea>
+          <button @click="recommend" :disabled="isLoading" class="mt-4 w-full bg-lime-600 text-white rounded-lg py-2 font-semibold hover:bg-lime-500">
+            <span x-show="!isLoading">生成方法组合</span>
+            <span x-show="isLoading">生成中...</span>
+          </button>
+          <p x-show="error" class="text-sm text-rose-600 mt-2" x-text="error"></p>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-600">推荐方案</h3>
+          <div class="mt-3 text-sm text-slate-700 whitespace-pre-line" x-text="recommendation"></div>
+        </div>
+      </section>
+    </main>
+
+    <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div @click.away="showSettings = false" class="bg-white rounded-2xl p-6 w-full max-w-md">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">API 配置</h3>
+          <button @click="showSettings = false" class="text-slate-400">✕</button>
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+          <input x-model="apiConfig.deepseek" type="password" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-slate-700 mb-1">模型</label>
+          <select x-model="apiConfig.model" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+          </select>
+        </div>
+        <button @click="saveConfig" class="mt-6 w-full bg-lime-600 text-white rounded-lg py-2 font-medium hover:bg-lime-500">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="study-shared.js"></script>
+  <script>
+    const createBaseState = () => ({
+      apiConfig: studyShared.loadConfig(),
+      modelLabel: 'v4-flash',
+      showSettings: false,
+      init() {
+        this.modelLabel = studyShared.resolveLabel(this.apiConfig.model);
+      },
+      setModel(label) {
+        this.modelLabel = label;
+        this.apiConfig.model = studyShared.modelMap[label] || this.apiConfig.model;
+        studyShared.saveConfig(this.apiConfig);
+      },
+      saveConfig() {
+        this.apiConfig.deepseek = this.apiConfig.deepseek.trim();
+        studyShared.saveConfig(this.apiConfig);
+        this.showSettings = false;
+      }
+    });
+
+    function learningMethods() {
+      return {
+        ...createBaseState(),
+        profile: '',
+        recommendation: '在这里生成适配你的学习方法组合。',
+        isLoading: false,
+        error: '',
+        methods: [
+          {
+            title: '间隔重复',
+            desc: '通过递增间隔复习，让记忆曲线更稳定。',
+            steps: ['设定复习间隔', '错题高频回顾', '复习后即时总结']
+          },
+          {
+            title: '检索练习',
+            desc: '用主动回忆替代被动阅读，提高提取能力。',
+            steps: ['做题/复述', '记录错误点', '二次回忆复盘']
+          },
+          {
+            title: '交错学习',
+            desc: '在不同主题间切换，提升迁移能力。',
+            steps: ['划分学习模块', '混合练习顺序', '总结差异']
+          },
+          {
+            title: '费曼技巧',
+            desc: '用讲解方式发现知识漏洞。',
+            steps: ['拟定讲解对象', '用自己的话讲', '补齐薄弱点']
+          },
+          {
+            title: '精读/听读',
+            desc: '用高强度输入建立语感。',
+            steps: ['标注难点', '跟读/复述', '用输出检验']
+          },
+          {
+            title: '目标拆解',
+            desc: '把长期目标拆成短周期可执行任务。',
+            steps: ['定义里程碑', '周任务分解', '每周复盘调整']
+          }
+        ],
+        async recommend() {
+          this.error = '';
+          this.isLoading = true;
+          const prompt = `根据学习场景“${this.profile}”推荐 3-5 个学习方法组合，并给出执行建议。返回 JSON：{\"recommendation\":\"建议内容\"}`;
+          try {
+            const content = await studyShared.callLLM({
+              apiKey: this.apiConfig.deepseek,
+              model: this.apiConfig.model,
+              messages: [
+                { role: 'system', content: '你是学习策略顾问，擅长给出学习方法组合建议。' },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0.6
+            });
+            const cleaned = content.replace(/```json|```/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            this.recommendation = parsed.recommendation || '';
+          } catch (error) {
+            this.error = error.message || '生成失败，请稍后再试。';
+          } finally {
+            this.isLoading = false;
+          }
+        }
+      };
+    }
+  </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/study_learning_methods.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

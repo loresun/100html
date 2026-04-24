@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选题拆解分析大师</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Marked (Markdown parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* 小红书风格配色 */
+        :root {
+            --xhs-red: #ff2442;
+            --xhs-bg: #fbfbfb;
+            --xhs-gray: #f5f5f5;
+        }
+
+        body {
+            background-color: var(--xhs-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* 隐藏滚动条但允许滚动 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.3s ease;
+        }
+
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-microscope text-[#ff2442] text-xl"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">XHS Analyzer</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-[#ff2442] transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear"></i> 设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主布局容器 -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：输入与控制 -->
+            <div class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-slate-200 flex flex-col h-full z-20">
+                <div class="p-5 flex-grow overflow-y-auto space-y-6">
+
+                    <!-- 1. 待分析内容 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fa-regular fa-file-lines text-slate-400"></i>
+                            待分析的小红书内容
+                        </label>
+                        <textarea v-model="input.sourceContents" rows="8" placeholder="请粘贴多篇小红书爆款文案，用于拆解分析..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-red-500 focus:outline-none transition text-sm"></textarea>
+                    </div>
+
+                    <!-- 分析按钮 -->
+                    <button @click="analyzeContent" :disabled="isAnalyzing || !input.sourceContents"
+                        class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isAnalyzing" class="fa-solid fa-spinner fa-spin"></i>
+                        <span v-else>🔍 开始拆解分析</span>
+                    </button>
+
+                    <div class="border-t border-slate-100 my-4"></div>
+
+                    <!-- 2. 参考资料与新文案 -->
+                    <div class="space-y-3">
+                        <label class="block text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-book-open text-slate-400"></i>
+                            新文案参考资料 (可选)
+                        </label>
+                        <textarea v-model="input.referenceMaterials" rows="5" placeholder="输入产品资料、卖点或新的创作灵感..."
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-red-500 focus:outline-none transition text-sm"></textarea>
+                    </div>
+
+                    <!-- 生成按钮 -->
+                    <button @click="generateNewCopy"
+                        :disabled="isGenerating || (!analysisResult && !input.referenceMaterials)"
+                        class="w-full bg-[#ff2442] text-white font-bold py-3.5 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i v-if="isGenerating" class="fa-solid fa-spinner fa-spin"></i>
+                        <span v-else>✨ 撰写新文案</span>
+                    </button>
+
+                </div>
+
+                <!-- 底部状态 -->
+                <div class="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between">
+                    <span>{{ statusText }}</span>
+                    <span v-if="apiConfig.deepseek" class="text-green-600 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> API Ready</span>
+                    <span v-else class="text-red-500">未配置 API</span>
+                </div>
+            </div>
+
+            <!-- 右侧：结果展示 -->
+            <div class="flex-grow bg-[#fbfbfb] flex flex-col h-full overflow-hidden">
+
+                <!-- Tab 切换 -->
+                <div class="bg-white border-b border-slate-200 px-6 flex gap-6">
+                    <button @click="activeTab = 'analysis'"
+                        :class="{'border-[#ff2442] text-[#ff2442]': activeTab === 'analysis', 'border-transparent text-slate-500 hover:text-slate-700': activeTab !== 'analysis'}"
+                        class="py-4 text-sm font-bold border-b-2 transition flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column"></i> 拆解分析结果
+                    </button>
+                    <button @click="activeTab = 'generation'"
+                        :class="{'border-[#ff2442] text-[#ff2442]': activeTab === 'generation', 'border-transparent text-slate-500 hover:text-slate-700': activeTab !== 'generation'}"
+                        class="py-4 text-sm font-bold border-b-2 transition flex items-center gap-2">
+                        <i class="fa-solid fa-pen-nib"></i> 生成的新文案
+                    </button>
+                </div>
+
+                <!-- 内容区域 -->
+                <div class="flex-grow overflow-y-auto p-6 md:p-8">
+
+                    <!-- 分析结果 Tab -->
+                    <div v-if="activeTab === 'analysis'" class="max-w-4xl mx-auto space-y-6">
+                        <div v-if="!analysisResult && !isAnalyzing" class="text-center text-slate-400 py-20">
+                            <i class="fa-solid fa-magnifying-glass text-6xl mx-auto mb-4 opacity-50"></i>
+                            <p>在左侧输入内容，点击“开始拆解分析”</p>
+                        </div>
+
+                        <div v-if="analysisResult" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 搜索热词 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i class="fa-solid fa-magnifying-glass text-blue-500"></i> 搜索热词
+                                </h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span v-for="kw in analysisResult.keywords" :key="kw"
+                                        class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-sm font-medium">
+                                        {{ kw }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- 核心情绪 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i class="fa-solid fa-face-smile text-yellow-500"></i> 核心情绪
+                                </h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span v-for="emo in analysisResult.emotions" :key="emo"
+                                        class="px-3 py-1 bg-yellow-50 text-yellow-600 rounded-full text-sm font-medium">
+                                        {{ emo }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- 吸引人的钩子 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-2">
+                                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i class="fa-solid fa-anchor text-red-500"></i> 爆款钩子 (Title/Opening)
+                                </h3>
+                                <ul class="space-y-2">
+                                    <li v-for="(hook, idx) in analysisResult.hooks" :key="idx"
+                                        class="flex gap-3 text-slate-700 bg-red-50/50 p-3 rounded-lg">
+                                        <span class="font-bold text-red-400">{{ idx + 1 }}.</span>
+                                        <span>{{ hook }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- 用户痛点 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-2">
+                                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i class="fa-solid fa-face-frown text-purple-500"></i> 用户痛点
+                                </h3>
+                                <ul class="space-y-2">
+                                    <li v-for="(pain, idx) in analysisResult.pain_points" :key="idx"
+                                        class="flex gap-3 text-slate-700 bg-purple-50/50 p-3 rounded-lg">
+                                        <span class="font-bold text-purple-400">{{ idx + 1 }}.</span>
+                                        <span>{{ pain }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- 导出按钮 -->
+                        <div v-if="analysisResult" class="flex justify-end pt-4">
+                            <button @click="exportAnalysis"
+                                class="text-slate-500 hover:text-slate-800 text-sm font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-download"></i> 导出分析报告 (CSV)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 生成结果 Tab -->
+                    <div v-if="activeTab === 'generation'" class="max-w-3xl mx-auto">
+                        <div v-if="!generatedCopy && !isGenerating" class="text-center text-slate-400 py-20">
+                            <i class="fa-solid fa-pen-to-square text-6xl mx-auto mb-4 opacity-50"></i>
+                            <p>结合分析结果与参考资料，点击“撰写新文案”</p>
+                        </div>
+
+                        <div v-else class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+                            <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                                <h3 class="font-bold text-slate-800">AI 生成文案</h3>
+                                <div class="flex gap-2">
+                                    <button v-if="generatedCopy" @click="copyToClipboard"
+                                        class="p-2 hover:bg-white rounded-lg text-slate-500 transition" title="复制">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                    <button v-if="generatedCopy" @click="exportCopy"
+                                        class="p-2 hover:bg-white rounded-lg text-slate-500 transition" title="导出">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-8 min-h-[400px]">
+                                <div class="prose prose-slate max-w-none whitespace-pre-wrap"
+                                    v-html="renderMarkdown(generatedCopy)"></div>
+                                <div v-if="isGenerating"
+                                    class="mt-4 text-sm text-slate-400 animate-pulse flex items-center gap-2">
+                                    <i class="fa-solid fa-pen-nib"></i> AI 正在思考与撰写...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">API 配置</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" v-model="apiConfig.deepseek"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-red-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select v-model="apiConfig.model"
+                            class="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-red-500 outline-none bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue;
+
+        createApp({
+            setup() {
+
+                const showSettings = ref(false);
+                const apiConfig = ref({ deepseek: '', model: 'deepseek-v4-flash' });
+                const isAnalyzing = ref(false);
+                const isGenerating = ref(false);
+                const statusText = ref('准备就绪');
+                const activeTab = ref('analysis'); // analysis | generation
+
+                const input = reactive({
+                    sourceContents: '',
+                    referenceMaterials: ''
+                });
+
+                const analysisResult = ref(null); // { keywords: [], hooks: [], emotions: [], pain_points: [] }
+                const generatedCopy = ref('');
+
+                // 初始化
+                onMounted(() => {
+                    // 初始化 Lucide 图标
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            apiConfig.value = { ...apiConfig.value, ...parsed };
+                        } catch (e) {
+                            console.error('Failed to parse global_llm_config', e);
+                        }
+                        // 兼容旧配置，默认加上 model
+                        if (!apiConfig.value.model) apiConfig.value.model = 'deepseek-v4-flash';
+                    }
+                });
+
+                const saveConfig = () => {
+                    apiConfig.value.deepseek = apiConfig.value.deepseek.trim();
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...apiConfig.value }));
+                    showSettings.value = false;
+                };
+
+                const renderMarkdown = (text) => {
+                    if (!text) return '';
+                    return marked.parse(text);
+                };
+
+                // --- 核心逻辑 ---
+
+                // 1. 拆解分析
+                const analyzeContent = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isAnalyzing.value = true;
+                    statusText.value = '正在分析内容特征...';
+                    activeTab.value = 'analysis';
+                    analysisResult.value = null;
+
+                    const prompt = `
+                        请仔细阅读并分析以下几篇小红书笔记内容。
+                        你需要提炼出以下关键信息，并以严格的 JSON 格式返回：
+                        1. keywords: 3-5个高频搜索热词/Tag。
+                        2. hooks: 3-5个吸引人的标题或开头钩子文案。
+                        3. emotions: 2-3个核心情绪点（如：焦虑、爽感、治愈）。
+                        4. pain_points: 2-3个用户核心痛点。
+
+                        待分析内容：
+                        ${input.sourceContents}
+
+                        返回格式示例：
+                        {
+                            "keywords": ["关键词1", "关键词2"],
+                            "hooks": ["钩子1...", "钩子2..."],
+                            "emotions": ["情绪1", "情绪2"],
+                            "pain_points": ["痛点1", "痛点2"]
+                        }
+                        注意：直接返回 JSON，不要 Markdown 代码块标记。
+                    `;
+
+                    try {
+                        const responseText = await callDeepSeek(prompt, false);
+                        const cleanJson = responseText.replace(/```json|```/g, '').trim();
+                        analysisResult.value = JSON.parse(cleanJson);
+                        statusText.value = '分析完成';
+                    } catch (e) {
+                        console.error(e);
+                        alert(`分析失败: ${e.message}`);
+                        statusText.value = '分析出错';
+                    } finally {
+                        isAnalyzing.value = false;
+                    }
+                };
+
+                // 2. 撰写新文案
+                const generateNewCopy = async () => {
+                    if (!apiConfig.value.deepseek) {
+                        showSettings.value = true;
+                        return;
+                    }
+
+                    isGenerating.value = true;
+                    statusText.value = '正在撰写新文案...';
+                    activeTab.value = 'generation';
+                    generatedCopy.value = '';
+
+                    // 构建 Prompt
+                    let analysisContext = "";
+                    if (analysisResult.value) {
+                        analysisContext = `
+                            请参考以下爆款特征：
+                            - 关键词：${analysisResult.value.keywords.join(', ')}
+                            - 钩子参考：${analysisResult.value.hooks.join('; ')}
+                            - 情绪基调：${analysisResult.value.emotions.join(', ')}
+                            - 解决痛点：${analysisResult.value.pain_points.join(', ')}
+                        `;
+                    }
+
+                    const prompt = `
+                        你是一个小红书爆款文案专家。请根据以下信息撰写一篇新的小红书笔记。
+
+                        ${analysisContext}
+
+                        参考资料/新主题：
+                        ${input.referenceMaterials || '（无特定参考，请根据上述爆款特征自由发挥）'}
+
+                        要求：
+                        1. 标题要极其吸引人，带 Emoji。
+                        2. 正文结构清晰，段落短小，可读性强。
+                        3. 语气要自然、真诚，像真人分享。
+                        4. 结尾包含互动引导和 Tag。
+                        5. 结合参考资料中的卖点或信息。
+                    `;
+
+                    try {
+                        await callDeepSeek(prompt, true, (chunk) => {
+                            generatedCopy.value += chunk;
+                        });
+                        statusText.value = '撰写完成';
+                    } catch (e) {
+                        console.error(e);
+                        generatedCopy.value += `\n[出错: ${e.message}]`;
+                    } finally {
+                        isGenerating.value = false;
+                    }
+                };
+
+                // 通用 API 调用
+                const callDeepSeek = async (prompt, stream = false, onChunk = null) => {
+                    const apiKey = (apiConfig.value.deepseek || '').trim();
+                    if (!apiKey) throw new Error("API Key 为空");
+
+                    let response;
+                    try {
+                        response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.value.model || "deepseek-v4-flash",
+                                messages: [
+                                    { "role": "system", "content": "You are a professional social media analyst and copywriter." },
+                                    { "role": "user", "content": prompt }
+                                ],
+                                stream: stream
+                            })
+                        });
+                    } catch (e) {
+                        throw new Error(`请求发起失败: ${e.message}`);
+                    }
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error?.message || `API Error: ${response.status}`);
+                    }
+
+                    if (!stream) {
+                        const data = await response.json();
+                        if (apiConfig.value.model === 'deepseek-v4-pro' && data.choices[0].message.reasoning_content) {
+                            // 如果是推理模型，可能需要处理 reasoning_content，这里暂且只取 content
+                            // 也可以选择把思考过程展示出来，目前规则没细说，先只取结果
+                        }
+                        return data.choices[0].message.content;
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+                    let resultText = "";
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const json = JSON.parse(line.substring(6));
+                                    const content = json.choices[0].delta.content || "";
+                                    resultText += content;
+                                    if (onChunk) onChunk(content);
+                                } catch (e) {
+                                    console.error("Stream parse error", e);
+                                }
+                            }
+                        }
+                    }
+                    return resultText;
+                };
+
+                // 导出分析
+                const exportAnalysis = () => {
+                    if (!analysisResult.value) return;
+                    const bom = '\uFEFF';
+                    let csv = bom + "Type,Content\n";
+
+                    analysisResult.value.keywords.forEach(k => csv += `关键词,"${k}"\n`);
+                    analysisResult.value.hooks.forEach(k => csv += `钩子,"${k}"\n`);
+                    analysisResult.value.emotions.forEach(k => csv += `情绪,"${k}"\n`);
+                    analysisResult.value.pain_points.forEach(k => csv += `痛点,"${k}"\n`);
+
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `analysis_report_${new Date().toLocaleDateString()}.csv`;
+                    a.click();
+                };
+
+                // 导出文案
+                const exportCopy = () => {
+                    const blob = new Blob([generatedCopy.value], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `generated_copy_${new Date().toLocaleDateString()}.txt`;
+                    a.click();
+                };
+
+                const copyToClipboard = () => {
+                    navigator.clipboard.writeText(generatedCopy.value);
+                    statusText.value = '已复制到剪贴板';
+                    setTimeout(() => statusText.value = '准备就绪', 2000);
+                };
+
+                return {
+                    showSettings, apiConfig, saveConfig,
+                    input, isAnalyzing, isGenerating, statusText,
+                    activeTab, analysisResult, generatedCopy,
+                    analyzeContent, generateNewCopy,
+                    renderMarkdown, exportAnalysis, exportCopy, copyToClipboard
+                };
+            }
+        }).mount('#app');
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/research_xhs_topic_analyzer.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+
+</html>

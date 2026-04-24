@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情绪画板 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .pixel-grid {
+            display: grid;
+            grid-template-columns: 40px repeat(31, 1fr);
+            gap: 2px;
+        }
+        @media (max-width: 768px) {
+            .pixel-grid {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 4px;
+            }
+            .month-row {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 2px;
+                margin-bottom: 12px;
+                width: 100%;
+            }
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-slate-800" x-data="pixelApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-gray-100 text-slate-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-indigo-500">
+                    🎨 情绪画板 Year in Pixels
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                 <button @click="clearYear" class="text-xs text-slate-400 hover:text-rose-500 underline" title="清空所有">
+                     重置
+                 </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Controls -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-8 flex flex-wrap justify-center gap-4 sticky top-20 z-40">
+            <template x-for="m in moods" :key="m.id">
+                <button @click="activeMood = m.id" 
+                        class="flex items-center gap-2 px-4 py-2 rounded-full border transition-all text-sm font-bold shadow-sm hover:scale-105 active:scale-95"
+                        :class="activeMood === m.id ? 'ring-2 ring-offset-2 ring-slate-300' : 'opacity-80 hover:opacity-100'"
+                        :style="`background-color: ${m.color}; color: ${m.text}`">
+                    <span x-text="m.emoji"></span>
+                    <span x-text="m.name"></span>
+                </button>
+            </template>
+            <button @click="activeMood = null" 
+                    class="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-500 text-sm font-bold transition-all hover:bg-slate-50"
+                    :class="activeMood === null ? 'ring-2 ring-offset-2 ring-slate-300' : ''">
+                <i class="fa-solid fa-eraser"></i> 清除
+            </button>
+        </div>
+
+        <!-- Desktop Grid View (Hidden on mobile) -->
+        <div class="hidden md:block overflow-x-auto pb-4">
+             <div class="pixel-grid min-w-[800px]">
+                 <!-- Header Row -->
+                 <div class="text-xs font-bold text-slate-400 text-center py-2"></div> <!-- Corner -->
+                 <template x-for="d in 31">
+                     <div class="text-[10px] font-bold text-slate-400 text-center py-2" x-text="d"></div>
+                 </template>
+                 
+                 <!-- Month Rows -->
+                 <template x-for="month in 12" :key="month">
+                     <div class="contents">
+                         <div class="text-xs font-bold text-slate-500 flex items-center justify-center uppercase" x-text="monthNames[month-1]"></div>
+                         
+                         <template x-for="day in 31" :key="day">
+                             <div class="aspect-square relative group">
+                                 <!-- Valid Day Check -->
+                                 <template x-if="isValidDay(month, day)">
+                                     <button @click="setMood(month, day)" 
+                                             class="w-full h-full rounded-sm border border-white transition-colors duration-200 hover:brightness-90 hover:z-10 hover:scale-110"
+                                             :style="getStyle(month, day)"
+                                             :title="`${month}月${day}日`">
+                                     </button>
+                                 </template>
+                                 <!-- Invalid -->
+                                 <template x-if="!isValidDay(month, day)">
+                                     <div class="w-full h-full bg-transparent"></div>
+                                 </template>
+                             </div>
+                         </template>
+                     </div>
+                 </template>
+             </div>
+        </div>
+
+        <!-- Mobile Block View -->
+        <div class="md:hidden space-y-6">
+            <template x-for="month in 12" :key="month">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-800 mb-3" x-text="monthNames[month-1] + '月'"></h3>
+                    <div class="grid grid-cols-7 gap-2">
+                         <template x-for="day in getDaysInMonth(month)" :key="day">
+                             <button @click="setMood(month, day)" 
+                                     class="aspect-square rounded-md border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-300 transition-colors"
+                                     :style="getStyle(month, day)"
+                                     x-text="day">
+                             </button>
+                         </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-12 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+             <template x-for="m in moods" :key="m.id">
+                 <div class="text-center">
+                     <div class="text-2xl font-bold mb-1" :style="`color: ${m.color}`" x-text="getMoodCount(m.id)"></div>
+                     <div class="text-xs text-slate-500 font-bold uppercase tracking-wider" x-text="m.name"></div>
+                 </div>
+             </template>
+        </div>
+
+    </main>
+
+    <script>
+        function pixelApp() {
+            return {
+                year: new Date().getFullYear(),
+                activeMood: 5, // Default active: Happy
+                pixels: {}, // { "M-D": moodId }
+                
+                moods: [
+                    { id: 5, name: '超棒', emoji: '🤩', color: '#fbbf24', text: '#fff' }, // Amber
+                    { id: 4, name: '开心', emoji: '😊', color: '#a3e635', text: '#fff' }, // Lime
+                    { id: 3, name: '还行', emoji: '😐', color: '#94a3b8', text: '#fff' }, // Slate
+                    { id: 2, name: '低落', emoji: '😔', color: '#60a5fa', text: '#fff' }, // Blue
+                    { id: 1, name: '糟糕', emoji: '😫', color: '#ef4444', text: '#fff' }  // Red
+                ],
+                
+                monthNames: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'],
+
+                init() {
+                    const saved = localStorage.getItem('webtools_mood_pixels_' + this.year);
+                    if (saved) {
+                        this.pixels = JSON.parse(saved);
+                    } else {
+                        // Demo data
+                        this.pixels['1-1'] = 5;
+                        this.pixels['1-2'] = 4;
+                    }
+                    // init
+                },
+
+                save() {
+                    localStorage.setItem('webtools_mood_pixels_' + this.year, JSON.stringify(this.pixels));
+                },
+
+                setMood(m, d) {
+                    const key = `${m}-${d}`;
+                    if (this.activeMood === null) {
+                        delete this.pixels[key];
+                    } else {
+                        this.pixels[key] = this.activeMood;
+                    }
+                    // Trigger reactivity by creating new obj? Alpine handles deep object if modified directly usually, but assignment is safer
+                    this.pixels = { ...this.pixels }; 
+                    this.save();
+                },
+
+                getStyle(m, d) {
+                    const key = `${m}-${d}`;
+                    const mid = this.pixels[key];
+                    if (!mid) return 'background-color: #f1f5f9;'; // Slate-100 default
+                    
+                    const mood = this.moods.find(x => x.id === mid);
+                    const color = mood ? mood.color : '#f1f5f9';
+                    const textColor = mood && mood.id >= 3 ? '#475569' : '#ffffff'; // simplistic contrast
+                    // Mobile shows text inside
+                    return `background-color: ${color}; color: ${textColor}; border-color: ${color}`;
+                },
+                
+                isValidDay(m, d) {
+                    const days = new Date(this.year, m, 0).getDate();
+                    return d <= days;
+                },
+                
+                getDaysInMonth(m) {
+                    return new Date(this.year, m, 0).getDate();
+                },
+                
+                getMoodCount(mid) {
+                    return Object.values(this.pixels).filter(v => v === mid).length;
+                },
+
+                clearYear() {
+                    if(confirm('确定清空本年度所有记录？')) {
+                        this.pixels = {};
+                        this.save();
+                    }
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_mood_board.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

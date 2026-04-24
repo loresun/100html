@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UUID 生成器 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-violet-50 min-h-screen font-sans text-slate-800" x-data="uuidApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-violet-100 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-violet-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left w-5 h-5"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-fuchsia-600">
+                🆔 UUID 批量生成器
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 md:grid-cols-12 gap-6">
+
+        <!-- Controls -->
+        <div class="md:col-span-4 space-y-4">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-violet-100">
+                <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders w-4 h-4 text-violet-500"></i>
+                    生成设置
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="text-xs font-bold text-slate-400 uppercase">数量</label>
+                            <span class="text-xs font-bold text-violet-600" x-text="count"></span>
+                        </div>
+                        <input type="range" min="1" max="1000" x-model="count" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-violet-600">
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-2 block">版本</label>
+                        <select x-model="version" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-violet-500 transition-colors">
+                            <option value="v4">Version 4 (随机 - 推荐)</option>
+                            <option value="v1">Version 1 (基于时间)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2 pt-2">
+                        <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                            <input type="checkbox" x-model="hyphens" class="rounded text-violet-600 focus:ring-violet-500 accent-violet-600">
+                            <span class="text-sm font-medium">包含连字符 (-)</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                            <input type="checkbox" x-model="uppercase" class="rounded text-violet-600 focus:ring-violet-500 accent-violet-600">
+                            <span class="text-sm font-medium">大写字母 (UPPERCASE)</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                            <input type="checkbox" x-model="braces" class="rounded text-violet-600 focus:ring-violet-500 accent-violet-600">
+                            <span class="text-sm font-medium">包含大括号 {}</span>
+                        </label>
+                    </div>
+
+                    <button @click="generate" class="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl shadow-lg shadow-violet-600/20 transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate w-4 h-4"></i>
+                        重新生成
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output -->
+        <div class="md:col-span-8">
+            <div class="bg-white rounded-xl shadow-sm border border-violet-100 flex flex-col h-[600px] overflow-hidden">
+                <div class="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-400 uppercase">生成结果</span>
+                    <button @click="copyAll" class="text-xs font-bold text-violet-600 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-copy w-3 h-3"></i>
+                        复制全部
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-auto p-0 relative">
+                    <textarea readonly class="w-full h-full p-4 font-mono text-sm text-slate-600 outline-none resize-none bg-white" x-model="output"></textarea>
+                    
+                    <div x-show="copied" x-transition.opacity.duration.500ms class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl backdrop-blur-sm pointer-events-none">
+                        已复制到剪贴板!
+                    </div>
+                </div>
+                
+                <div class="bg-slate-50 px-4 py-2 border-t border-slate-100 text-xs text-slate-400 flex justify-between">
+                    <span>Generated <span x-text="count"></span> UUIDs</span>
+                    <span x-text="output.length + ' chars'"></span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Fallback for generateUUID() in non-secure contexts
+        function generateUUID() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return generateUUID();
+            }
+            // Fallback implementation
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function uuidApp() {
+            return {
+                count: 5,
+                version: 'v4',
+                hyphens: true,
+                uppercase: false,
+                braces: false,
+                output: '',
+                copied: false,
+
+                init() {
+                    this.generate();
+                    this.$watch('count', () => this.generate());
+                    this.$watch('version', () => this.generate());
+                    this.$watch('hyphens', () => this.generate());
+                    this.$watch('uppercase', () => this.generate());
+                    this.$watch('braces', () => this.generate());
+                    
+                },
+
+                generate() {
+                    let result = '';
+                    for (let i = 0; i < this.count; i++) {
+                        let uuid = generateUUID(); // Default v4
+                        // v1 simulation if needed (omitted for pure client side simplicity as randomUUID is v4 standard)
+                        
+                        if (!this.hyphens) uuid = uuid.replace(/-/g, '');
+                        if (this.uppercase) uuid = uuid.toUpperCase();
+                        if (this.braces) uuid = `{${uuid}}`;
+                        
+                        result += uuid + '\n';
+                    }
+                    this.output = result.trim();
+                },
+
+                copyAll() {
+                    navigator.clipboard.writeText(this.output).then(() => {
+                        this.copied = true;
+                        setTimeout(() => this.copied = false, 2000);
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_uuid_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

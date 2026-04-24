@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合同/协议起草器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #e2e8f0 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        .step-connector {
+            height: 2px;
+            flex: 1;
+            transition: background-color 0.4s ease;
+        }
+
+        @keyframes typing-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .typing-cursor::after {
+            content: '▋';
+            animation: typing-cursor 0.8s infinite;
+            color: #1e40af;
+        }
+
+        .contract-type-card {
+            transition: all 0.25s ease;
+        }
+        .contract-type-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px -8px rgba(30, 64, 175, 0.2);
+        }
+
+        .outline-item {
+            transition: all 0.2s ease;
+        }
+        .outline-item:hover {
+            background-color: #eff6ff;
+        }
+
+        .prose h1, .prose h2, .prose h3 { color: #1e293b; }
+        .prose p { color: #334155; line-height: 1.8; }
+        .prose strong { color: #0f172a; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="contractDrafterApp()" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-blue-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-700 to-blue-900 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="pen-tool" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">合同/协议起草器</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 智能合同生成</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-blue-700 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-blue-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-blue-100 py-4">
+            <div class="max-w-3xl mx-auto px-4 flex items-center">
+                <template x-for="(step, idx) in steps" :key="idx">
+                    <div class="flex items-center" :class="idx < steps.length - 1 ? 'flex-1' : ''">
+                        <div class="flex items-center gap-2 cursor-pointer" @click="canGoToStep(idx) && goToStep(idx)">
+                            <div :class="[
+                                'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 relative',
+                                currentStep === idx ? 'bg-blue-800 text-white shadow-lg scale-110' :
+                                currentStep > idx ? 'bg-emerald-500 text-white' :
+                                'bg-slate-200 text-slate-500'
+                            ]">
+                                <template x-if="currentStep > idx">
+                                    <i data-lucide="check" class="w-4 h-4"></i>
+                                </template>
+                                <template x-if="currentStep <= idx">
+                                    <span x-text="idx + 1"></span>
+                                </template>
+                            </div>
+                            <span :class="[
+                                'text-sm font-medium hidden sm:inline transition-colors',
+                                currentStep === idx ? 'text-blue-900' :
+                                currentStep > idx ? 'text-emerald-600' : 'text-slate-400'
+                            ]" x-text="step.name"></span>
+                        </div>
+                        <div x-show="idx < steps.length - 1"
+                            :class="['step-connector mx-3', currentStep > idx ? 'bg-emerald-400' : 'bg-slate-200']">
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow overflow-y-auto">
+            <div class="max-w-5xl mx-auto px-4 py-6">
+
+                <!-- ============ 步骤1：选择合同类型 & 填写关键信息 ============ -->
+                <div x-show="currentStep === 0" x-transition class="animate-fade-in space-y-5">
+                    <!-- 合同类型选择 -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+                        <div class="p-6 border-b border-blue-50">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="folder-open" class="w-5 h-5 text-blue-700"></i>
+                                选择合同类型
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">请选择您需要起草的合同/协议类型</p>
+                        </div>
+                        <div class="p-6">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <template x-for="ct in contractTypes" :key="ct.value">
+                                    <button @click="selectContractType(ct.value)"
+                                        :class="[
+                                            'contract-type-card flex flex-col items-center gap-2 p-4 rounded-xl border-2 text-center',
+                                            input.contractType === ct.value
+                                                ? 'border-blue-600 bg-blue-50 shadow-md'
+                                                : 'border-slate-200 bg-white hover:border-blue-300'
+                                        ]">
+                                        <span class="text-2xl" x-text="ct.icon"></span>
+                                        <span :class="[
+                                            'text-sm font-semibold',
+                                            input.contractType === ct.value ? 'text-blue-800' : 'text-slate-700'
+                                        ]" x-text="ct.label"></span>
+                                        <span class="text-xs text-slate-400" x-text="ct.desc"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 关键条款信息 -->
+                    <div x-show="input.contractType" x-transition class="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+                        <div class="p-6 border-b border-blue-50">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="file-text" class="w-5 h-5 text-blue-700"></i>
+                                填写关键条款信息
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">这些信息将帮助 AI 生成更精准的合同内容</p>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <!-- 甲方乙方 -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="space-y-1.5">
+                                    <label class="font-semibold text-sm text-slate-700">甲方名称 <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="input.partyA" placeholder="例：北京某某科技有限公司"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="font-semibold text-sm text-slate-700">乙方名称 <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="input.partyB" placeholder="例：张三 / 上海某某有限公司"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                </div>
+                            </div>
+
+                            <!-- 合同期限和金额 -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="space-y-1.5">
+                                    <label class="font-semibold text-sm text-slate-700">合同期限</label>
+                                    <input type="text" x-model="input.duration" :placeholder="getDurationPlaceholder()"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="font-semibold text-sm text-slate-700" x-text="getAmountLabel()"></label>
+                                    <input type="text" x-model="input.amount" :placeholder="getAmountPlaceholder()"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                </div>
+                            </div>
+
+                            <!-- 核心条款 / 主要责任 -->
+                            <div class="space-y-1.5">
+                                <label class="font-semibold text-sm text-slate-700">关键责任与约定</label>
+                                <textarea x-model="input.keyTerms" rows="4" :placeholder="getKeyTermsPlaceholder()"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none leading-relaxed"></textarea>
+                            </div>
+
+                            <!-- 补充要求 -->
+                            <div class="space-y-1.5">
+                                <label class="font-semibold text-sm text-slate-700">补充要求 <span class="text-xs text-slate-400">(可选)</span></label>
+                                <textarea x-model="input.extraRequirements" rows="2" placeholder="例：需要包含竞业限制条款 / 需要约定争议解决方式为仲裁..."
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none leading-relaxed"></textarea>
+                            </div>
+
+                            <!-- 下一步按钮 -->
+                            <button @click="generateOutline"
+                                :disabled="!canProceedStep1 || isLoading"
+                                class="w-full bg-gradient-to-r from-blue-700 to-blue-900 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                                <template x-if="isLoading">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                        正在生成合同框架...
+                                    </span>
+                                </template>
+                                <template x-if="!isLoading">
+                                    <span class="flex items-center gap-2">
+                                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                                        AI 生成合同框架
+                                    </span>
+                                </template>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤2：合同框架编辑 ============ -->
+                <div x-show="currentStep === 1" x-transition class="animate-fade-in space-y-5">
+                    <!-- 加载状态 -->
+                    <div x-show="isLoading" class="bg-white rounded-2xl shadow-sm border border-blue-100 p-12">
+                        <div class="flex flex-col items-center justify-center text-slate-500">
+                            <div class="relative mb-6">
+                                <div class="w-20 h-20 rounded-full border-4 border-blue-100 border-t-blue-700 animate-spin"></div>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <i data-lucide="list-tree" class="w-8 h-8 text-blue-600"></i>
+                                </div>
+                            </div>
+                            <p class="text-lg font-semibold text-slate-700">正在生成合同框架...</p>
+                            <p class="text-sm text-slate-400 mt-1">AI 正在规划合同结构和章节</p>
+                        </div>
+                    </div>
+
+                    <!-- 框架编辑 -->
+                    <div x-show="!isLoading && outlineSections.length > 0">
+                        <div class="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+                            <div class="p-6 border-b border-blue-50 flex items-center justify-between">
+                                <div>
+                                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="list-tree" class="w-5 h-5 text-blue-700"></i>
+                                        合同框架大纲
+                                    </h2>
+                                    <p class="text-sm text-slate-500 mt-1">您可以编辑、增删章节，确认后将生成完整合同</p>
+                                </div>
+                                <button @click="addSection" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> 添加章节
+                                </button>
+                            </div>
+                            <div class="p-6 space-y-3">
+                                <template x-for="(section, idx) in outlineSections" :key="idx">
+                                    <div class="outline-item border border-slate-200 rounded-xl p-4 group">
+                                        <div class="flex items-start gap-3">
+                                            <span class="text-blue-700 font-bold text-sm mt-1 w-8 text-center flex-shrink-0" x-text="'第' + toChineseNum(idx + 1) + '条'"></span>
+                                            <div class="flex-1 space-y-2">
+                                                <input type="text" x-model="outlineSections[idx].title"
+                                                    class="w-full font-semibold text-slate-800 bg-transparent border-b border-transparent hover:border-blue-300 focus:border-blue-500 outline-none py-1 text-sm transition">
+                                                <textarea x-model="outlineSections[idx].description" rows="2"
+                                                    class="w-full text-sm text-slate-500 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-400 rounded-lg outline-none p-1 transition resize-none leading-relaxed"></textarea>
+                                            </div>
+                                            <button @click="removeSection(idx)"
+                                                class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition p-1 rounded-lg hover:bg-red-50 flex-shrink-0">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="flex gap-3 mt-5">
+                            <button @click="currentStep = 0"
+                                class="flex-shrink-0 px-6 py-3.5 rounded-xl border-2 border-slate-300 text-slate-600 font-semibold hover:bg-slate-100 transition flex items-center gap-2">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i> 上一步
+                            </button>
+                            <button @click="generateFullContract"
+                                :disabled="outlineSections.length === 0 || isLoading"
+                                class="flex-1 bg-gradient-to-r from-blue-700 to-blue-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                                <i data-lucide="file-signature" class="w-5 h-5"></i>
+                                生成合同全文
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤3：合同全文生成 ============ -->
+                <div x-show="currentStep === 2" x-transition class="animate-fade-in space-y-5">
+                    <div class="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+                        <div class="p-6 border-b border-blue-50 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <i data-lucide="file-signature" class="w-5 h-5 text-blue-700"></i>
+                                    合同全文
+                                </h2>
+                                <p class="text-sm text-slate-500 mt-1" x-text="getContractTypeLabel() + ' - ' + input.partyA + ' 与 ' + input.partyB"></p>
+                            </div>
+                            <div x-show="!isLoading && contractText" class="flex items-center gap-2">
+                                <button @click="copyContract" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
+                                    <i data-lucide="copy" class="w-4 h-4"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- 加载/流式输出 -->
+                            <div x-show="isLoading && !contractText" class="flex flex-col items-center justify-center py-12 text-slate-500">
+                                <div class="relative mb-6">
+                                    <div class="w-20 h-20 rounded-full border-4 border-blue-100 border-t-blue-700 animate-spin"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <i data-lucide="pen-tool" class="w-8 h-8 text-blue-600"></i>
+                                    </div>
+                                </div>
+                                <p class="text-lg font-semibold text-slate-700">正在起草合同全文...</p>
+                                <p class="text-sm text-slate-400 mt-1">AI 正在以法律专业语言生成合同内容</p>
+                            </div>
+
+                            <!-- 合同内容 -->
+                            <div x-show="contractText"
+                                :class="['prose max-w-none text-sm leading-relaxed', isLoading ? 'typing-cursor' : '']"
+                                x-html="renderMarkdown(contractText)"></div>
+
+                            <!-- 深度思考过程 -->
+                            <details x-show="reasoningContent" class="mt-4">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-blue-600 transition">
+                                    🧠 深度思考过程 (点击展开)
+                                </summary>
+                                <div class="mt-2 p-4 bg-slate-50 rounded-lg text-xs text-slate-500 whitespace-pre-wrap max-h-64 overflow-y-auto" x-text="reasoningContent"></div>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div x-show="!isLoading" class="flex gap-3">
+                        <button @click="currentStep = 1"
+                            class="flex-shrink-0 px-6 py-3.5 rounded-xl border-2 border-slate-300 text-slate-600 font-semibold hover:bg-slate-100 transition flex items-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 上一步
+                        </button>
+                        <button @click="generateClauseReminder"
+                            :disabled="!contractText || isLoading"
+                            class="flex-1 bg-gradient-to-r from-blue-700 to-blue-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                            AI 关键条款提醒
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤4：关键条款提醒 ============ -->
+                <div x-show="currentStep === 3" x-transition class="animate-fade-in space-y-5">
+                    <!-- 免责声明 -->
+                    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                        <i data-lucide="alert-triangle" class="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+                        <div class="text-sm text-amber-800">
+                            <span class="font-bold">重要声明：</span>本工具生成的合同内容仅供参考，不构成法律建议。重要合同请咨询专业律师进行审核。
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+                        <div class="p-6 border-b border-blue-50">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="shield-alert" class="w-5 h-5 text-blue-700"></i>
+                                关键条款提醒与建议
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">AI 为您分析合同中需要重点关注的条款</p>
+                        </div>
+                        <div class="p-6">
+                            <!-- 加载 -->
+                            <div x-show="isLoading && !clauseReminder" class="flex flex-col items-center justify-center py-12 text-slate-500">
+                                <div class="relative mb-6">
+                                    <div class="w-20 h-20 rounded-full border-4 border-blue-100 border-t-blue-700 animate-spin"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <i data-lucide="shield-alert" class="w-8 h-8 text-blue-600"></i>
+                                    </div>
+                                </div>
+                                <p class="text-lg font-semibold text-slate-700">正在分析关键条款...</p>
+                                <p class="text-sm text-slate-400 mt-1">AI 正在检查潜在风险和注意事项</p>
+                            </div>
+
+                            <!-- 提醒内容 -->
+                            <div x-show="clauseReminder"
+                                :class="['prose max-w-none text-sm leading-relaxed', isLoading ? 'typing-cursor' : '']"
+                                x-html="renderMarkdown(clauseReminder)"></div>
+
+                            <!-- 深度思考 -->
+                            <details x-show="clauseReasoning" class="mt-4">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-500 hover:text-blue-600 transition">
+                                    🧠 深度思考过程 (点击展开)
+                                </summary>
+                                <div class="mt-2 p-4 bg-slate-50 rounded-lg text-xs text-slate-500 whitespace-pre-wrap max-h-64 overflow-y-auto" x-text="clauseReasoning"></div>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div x-show="!isLoading" class="flex flex-col sm:flex-row gap-3">
+                        <button @click="currentStep = 2"
+                            class="flex-shrink-0 px-6 py-3.5 rounded-xl border-2 border-slate-300 text-slate-600 font-semibold hover:bg-slate-100 transition flex items-center justify-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回合同全文
+                        </button>
+                        <button @click="exportMarkdown"
+                            class="flex-1 bg-gradient-to-r from-blue-700 to-blue-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            导出合同 (Markdown)
+                        </button>
+                        <button @click="exportTxt"
+                            class="flex-shrink-0 px-6 py-3.5 rounded-xl border-2 border-blue-300 text-blue-700 font-semibold hover:bg-blue-50 transition flex items-center justify-center gap-2">
+                            <i data-lucide="file-down" class="w-4 h-4"></i> 导出 TXT
+                        </button>
+                    </div>
+
+                    <!-- 重新开始 -->
+                    <div class="text-center pt-2">
+                        <button @click="resetAll" class="text-sm text-slate-400 hover:text-blue-600 transition underline underline-offset-4">
+                            起草新合同
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+            <span x-text="toast.message"></span>
+        </div>
+
+        <!-- 错误提示 -->
+        <div x-show="errorMsg" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-red-600 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-2 max-w-md">
+            <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+            <span x-text="errorMsg"></span>
+            <button @click="errorMsg = ''" class="ml-2 text-white/80 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        <!-- ============ 设置弹窗 ============ -->
+        <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" x-transition.scale>
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-blue-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek" placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">取消</button>
+                    <button @click="saveConfig"
+                        class="px-6 py-2.5 text-sm font-medium bg-blue-700 text-white rounded-xl hover:bg-blue-800 transition shadow">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    function contractDrafterApp() {
+        return {
+            /* ===== 步骤定义 ===== */
+            steps: [
+                { name: '合同类型 & 信息' },
+                { name: '合同框架' },
+                { name: '合同全文' },
+                { name: '条款提醒' }
+            ],
+            currentStep: 0,
+
+            /* ===== 合同类型列表 ===== */
+            contractTypes: [
+                { value: 'rent', label: '房屋租赁合同', icon: '🏠', desc: '租房/商铺租赁' },
+                { value: 'labor', label: '劳动合同', icon: '👔', desc: '雇佣/劳动关系' },
+                { value: 'cooperation', label: '合作协议', icon: '🤝', desc: '商业合作/联营' },
+                { value: 'loan', label: '借款合同', icon: '💰', desc: '借贷/融资' },
+                { value: 'service', label: '服务合同', icon: '🛠️', desc: '服务外包/咨询' },
+                { value: 'nda', label: '保密协议NDA', icon: '🔒', desc: '信息保密/竞业' },
+                { value: 'equity', label: '股权协议', icon: '📊', desc: '股权转让/投资' },
+                { value: 'franchise', label: '加盟合同', icon: '🏪', desc: '品牌加盟/特许' }
+            ],
+
+            /* ===== 用户输入 ===== */
+            input: {
+                contractType: '',
+                partyA: '',
+                partyB: '',
+                duration: '',
+                amount: '',
+                keyTerms: '',
+                extraRequirements: ''
+            },
+
+            /* ===== 生成结果 ===== */
+            outlineSections: [],
+            contractText: '',
+            reasoningContent: '',
+            clauseReminder: '',
+            clauseReasoning: '',
+
+            /* ===== 状态 ===== */
+            isLoading: false,
+            showSettings: false,
+            errorMsg: '',
+            toast: { show: false, message: '' },
+
+            /* ===== API 配置 ===== */
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            /* ===== 计算属性：步骤1是否可进入下一步 ===== */
+            get canProceedStep1() {
+                return this.input.contractType && this.input.partyA.trim() && this.input.partyB.trim();
+            },
+
+            /* ===== 初始化 ===== */
+            init() {
+                this.loadConfig();
+                this.$nextTick(() => { lucide.createIcons(); });
+            },
+
+            /* ===== 配置管理 ===== */
+            loadConfig() {
+                const saved = localStorage.getItem('global_llm_config');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    } catch (e) { console.error('配置加载失败:', e); }
+                }
+            },
+
+            saveConfig() {
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                localStorage.setItem('global_llm_config', JSON.stringify({ ...current, ...this.apiConfig }));
+                this.showSettings = false;
+                this.showToast('配置已保存');
+            },
+
+            /* ===== 步骤导航 ===== */
+            canGoToStep(idx) {
+                return idx < this.currentStep;
+            },
+
+            goToStep(idx) {
+                if (this.canGoToStep(idx)) {
+                    this.currentStep = idx;
+                    this.$nextTick(() => { lucide.createIcons(); });
+                }
+            },
+
+            /* ===== 选择合同类型 ===== */
+            selectContractType(type) {
+                this.input.contractType = type;
+                this.$nextTick(() => { lucide.createIcons(); });
+            },
+
+            /* ===== 根据合同类型返回动态占位符 ===== */
+            getDurationPlaceholder() {
+                const map = {
+                    rent: '例：1年（2025年1月1日至2025年12月31日）',
+                    labor: '例：3年（含6个月试用期）',
+                    cooperation: '例：2年，自签订之日起计算',
+                    loan: '例：12个月',
+                    service: '例：项目完成之日止，预计3个月',
+                    nda: '例：保密期限5年',
+                    equity: '例：股权交割后永久有效',
+                    franchise: '例：5年，可续签'
+                };
+                return map[this.input.contractType] || '请填写合同期限';
+            },
+
+            getAmountLabel() {
+                const map = {
+                    rent: '租金金额', labor: '薪资/报酬', cooperation: '合作金额/投入',
+                    loan: '借款金额', service: '服务费用', nda: '违约金额',
+                    equity: '股权比例/金额', franchise: '加盟费用'
+                };
+                return map[this.input.contractType] || '金额/费用';
+            },
+
+            getAmountPlaceholder() {
+                const map = {
+                    rent: '例：月租金5000元，押一付三',
+                    labor: '例：月薪15000元，年终奖另计',
+                    cooperation: '例：甲方投入100万元，乙方投入技术',
+                    loan: '例：借款50万元，年利率8%',
+                    service: '例：服务费总计20万元，分三期支付',
+                    nda: '例：违约方须赔偿损失，违约金不低于100万元',
+                    equity: '例：乙方持有20%股权，出资200万元',
+                    franchise: '例：加盟费10万元，保证金5万元'
+                };
+                return map[this.input.contractType] || '请填写金额';
+            },
+
+            getKeyTermsPlaceholder() {
+                const map = {
+                    rent: '例：甲方负责房屋主体维修，乙方负责日常维护；不得转租；押金退还条件...',
+                    labor: '例：岗位为高级开发工程师，工作地点北京，五险一金，每年15天年假...',
+                    cooperation: '例：甲方负责提供资金和渠道，乙方负责技术开发和运营，利润按6:4分成...',
+                    loan: '例：按月还息，到期还本；提前还款不收违约金；逾期按日千分之一计息...',
+                    service: '例：乙方提供UI设计服务，交付物包括设计稿源文件；修改不超过3次...',
+                    nda: '例：保密信息包括客户名单、技术方案；接触人员范围限定；销毁义务...',
+                    equity: '例：股权比例按出资额确定；优先购买权；反稀释条款；董事会席位...',
+                    franchise: '例：经营区域限定在上海市浦东新区；统一装修标准；总部提供培训支持...'
+                };
+                return map[this.input.contractType] || '请描述合同中的关键约定、双方主要责任等';
+            },
+
+            getContractTypeLabel() {
+                const ct = this.contractTypes.find(c => c.value === this.input.contractType);
+                return ct ? ct.label : '';
+            },
+
+            /* ===== 数字转中文 ===== */
+            toChineseNum(num) {
+                const chars = ['零','一','二','三','四','五','六','七','八','九','十',
+                    '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+                    '二十一','二十二','二十三','二十四','二十五','二十六','二十七','二十八','二十九','三十'];
+                return chars[num] || num;
+            },
+
+            /* ===== Markdown 渲染 ===== */
+            renderMarkdown(text) {
+                if (!text) return '';
+                try { return marked.parse(text); } catch (e) { return text; }
+            },
+
+            /* ===== Toast 提示 ===== */
+            showToast(msg) {
+                this.toast = { show: true, message: msg };
+                setTimeout(() => { this.toast.show = false; }, 2500);
+            },
+
+            /* ===== 步骤1 → 步骤2：生成合同框架 (JSON模式) ===== */
+            async generateOutline() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isLoading = true;
+                this.errorMsg = '';
+                this.outlineSections = [];
+                this.currentStep = 1;
+                this.$nextTick(() => { lucide.createIcons(); });
+
+                const typeLabel = this.getContractTypeLabel();
+                const systemPrompt = `你是一位资深法律顾问，擅长起草各类合同和协议。请根据用户提供的合同类型和关键信息，生成一份合同大纲框架。
+
+要求：
+1. 按照中国法律法规和合同惯例生成章节结构
+2. 每个章节包含标题(title)和简要说明(description)
+3. 章节应全面覆盖合同的核心内容
+4. 请以 JSON 格式返回，格式为 {"sections": [{"title": "章节标题", "description": "该章节应包含的内容简述"}]}
+5. 通常包含12-18个章节，确保覆盖：合同主体信息、核心权利义务、付款/费用、期限、违约责任、争议解决、附则等`;
+
+                const userPrompt = `请为以下合同生成详细框架大纲：
+
+合同类型：${typeLabel}
+甲方：${this.input.partyA}
+乙方：${this.input.partyB}
+合同期限：${this.input.duration || '未指定'}
+金额/费用：${this.input.amount || '未指定'}
+关键条款和约定：${this.input.keyTerms || '未指定'}
+补充要求：${this.input.extraRequirements || '无'}
+
+请以 JSON 格式输出合同框架。`;
+
+                try {
+                    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            temperature: 0.7,
+                            response_format: { type: 'json_object' }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                    }
+
+                    const data = await response.json();
+                    const content = data.choices?.[0]?.message?.content || '';
+
+                    const parsed = JSON.parse(content);
+                    const sections = Array.isArray(parsed) ? parsed : (parsed.sections || parsed.outline || []);
+
+                    if (sections.length === 0) throw new Error('未能解析合同框架');
+
+                    this.outlineSections = sections.map(s => ({
+                        title: s.title || s.name || '',
+                        description: s.description || s.content || s.desc || ''
+                    }));
+
+                } catch (e) {
+                    console.error('生成框架失败:', e);
+                    this.errorMsg = '生成合同框架失败：' + e.message;
+                    setTimeout(() => { this.errorMsg = ''; }, 5000);
+                } finally {
+                    this.isLoading = false;
+                    this.$nextTick(() => { lucide.createIcons(); });
+                }
+            },
+
+            /* ===== 增加/删除大纲章节 ===== */
+            addSection() {
+                this.outlineSections.push({ title: '新增条款', description: '请填写该条款的具体内容描述' });
+            },
+
+            removeSection(idx) {
+                if (this.outlineSections.length > 1) {
+                    this.outlineSections.splice(idx, 1);
+                }
+            },
+
+            /* ===== 步骤2 → 步骤3：生成合同全文 (流式) ===== */
+            async generateFullContract() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isLoading = true;
+                this.errorMsg = '';
+                this.contractText = '';
+                this.reasoningContent = '';
+                this.currentStep = 2;
+                this.$nextTick(() => { lucide.createIcons(); });
+
+                const typeLabel = this.getContractTypeLabel();
+
+                const outlineText = this.outlineSections.map((s, i) =>
+                    `第${this.toChineseNum(i + 1)}条 ${s.title}：${s.description}`
+                ).join('\n');
+
+                const systemPrompt = `你是一位资深法律顾问和合同起草专家。请根据提供的合同框架大纲和关键信息，生成一份完整、正式、专业的合同全文。
+
+要求：
+1. 使用标准中国法律合同格式和语言
+2. 每一条款内容应完整、具体、可执行
+3. 金额请同时使用大小写，例如"人民币伍万元整（¥50,000.00）"
+4. 包含甲方乙方签章栏和日期栏
+5. 条款编号使用"第一条、第二条..."格式
+6. 语言正式严谨，避免模糊表述
+7. 使用 Markdown 格式输出，标题使用 ## 和 ###`;
+
+                const userPrompt = `请根据以下信息生成完整的${typeLabel}：
+
+【合同基本信息】
+甲方：${this.input.partyA}
+乙方：${this.input.partyB}
+合同期限：${this.input.duration || '由双方另行协商确定'}
+金额/费用：${this.input.amount || '由双方另行协商确定'}
+关键约定：${this.input.keyTerms || '无特殊约定'}
+补充要求：${this.input.extraRequirements || '无'}
+
+【合同框架大纲】
+${outlineText}
+
+请生成完整、专业、可签署的合同全文。`;
+
+                await this._streamCall(systemPrompt, userPrompt, 'contract');
+            },
+
+            /* ===== 步骤3 → 步骤4：关键条款提醒 (流式) ===== */
+            async generateClauseReminder() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    return;
+                }
+
+                this.isLoading = true;
+                this.errorMsg = '';
+                this.clauseReminder = '';
+                this.clauseReasoning = '';
+                this.currentStep = 3;
+                this.$nextTick(() => { lucide.createIcons(); });
+
+                const typeLabel = this.getContractTypeLabel();
+
+                const systemPrompt = `你是一位资深合同审查律师。请对以下合同进行关键条款分析，帮助用户识别重要条款、常见纠纷点和建议补充的保护条款。
+
+分析要求：
+1. **重点关注条款**：列出合同中最关键的条款，逐条说明其重要性和含义
+2. **常见纠纷预警**：指出该类型合同中常见的纠纷和争议点
+3. **建议补充条款**：建议增加哪些保护性条款来降低风险
+4. **实操建议**：签署前后的注意事项
+
+请使用 Markdown 格式，条理清晰，重点突出。每个部分使用 ## 标题。
+在最后加上一段重要提醒：本分析仅供参考，重要合同请咨询专业律师。`;
+
+                const userPrompt = `请分析以下${typeLabel}的关键条款：
+
+甲方：${this.input.partyA}
+乙方：${this.input.partyB}
+
+【合同全文】
+${this.contractText}
+
+请给出详细的关键条款提醒和建议。`;
+
+                await this._streamCall(systemPrompt, userPrompt, 'reminder');
+            },
+
+            /* ===== 流式调用核心方法 ===== */
+            async _streamCall(systemPrompt, userPrompt, target) {
+                try {
+                    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            stream: true,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const delta = parsed.choices[0].delta;
+
+                                    if (delta.reasoning_content) {
+                                        if (target === 'contract') {
+                                            this.reasoningContent += delta.reasoning_content;
+                                        } else {
+                                            this.clauseReasoning += delta.reasoning_content;
+                                        }
+                                    }
+
+                                    if (delta.content) {
+                                        if (target === 'contract') {
+                                            this.contractText += delta.content;
+                                        } else {
+                                            this.clauseReminder += delta.content;
+                                        }
+                                    }
+                                } catch (e) { /* 跳过解析错误 */ }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('流式请求失败:', e);
+                    this.errorMsg = '生成失败：' + e.message;
+                    setTimeout(() => { this.errorMsg = ''; }, 5000);
+                } finally {
+                    this.isLoading = false;
+                    this.$nextTick(() => { lucide.createIcons(); });
+                }
+            },
+
+            /* ===== 复制合同文本 ===== */
+            async copyContract() {
+                try {
+                    await navigator.clipboard.writeText(this.contractText);
+                    this.showToast('合同文本已复制到剪贴板');
+                } catch (e) {
+                    const ta = document.createElement('textarea');
+                    ta.value = this.contractText;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    this.showToast('合同文本已复制到剪贴板');
+                }
+            },
+
+            /* ===== 导出 Markdown ===== */
+            exportMarkdown() {
+                const typeLabel = this.getContractTypeLabel();
+                let content = `# ${typeLabel}\n\n`;
+                content += `**甲方**：${this.input.partyA}\n`;
+                content += `**乙方**：${this.input.partyB}\n\n`;
+                content += `---\n\n`;
+                content += this.contractText;
+
+                if (this.clauseReminder) {
+                    content += `\n\n---\n\n## 📋 关键条款提醒\n\n`;
+                    content += this.clauseReminder;
+                }
+
+                content += `\n\n---\n\n> ⚠️ 本合同由 AI 辅助生成，仅供参考，重要合同请咨询专业律师。\n`;
+
+                this._download(content, `${typeLabel}_${this.input.partyA}_${this.input.partyB}.md`, 'text/markdown');
+                this.showToast('Markdown 文件已导出');
+            },
+
+            /* ===== 导出 TXT ===== */
+            exportTxt() {
+                const typeLabel = this.getContractTypeLabel();
+                let content = `${typeLabel}\n`;
+                content += `${'='.repeat(40)}\n\n`;
+                content += `甲方：${this.input.partyA}\n`;
+                content += `乙方：${this.input.partyB}\n\n`;
+                content += `${'-'.repeat(40)}\n\n`;
+                content += this.contractText;
+
+                if (this.clauseReminder) {
+                    content += `\n\n${'='.repeat(40)}\n`;
+                    content += `关键条款提醒\n`;
+                    content += `${'='.repeat(40)}\n\n`;
+                    content += this.clauseReminder;
+                }
+
+                content += `\n\n${'='.repeat(40)}\n`;
+                content += `⚠️ 本合同由 AI 辅助生成，仅供参考，重要合同请咨询专业律师。\n`;
+
+                this._download(content, `${typeLabel}_${this.input.partyA}_${this.input.partyB}.txt`, 'text/plain');
+                this.showToast('TXT 文件已导出');
+            },
+
+            /* ===== 下载文件辅助 ===== */
+            _download(content, filename, mime) {
+                const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+
+            /* ===== 重置所有 ===== */
+            resetAll() {
+                this.currentStep = 0;
+                this.input = {
+                    contractType: '', partyA: '', partyB: '',
+                    duration: '', amount: '', keyTerms: '', extraRequirements: ''
+                };
+                this.outlineSections = [];
+                this.contractText = '';
+                this.reasoningContent = '';
+                this.clauseReminder = '';
+                this.clauseReasoning = '';
+                this.errorMsg = '';
+                this.$nextTick(() => { lucide.createIcons(); });
+            }
+        };
+    }
+    </script>
+</body>
+</html>

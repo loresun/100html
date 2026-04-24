@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第一性原理拆解器 - AI 创意生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #f7f8fa; }
+        .linear-button { background-color: #5E6AD2; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 500; transition: background-color 0.2s; }
+        .linear-button:hover { background-color: #4a54a8; }
+        .linear-button:disabled { background-color: #a5b4fc; cursor: not-allowed; }
+        .input-field { border: 1px solid #E1E5E9; border-radius: 8px; padding: 12px 16px; width: 100%; transition: border-color 0.2s, box-shadow 0.2s; }
+        .input-field:focus { outline: none; border-color: #5E6AD2; box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.2); }
+        #settings-panel { transition: transform 0.3s ease-in-out; transform: translateX(100%); }
+        #settings-panel.open { transform: translateX(0); }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 10px 20px; border-radius: 8px; z-index: 1000; opacity: 0; transition: opacity 0.3s, transform 0.3s; }
+        .toast.show { opacity: 1; transform: translate(-50%, -10px); }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #5E6AD2; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .result-container { background-color: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05); border: 1px solid #e5e7eb; padding: 24px; transition: all 0.3s; }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 { font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; color: #1e293b; }
+        .markdown-content h1 { font-size: 1.75rem; }
+        .markdown-content h2 { font-size: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+        .markdown-content h3 { font-size: 1.25rem; }
+        .markdown-content p { margin-bottom: 1em; line-height: 1.7; }
+        .markdown-content ul, .markdown-content ol { padding-left: 2em; margin-bottom: 1em; }
+        .markdown-content li { margin-bottom: 0.5em; }
+        .markdown-content strong { font-weight: 600; }
+        .markdown-content blockquote { border-left: 4px solid #dbeafe; padding-left: 1em; margin-left: 0; color: #64748b; }
+        .markdown-content code { background-color: #f1f5f9; padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; }
+        .example-tag { background-color: #eef2ff; color: #4338ca; padding: 4px 12px; border-radius: 999px; font-size: 0.875rem; cursor: pointer; transition: background-color 0.2s; display: inline-block; margin: 4px; }
+        .example-tag:hover { background-color: #e0e7ff; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">
+                <i class="fa-solid fa-atom text-indigo-500"></i>
+                第一性原理拆解器
+            </h1>
+            <button id="settings-btn" class="text-gray-600 hover:text-indigo-500 transition-colors">
+                <i class="fa-solid fa-gear fa-2x"></i>
+            </button>
+        </header>
+
+        <!-- Input Section -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
+            <h2 class="text-xl font-bold mb-4 text-gray-700">输入一个复杂问题或目标</h2>
+            <p class="text-gray-500 mb-4">AI将运用第一性原理，将其层层分解为最基础的要素和不证自明的事实。</p>
+            <textarea id="problem-input" class="input-field" rows="3" placeholder="例如：我们如何以现有十分之一的成本，将人类送上火星？"></textarea>
+            <div class="mt-4">
+                <p class="text-sm text-gray-600 mb-2">或尝试一些示例：</p>
+                <span class="example-tag">如何建立一个真正去中心化的社交媒体平台？</span>
+                <span class="example-tag">教育的本质应该是什么？</span>
+                <span class="example-tag">如何设计一个能让用户持续学习并获得成长的产品？</span>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="generate-btn" class="linear-button text-lg">
+                    <i class="fa-solid fa-sitemap mr-2"></i>开始拆解
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="result-wrapper" class="hidden">
+             <div id="loader" class="text-center py-10 hidden">
+                <div class="spinner mx-auto"></div>
+                <p class="mt-4 text-gray-600">正在追本溯源，探寻本质...</p>
+            </div>
+            <div id="result-container" class="result-container hidden">
+                <div class="flex justify-between items-start">
+                    <h2 id="result-title" class="text-2xl font-bold text-indigo-600 mb-4"></h2>
+                    <div>
+                        <button id="copy-btn" class="text-gray-500 hover:text-indigo-500" title="复制报告"><i class="fa-solid fa-copy"></i></button>
+                        <button id="download-btn" class="text-gray-500 hover:text-indigo-500 ml-2" title="下载为Markdown"><i class="fa-solid fa-download"></i></button>
+                    </div>
+                </div>
+                <div id="result-output" class="markdown-content text-gray-800 leading-relaxed"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settings-panel" class="fixed top-0 right-0 h-full w-96 bg-white shadow-lg p-6 z-50">
+        <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">API 设置</h2><button id="close-settings-btn" class="text-gray-500 hover:text-gray-800"><i class="fa-solid fa-xmark fa-2x"></i></button></div>
+        <div class="space-y-4">
+            <div><label for="api-url" class="font-medium text-gray-700">API URL</label><input type="text" id="api-url" class="input-field mt-1"></div>
+            <div><label for="api-key" class="font-medium text-gray-700">API Key</label><input type="password" id="api-key" class="input-field mt-1" placeholder="留空使用全局 DeepSeek Key"></div>
+            <div><label for="api-model" class="font-medium text-gray-700">模型选择</label><select id="api-model" class="input-field mt-1"><option value="deepseek-v4-flash">DeepSeek V4 Flash</option><option value="deepseek-v4-pro">DeepSeek V4 Pro</option></select></div>
+            <button id="save-settings-btn" class="linear-button w-full mt-4">保存设置</button>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <script>
+        // --- DOM Elements ---
+        const problemInput = document.getElementById('problem-input');
+        const generateBtn = document.getElementById('generate-btn');
+        const resultWrapper = document.getElementById('result-wrapper');
+        const loader = document.getElementById('loader');
+        const resultContainer = document.getElementById('result-container');
+        const resultTitle = document.getElementById('result-title');
+        const resultOutput = document.getElementById('result-output');
+        const copyBtn = document.getElementById('copy-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        
+        const settingsBtn = document.getElementById('settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const apiUrlInput = document.getElementById('api-url');
+        const apiKeyInput = document.getElementById('api-key');
+        const apiModelInput = document.getElementById('api-model');
+        const toast = document.getElementById('toast');
+
+        // --- State & Defaults ---
+        // 默认使用 DeepSeek API
+        const DEFAULT_API_URL = 'https://api.deepseek.com/chat/completions';
+        const DEFAULT_MODEL = 'deepseek-v4-flash';
+        let lastResultMarkdown = '';
+        const markdownConverter = new showdown.Converter({tables: true, strikethrough: true, tasklists: true});
+
+        // --- 获取全局 DeepSeek Key ---
+        function getGlobalDeepSeekKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                return config.deepseek || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        // --- Settings Logic ---
+        function loadSettings() {
+            apiUrlInput.value = localStorage.getItem('first_principles_url') || DEFAULT_API_URL;
+            apiKeyInput.value = localStorage.getItem('first_principles_key') || '';
+            apiModelInput.value = localStorage.getItem('first_principles_model') || DEFAULT_MODEL;
+        }
+
+        function saveSettings() {
+            localStorage.setItem('first_principles_url', apiUrlInput.value);
+            localStorage.setItem('first_principles_key', apiKeyInput.value);
+            localStorage.setItem('first_principles_model', apiModelInput.value);
+            showToast('设置已保存！');
+            settingsPanel.classList.remove('open');
+        }
+
+        // 优先使用本地自定义 key，否则使用全局 key
+        function getApiKey() { return apiKeyInput.value.trim() || getGlobalDeepSeekKey(); }
+        function getApiUrl() { return apiUrlInput.value.trim() || DEFAULT_API_URL; }
+        function getModel() { return apiModelInput.value || DEFAULT_MODEL; }
+        
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // --- UI Logic ---
+        function setLoading(isLoading) {
+            resultWrapper.classList.remove('hidden');
+            if (isLoading) {
+                loader.classList.remove('hidden');
+                resultContainer.classList.add('hidden');
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = `<i class="fa-solid fa-sync fa-spin mr-2"></i>正在拆解...`;
+            } else {
+                loader.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = `<i class="fa-solid fa-sitemap mr-2"></i>开始拆解`;
+            }
+        }
+
+        // --- Core Logic ---
+        async function generateDecomposition() {
+            const problem = problemInput.value.trim();
+            if (!problem) {
+                showToast('请输入一个问题或目标。');
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const prompt = `你是一位精通第一性原理的思维大师。你的任务是引导用户，将他们提出的复杂问题或目标，一步步地拆解为最基础、最不证自明的公理和事实。
+
+                **用户提出的问题/目标:** ${problem}
+
+                **请严格遵循以下"第一性原理拆解法"的结构化流程，生成一份清晰、深刻的分析报告:**
+
+                ## 第一性原理拆解报告：${problem}
+
+                ### 第一步：打破砂锅问到底 (Deconstruction)
+                *   **识别核心问题:** 这个问题的本质究竟是什么？我们真正想要实现的目标是什么？（例如，不是"想要一辆更快的马"，而是"想要更快地从A点到B点"）
+                *   **质疑所有假设:** 关于这个问题，我们有哪些习以为常的假设？（例如，"汽车必须有四个轮子"、"教育必须在教室里进行"）。列出至少3-5个关键假设并逐一审视其必要性。
+                *   **分解组成要素:** 将这个问题或系统分解为最微小的、不可再分的组成部分。这些部分是物理实体、基本概念，还是人的需求？
+
+                ### 第二步：回归基本真理 (Finding First Principles)
+                *   **寻找物理学原理:** 有哪些不可违背的物理定律与此相关？（例如，能量守恒、重力、信息传输速度极限）
+                *   **寻找人性的基本需求:** 背后驱动的人性需求是什么？（例如，安全感、归属感、自我实现）
+                *   **寻找数学/逻辑公理:** 有哪些基本的数学或逻辑关系是这个系统的基石？
+
+                ### 第三步：从头开始重构 (Reconstruction from the Ground Up)
+                *   **重组要素:** 忘掉原有的解决方案。现在，基于这些基本真理和要素，我们能创造出什么全新的、更优的解决方案？
+                *   **提出创新路径:** 至少提出2-3个完全不同的、突破性的实现路径。
+                *   **评估新方案:** 简要分析每个新方案的优缺点和可行性。
+
+                ### 结论：第一性原理洞察
+                *   总结通过这次拆解，我们得到了哪些关于问题本质的最深刻洞察。
+
+                请使用清晰、专业的Markdown格式，确保分析过程逻辑严谨，层层递进。`;
+
+                const messages = [{ role: 'system', content: '你是一位精通第一性原理的思维大师。' }, { role: 'user', content: prompt }];
+                
+                const response = await fetch(getApiUrl(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getApiKey()}` },
+                    body: JSON.stringify({ model: getModel(), messages: messages, temperature: 0.7 })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error.message || `API 请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                lastResultMarkdown = data.choices[0].message.content;
+                
+                resultTitle.textContent = `第一性原理拆解报告`;
+                resultOutput.innerHTML = markdownConverter.makeHtml(lastResultMarkdown);
+                resultContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("API Error:", error);
+                resultContainer.classList.remove('hidden');
+                resultOutput.innerHTML = `<p class="text-red-500">拆解失败: ${error.message}</p>`;
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        function copyResult() {
+            if (!lastResultMarkdown) {
+                showToast('没有可复制的内容。');
+                return;
+            }
+            navigator.clipboard.writeText(lastResultMarkdown).then(() => {
+                showToast('已复制到剪贴板！');
+            }, () => {
+                showToast('复制失败！');
+            });
+        }
+        
+        function downloadResult() {
+             if (!lastResultMarkdown) {
+                showToast('没有可下载的内容。');
+                return;
+            }
+            const blob = new Blob([lastResultMarkdown], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `第一性原理拆解_${problemInput.value.trim().substring(0,20).replace(/[\\/:*?"<>|]/g, '_')}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- Event Listeners ---
+        generateBtn.addEventListener('click', generateDecomposition);
+        copyBtn.addEventListener('click', copyResult);
+        downloadBtn.addEventListener('click', downloadResult);
+        
+        document.querySelectorAll('.example-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                problemInput.value = tag.textContent;
+                generateDecomposition();
+            });
+        });
+        
+        settingsBtn.addEventListener('click', () => settingsPanel.classList.add('open'));
+        closeSettingsBtn.addEventListener('click', () => settingsPanel.classList.remove('open'));
+        saveSettingsBtn.addEventListener('click', saveSettings);
+        
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+        });
+
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/creative_box_first_principles.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html> 

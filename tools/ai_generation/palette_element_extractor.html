@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>色板与元素提取器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: radial-gradient(circle at top, #f8fafc 0%, #eef2ff 45%, #e0e7ff 100%);
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+        }
+
+        .swatch {
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="min-h-screen text-slate-900">
+    <div class="max-w-6xl mx-auto px-4 py-6">
+        <header
+            class="glass rounded-2xl shadow-lg p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center">
+                    <i class="fa-solid fa-palette text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold">色板与元素提取器</h1>
+                    <p class="text-sm text-slate-500">上传任意设计图，快速提取调色板、字体风格与视觉元素关键词。</p>
+                </div>
+            </div>
+            <button class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-indigo-600"
+                onclick="location.href='../../index.html'">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+                返回工具首页
+            </button>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+            <section class="glass rounded-2xl shadow-xl p-6 space-y-6">
+                <div>
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up text-indigo-500"></i>
+                        输入区
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">支持 JPG/PNG/GIF，建议清晰的品牌视觉图。</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">上传图片</label>
+                    <label
+                        class="border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center gap-3 cursor-pointer hover:border-indigo-400 transition">
+                        <input id="imageInput" type="file" accept="image/*" class="hidden">
+                        <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center">
+                            <i class="fa-solid fa-image text-indigo-500 text-xl"></i>
+                        </div>
+                        <span class="text-sm text-slate-600">点击上传或拖拽图片</span>
+                    </label>
+                    <div id="previewWrapper" class="mt-4 hidden">
+                        <img id="previewImage" alt="预览" class="w-full rounded-xl border border-slate-200">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">输出粒度</label>
+                    <select id="granularity"
+                        class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                        <option value="basic">基础</option>
+                        <option value="detailed">详细</option>
+                    </select>
+                    <p class="text-xs text-slate-500 mt-2">详细模式将生成更多色彩与关键词。</p>
+                </div>
+
+                <button id="analyzeButton"
+                    class="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-lg py-2.5 font-medium hover:bg-indigo-500 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+                    开始提取
+                </button>
+
+                <div class="text-xs text-slate-400 leading-relaxed">
+                    无图像分析 API 时将使用 mock 色板与关键词占位。你可以直接点“开始提取”查看示例输出。
+                </div>
+            </section>
+
+            <section class="glass rounded-2xl shadow-xl p-6 space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-table-cells-large text-indigo-500"></i>
+                            输出区
+                        </h2>
+                        <p id="analysisStatus" class="text-xs text-slate-500 mt-1">等待分析中…</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="exportPalette"
+                            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-indigo-200 text-indigo-600 text-sm font-medium hover:bg-indigo-50">
+                            <i class="fa-solid fa-download text-xs"></i>
+                            导出色板
+                        </button>
+                        <button id="copyKeywords"
+                            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50">
+                            <i class="fa-solid fa-copy text-xs"></i>
+                            复制关键词
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6">
+                    <div class="space-y-4">
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h3 class="text-sm font-semibold text-slate-700 mb-3">调色板</h3>
+                            <div id="paletteList" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h3 class="text-sm font-semibold text-slate-700 mb-3">字体 / 风格关键词</h3>
+                            <div id="fontKeywords" class="flex flex-wrap gap-2"></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h3 class="text-sm font-semibold text-slate-700 mb-3">视觉元素关键词</h3>
+                            <div id="visualKeywords" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                    <div class="border border-slate-200 rounded-xl p-4">
+                        <h3 class="text-sm font-semibold text-slate-700 mb-3">分析提示</h3>
+                        <ul class="text-sm text-slate-600 space-y-2">
+                            <li>• 色板基于图片抽样与量化统计生成，适合快速视觉拆解。</li>
+                            <li>• 字体/风格关键词与视觉元素可用于 AI 绘图提示词或品牌规范。</li>
+                            <li>• 需要更高精度时，可接入图像分析 API 替换当前 mock 逻辑。</li>
+                        </ul>
+                        <div class="mt-4 rounded-lg bg-indigo-50 text-indigo-700 text-xs p-3">
+                            提示：点击“导出色板”即可下载 HEX 列表，用于设计工具或 CSS 变量。
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const defaultPalette = ['#111827', '#4338CA', '#6366F1', '#F97316', '#FACC15'];
+        const detailedPalette = ['#0F172A', '#312E81', '#4F46E5', '#7C3AED', '#E11D48', '#F97316', '#FACC15', '#10B981'];
+        const fontKeywordMap = {
+            basic: ['无衬线', '现代感', '高对比', '清爽', '几何感'],
+            detailed: ['无衬线', '圆角字体', '极简主义', '现代感', '轻量字重', '高对比', '高级感', '友好']
+        };
+        const visualKeywordMap = {
+            basic: ['图标化', '大留白', '卡片布局', '渐变背景', '聚焦主体'],
+            detailed: ['图标化', '质感光影', '卡片布局', '渐变背景', '对称构图', '弱阴影', '柔和材质', '层次感']
+        };
+
+        const imageInput = document.getElementById('imageInput');
+        const previewWrapper = document.getElementById('previewWrapper');
+        const previewImage = document.getElementById('previewImage');
+        const granularitySelect = document.getElementById('granularity');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const paletteList = document.getElementById('paletteList');
+        const fontKeywords = document.getElementById('fontKeywords');
+        const visualKeywords = document.getElementById('visualKeywords');
+        const analysisStatus = document.getElementById('analysisStatus');
+        const exportPalette = document.getElementById('exportPalette');
+        const copyKeywords = document.getElementById('copyKeywords');
+
+        let currentPalette = [...defaultPalette];
+        let currentFontKeywords = [...fontKeywordMap.basic];
+        let currentVisualKeywords = [...visualKeywordMap.basic];
+        const imageCache = new Image();
+
+        const toHex = (value) => value.toString(16).padStart(2, '0');
+        const rgbToHex = (r, g, b) => `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+
+        const renderPalette = () => {
+            paletteList.innerHTML = '';
+            currentPalette.forEach(color => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-3 rounded-lg border border-slate-200 p-2';
+                item.innerHTML = `
+                    <div class="w-10 h-10 rounded-lg swatch" style="background:${color}"></div>
+                    <div>
+                        <p class="text-sm font-semibold">${color}</p>
+                        <p class="text-xs text-slate-500">HEX</p>
+                    </div>
+                `;
+                paletteList.appendChild(item);
+            });
+        };
+
+        const renderKeywords = () => {
+            fontKeywords.innerHTML = '';
+            visualKeywords.innerHTML = '';
+            currentFontKeywords.forEach(keyword => {
+                const tag = document.createElement('span');
+                tag.className = 'px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium';
+                tag.textContent = keyword;
+                fontKeywords.appendChild(tag);
+            });
+            currentVisualKeywords.forEach(keyword => {
+                const tag = document.createElement('span');
+                tag.className = 'px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium';
+                tag.textContent = keyword;
+                visualKeywords.appendChild(tag);
+            });
+        };
+
+        const updateKeywords = (granularity) => {
+            currentFontKeywords = [...fontKeywordMap[granularity]];
+            currentVisualKeywords = [...visualKeywordMap[granularity]];
+        };
+
+        const extractPaletteFromImage = (image, count) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const size = 120;
+            canvas.width = size;
+            canvas.height = size;
+            ctx.drawImage(image, 0, 0, size, size);
+            const { data } = ctx.getImageData(0, 0, size, size);
+            const colorMap = new Map();
+
+            for (let i = 0; i < data.length; i += 4) {
+                const alpha = data[i + 3];
+                if (alpha < 80) continue;
+                const r = Math.round(data[i] / 32) * 32;
+                const g = Math.round(data[i + 1] / 32) * 32;
+                const b = Math.round(data[i + 2] / 32) * 32;
+                const hex = rgbToHex(Math.min(r, 255), Math.min(g, 255), Math.min(b, 255));
+                colorMap.set(hex, (colorMap.get(hex) || 0) + 1);
+            }
+
+            const sorted = [...colorMap.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .map(([hex]) => hex);
+
+            const palette = sorted.slice(0, count);
+            const fallback = count > 5 ? detailedPalette : defaultPalette;
+            while (palette.length < count) {
+                const nextColor = fallback[palette.length % fallback.length];
+                if (!palette.includes(nextColor)) {
+                    palette.push(nextColor);
+                } else {
+                    palette.push(fallback[Math.floor(Math.random() * fallback.length)]);
+                }
+            }
+            return palette;
+        };
+
+        const handleAnalyze = () => {
+            const granularity = granularitySelect.value;
+            const count = granularity === 'detailed' ? 8 : 5;
+            updateKeywords(granularity);
+
+            if (imageCache.src) {
+                currentPalette = extractPaletteFromImage(imageCache, count);
+                analysisStatus.textContent = '已基于上传图片生成色板与关键词。';
+            } else {
+                currentPalette = granularity === 'detailed' ? [...detailedPalette] : [...defaultPalette];
+                analysisStatus.textContent = '当前为 mock 输出，可上传图片获取真实采样。';
+            }
+
+            renderPalette();
+            renderKeywords();
+        };
+
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                previewWrapper.classList.remove('hidden');
+                previewImage.src = reader.result;
+                imageCache.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        analyzeButton.addEventListener('click', handleAnalyze);
+
+        exportPalette.addEventListener('click', () => {
+            const content = currentPalette.join('\n');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'palette.txt';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        });
+
+        copyKeywords.addEventListener('click', async () => {
+            const content = `字体/风格关键词: ${currentFontKeywords.join(' / ')}\n视觉元素关键词: ${currentVisualKeywords.join(' / ')}`;
+            try {
+                await navigator.clipboard.writeText(content);
+                copyKeywords.textContent = '已复制';
+                setTimeout(() => {
+                    copyKeywords.innerHTML = '<i class="fa-solid fa-copy text-xs"></i> 复制关键词';
+                }, 1200);
+            } catch (error) {
+                alert('复制失败，请手动选择文本。');
+            }
+        });
+
+        renderPalette();
+        renderKeywords();
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_generation_palette_element_extractor.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

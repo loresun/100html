@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rough.js 手绘风格</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fffbeb; color: #451a03; }
+    .glass { background: rgba(255, 255, 255, 0.6); border: 1px solid #fcd34d; box-shadow: 4px 4px 0px #fcd34d; border-radius: 12px; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 min-h-screen">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-4xl font-bold text-amber-900" style="font-family: 'Comic Sans MS', cursive, sans-serif;">✏️ Rough.js</h1>
+    <p class="text-amber-800/60 mt-2 text-xl">让图形拥有手绘的涂鸦质感</p>
+  </div>
+  <a href="index.html" class="px-5 py-2 bg-white border-2 border-amber-900 text-amber-900 rounded-lg hover:bg-amber-100 transition-all font-bold">← 返回</a>
+</header>
+
+<main class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+  <!-- 画布区域 -->
+  <div class="lg:col-span-2">
+    <div class="glass p-2 bg-white h-[500px] relative overflow-hidden">
+      <canvas id="canvas"></canvas>
+      <div class="absolute bottom-4 right-4 text-xs text-amber-900/40 pointer-events-none">点击画布重新生成</div>
+    </div>
+  </div>
+
+  <!-- 控制面板 -->
+  <div class="space-y-6">
+    <div class="glass p-6 bg-white/80">
+      <h3 class="font-bold text-amber-900 text-xl mb-4">🎨 样式配置</h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-amber-800 mb-1">粗糙度 (Roughness)</label>
+          <input type="range" id="roughness" min="0" max="5" step="0.1" value="1.5" class="w-full accent-amber-600" oninput="draw()">
+        </div>
+        
+        <div>
+          <label class="block text-sm font-bold text-amber-800 mb-1">填充样式 (Fill Style)</label>
+          <select id="fillStyle" class="w-full p-2 bg-amber-50 border border-amber-200 rounded text-amber-900" onchange="draw()">
+            <option value="hachure">平行线 (Hachure)</option>
+            <option value="solid">实心 (Solid)</option>
+            <option value="zigzag">之字形 (Zigzag)</option>
+            <option value="cross-hatch">十字交叉 (Cross-hatch)</option>
+            <option value="dots">点点 (Dots)</option>
+            <option value="dashed">虚线 (Dashed)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-amber-800 mb-1">线条宽度 (Stroke Width)</label>
+          <input type="range" id="bowing" min="0" max="5" step="0.5" value="1" class="w-full accent-amber-600" oninput="draw()">
+        </div>
+      </div>
+
+      <button onclick="draw()" class="mt-6 w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-md transition-colors">
+        🎲 重新生成
+      </button>
+    </div>
+
+    <div class="bg-amber-100 p-4 rounded-xl border border-amber-200 text-sm text-amber-900">
+      <p class="font-bold mb-1">💡 提示</p>
+      <p>Rough.js 非常适合用来制作原型图、草图或者富有艺术感的图表。</p>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"></script>
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  // 调整画布分辨率
+  function resize() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+    draw();
+  }
+  window.addEventListener('resize', resize);
+  
+  // 绘制函数
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // 清空
+    const rc = rough.canvas(canvas);
+    
+    // 获取配置
+    const roughness = parseFloat(document.getElementById('roughness').value);
+    const fillStyle = document.getElementById('fillStyle').value;
+    const bowing = parseFloat(document.getElementById('bowing').value);
+    
+    const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+    const randomColor = () => colors[Math.floor(Math.random() * colors.length)];
+    
+    const options = { roughness, fillStyle, bowing };
+
+    // 绘制几何图形
+    // 1. 矩形
+    rc.rectangle(50, 50, 150, 100, { 
+      ...options, 
+      fill: randomColor(),
+      stroke: '#451a03'
+    });
+    
+    // 2. 圆形
+    rc.circle(350, 100, 120, { 
+      ...options, 
+      fill: randomColor(), 
+      bg: 'rgba(0,0,0,0.05)',
+      strokeWidth: 2
+    });
+    
+    // 3. 线性路径
+    rc.path('M50 250 L150 200 L250 250 L150 300 Z', {
+      ...options,
+      fill: randomColor(),
+      width: 3
+    });
+
+    // 4. 椭圆
+    rc.ellipse(400, 300, 150, 80, {
+      ...options,
+      fill: randomColor(),
+      hachureAngle: 60, // 线的角度
+      hachureGap: 8
+    });
+
+    // 5. 自由曲线 (模拟涂鸦)
+    rc.curve([
+        [50, 400], [150, 450], [250, 400], [350, 450]
+      ], {
+        stroke: '#451a03', 
+        strokeWidth: 3,
+        roughness: roughness * 1.5
+    });
+  }
+
+  // 初始化
+  setTimeout(resize, 100); // 延时确保容器有宽度
+  canvas.addEventListener('click', draw);
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户反馈分析器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 50%, #fef3c7 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ea580c; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #fed7aa 25%, #fdba74 50%, #fed7aa 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .step-dot { transition: all 0.3s ease; }
+        .step-dot.active {
+            background: linear-gradient(135deg, #ea580c, #f97316);
+            box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.2);
+            color: white;
+        }
+        .step-dot.completed { background: #22c55e; color: white; }
+        .step-line { transition: background 0.5s ease; }
+        .step-line.active { background: linear-gradient(90deg, #22c55e, #ea580c); }
+        .step-line.completed { background: #22c55e; }
+
+        /* 情感分析条动画 */
+        .sentiment-bar { transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+
+        /* 分类卡片悬停效果 */
+        .category-card {
+            transition: all 0.3s ease;
+            border: 1px solid #fed7aa;
+        }
+        .category-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -8px rgba(234, 88, 12, 0.2);
+            border-color: #fb923c;
+        }
+
+        /* Markdown 文档视图 */
+        .doc-view h1 { font-size: 1.75rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; }
+        .doc-view h2 { font-size: 1.35rem; font-weight: 700; color: #334155; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid #fed7aa; }
+        .doc-view h3 { font-size: 1.1rem; font-weight: 600; color: #475569; margin: 1rem 0 0.5rem; }
+        .doc-view p { margin: 0.5rem 0; line-height: 1.8; color: #475569; }
+        .doc-view ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+        .doc-view li { margin: 0.25rem 0; line-height: 1.7; color: #475569; }
+        .doc-view table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .doc-view th { background: #fff7ed; padding: 0.75rem; text-align: left; font-weight: 600; border: 1px solid #fed7aa; }
+        .doc-view td { padding: 0.75rem; border: 1px solid #fed7aa; }
+        .doc-view strong { color: #1e293b; }
+        .doc-view blockquote { border-left: 3px solid #ea580c; padding-left: 1rem; margin: 1rem 0; color: #64748b; font-style: italic; }
+
+        /* 优先级矩阵网格 */
+        .matrix-cell {
+            transition: all 0.2s ease;
+        }
+        .matrix-cell:hover {
+            transform: scale(1.02);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="feedbackAnalyzer()" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-orange-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="message-circle" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">用户反馈分析器</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 多步分析工作流</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-orange-600 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-orange-50">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-orange-100 py-4">
+            <div class="max-w-4xl mx-auto px-4">
+                <div class="flex items-center justify-between">
+                    <template x-for="(step, index) in steps" :key="index">
+                        <div class="flex items-center" :class="index < steps.length - 1 ? 'flex-1' : ''">
+                            <div class="flex flex-col items-center relative">
+                                <div @click="canGoToStep(index + 1) && goToStep(index + 1)"
+                                    :class="[
+                                        'step-dot w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer',
+                                        currentStep === index + 1 ? 'active' : '',
+                                        currentStep > index + 1 ? 'completed' : 'bg-slate-200 text-slate-500'
+                                    ]">
+                                    <template x-if="currentStep > index + 1">
+                                        <i data-lucide="check" class="w-5 h-5"></i>
+                                    </template>
+                                    <template x-if="currentStep <= index + 1">
+                                        <span x-text="index + 1"></span>
+                                    </template>
+                                </div>
+                                <span class="absolute -bottom-5 whitespace-nowrap text-xs font-medium"
+                                    :class="currentStep >= index + 1 ? 'text-orange-600' : 'text-slate-400'"
+                                    x-text="step.label"></span>
+                            </div>
+                            <div x-show="index < steps.length - 1"
+                                :class="[
+                                    'step-line flex-1 h-1 mx-3 rounded-full',
+                                    currentStep > index + 1 ? 'completed' : '',
+                                    currentStep === index + 1 ? 'active' : 'bg-slate-200'
+                                ]"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="flex-grow overflow-y-auto pb-8">
+            <div class="max-w-6xl mx-auto px-4 pt-10">
+
+                <!-- ==================== 步骤 1: 输入反馈数据 ==================== -->
+                <div x-show="currentStep === 1" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📋 粘贴用户反馈</h2>
+                        <p class="text-slate-500">批量粘贴来自各平台的用户评论、反馈和评价，AI 将自动分析</p>
+                    </div>
+
+                    <div class="max-w-3xl mx-auto space-y-5">
+                        <!-- 产品/服务名称 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="package" class="w-4 h-4 text-orange-600"></i>
+                                产品/服务名称 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" x-model="input.productName"
+                                placeholder="如：小红书笔记助手 APP、某品牌护肤精华液..."
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <!-- 反馈来源 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="globe" class="w-4 h-4 text-orange-600"></i>
+                                    反馈来源 <span class="text-red-500">*</span>
+                                </label>
+                                <select x-model="input.source"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                                    <option value="">请选择反馈来源</option>
+                                    <option value="应用商店">应用商店</option>
+                                    <option value="电商平台">电商平台</option>
+                                    <option value="社交媒体">社交媒体</option>
+                                    <option value="客服记录">客服记录</option>
+                                    <option value="问卷调查">问卷调查</option>
+                                    <option value="其他">其他</option>
+                                </select>
+                            </div>
+
+                            <!-- 反馈数量提示 -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
+                                <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                    <i data-lucide="info" class="w-4 h-4 text-orange-600"></i>
+                                    分析提示
+                                </label>
+                                <div class="text-sm text-slate-500 space-y-1">
+                                    <p>• 建议粘贴 <strong class="text-orange-600">10条以上</strong> 反馈</p>
+                                    <p>• 每条反馈换行分隔即可</p>
+                                    <p>• 支持各种格式的评论文本</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 用户反馈内容 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
+                            <label class="font-bold text-sm text-slate-700 flex items-center gap-2 mb-3">
+                                <i data-lucide="message-square-text" class="w-4 h-4 text-orange-600"></i>
+                                用户反馈内容 <span class="text-red-500">*</span>
+                            </label>
+                            <textarea x-model="input.feedbackText" rows="12"
+                                placeholder="请粘贴用户反馈/评论，每条换行分隔。例如：&#10;&#10;这个APP功能很全面，但是启动速度太慢了，每次打开都要等好几秒。&#10;界面设计很漂亮，用起来很舒服，就是偶尔会闪退。&#10;价格有点贵，希望能出个基础版，功能少一点便宜一点也行。&#10;客服回复速度很快，态度也好，给好评！&#10;能不能加个批量导出功能？每次都要一个一个复制太麻烦了。&#10;用了竞品A之后回来用这个，感觉数据同步这块差太多了..."
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition resize-none leading-relaxed"></textarea>
+                            <div class="mt-2 flex justify-between items-center text-xs text-slate-400">
+                                <span>支持从应用商店、电商平台、社交媒体直接粘贴</span>
+                                <span x-text="'约 ' + feedbackCount + ' 条反馈'"></span>
+                            </div>
+                        </div>
+
+                        <!-- 开始分析按钮 -->
+                        <button @click="startStep2()"
+                            :disabled="!canProceedStep1"
+                            class="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                            开始 AI 分类 + 情感分析
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 2: 分类 + 情感分析仪表盘 ==================== -->
+                <div x-show="currentStep === 2" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">📊 分类与情感分析</h2>
+                        <p class="text-slate-500">AI 自动将反馈归类并进行情感判断</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-orange-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-orange-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-orange-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在分析用户反馈...</p>
+                            <p class="text-sm text-slate-500">AI 正在对每条反馈进行分类和情感判断</p>
+                            <div class="mt-4 grid grid-cols-3 gap-3">
+                                <template x-for="i in 6" :key="i">
+                                    <div class="shimmer h-24 rounded-xl"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 分析结果仪表盘 -->
+                    <div x-show="!isGenerating && analysisData" class="max-w-5xl mx-auto space-y-6">
+
+                        <!-- 总览卡片行 -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-orange-100 text-center">
+                                <div class="w-12 h-12 mx-auto mb-2 bg-orange-50 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="message-circle" class="w-6 h-6 text-orange-600"></i>
+                                </div>
+                                <div class="text-2xl font-extrabold text-slate-900" x-text="analysisData?.totalCount || 0"></div>
+                                <div class="text-xs text-slate-500 mt-1">反馈总数</div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-green-100 text-center">
+                                <div class="w-12 h-12 mx-auto mb-2 bg-green-50 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="smile" class="w-6 h-6 text-green-600"></i>
+                                </div>
+                                <div class="text-2xl font-extrabold text-green-600" x-text="analysisData?.sentiment?.positive || 0"></div>
+                                <div class="text-xs text-slate-500 mt-1">正面评价</div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-red-100 text-center">
+                                <div class="w-12 h-12 mx-auto mb-2 bg-red-50 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="frown" class="w-6 h-6 text-red-500"></i>
+                                </div>
+                                <div class="text-2xl font-extrabold text-red-500" x-text="analysisData?.sentiment?.negative || 0"></div>
+                                <div class="text-xs text-slate-500 mt-1">负面评价</div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-center">
+                                <div class="w-12 h-12 mx-auto mb-2 bg-slate-50 rounded-xl flex items-center justify-center">
+                                    <i data-lucide="meh" class="w-6 h-6 text-slate-500"></i>
+                                </div>
+                                <div class="text-2xl font-extrabold text-slate-600" x-text="analysisData?.sentiment?.neutral || 0"></div>
+                                <div class="text-xs text-slate-500 mt-1">中性评价</div>
+                            </div>
+                        </div>
+
+                        <!-- 情感分析条形图 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
+                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="bar-chart-3" class="w-5 h-5 text-orange-600"></i>
+                                情感分布
+                            </h3>
+                            <div class="space-y-3">
+                                <!-- 正面 -->
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm font-medium text-slate-600 w-16 text-right">正面</span>
+                                    <div class="flex-1 bg-slate-100 rounded-full h-8 overflow-hidden relative">
+                                        <div class="sentiment-bar bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full flex items-center justify-end pr-3"
+                                            :style="'width: ' + sentimentPercent('positive') + '%'">
+                                            <span class="text-xs font-bold text-white" x-show="sentimentPercent('positive') > 10"
+                                                x-text="sentimentPercent('positive') + '%'"></span>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm font-bold text-green-600 w-10 text-right" x-text="analysisData?.sentiment?.positive || 0"></span>
+                                </div>
+                                <!-- 负面 -->
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm font-medium text-slate-600 w-16 text-right">负面</span>
+                                    <div class="flex-1 bg-slate-100 rounded-full h-8 overflow-hidden relative">
+                                        <div class="sentiment-bar bg-gradient-to-r from-red-400 to-red-500 h-full rounded-full flex items-center justify-end pr-3"
+                                            :style="'width: ' + sentimentPercent('negative') + '%'">
+                                            <span class="text-xs font-bold text-white" x-show="sentimentPercent('negative') > 10"
+                                                x-text="sentimentPercent('negative') + '%'"></span>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm font-bold text-red-500 w-10 text-right" x-text="analysisData?.sentiment?.negative || 0"></span>
+                                </div>
+                                <!-- 中性 -->
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm font-medium text-slate-600 w-16 text-right">中性</span>
+                                    <div class="flex-1 bg-slate-100 rounded-full h-8 overflow-hidden relative">
+                                        <div class="sentiment-bar bg-gradient-to-r from-slate-300 to-slate-400 h-full rounded-full flex items-center justify-end pr-3"
+                                            :style="'width: ' + sentimentPercent('neutral') + '%'">
+                                            <span class="text-xs font-bold text-white" x-show="sentimentPercent('neutral') > 10"
+                                                x-text="sentimentPercent('neutral') + '%'"></span>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm font-bold text-slate-500 w-10 text-right" x-text="analysisData?.sentiment?.neutral || 0"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 分类卡片网格 -->
+                        <div>
+                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="layout-grid" class="w-5 h-5 text-orange-600"></i>
+                                反馈分类分布
+                            </h3>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <template x-for="cat in (analysisData?.categories || [])" :key="cat.name">
+                                    <div class="category-card bg-white rounded-2xl p-5 shadow-sm">
+                                        <div class="flex items-center gap-2 mb-3">
+                                            <div class="w-9 h-9 rounded-lg flex items-center justify-center text-lg"
+                                                :class="categoryStyle(cat.name).bg">
+                                                <span x-text="categoryStyle(cat.name).icon"></span>
+                                            </div>
+                                            <h4 class="font-bold text-sm text-slate-800" x-text="cat.name"></h4>
+                                        </div>
+                                        <div class="text-3xl font-extrabold mb-1" :class="categoryStyle(cat.name).text"
+                                            x-text="cat.count"></div>
+                                        <div class="text-xs text-slate-400" x-text="'占比 ' + catPercent(cat.count) + '%'"></div>
+                                        <!-- 代表性反馈 -->
+                                        <div class="mt-3 space-y-1.5" x-show="cat.samples && cat.samples.length">
+                                            <template x-for="(sample, si) in (cat.samples || []).slice(0, 2)" :key="si">
+                                                <div class="text-xs text-slate-500 bg-slate-50 rounded-lg px-2.5 py-1.5 line-clamp-2 leading-relaxed"
+                                                    x-text="'\"' + sample + '\"'"></div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- 下一步按钮 -->
+                        <button @click="startStep3()"
+                            class="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="target" class="w-5 h-5"></i>
+                            提炼核心诉求
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 3: 核心诉求提炼 ==================== -->
+                <div x-show="currentStep === 3" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">🎯 核心诉求提炼</h2>
+                        <p class="text-slate-500">按频率和紧迫度排序的 Top 用户痛点/需求</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-orange-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-orange-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-orange-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在提炼核心诉求...</p>
+                            <p class="text-sm text-slate-500">AI 正在汇总分析结果，提取高频痛点和需求</p>
+                        </div>
+                    </div>
+
+                    <!-- 核心诉求结果 -->
+                    <div x-show="!isGenerating && painPointsContent" class="max-w-4xl mx-auto space-y-6">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100 doc-view"
+                            x-html="renderMd(painPointsContent)"></div>
+
+                        <!-- 下一步按钮 -->
+                        <button @click="startStep4()"
+                            class="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="list-checks" class="w-5 h-5"></i>
+                            生成改进建议 & 行动计划
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================== 步骤 4: 改进建议 + 行动计划 ==================== -->
+                <div x-show="currentStep === 4" x-transition:enter="animate-fade-in" class="space-y-6">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">🚀 改进建议 & 行动计划</h2>
+                        <p class="text-slate-500">影响力 vs 实施难度优先级矩阵 + 具体行动方案</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div x-show="isGenerating" class="max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-orange-100 text-center">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-orange-50 rounded-full flex items-center justify-center">
+                                <i data-lucide="loader-2" class="w-8 h-8 text-orange-600 animate-spin"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800 mb-2">正在生成改进方案...</p>
+                            <p class="text-sm text-slate-500">AI 正在制定优先级矩阵和具体行动计划</p>
+                        </div>
+                    </div>
+
+                    <!-- 改进结果 -->
+                    <div x-show="!isGenerating && actionPlanContent" class="max-w-4xl mx-auto space-y-6">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-orange-100 doc-view"
+                            x-html="renderMd(actionPlanContent)"></div>
+
+                        <!-- 导出按钮组 -->
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button @click="exportAll()"
+                                class="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transition-all">
+                                <i data-lucide="download" class="w-5 h-5"></i>
+                                导出完整报告 (Markdown)
+                            </button>
+                            <button @click="copyAll()"
+                                class="flex-1 bg-white border-2 border-orange-300 text-orange-700 font-bold py-4 rounded-xl hover:bg-orange-50 flex items-center justify-center gap-2 transition-all">
+                                <i data-lucide="copy" class="w-5 h-5"></i>
+                                复制到剪贴板
+                            </button>
+                            <button @click="resetAll()"
+                                class="sm:w-auto bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 transition-all">
+                                <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                                重新分析
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Toast 提示 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white px-6 py-3 rounded-xl shadow-2xl text-sm font-medium">
+            <span x-text="toast.msg"></span>
+        </div>
+
+        <!-- 错误提示 -->
+        <div x-show="errorMsg" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl text-sm font-medium max-w-md text-center">
+            <span x-text="errorMsg"></span>
+        </div>
+
+        <!-- ==================== 设置弹窗 ==================== -->
+        <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div @click.away="showSettings = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" x-transition>
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-orange-600"></i>
+                    API 配置
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-xl border-slate-300 border p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false" class="px-4 py-2 hover:bg-slate-100 rounded-lg text-sm font-medium transition">取消</button>
+                    <button @click="saveConfig()" class="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    /**
+     * 用户反馈分析器 - 主应用逻辑
+     * 四步工作流：输入反馈 → 分类+情感分析 → 核心诉求提炼 → 改进建议+行动计划
+     */
+    function feedbackAnalyzer() {
+        return {
+            /* ========== 步骤定义 ========== */
+            steps: [
+                { label: '输入反馈' },
+                { label: 'AI分类分析' },
+                { label: '核心诉求' },
+                { label: '改进建议' }
+            ],
+            currentStep: 1,
+
+            /* ========== UI 状态 ========== */
+            showSettings: false,
+            isGenerating: false,
+            errorMsg: '',
+            toast: { show: false, msg: '' },
+
+            /* ========== API 配置 ========== */
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            /* ========== 用户输入 ========== */
+            input: {
+                productName: '',
+                source: '',
+                feedbackText: ''
+            },
+
+            /* ========== 各步骤结果 ========== */
+            analysisData: null,       // 步骤2：分类+情感分析的 JSON 数据
+            painPointsContent: '',    // 步骤3：核心诉求 Markdown
+            actionPlanContent: '',    // 步骤4：改进建议 Markdown
+            reasoningContent: '',     // V4 Pro 推理过程（如有）
+
+            /* ========== 计算属性 ========== */
+
+            /** 估算反馈条数（按换行切分非空行） */
+            get feedbackCount() {
+                if (!this.input.feedbackText.trim()) return 0;
+                return this.input.feedbackText.split('\n').filter(l => l.trim()).length;
+            },
+
+            /** 步骤1完成条件 */
+            get canProceedStep1() {
+                return this.input.productName.trim() &&
+                       this.input.source &&
+                       this.input.feedbackText.trim().length > 20;
+            },
+
+            /* ========== 生命周期 ========== */
+
+            init() {
+                this.loadConfig();
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /** 从 localStorage 加载 API 配置（合并策略） */
+            loadConfig() {
+                const saved = localStorage.getItem('global_llm_config');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    } catch (e) { /* 忽略解析错误 */ }
+                }
+            },
+
+            /** 保存 API 配置到 localStorage（合并策略，不覆盖其他工具的配置） */
+            saveConfig() {
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                localStorage.setItem('global_llm_config', JSON.stringify({
+                    ...current,
+                    ...this.apiConfig
+                }));
+                this.showSettings = false;
+                this.showToast('配置已保存');
+            },
+
+            /* ========== 步骤导航 ========== */
+
+            /** 判断是否可以跳转到指定步骤 */
+            canGoToStep(step) {
+                if (step <= this.currentStep) return true;
+                return false;
+            },
+
+            /** 跳转到指定步骤 */
+            goToStep(step) {
+                this.currentStep = step;
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /* ========== 步骤 2: 分类 + 情感分析（JSON 模式） ========== */
+
+            async startStep2() {
+                if (!this.checkApiKey()) return;
+                this.currentStep = 2;
+                this.isGenerating = true;
+                this.errorMsg = '';
+                this.analysisData = null;
+                this.$nextTick(() => lucide.createIcons());
+
+                const systemPrompt = `你是一位专业的用户反馈分析师，擅长对用户评论进行分类和情感分析。请严格按照JSON格式输出。
+
+你需要分析以下用户反馈数据，完成：
+1. 统计反馈总数
+2. 将每条反馈归类到以下类别之一：功能需求、体验问题、价格相关、服务质量、竞品对比、好评
+3. 进行情感分析，统计正面/负面/中性的数量
+4. 为每个类别提取1-2条代表性原文
+
+请严格输出以下JSON结构：
+{
+  "totalCount": <数字>,
+  "sentiment": {
+    "positive": <数字>,
+    "negative": <数字>,
+    "neutral": <数字>
+  },
+  "categories": [
+    {
+      "name": "功能需求",
+      "count": <数字>,
+      "samples": ["代表性原文1", "代表性原文2"]
+    },
+    ...
+  ]
+}
+
+注意：
+- categories 只包含有数据的分类，count > 0
+- samples 是原文摘录，不要修改用户原话
+- 所有数字必须准确，sentiment的三项总和等于totalCount`;
+
+                const userPrompt = `产品名称：${this.input.productName}
+反馈来源：${this.input.source}
+
+以下是用户反馈内容（每行一条）：
+
+${this.input.feedbackText}`;
+
+                try {
+                    const result = await this.callApiNonStreaming(systemPrompt, userPrompt);
+                    const parsed = JSON.parse(result);
+                    this.analysisData = parsed;
+                } catch (e) {
+                    console.error('步骤2分析失败:', e);
+                    this.errorMsg = '分析失败: ' + (e.message || '请检查API配置后重试');
+                    setTimeout(() => this.errorMsg = '', 5000);
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            /* ========== 步骤 3: 核心诉求提炼（流式） ========== */
+
+            async startStep3() {
+                if (!this.checkApiKey()) return;
+                this.currentStep = 3;
+                this.isGenerating = true;
+                this.errorMsg = '';
+                this.painPointsContent = '';
+                this.reasoningContent = '';
+                this.$nextTick(() => lucide.createIcons());
+
+                const systemPrompt = `你是一位资深的产品经理和用户研究专家。请基于用户反馈的分类分析结果，提炼出 5-8 个核心用户痛点/需求。
+
+输出要求（Markdown格式）：
+1. 按"频率×紧迫度"综合排序，最重要的排最前面
+2. 每个痛点需包含：
+   - 🔴/🟡/🟢 紧迫度标识（高/中/低）
+   - 痛点名称和简要描述
+   - 涉及的反馈数量占比
+   - 代表性用户原声（引用1-2条原文）
+   - 潜在影响（如不解决会怎样）
+3. 最后给出一个优先级总结表格
+
+请用中文输出，格式清晰、重点突出。`;
+
+                const userPrompt = `产品名称：${this.input.productName}
+反馈来源：${this.input.source}
+
+分类分析结果：
+${JSON.stringify(this.analysisData, null, 2)}
+
+原始反馈内容：
+${this.input.feedbackText}`;
+
+                try {
+                    await this.callApiStreaming(systemPrompt, userPrompt, (token) => {
+                        this.painPointsContent += token;
+                    }, (reasoning) => {
+                        this.reasoningContent += reasoning;
+                    });
+                } catch (e) {
+                    console.error('步骤3分析失败:', e);
+                    this.errorMsg = '提炼失败: ' + (e.message || '请检查网络后重试');
+                    setTimeout(() => this.errorMsg = '', 5000);
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            /* ========== 步骤 4: 改进建议 + 行动计划（流式） ========== */
+
+            async startStep4() {
+                if (!this.checkApiKey()) return;
+                this.currentStep = 4;
+                this.isGenerating = true;
+                this.errorMsg = '';
+                this.actionPlanContent = '';
+                this.$nextTick(() => lucide.createIcons());
+
+                const systemPrompt = `你是一位专业的产品改进顾问和项目管理专家。请基于核心痛点分析结果，生成：
+
+1. **改进优先级矩阵**（影响力 vs 实施难度）
+   - 使用表格展示每个改进项的：影响力(高/中/低)、实施难度(高/中/低)、优先级(P0/P1/P2/P3)
+   - P0 = 高影响+低难度（立即做）
+   - P1 = 高影响+中难度（尽快做）
+   - P2 = 中影响+低难度（排期做）
+   - P3 = 其他（观察后决定）
+
+2. **具体行动计划**
+   每个P0/P1级改进项需要：
+   - 改进目标（用数据化的成功指标描述）
+   - 具体实施步骤（3-5步）
+   - 预期时间节点
+   - 所需资源
+   - 验证方式（如何确认改进有效）
+
+3. **快速胜利清单**
+   列出3-5个可以在一周内完成的小改进
+
+4. **总结建议**
+   一段简洁的产品改进策略总结
+
+请用中文输出，格式为Markdown，逻辑清晰，可直接用于产品决策会议。`;
+
+                const userPrompt = `产品名称：${this.input.productName}
+反馈来源：${this.input.source}
+反馈总数：${this.analysisData?.totalCount || 0}
+
+核心诉求分析：
+${this.painPointsContent}
+
+分类数据：
+${JSON.stringify(this.analysisData, null, 2)}`;
+
+                try {
+                    await this.callApiStreaming(systemPrompt, userPrompt, (token) => {
+                        this.actionPlanContent += token;
+                    });
+                } catch (e) {
+                    console.error('步骤4生成失败:', e);
+                    this.errorMsg = '生成失败: ' + (e.message || '请检查网络后重试');
+                    setTimeout(() => this.errorMsg = '', 5000);
+                } finally {
+                    this.isGenerating = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            /* ========== API 调用：非流式（JSON模式） ========== */
+
+            /**
+             * 非流式调用 DeepSeek API，启用 JSON 输出模式
+             * @param {string} systemPrompt - 系统提示词
+             * @param {string} userPrompt - 用户提示词
+             * @returns {string} 完整的响应文本
+             */
+            async callApiNonStreaming(systemPrompt, userPrompt) {
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                    },
+                    body: JSON.stringify({
+                        model: this.apiConfig.model,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        response_format: { type: 'json_object' },
+                        temperature: 0.3
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                }
+
+                const data = await response.json();
+                return data.choices[0].message.content;
+            },
+
+            /* ========== API 调用：流式 ========== */
+
+            /**
+             * 流式调用 DeepSeek API，逐 token 回调
+             * @param {string} systemPrompt - 系统提示词
+             * @param {string} userPrompt - 用户提示词
+             * @param {Function} onToken - 每个 token 的回调
+             * @param {Function} [onReasoning] - V4 Pro 推理内容的回调
+             */
+            async callApiStreaming(systemPrompt, userPrompt, onToken, onReasoning) {
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                    },
+                    body: JSON.stringify({
+                        model: this.apiConfig.model,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        stream: true,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices[0].delta;
+
+                                if (delta.reasoning_content && onReasoning) {
+                                    onReasoning(delta.reasoning_content);
+                                }
+                                if (delta.content) {
+                                    onToken(delta.content);
+                                }
+                            } catch (e) { /* 忽略解析错误 */ }
+                        }
+                    }
+                }
+            },
+
+            /* ========== 工具函数 ========== */
+
+            /** 检查 API Key 是否已配置 */
+            checkApiKey() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    this.showToast('请先配置 API Key');
+                    return false;
+                }
+                return true;
+            },
+
+            /** 渲染 Markdown 为 HTML */
+            renderMd(text) {
+                if (!text) return '';
+                try { return marked.parse(text); }
+                catch (e) { return text; }
+            },
+
+            /** 计算某情感类型的百分比 */
+            sentimentPercent(type) {
+                if (!this.analysisData?.sentiment || !this.analysisData.totalCount) return 0;
+                const val = this.analysisData.sentiment[type] || 0;
+                return Math.round((val / this.analysisData.totalCount) * 100);
+            },
+
+            /** 计算某分类占总数的百分比 */
+            catPercent(count) {
+                if (!this.analysisData?.totalCount) return 0;
+                return Math.round((count / this.analysisData.totalCount) * 100);
+            },
+
+            /** 根据分类名返回对应的样式配置 */
+            categoryStyle(name) {
+                const styles = {
+                    '功能需求': { bg: 'bg-blue-50', text: 'text-blue-600', icon: '🔧' },
+                    '体验问题': { bg: 'bg-red-50', text: 'text-red-500', icon: '⚠️' },
+                    '价格相关': { bg: 'bg-amber-50', text: 'text-amber-600', icon: '💰' },
+                    '服务质量': { bg: 'bg-purple-50', text: 'text-purple-600', icon: '🎧' },
+                    '竞品对比': { bg: 'bg-cyan-50', text: 'text-cyan-600', icon: '⚔️' },
+                    '好评':     { bg: 'bg-green-50', text: 'text-green-600', icon: '👍' }
+                };
+                return styles[name] || { bg: 'bg-slate-50', text: 'text-slate-600', icon: '📝' };
+            },
+
+            /** 导出完整分析报告为 Markdown 文件 */
+            exportAll() {
+                let md = `# ${this.input.productName} - 用户反馈分析报告\n\n`;
+                md += `> 反馈来源：${this.input.source} | 反馈总数：${this.analysisData?.totalCount || 0} 条\n\n`;
+                md += `---\n\n`;
+
+                md += `## 一、分类与情感分析\n\n`;
+                if (this.analysisData) {
+                    const s = this.analysisData.sentiment;
+                    md += `### 情感分布\n\n`;
+                    md += `| 类型 | 数量 | 占比 |\n`;
+                    md += `|------|------|------|\n`;
+                    md += `| ✅ 正面 | ${s.positive} | ${this.sentimentPercent('positive')}% |\n`;
+                    md += `| ❌ 负面 | ${s.negative} | ${this.sentimentPercent('negative')}% |\n`;
+                    md += `| ➖ 中性 | ${s.neutral} | ${this.sentimentPercent('neutral')}% |\n\n`;
+
+                    md += `### 反馈分类\n\n`;
+                    md += `| 分类 | 数量 | 占比 | 代表性反馈 |\n`;
+                    md += `|------|------|------|------------|\n`;
+                    for (const cat of this.analysisData.categories) {
+                        const sample = (cat.samples || []).slice(0, 1).join('');
+                        md += `| ${cat.name} | ${cat.count} | ${this.catPercent(cat.count)}% | ${sample} |\n`;
+                    }
+                    md += `\n`;
+                }
+
+                md += `---\n\n`;
+                md += `## 二、核心诉求提炼\n\n`;
+                md += (this.painPointsContent || '暂无数据') + '\n\n';
+
+                md += `---\n\n`;
+                md += `## 三、改进建议与行动计划\n\n`;
+                md += (this.actionPlanContent || '暂无数据') + '\n\n';
+
+                md += `---\n\n`;
+                md += `*报告生成时间：${new Date().toLocaleString('zh-CN')}*\n`;
+
+                const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${this.input.productName}_反馈分析报告.md`;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showToast('报告已导出');
+            },
+
+            /** 复制完整报告到剪贴板 */
+            async copyAll() {
+                let text = `【${this.input.productName} - 用户反馈分析报告】\n\n`;
+                text += `反馈来源：${this.input.source} | 总数：${this.analysisData?.totalCount || 0}\n\n`;
+
+                if (this.analysisData) {
+                    const s = this.analysisData.sentiment;
+                    text += `情感分布：正面 ${s.positive} | 负面 ${s.negative} | 中性 ${s.neutral}\n\n`;
+                }
+
+                if (this.painPointsContent) {
+                    text += `=== 核心诉求 ===\n${this.painPointsContent}\n\n`;
+                }
+                if (this.actionPlanContent) {
+                    text += `=== 改进建议 ===\n${this.actionPlanContent}\n`;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(text);
+                    this.showToast('已复制到剪贴板');
+                } catch (err) {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    this.showToast('已复制到剪贴板');
+                }
+            },
+
+            /** 重置所有数据，回到步骤1 */
+            resetAll() {
+                this.currentStep = 1;
+                this.input = { productName: '', source: '', feedbackText: '' };
+                this.analysisData = null;
+                this.painPointsContent = '';
+                this.actionPlanContent = '';
+                this.reasoningContent = '';
+                this.errorMsg = '';
+                this.$nextTick(() => lucide.createIcons());
+            },
+
+            /** 显示 Toast 提示 */
+            showToast(msg) {
+                this.toast = { show: true, msg };
+                setTimeout(() => { this.toast.show = false; }, 2000);
+            }
+        };
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试指南 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #f8fafc; color: #334155; line-height: 1.7; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .gradient-bg { background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 50%, #fecaca 100%); }
+        .feature-card { background: white; border-radius: 16px; padding: 24px; transition: all 0.3s ease; border: 1px solid #e2e8f0; }
+        .feature-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.1); }
+        pre { background: #1e293b; color: #e2e8f0; border-radius: 12px; padding: 1.5rem; overflow-x: auto; font-size: 0.875rem; line-height: 1.7; }
+        code { background: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.875em; color: #dc2626; font-family: 'JetBrains Mono', monospace; }
+        pre code { background: transparent; padding: 0; color: inherit; }
+        .tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .tag-red { background: #fee2e2; color: #dc2626; }
+        .toc-link { display: block; padding: 8px 16px; border-radius: 8px; color: #64748b; text-decoration: none; transition: all 0.2s ease; font-size: 0.875rem; }
+        .toc-link:hover { background: #fef2f2; color: #dc2626; }
+        .toc-link.active { background: #fef2f2; color: #dc2626; font-weight: 600; }
+        .step-number { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.125rem; }
+        html { scroll-behavior: smooth; }
+        .tip-box { background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-left: 4px solid #dc2626; border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 24px 0; }
+        .nav-glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid #e2e8f0; }
+    </style>
+    <script src="../../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="antialiased">
+    <nav class="nav-glass sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <a href="../../../index.html" class="flex items-center gap-3 hover:opacity-80 transition group">
+                <div class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center text-white">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </div>
+                <span class="font-bold text-slate-700">返回首页</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <span class="tag tag-red"><i class="fa-solid fa-bug"></i> 调试指南</span>
+                <span class="text-sm text-slate-400">第 4 / 8 课</span>
+            </div>
+        </div>
+    </nav>
+
+    <header class="gradient-bg pt-16 pb-20 px-6">
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/80 rounded-full text-red-700 text-sm font-semibold mb-6 shadow-sm">
+                <i class="fa-solid fa-stethoscope text-red-500"></i>
+                零基础入门系列
+            </div>
+            <h1 class="text-4xl md:text-5xl font-black text-slate-800 mb-6 leading-tight">
+                调试不求人
+                <br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600">常见错误排查手册</span>
+            </h1>
+            <p class="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                报错不可怕，可怕的是不知道如何排查。本课带你掌握调试技巧，让你能独立解决 90% 的常见问题。
+            </p>
+            <div class="mt-8 flex justify-center gap-4">
+                <a href="#lesson-content" class="px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition shadow-lg hover:shadow-xl flex items-center gap-2">
+                    <i class="fa-solid fa-play"></i> 开始学习
+                </a>
+                <a href="05-project-structure.html" class="px-6 py-3 bg-white text-slate-700 rounded-xl font-semibold border border-slate-200 hover:bg-slate-50 transition flex items-center gap-2">
+                    下一课 <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-6 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <aside class="lg:col-span-1">
+                <div class="sticky top-24 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-list-ul text-red-500"></i>
+                        课程目录
+                    </h3>
+                    <nav class="space-y-1">
+                        <a href="#console" class="toc-link active">
+                            <i class="fa-solid fa-terminal mr-2 opacity-50"></i>控制台查错
+                        </a>
+                        <a href="#network" class="toc-link">
+                            <i class="fa-solid fa-network-wired mr-2 opacity-50"></i>网络请求
+                        </a>
+                        <a href="#html-errors" class="toc-link">
+                            <i class="fa-solid fa-code mr-2 opacity-50"></i>HTML 错误
+                        </a>
+                        <a href="#fix-strategy" class="toc-link">
+                            <i class="fa-solid fa-wrench mr-2 opacity-50"></i>修复策略
+                        </a>
+                        <a href="#summary" class="toc-link">
+                            <i class="fa-solid fa-check-circle mr-2 opacity-50"></i>课程总结
+                        </a>
+                    </nav>
+                    <div class="mt-6 pt-6 border-t border-slate-100">
+                        <h4 class="font-semibold text-slate-700 mb-3 text-sm">系列课程</h4>
+                        <div class="space-y-2 text-sm">
+                            <a href="01-html-first-lesson.html" class="flex items-center gap-2 text-slate-500 hover:text-slate-700">
+                                <i class="fa-solid fa-check-circle text-green-500"></i> 01. HTML 第一课
+                            </a>
+                            <a href="02-dev-environment.html" class="flex items-center gap-2 text-slate-500 hover:text-slate-700">
+                                <i class="fa-solid fa-check-circle text-blue-500"></i> 02. 开发环境
+                            </a>
+                            <a href="03-prompt-driven-dev.html" class="flex items-center gap-2 text-slate-500 hover:text-slate-700">
+                                <i class="fa-solid fa-check-circle text-purple-500"></i> 03. Prompt 驱动
+                            </a>
+                            <a href="04-debugging-guide.html" class="flex items-center gap-2 text-red-600 font-medium">
+                                <i class="fa-solid fa-check-circle"></i> 04. 调试指南
+                            </a>
+                            <a href="05-project-structure.html" class="flex items-center gap-2 text-slate-500 hover:text-slate-700">
+                                <i class="fa-regular fa-circle"></i> 05. 项目结构
+                            </a>
+                            <a href="06-css-basics.html" class="flex items-center gap-2 text-slate-500 hover:text-slate-700">
+                                <i class="fa-regular fa-circle"></i> 06. CSS 基础
+                            </a>
+                            <a href="07-deployment.html" class="flex items-center gap-2 text-slate-500 hover:text-slate-700">
+                                <i class="fa-regular fa-circle"></i> 07. 部署分享
+                            </a>
+                            <a href="08-next-steps.html" class="flex items-center gap-2 text-slate-500 hover:text-slate-700">
+                                <i class="fa-regular fa-circle"></i> 08. 进阶之路
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <main id="lesson-content" class="lg:col-span-3 space-y-12 pb-20">
+                <section id="console" class="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm scroll-mt-24">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="step-number bg-red-100 text-red-600">
+                            <i class="fa-solid fa-terminal"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800">1. 控制台查错</h2>
+                    </div>
+
+                    <p class="text-slate-600 mb-6">
+                        浏览器控制台（Console）是查看 JavaScript 错误的最佳工具。
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <div class="feature-card">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
+                                    <i class="fa-solid fa-exclamation-triangle"></i>
+                                </div>
+                                <h4 class="font-bold text-slate-800">Syntax Error</h4>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-2">语法错误 - 代码写错了</p>
+                            <div class="bg-red-50 rounded-lg p-3 text-xs text-red-700 font-mono">
+                                Uncaught SyntaxError: Unexpected token '{'
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center text-yellow-600">
+                                    <i class="fa-solid fa-exclamation-circle"></i>
+                                </div>
+                                <h4 class="font-bold text-slate-800">Reference Error</h4>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-2">引用错误 - 变量未定义</p>
+                            <div class="bg-yellow-50 rounded-lg p-3 text-xs text-yellow-700 font-mono">
+                                Uncaught ReferenceError: xxx is not defined
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600">
+                                    <i class="fa-solid fa-ban"></i>
+                                </div>
+                                <h4 class="font-bold text-slate-800">Type Error</h4>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-2">类型错误 - 调用了错误类型的方法</p>
+                            <div class="bg-orange-50 rounded-lg p-3 text-xs text-orange-700 font-mono">
+                                Uncaught TypeError: xxx is not a function
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                    <i class="fa-solid fa-circle-notch"></i>
+                                </div>
+                                <h4 class="font-bold text-slate-800">Network Error</h4>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-2">网络错误 - 请求失败</p>
+                            <div class="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 font-mono">
+                                Failed to fetch
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tip-box">
+                        <p class="font-semibold text-slate-800 mb-2">💡 打开控制台的方法</p>
+                        <div class="grid grid-cols-2 gap-2 text-sm text-slate-600">
+                            <div><code class="bg-white px-2 py-1 rounded">F12</code> 键</div>
+                            <div><code class="bg-white px-2 py-1 rounded">Cmd+Option+I</code> (Mac)</div>
+                            <div><code class="bg-white px-2 py-1 rounded">Ctrl+Shift+I</code> (Windows)</div>
+                            <div>右键 → 检查</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="network" class="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm scroll-mt-24">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="step-number bg-yellow-100 text-yellow-600">
+                            <i class="fa-solid fa-network-wired"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800">2. 网络请求错误</h2>
+                    </div>
+
+                    <p class="text-slate-600 mb-6">
+                        调用 API 时常见的 HTTP 状态码。
+                    </p>
+
+                    <div class="overflow-x-auto mb-8">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="text-left py-3 px-4 font-semibold text-slate-700">状态码</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-slate-700">名称</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-slate-700">含义</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-slate-700">解决方法</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 px-4"><code class="text-red-600">400</code></td>
+                                    <td class="py-3 px-4">Bad Request</td>
+                                    <td class="py-3 px-4 text-slate-500">请求参数错误</td>
+                                    <td class="py-3 px-4 text-slate-500">检查请求格式和参数</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 px-4"><code class="text-red-600">401</code></td>
+                                    <td class="py-3 px-4">Unauthorized</td>
+                                    <td class="py-3 px-4 text-slate-500">未授权/Key 错误</td>
+                                    <td class="py-3 px-4 text-slate-500">检查 API Key 是否正确</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 px-4"><code class="text-red-600">403</code></td>
+                                    <td class="py-3 px-4">Forbidden</td>
+                                    <td class="py-3 px-4 text-slate-500">没有权限访问</td>
+                                    <td class="py-3 px-4 text-slate-500">检查权限设置</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 px-4"><code class="text-red-600">404</code></td>
+                                    <td class="py-3 px-4">Not Found</td>
+                                    <td class="py-3 px-4 text-slate-500">资源不存在</td>
+                                    <td class="py-3 px-4 text-slate-500">检查 URL 是否正确</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 px-4"><code class="text-red-600">429</code></td>
+                                    <td class="py-3 px-4">Too Many Requests</td>
+                                    <td class="py-3 px-4 text-slate-500">请求过于频繁</td>
+                                    <td class="py-3 px-4 text-slate-500">降低请求频率</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 px-4"><code class="text-red-600">500</code></td>
+                                    <td class="py-3 px-4">Server Error</td>
+                                    <td class="py-3 px-4 text-slate-500">服务器内部错误</td>
+                                    <td class="py-3 px-4 text-slate-500">稍后重试或联系服务方</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="html-errors" class="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm scroll-mt-24">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="step-number bg-orange-100 text-orange-600">
+                            <i class="fa-solid fa-code"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800">3. HTML 常见错误</h2>
+                    </div>
+
+                    <p class="text-slate-600 mb-6">
+                        以下是 HTML 编写中最常见的错误及其修复方法。
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-red-50 rounded-xl p-6">
+                            <div class="flex items-start gap-3 mb-3">
+                                <i class="fa-solid fa-times text-red-500 mt-1"></i>
+                                <div>
+                                    <h4 class="font-bold text-red-800">标签未闭合</h4>
+                                    <p class="text-red-600 text-sm mb-2">每个打开的标签都必须关闭</p>
+                                    <div class="bg-white rounded-lg p-3 text-xs font-mono text-red-700">
+                                        ❌ &lt;div&gt;内容&lt;/p&gt;
+                                    </div>
+                                    <div class="bg-green-50 rounded-lg p-3 text-xs font-mono text-green-700 mt-2">
+                                        ✅ &lt;div&gt;内容&lt;/div&gt;
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-red-50 rounded-xl p-6">
+                            <div class="flex items-start gap-3 mb-3">
+                                <i class="fa-solid fa-times text-red-500 mt-1"></i>
+                                <div>
+                                    <h4 class="font-bold text-red-800">属性值缺少引号</h4>
+                                    <p class="text-red-600 text-sm mb-2">属性值必须用引号包围</p>
+                                    <div class="bg-white rounded-lg p-3 text-xs font-mono text-red-700">
+                                        ❌ &lt;a href=example.com&gt;
+                                    </div>
+                                    <div class="bg-green-50 rounded-lg p-3 text-xs font-mono text-green-700 mt-2">
+                                        ✅ &lt;a href="example.com"&gt;
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-red-50 rounded-xl p-6">
+                            <div class="flex items-start gap-3 mb-3">
+                                <i class="fa-solid fa-times text-red-500 mt-1"></i>
+                                <div>
+                                    <h4 class="font-bold text-red-800">路径错误</h4>
+                                    <p class="text-red-600 text-sm mb-2">文件路径大小写敏感，要用正斜杠</p>
+                                    <div class="bg-white rounded-lg p-3 text-xs font-mono text-red-700">
+                                        ❌ src="Images/img.png" (Windows 路径)
+                                    </div>
+                                    <div class="bg-green-50 rounded-lg p-3 text-xs font-mono text-green-700 mt-2">
+                                        ✅ src="./assets/images/img.png"
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="fix-strategy" class="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm scroll-mt-24">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="step-number bg-green-100 text-green-600">
+                            <i class="fa-solid fa-wrench"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800">4. 修复策略</h2>
+                    </div>
+
+                    <p class="text-slate-600 mb-6">
+                        遇到错误时的标准排查流程。
+                    </p>
+
+                    <div class="relative mb-8">
+                        <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-red-500 to-green-500"></div>
+                        <div class="space-y-6 relative">
+                            <div class="flex items-start gap-6">
+                                <div class="w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-lg shrink-0 z-10">
+                                    1
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-6 flex-1">
+                                    <h4 class="font-bold text-slate-800 mb-2">阅读错误信息</h4>
+                                    <p class="text-slate-600 text-sm">错误信息通常会告诉你问题所在，包括文件名和行号。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-6">
+                                <div class="w-16 h-16 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-lg shrink-0 z-10">
+                                    2
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-6 flex-1">
+                                    <h4 class="font-bold text-slate-800 mb-2">定位问题代码</h4>
+                                    <p class="text-slate-600 text-sm">根据错误提示的行号，找到对应的代码位置。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-6">
+                                <div class="w-16 h-16 bg-yellow-500 text-white rounded-full flex items-center justify-center font-bold text-lg shrink-0 z-10">
+                                    3
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-6 flex-1">
+                                    <h4 class="font-bold text-slate-800 mb-2">复制错误信息给 AI</h4>
+                                    <p class="text-slate-600 text-sm">把错误信息和相关代码一起给 AI，让它帮你分析和修复。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-6">
+                                <div class="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center font-bold text-lg shrink-0 z-10">
+                                    4
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-6 flex-1">
+                                    <h4 class="font-bold text-slate-800 mb-2">验证修复结果</h4>
+                                    <p class="text-slate-600 text-sm">保存后刷新页面，确认错误已解决。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="summary" class="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm scroll-mt-24">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="step-number bg-red-100 text-red-600">
+                            <i class="fa-solid fa-check-circle"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800">课程总结</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border border-red-200">
+                            <h4 class="font-bold text-red-800 mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-star"></i> 你学到了
+                            </h4>
+                            <ul class="space-y-2 text-slate-600 text-sm">
+                                <li>• 使用控制台查看 JavaScript 错误</li>
+                                <li>• 理解常见的 HTTP 状态码</li>
+                                <li>• 识别和修复 HTML 常见错误</li>
+                                <li>• 掌握标准调试流程</li>
+                            </ul>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                            <h4 class="font-bold text-green-800 mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-bullseye"></i> 下一步
+                            </h4>
+                            <ul class="space-y-2 text-slate-600 text-sm">
+                                <li>• 学习第五课：项目结构</li>
+                                <li>• 打开 DevTools 练习查看错误</li>
+                                <li>• 遇到报错时不要慌，按流程排查</li>
+                                <li>• 保存常见错误的修复方案</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center gap-4">
+                        <a href="03-prompt-driven-dev.html" class="px-6 py-3 bg-white text-slate-700 rounded-xl font-semibold border border-slate-200 hover:bg-slate-50 transition flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            上一课：Prompt 驱动
+                        </a>
+                        <a href="05-project-structure.html" class="px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition shadow-lg hover:shadow-xl flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-right"></i>
+                            下一课：项目结构
+                        </a>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t border-slate-200 py-8">
+        <div class="max-w-6xl mx-auto px-6 text-center">
+            <p class="text-slate-400 text-sm">
+                © 2026 AI 内容创作工坊 · HTML 入门系列教程
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tocLinks = document.querySelectorAll('.toc-link');
+            const sections = document.querySelectorAll('section[id]');
+            const observerOptions = { root: null, rootMargin: '-20% 0px -80% 0px', threshold: 0 };
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.id;
+                        tocLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href') === '#' + id) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+            sections.forEach(section => { observer.observe(section); });
+        });
+    </script>
+    <script src="../../../help/help-widget-v2.js"></script>
+</body>
+
+</html>

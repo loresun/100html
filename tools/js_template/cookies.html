@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>js-cookie 浏览器 Cookie 管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #334155; }
+    .glass { background: white; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1); }
+    .code-box { font-family: 'JetBrains Mono', monospace; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-slate-800">🍪 js-cookie</h1>
+    <p class="text-slate-500 mt-2 text-lg">简单、轻量级的 JavaScript Cookie 处理 API</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-8">
+
+  <!-- 操作面板 -->
+  <div class="glass p-8 rounded-2xl">
+    <h3 class="font-bold text-xl text-slate-800 mb-6">⚙️ Cookie 操作</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div>
+        <label class="block text-sm font-bold text-slate-600 mb-2">键 (Key)</label>
+        <input id="cookie-key" type="text" value="username" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如: theme">
+      </div>
+      <div>
+        <label class="block text-sm font-bold text-slate-600 mb-2">值 (Value)</label>
+        <input id="cookie-value" type="text" value="John Doe" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如: dark">
+      </div>
+      <div>
+        <label class="block text-sm font-bold text-slate-600 mb-2">过期天数 (Days)</label>
+        <input id="cookie-expires" type="number" value="7" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+      </div>
+      <div>
+        <label class="block text-sm font-bold text-slate-600 mb-2">路径 (Path)</label>
+        <input id="cookie-path" type="text" value="/" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" disabled>
+      </div>
+    </div>
+    <div class="flex gap-4">
+      <button onclick="setCookie()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">设置 Cookie</button>
+      <button onclick="getCookie()" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium">读取 Key</button>
+      <button onclick="removeCookie()" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium">删除 Key</button>
+    </div>
+  </div>
+
+  <!-- 当前 Cookies 列表 -->
+  <div class="glass p-8 rounded-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="font-bold text-xl text-slate-800">📋 所有可见 Cookies</h3>
+      <button onclick="showAllCookies()" class="text-sm text-blue-600 hover:text-blue-800">刷新列表</button>
+    </div>
+    <div id="cookie-list" class="bg-slate-50 p-4 rounded-xl border border-slate-200 code-box text-sm text-slate-600 min-h-[100px] whitespace-pre-wrap"></div>
+  </div>
+
+  <!-- JSON 示例 -->
+  <div class="glass p-8 rounded-2xl">
+    <h3 class="font-bold text-xl text-slate-800 mb-4">📦 JSON 对象存储</h3>
+    <p class="text-slate-500 mb-4 text-sm">js-cookie 自动处理 JSON 序列化和反序列化。</p>
+    <div class="flex gap-4">
+      <button onclick="setJsonCookie()" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-700">写入 { user: "admin", id: 1 }</button>
+      <button onclick="getJsonCookie()" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-700">读取并解析</button>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
+<script>
+  function setCookie() {
+    const key = document.getElementById('cookie-key').value;
+    const value = document.getElementById('cookie-value').value;
+    const expires = Number(document.getElementById('cookie-expires').value);
+    
+    if(!key) return alert('请输入 Key');
+
+    Cookies.set(key, value, { expires: expires, path: '/' });
+    showAllCookies();
+    showToast(`Cookie 设置成功: ${key}`);
+  }
+
+  function getCookie() {
+    const key = document.getElementById('cookie-key').value;
+    if(!key) return alert('请输入 Key');
+    
+    const val = Cookies.get(key);
+    alert(val ? `值: ${val}` : '未找到该 Cookie');
+  }
+
+  function removeCookie() {
+    const key = document.getElementById('cookie-key').value;
+    if(!key) return alert('请输入 Key');
+
+    Cookies.remove(key, { path: '/' }); // 删除时 path 必须匹配
+    showAllCookies();
+    showToast(`Cookie 删除成功: ${key}`);
+  }
+
+  function showAllCookies() {
+    const all = Cookies.get();
+    document.getElementById('cookie-list').textContent = JSON.stringify(all, null, 2);
+  }
+
+  function setJsonCookie() {
+    Cookies.set('user_data', JSON.stringify({ user: "admin", id: 1, role: "editor" }), { expires: 1 });
+    showAllCookies();
+    showToast('JSON Cookie 已设置');
+  }
+
+  function getJsonCookie() {
+    // 如果存入时已经是 stringify 过的，Cookies.get() 获取到的是字符串
+    // js-cookie v3 取消了 .getJSON()，建议手动 JSON.parse
+    const raw = Cookies.get('user_data');
+    if (raw) {
+      try {
+        const data = JSON.parse(raw);
+        alert(`解析对象成功:\nUser: ${data.user}\nRole: ${data.role}`);
+      } catch(e) {
+        alert('解析失败或非 JSON 数据');
+      }
+    } else {
+      alert('user_data Cookie 不存在');
+    }
+  }
+
+  function showToast(msg) {
+    // 简单的临时提示
+    const list = document.getElementById('cookie-list');
+    const original = list.style.borderColor;
+    list.style.borderColor = '#10b981'; // green
+    setTimeout(() => list.style.borderColor = original, 500);
+  }
+
+  // 初始化显示
+  showAllCookies();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/js_template_cookies.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

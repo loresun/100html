@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日记灵感 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .paper-texture {
+            background-color: #fdfbf7;
+            background-image: linear-gradient(#e5e5e5 1px, transparent 1px);
+            background-size: 100% 2em;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-stone-50 min-h-screen font-serif text-stone-800" x-data="journalApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur border-b border-stone-200 sticky top-0 z-50 font-sans">
+        <div class="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="./index.html" class="p-2 rounded-lg hover:bg-stone-100 text-stone-600 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <h1 class="text-xl font-bold">
+                    🖋️ 日记灵感
+                </h1>
+            </div>
+            
+            <button @click="toggleHistory" class="p-2 rounded-lg hover:bg-stone-100 text-stone-600 transition-colors" title="历史记录">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto px-4 py-8 pb-24">
+
+        <!-- Prompt Card -->
+        <div class="bg-white p-8 rounded-2xl shadow-xl shadow-stone-200/50 border border-stone-100 mb-8 text-center relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-full h-1 bg-stone-900"></div>
+            
+            <p class="text-xs font-bold font-sans text-stone-400 uppercase tracking-widest mb-4">今日灵感</p>
+            <h2 class="text-xl md:text-2xl font-bold leading-relaxed mb-8" x-text="currentPrompt" x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="opacity-0 translate-y-2"></h2>
+            
+            <div class="flex justify-center gap-4">
+                 <button @click="spinPrompt()" class="flex items-center gap-2 px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-sm font-bold font-sans transition-colors group-hover:bg-amber-100 group-hover:text-amber-800">
+                     <i class="fa-solid fa-rotate transition-transform duration-500" :class="isSpinning ? 'rotate-180' : ''"></i>
+                     换一个
+                 </button>
+            </div>
+        </div>
+
+        <!-- Writing Area -->
+        <div class="bg-white shadow-sm border border-stone-200 rounded-xl overflow-hidden relative" x-show="!showHistory" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
+            <div class="bg-stone-100 px-4 py-2 border-b border-stone-200 flex justify-between items-center font-sans text-xs font-bold text-stone-500">
+                <span x-text="todayDate"></span>
+                <span x-text="entry.length + ' 字'"></span>
+            </div>
+            
+            <textarea x-model="entry" 
+                      class="w-full h-80 p-6 outline-none text-lg leading-loose paper-texture resize-none text-stone-800 placeholder-stone-400" 
+                      placeholder="从这里开始下笔..."></textarea>
+            
+            <div class="p-4 bg-white border-t border-stone-100 flex justify-end font-sans">
+                <button @click="saveEntry()" class="bg-stone-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-stone-900 transition-all shadow-lg shadow-stone-800/20 flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    保存日记
+                </button>
+            </div>
+        </div>
+
+        <!-- History List -->
+        <div x-show="showHistory" class="space-y-6 font-sans">
+             <div class="flex items-center justify-between mb-2">
+                 <h2 class="text-lg font-bold">往期回顾</h2>
+                 <button @click="showHistory = false" class="text-stone-500 hover:text-stone-800 underline text-sm">返回写作</button>
+             </div>
+             
+             <template x-for="item in history" :key="item.id">
+                 <div class="bg-white p-6 rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-all group">
+                     <div class="flex justify-between items-start mb-3">
+                         <div class="text-sm font-bold text-stone-400" x-text="formatTime(item.id)"></div>
+                         <button @click="deleteEntry(item.id)" class="text-stone-300 hover:text-rose-500 opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash-can"></i></button>
+                     </div>
+                     <div class="text-sm font-bold text-stone-800 mb-2 bg-stone-50 p-2 rounded inline-block" x-text="item.prompt"></div>
+                     <p class="text-stone-600 leading-relaxed font-serif whitespace-pre-wrap" x-text="item.text"></p>
+                 </div>
+             </template>
+             <div x-show="history.length === 0" class="text-center py-20 text-stone-400">
+                 <p>还没有写过日记</p>
+             </div>
+        </div>
+
+    </main>
+
+    <script>
+        function journalApp() {
+            return {
+                isSpinning: false,
+                showHistory: false,
+                currentPrompt: '',
+                entry: '',
+                history: [],
+                
+                prompts: [
+                    "今天发生的一件让你会心一笑的小事是什么？",
+                    "如果可以给五年前的自己一个建议，你会说什么？",
+                    "描述一个让你感到宁静的时刻。",
+                    "你最近学到了什么新东西？",
+                    "你最感激的三个人是谁？为什么？",
+                    "如果明天是世界末日，你今天会做什么？",
+                    "描述你理想中的完美一天。",
+                    "你最近的一个挑战是什么？你是如何应对的？",
+                    "写下你喜欢自己身上的三个优点。",
+                    "有什么事情是你一直想做但不敢做的？"
+                ],
+
+                init() {
+                    const saved = localStorage.getItem('webtools_journal_prompts');
+                    if (saved) this.history = JSON.parse(saved);
+                    this.spinPrompt();
+                    // init
+                },
+
+                get todayDate() {
+                    return new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+                },
+
+                spinPrompt() {
+                    this.isSpinning = true;
+                    setTimeout(() => this.isSpinning = false, 500);
+                    // Random but different from current
+                    let newP;
+                    do {
+                        newP = this.prompts[Math.floor(Math.random() * this.prompts.length)];
+                    } while (newP === this.currentPrompt && this.prompts.length > 1);
+                    this.currentPrompt = newP;
+                },
+
+                saveEntry() {
+                    if (!this.entry.trim()) {
+                        alert('写点什么吧...');
+                        return;
+                    }
+                    this.history.unshift({
+                        id: Date.now(),
+                        prompt: this.currentPrompt,
+                        text: this.entry
+                    });
+                    localStorage.setItem('webtools_journal_prompts', JSON.stringify(this.history));
+                    this.entry = '';
+                    this.showHistory = true;
+                    // init
+                },
+                
+                deleteEntry(id) {
+                    if (confirm('删除这篇日记？')) {
+                        this.history = this.history.filter(h => h.id !== id);
+                        localStorage.setItem('webtools_journal_prompts', JSON.stringify(this.history));
+                    }
+                },
+                
+                toggleHistory() {
+                    this.showHistory = !this.showHistory;
+                    // icon update
+                },
+
+                formatTime(ts) {
+                    return new Date(ts).toLocaleString('zh-CN');
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_journal_prompts.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

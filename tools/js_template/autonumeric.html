@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AutoNumeric 自动格式化</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); min-height: 100vh; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+    input { font-family: 'JetBrains Mono', monospace; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">🔢 AutoNumeric</h1>
+    <p class="text-white/60 mt-1">强大的实时数字和货币格式化库</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-6">
+  <!-- 货币格式 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">💰 货币格式</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label class="text-white/70 text-sm block mb-2">人民币 (CNY)</label>
+        <input type="text" id="currency-cny" placeholder="¥ 0.00" 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white text-lg">
+      </div>
+      <div>
+        <label class="text-white/70 text-sm block mb-2">美元 (USD)</label>
+        <input type="text" id="currency-usd" placeholder="$ 0.00" 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white text-lg">
+      </div>
+      <div>
+        <label class="text-white/70 text-sm block mb-2">欧元 (EUR - 欧洲格式)</label>
+        <input type="text" id="currency-eur" placeholder="0.00 €" 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white text-lg">
+      </div>
+      <div>
+        <label class="text-white/70 text-sm block mb-2">比特币 (BTC)</label>
+        <input type="text" id="currency-btc" placeholder="₿ 0.0000" 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white text-lg">
+      </div>
+    </div>
+  </div>
+
+  <!-- 数值限制 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📏 数值限制与取整</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label class="text-white/70 text-sm block mb-2">限制范围 (0 - 100)</label>
+        <input type="text" id="num-range" placeholder="0 - 100" 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white">
+        <div class="text-xs text-white/40 mt-1">尝试输入负数或大于100的数</div>
+      </div>
+      <div>
+        <label class="text-white/70 text-sm block mb-2">正整数</label>
+        <input type="text" id="num-int" placeholder="仅正整数" 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white">
+      </div>
+      <div>
+        <label class="text-white/70 text-sm block mb-2">小数位控制 (4位小数)</label>
+        <input type="text" id="num-decimal" placeholder="0.0000" 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white">
+      </div>
+      <div>
+        <label class="text-white/70 text-sm block mb-2">百分比</label>
+        <input type="text" id="num-percent" placeholder="%" 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white">
+      </div>
+    </div>
+  </div>
+
+  <!-- 获取数值 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📊 获取数值</h3>
+    <div class="flex gap-4 items-center">
+      <div class="flex-1">
+        <label class="text-white/70 text-sm block mb-2">输入任意格式数值</label>
+        <input type="text" id="raw-input" placeholder="输入..." 
+               class="w-full px-4 py-3 bg-slate-900/50 border border-white/20 rounded-xl text-white">
+      </div>
+      <div class="w-12 text-center text-2xl">→</div>
+      <div class="flex-1 bg-slate-900/50 p-4 rounded-xl">
+        <div class="text-xs text-white/50 mb-1">原始数值 (Number)</div>
+        <div id="raw-value" class="text-xl font-bold text-cyan-300">0</div>
+      </div>
+    </div>
+    <div class="flex gap-2 mt-4">
+      <button onclick="anRaw.set(1234.56)" class="px-3 py-1 bg-blue-600 rounded text-sm">Set 1234.56</button>
+      <button onclick="anRaw.set(99999)" class="px-3 py-1 bg-blue-600 rounded text-sm">Set 99999</button>
+      <button onclick="anRaw.clear()" class="px-3 py-1 bg-slate-600 rounded text-sm">Clear</button>
+    </div>
+  </div>
+
+  <!-- 代码示例 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📝 代码示例</h3>
+    <div class="bg-slate-900/80 p-4 rounded-xl overflow-x-auto">
+      <pre class="text-sm font-mono text-slate-300">// 初始化人民币
+new AutoNumeric('#cny', {
+  currencySymbol: '¥',
+  decimalCharacter: '.',
+  digitGroupSeparator: ','
+});
+
+// 初始化美元
+new AutoNumeric('#usd', AutoNumeric.getPredefinedOptions().NorthAmerican);
+
+// 限制范围
+new AutoNumeric('#range', {
+  minimumValue: '0',
+  maximumValue: '100'
+});
+
+// 获取数值
+const number = anElement.getNumber(); // 返回 float
+const val = anElement.getFormatted();  // 返回 string</pre>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/autonumeric@4.10.5/dist/autoNumeric.min.js"></script>
+<script>
+// 货币
+new AutoNumeric('#currency-cny', {
+  currencySymbol: '¥ ',
+  decimalCharacter: '.',
+  digitGroupSeparator: ','
+});
+
+new AutoNumeric('#currency-usd', {
+  currencySymbol: '$ '
+});
+
+new AutoNumeric('#currency-eur', {
+  currencySymbol: ' €',
+  currencySymbolPlacement: 's', // 后缀
+  decimalCharacter: ',',
+  digitGroupSeparator: '.'
+});
+
+new AutoNumeric('#currency-btc', {
+  currencySymbol: '₿ ',
+  decimalPlaces: 8
+});
+
+// 范围和限制
+new AutoNumeric('#num-range', {
+  minimumValue: '0',
+  maximumValue: '100'
+});
+
+new AutoNumeric('#num-int', {
+  decimalPlaces: 0,
+  minimumValue: '0'
+});
+
+new AutoNumeric('#num-decimal', {
+  decimalPlaces: 4
+});
+
+new AutoNumeric('#num-percent', {
+  suffixText: '%',
+  minimumValue: '0',
+  maximumValue: '100'
+});
+
+// 获取数值交互
+const anRaw = new AutoNumeric('#raw-input', {
+  digitGroupSeparator: ',',
+  decimalCharacter: '.',
+  currencySymbol: '$'
+});
+
+document.getElementById('raw-input').addEventListener('keyup', () => {
+  document.getElementById('raw-value').textContent = anRaw.getNumber();
+});
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

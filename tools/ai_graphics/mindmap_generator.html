@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>思维导图生成器 - AI 内容创作工坊</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Markmap 思维导图库 - 使用独立库以支持程序化创建 -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.15"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.15"></script>
+
+    <style>
+        /* 基础样式 - 采用温暖的 indigo 色调 */
+        body {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ddd6fe 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 3px;
+            opacity: 0.5;
+        }
+
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+
+        /* 卡片悬浮效果 */
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px -12px rgba(99, 102, 241, 0.25);
+        }
+
+        /* 加载动画 */
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.8);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: scale(0.8);
+                opacity: 1;
+            }
+        }
+
+        .loading-pulse {
+            animation: pulse-ring 1.5s ease-in-out infinite;
+        }
+
+        /* 思考过程折叠样式 */
+        details summary {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        /* Markdown 样式 */
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3 {
+            font-weight: 700;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+            padding-left: 1.5em;
+            margin: 0.5em 0;
+        }
+
+        .markdown-content li {
+            margin: 0.25em 0;
+        }
+
+        .markdown-content p {
+            margin: 0.5em 0;
+        }
+
+        .markdown-content strong {
+            font-weight: 600;
+            color: #4338ca;
+        }
+
+        /* 思维导图容器 */
+        #mindmap-container {
+            min-height: 600px;
+            background: white;
+            border-radius: 1rem;
+            border: 2px solid #c7d2fe;
+        }
+
+        #mindmap-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 思维导图连线样式 - 确保 markmap 的 path 元素可见 */
+        #mindmap path.markmap-link,
+        #mindmap-container path.markmap-link {
+            fill: none !important;
+            stroke: #a5b4fc !important;
+            stroke-width: 2px !important;
+        }
+
+        /* 备用选择器：覆盖所有可能的 path 元素 */
+        #mindmap path,
+        #mindmap-container svg path {
+            fill: none;
+            stroke: #94a3b8;
+            stroke-width: 1.5;
+        }
+
+        /* markmap 节点线条 */
+        #mindmap-container svg g.markmap-node line,
+        #mindmap g.markmap-node line {
+            stroke: #a5b4fc;
+            stroke-width: 1.5;
+        }
+
+        /* 确保 markmap 折叠圆圈可见 */
+        #mindmap circle,
+        #mindmap-container circle {
+            fill: #fff;
+            stroke: #6366f1;
+            stroke-width: 1.5;
+        }
+
+        /* 按钮点击动画 */
+        @keyframes button-click {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(0.95);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        button:active {
+            animation: button-click 0.2s ease;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <!-- 左侧：返回首页 -->
+                    <div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-network-wired text-indigo-600 text-xl"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">思维导图生成器</span>
+                    </div>
+                    <!-- 右侧：模型选择 & 设置 -->
+                    <div class="flex items-center gap-4">
+                        <select v-model="apiConfig.model"
+                            class="text-sm border border-indigo-200 rounded-lg px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                        <button @click="showPromptSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span class="hidden sm:inline">提示词</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区：分屏布局 -->
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+
+            <!-- 左侧：输入面板 -->
+            <div
+                class="w-full md:w-1/3 lg:w-1/4 bg-white/70 backdrop-blur-sm border-r border-indigo-200 p-5 overflow-y-auto space-y-5">
+
+                <!-- 文字内容输入 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-file-lines text-indigo-600"></i>
+                        文字内容 <span class="text-red-500">*</span>
+                    </label>
+                    <textarea v-model="input.content" rows="8"
+                        placeholder="粘贴你想要转换为思维导图的文字内容...&#10;&#10;可以是文章、笔记、会议纪要、学习资料等任何文本内容"
+                        class="w-full bg-white border border-indigo-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                    <p class="text-xs text-slate-500">{{ input.content.length }} 字</p>
+                </div>
+
+                <!-- 中心主题 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-dot text-indigo-600"></i>
+                        中心主题（可选）
+                    </label>
+                    <input type="text" v-model="input.centerTopic" placeholder="例如：产品规划、学习笔记、项目管理"
+                        class="w-full bg-white border border-indigo-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                    <p class="text-xs text-slate-500">不填写则由 AI 自动提取</p>
+                </div>
+
+                <!-- 层级深度 -->
+                <div class="space-y-2">
+                    <label class="font-bold text-sm text-slate-700 flex items-center justify-between">
+                        <span class="flex items-center gap-1">
+                            <i class="fa-solid fa-layer-group text-indigo-600"></i>
+                            层级深度
+                        </span>
+                        <span class="text-indigo-600 font-mono">{{ input.depth }} 层</span>
+                    </label>
+                    <input type="range" v-model.number="input.depth" min="2" max="5"
+                        class="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>简洁 (2层)</span>
+                        <span>详细 (5层)</span>
+                    </div>
+                </div>
+
+                <!-- 生成按钮：使用内联 SVG 避免 Lucide 与 Vue 的 DOM 冲突 -->
+                <button @click="generate" :disabled="isGenerating || !input.content"
+                    class="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2">
+                    <template v-if="!isGenerating">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z">
+                            </path>
+                        </svg>
+                        <span>✨ 生成思维导图</span>
+                    </template>
+                    <span v-else class="flex items-center gap-2">
+                        <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                        生成中...
+                    </span>
+                </button>
+
+                <!-- 提示 -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                    <p class="font-semibold mb-1 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-info text-[10px]"></i>
+                        使用提示
+                    </p>
+                    <ul class="space-y-1 ml-4 list-disc">
+                        <li>输入内容越详细，生成的思维导图越准确</li>
+                        <li>支持导出为 PNG 图片或 Markdown 文本</li>
+                        <li>可在右侧直接编辑 Markdown 重新渲染</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 右侧：结果展示区 -->
+            <div class="flex-1 bg-gradient-to-br from-white/50 to-slate-50/50 backdrop-blur-sm overflow-y-auto p-6">
+
+                <!-- 空状态：使用 v-if 避免 DOM patch 冲突，使用内联 SVG 避免 Lucide 冲突 -->
+                <div v-if="viewState === 'empty'"
+                    class="h-full flex flex-col items-center justify-center text-slate-400">
+                    <svg class="w-20 h-20 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="3" stroke-width="2"></circle>
+                        <circle cx="5" cy="19" r="3" stroke-width="2"></circle>
+                        <circle cx="19" cy="19" r="3" stroke-width="2"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+                        <line x1="12" y1="12" x2="5" y2="16" stroke-width="2"></line>
+                        <line x1="12" y1="12" x2="19" y2="16" stroke-width="2"></line>
+                    </svg>
+                    <p class="text-lg">输入文字内容，点击生成按钮</p>
+                    <p class="text-sm mt-2">AI 会自动将内容转换为结构化思维导图</p>
+                </div>
+
+                <!-- 加载状态 -->
+                <div v-else-if="viewState === 'loading'" class="h-full flex flex-col items-center justify-center">
+                    <div class="loading-pulse bg-indigo-500 rounded-full w-16 h-16 mb-4"></div>
+                    <p class="text-slate-600 text-lg">AI 正在分析内容，构建思维导图...</p>
+                    <p class="text-sm text-slate-500 mt-2">这可能需要 10-20 秒</p>
+                </div>
+
+                <!-- 结果内容 -->
+                <div v-else-if="viewState === 'result'" class="space-y-4 h-full flex flex-col">
+
+                    <!-- 操作按钮：使用内联 SVG 避免 Lucide 与 Vue 的 DOM 冲突 -->
+                    <div class="flex flex-wrap gap-3">
+                        <button @click="downloadImage"
+                            class="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"></circle>
+                                <path stroke-width="2" d="M21 15l-5-5L5 21"></path>
+                            </svg>
+                            导出图片
+                        </button>
+                        <button @click="copyMarkdown"
+                            class="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"></rect>
+                                <path stroke-width="2" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                            </svg>
+                            复制 Markdown
+                        </button>
+                        <button @click="downloadMarkdown"
+                            class="flex items-center gap-2 px-4 py-2 border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            下载 MD 文件
+                        </button>
+                        <button @click="toggleEdit"
+                            class="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition">
+                            <!-- 使用条件渲染替代动态图标渲染，避免 Lucide 与 Vue DOM patch 冲突 -->
+                            <svg v-if="isEditing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                                </path>
+                            </svg>
+                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                </path>
+                            </svg>
+                            {{ isEditing ? '预览' : '编辑' }} </button>
+                    </div> <!-- 思考过程（V4 Pro 模型）：使用 v-if 避免空内容时的渲染问题，使用内联 SVG 避免 Lucide 冲突 -->
+                    <details v-if="reasoningContent && reasoningContent.length > 0"
+                        class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <summary class="font-semibold text-blue-900 flex items-center gap-2 cursor-pointer"> <svg
+                                class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z">
+                                </path>
+                            </svg> AI 深度思考过程（点击展开） </summary>
+                        <div class="mt-3 text-sm text-blue-800 whitespace-pre-wrap leading-relaxed"> {{ reasoningContent
+                            }} </div>
+                    </details> <!-- Markdown 编辑器 -->
+                    <div v-if="isEditing" class="flex-1 bg-white rounded-xl p-4 border border-indigo-200">
+                        <div class="mb-2 flex items-center justify-between"> <label
+                                class="font-semibold text-sm text-slate-700">编辑 Markdown</label> <button
+                                @click="updateMindmap"
+                                class="text-xs px-3 py-1 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">
+                                更新导图 </button> </div> <textarea v-model="editableMarkdown" rows="20"
+                            class="w-full border border-slate-300 rounded-lg p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                    </div> <!-- 思维导图展示 -->
+                    <div v-else
+                        class="flex-1 bg-white rounded-xl p-4 border border-indigo-200 overflow-hidden relative">
+                        <!-- 渲染中提示 -->
+                        <div v-if="isRendering"
+                            class="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                            <div class="text-center">
+                                <div class="loading-pulse bg-indigo-500 rounded-full w-12 h-12 mb-2 mx-auto"></div>
+                                <p class="text-sm text-slate-600">渲染思维导图中...</p>
+                            </div>
+                        </div>
+                        <div id="mindmap-container" class="w-full h-full"> <svg id="mindmap"></svg> </div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- 设置弹窗：使用内联 SVG 避免 v-if 切换时的 Lucide 冲突 -->
+        <div v-if="showSettings" @click.self="showSettings = false"
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-slate-900">API 设置</h3> <button @click="showSettings = false"
+                        class="text-slate-400 hover:text-slate-600"> <svg class="w-6 h-6" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg> </button>
+                </div>
+                <div class="space-y-4">
+                    <div> <label class="block text-sm font-semibold text-slate-700 mb-2">DeepSeek API Key</label> <input
+                            type="password" v-model="apiConfig.deepseek" placeholder="sk-xxxxxx"
+                            class="w-full border border-slate-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                        <p class="text-xs text-slate-500 mt-1">在 <a href="https://platform.deepseek.com" target="_blank"
+                                class="text-indigo-600 hover:underline">DeepSeek Platform</a> 获取</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6"> <button @click="saveConfig"
+                        class="flex-1 bg-indigo-500 text-white py-2 rounded-lg hover:bg-indigo-600 transition font-medium">
+                        保存配置 </button> <button @click="showSettings = false"
+                        class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition"> 取消 </button>
+                </div>
+            </div>
+        </div> <!-- 提示词设置弹窗：使用内联 SVG 避免 v-if 切换时的 Lucide 冲突 -->
+        <div v-if="showPromptSettings" @click.self="showPromptSettings = false"
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-slate-900">自定义提示词</h3> <button @click="showPromptSettings = false"
+                        class="text-slate-400 hover:text-slate-600"> <svg class="w-6 h-6" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg> </button>
+                </div>
+                <div class="space-y-4">
+                    <div> <label class="block text-sm font-semibold text-slate-700 mb-2">System Prompt</label> <textarea
+                            v-model="customPrompt.system" rows="8"
+                            class="w-full border border-slate-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                            placeholder="系统提示词..."></textarea> </div>
+                    <div> <label class="block text-sm font-semibold text-slate-700 mb-2">User Prompt Template</label>
+                        <textarea v-model="customPrompt.user" rows="8"
+                            class="w-full border border-slate-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                            placeholder="用户提示词模板（支持变量占位符）..."></textarea>
+                        <p class="text-xs text-slate-500 mt-1">支持变量：{content}, {centerTopic}, {depth}</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6"> <button @click="savePrompt"
+                        class="flex-1 bg-indigo-500 text-white py-2 rounded-lg hover:bg-indigo-600 transition font-medium">
+                        保存提示词 </button> <button @click="resetPrompt"
+                        class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition"> 恢复默认
+                    </button> </div>
+            </div>
+        </div> <!-- Toast 提示：使用 v-if 和 key 强制重新渲染，避免 DOM patch 冲突 -->
+        <div v-if="toast.show" :key="toast.timestamp"
+            class="fixed bottom-6 right-6 bg-slate-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-fade-in">
+            <!-- 使用条件渲染替代动态图标属性，避免 Lucide 替换 DOM 后 Vue patch 冲突 --> <svg v-if="toast.icon === 'check'" class="w-5 h-5"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg> <svg v-else-if="toast.icon === 'check-circle'" class="w-5 h-5" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg> <svg v-else-if="toast.icon === 'alert-circle'" class="w-5 h-5" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                <line x1="12" y1="8" x2="12" y2="12" stroke-width="2" stroke-linecap="round"></line>
+                <circle cx="12" cy="16" r="1" fill="currentColor"></circle>
+            </svg> <svg v-else-if="toast.icon === 'copy'" class="w-5 h-5" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"></rect>
+                <path stroke-width="2" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+            </svg> <svg v-else-if="toast.icon === 'download'" class="w-5 h-5" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg> <svg v-else-if="toast.icon === 'image'" class="w-5 h-5" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"></circle>
+                <path stroke-width="2" d="M21 15l-5-5L5 21"></path>
+            </svg> <svg v-else-if="toast.icon === 'rotate-ccw'" class="w-5 h-5" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 4v6h6"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3.51 15a9 9 0 102.13-9.36L1 10"></path>
+            </svg> <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg> <span>{{ toast.message }}</span>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, onUpdated, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                // 初始化图标已由 Font Awesome 自动处理
+
+                // ==================== 状态管理 ====================
+
+                const showSettings = ref(false);
+                const showPromptSettings = ref(false);
+                const isGenerating = ref(false);
+                const isRendering = ref(false);
+                const result = ref(null);
+                const reasoningContent = ref('');
+                const isEditing = ref(false);
+                const editableMarkdown = ref('');
+
+                /**
+                 * 视图状态计算属性
+                 * 用于控制主界面显示哪个面板，避免 v-show 切换时的 DOM patch 冲突
+                 */
+                const viewState = computed(() => {
+                    if (isGenerating.value) return 'loading';
+                    if (result.value) return 'result';
+                    return 'empty';
+                });
+
+                // API 配置
+                const apiConfig = reactive({
+                    deepseek: '',
+                    model: 'deepseek-v4-flash'
+                });
+
+                // Toast 提示（添加 timestamp 用于 v-if + key 组合，强制重新渲染避免 DOM 冲突）
+                const toast = reactive({
+                    show: false,
+                    message: '',
+                    icon: 'fa-circle-check',
+                    timestamp: 0  // 每次显示时更新，确保 Vue 创建新的 DOM 节点
+                });
+
+                // 输入数据
+                const input = reactive({
+                    content: '',
+                    centerTopic: '',
+                    depth: 3
+                });
+
+                // 默认提示词
+                const defaultPrompt = {
+                    system: `你是一个专业的思维导图生成助手。你的任务是将用户输入的文字内容转换为结构化的 Markdown 格式思维导图。
+
+要求：
+1. 使用 Markdown 的标题语法（# ## ### 等）表示层级关系
+2. 第一级（#）是中心主题
+3. 后续层级逐步细化
+4. 保持层级清晰、逻辑连贯
+5. 提取关键概念和要点
+6. 不要添加其他解释文字，只输出 Markdown 格式的思维导图`,
+                    user: `请将以下内容转换为思维导图（Markdown 格式）：
+
+【内容】
+{content}
+
+【要求】
+- 中心主题：{centerTopic}
+- 层级深度：{depth} 层
+- 提取关键概念，构建清晰的层级结构
+- 只输出 Markdown 格式的思维导图，不要其他内容`
+                };
+
+                // 自定义提示词
+                const customPrompt = reactive({
+                    system: defaultPrompt.system,
+                    user: defaultPrompt.user
+                });
+
+                // ==================== 生命周期 ====================
+
+                onMounted(() => {
+                    // 初始化图标已由 Font Awesome 自动处理
+                    // 读取保存的配置
+                    const saved = localStorage.getItem('global_llm_config');
+                    if (saved) {
+                        Object.assign(apiConfig, JSON.parse(saved));
+                    }
+
+                    // 读取自定义提示词
+                    const savedPrompt = localStorage.getItem('mindmap_generator_prompt');
+                    if (savedPrompt) {
+                        const parsed = JSON.parse(savedPrompt);
+                        customPrompt.system = parsed.system || defaultPrompt.system;
+                        customPrompt.user = parsed.user || defaultPrompt.user;
+                    }
+
+                    // 加载 markmap CSS - 确保连线样式正确
+                    if (window.markmap?.loadCSS) {
+                        window.markmap.loadCSS();
+                    }
+                });
+
+                // ==================== 方法 ====================
+
+                /**
+                 * 显示 Toast 提示
+                 * 使用 timestamp 确保每次显示都创建新的 DOM 节点，避免 Vue patch 冲突
+                 */
+                const showToast = (message, icon = 'fa-circle-check') => {
+                    // 先隐藏之前的 toast（如果有）
+                    toast.show = false;
+
+                    // 使用 nextTick 确保 DOM 更新后再显示新 toast
+                    nextTick(() => {
+                        toast.message = message;
+                        toast.icon = icon;
+                        toast.timestamp = Date.now();  // 更新 timestamp 强制 Vue 重新创建元素
+                        toast.show = true;
+
+                        setTimeout(() => {
+                            toast.show = false;
+                        }, 2500);
+                    });
+                };
+
+                /**
+                 * 保存 API 配置
+                 */
+                const saveConfig = () => {
+                    const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        ...apiConfig
+                    }));
+                    showSettings.value = false;
+                    showToast('配置已保存', 'fa-circle-check');
+                };
+
+                /**
+                 * 保存自定义提示词
+                 */
+                const savePrompt = () => {
+                    localStorage.setItem('mindmap_generator_prompt', JSON.stringify({
+                        system: customPrompt.system,
+                        user: customPrompt.user
+                    }));
+                    showPromptSettings.value = false;
+                    showToast('提示词已保存', 'fa-circle-check');
+                };
+
+                /**
+                 * 恢复默认提示词
+                 */
+                const resetPrompt = () => {
+                    customPrompt.system = defaultPrompt.system;
+                    customPrompt.user = defaultPrompt.user;
+                    localStorage.removeItem('mindmap_generator_prompt');
+                    showToast('已恢复默认提示词', 'fa-arrows-rotate');
+                };
+
+                /**
+                 * 构建用户提示词
+                 */
+                const buildUserPrompt = () => {
+                    let prompt = customPrompt.user;
+                    const variables = {
+                        content: input.content,
+                        centerTopic: input.centerTopic || '自动提取',
+                        depth: input.depth
+                    };
+
+                    // 替换变量
+                    for (const [key, value] of Object.entries(variables)) {
+                        prompt = prompt.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+                    }
+
+                    return prompt;
+                };
+
+                /**
+                 * 生成思维导图 - 直接获取完整响应
+                 */
+                const generate = async () => {
+                    // 检查 API Key
+                    if (!apiConfig.deepseek) {
+                        showSettings.value = true;
+                        showToast('请先配置 API Key', 'fa-triangle-exclamation');
+                        return;
+                    }
+
+                    // 检查输入
+                    if (!input.content.trim()) {
+                        showToast('请输入文字内容', 'fa-triangle-exclamation');
+                        return;
+                    }
+
+                    // 重置状态 - 先重置非显示相关的状态
+                    reasoningContent.value = '';
+                    isEditing.value = false;
+
+                    // 等待一帧后再切换主要视图状态，避免 DOM patch 冲突
+                    await nextTick();
+
+                    // 然后再设置 loading 状态和清除结果
+                    result.value = null;
+                    isGenerating.value = true;
+
+                    // 等待 DOM 更新完成
+                    await nextTick();
+
+                    try {
+                        const userPrompt = buildUserPrompt();
+
+
+                        // 调用 DeepSeek API（非流式）
+                        const response = await fetch('https://api.deepseek.com/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiConfig.deepseek}`
+                            },
+                            body: JSON.stringify({
+                                model: apiConfig.model,
+                                messages: [
+                                    { role: 'system', content: customPrompt.system },
+                                    { role: 'user', content: userPrompt }
+                                ],
+                                stream: false
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            const errorMsg = errorData.error?.message || response.statusText;
+                            throw new Error(`API 请求失败 (${response.status}): ${errorMsg}`);
+                        }
+
+                        // 解析 JSON 响应
+                        const data = await response.json();
+
+
+                        // 提取内容
+                        const choice = data.choices?.[0];
+                        if (!choice) {
+                            throw new Error('API 返回格式错误');
+                        }
+
+                        // 提取推理内容（V4 Pro 模型）
+                        if (choice.message?.reasoning_content) {
+                            reasoningContent.value = choice.message.reasoning_content;
+                        }
+
+                        // 提取主要内容
+                        const fullContent = choice.message?.content || '';
+                        if (!fullContent) {
+                            throw new Error('AI 返回内容为空');
+                        }
+
+
+
+                        // 清理可能的 markdown 代码块标记和其他格式
+                        let cleanedContent = fullContent.trim();
+
+                        // 移除 markdown 代码块标记
+                        if (cleanedContent.includes('```')) {
+                            cleanedContent = cleanedContent
+                                .replace(/```markdown\n?/g, '')
+                                .replace(/```md\n?/g, '')
+                                .replace(/```\n?/g, '');
+                        }
+
+                        // 移除可能的前置说明文字
+                        const lines = cleanedContent.split('\n');
+                        let startIndex = 0;
+
+                        // 查找第一个以 # 开头的行
+                        for (let i = 0; i < lines.length; i++) {
+                            if (lines[i].trim().startsWith('#')) {
+                                startIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (startIndex > 0) {
+                            cleanedContent = lines.slice(startIndex).join('\n');
+                        }
+
+                        cleanedContent = cleanedContent.trim();
+
+
+
+                        // 保存 markdown
+                        editableMarkdown.value = cleanedContent;
+
+                        // 设置 result
+                        result.value = { markdown: cleanedContent };
+
+                        // 【关键修复】在渲染思维导图之前，必须先将 isGenerating 设为 false
+                        // 否则 viewState 计算属性会返回 'loading'，导致 #mindmap 元素不在 DOM 中
+                        isGenerating.value = false;
+
+                        // 等待 DOM 更新完成后再渲染思维导图
+                        // 需要等待 Vue 响应 viewState 变化，渲染出 result 视图中的 #mindmap 元素
+                        await nextTick();
+                        await new Promise(resolve => setTimeout(resolve, 150));  // 稍微增加等待时间确保 DOM 完全渲染
+
+                        // 渲染思维导图
+                        renderMindmap(cleanedContent);
+
+                        showToast('思维导图生成完成', 'fa-circle-check');
+
+                    } catch (error) {
+
+
+                        // 友好的错误提示
+                        let errorMsg = '生成失败，请重试';
+                        if (error.message.includes('401')) {
+                            errorMsg = 'API Key 无效，请检查配置';
+                            showSettings.value = true;
+                        } else if (error.message.includes('429')) {
+                            errorMsg = '请求过于频繁，请稍后再试';
+                        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                            errorMsg = '网络连接失败，请检查网络';
+                        } else if (error.message) {
+                            errorMsg = error.message;
+                        }
+
+                        showToast(errorMsg, 'fa-triangle-exclamation');
+
+                        // 出错时也需要重置 isGenerating 状态
+                        isGenerating.value = false;
+                    } finally {
+                        // isGenerating.value = false;  // 已在上面处理，这里不再重复设置
+                        refreshIcons();
+                    }
+                };
+
+                /**
+                 * 渲染思维导图
+                 */
+                const renderMindmap = (markdown) => {
+                    try {
+                        isRendering.value = true;
+
+
+                        // 检查 DOM 元素
+                        const container = document.getElementById('mindmap');
+                        if (!container) {
+                            throw new Error('找不到思维导图容器元素');
+                        }
+
+                        // 检查 markmap 库 - 支持 markmap-lib 和 markmap-view
+                        const Transformer = window.markmap?.Transformer || window.markmapLib?.Transformer;
+                        const Markmap = window.markmap?.Markmap || window.markmapView?.Markmap;
+
+                        if (!Transformer || !Markmap) {
+                            console.error('markmap 库状态:', {
+                                markmap: window.markmap,
+                                markmapLib: window.markmapLib,
+                                markmapView: window.markmapView
+                            });
+                            throw new Error('markmap 组件未完全加载，请刷新页面重试');
+                        }
+
+
+
+                        // 清空容器
+                        container.innerHTML = '';
+
+                        // 转换 Markdown
+                        const transformer = new Transformer();
+                        const { root, features } = transformer.transform(markdown);
+
+
+
+                        // 创建 markmap 实例
+                        const mm = Markmap.create(container, {
+                            autoFit: true,
+                            duration: 500,
+                            maxWidth: 300,
+                            paddingX: 20,
+                            colorFreezeLevel: 2,
+                            color: (node) => {
+                                const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
+                                return colors[node.depth % colors.length];
+                            }
+                        }, root);
+
+
+
+                        // 渲染完成 - 确保连线样式正确
+                        setTimeout(() => {
+                            // 手动为所有 path 元素添加样式（备用方案）
+                            const paths = container.querySelectorAll('path');
+                            paths.forEach(path => {
+                                if (!path.getAttribute('stroke') || path.getAttribute('stroke') === 'none') {
+                                    path.setAttribute('stroke', '#94a3b8');
+                                    path.setAttribute('stroke-width', '2');
+                                    path.setAttribute('fill', 'none');
+                                }
+                            });
+
+                            isRendering.value = false;
+                            refreshIcons();
+                        }, 200);
+
+                    } catch (error) {
+
+                        isRendering.value = false;
+                        showToast('渲染失败: ' + error.message, 'fa-triangle-exclamation');
+                    }
+                };
+
+                /**
+                 * 切换编辑模式
+                 * 注意：编辑按钮的图标已改为内联 SVG，无需调用 refreshIcons
+                 */
+                const toggleEdit = () => {
+                    isEditing.value = !isEditing.value;
+                    if (isEditing.value) {
+                        editableMarkdown.value = result.value.markdown;
+                    }
+                };
+
+                /**
+                 * 更新思维导图
+                 */
+                const updateMindmap = async () => {
+                    result.value.markdown = editableMarkdown.value;
+                    isEditing.value = false;
+
+                    // 等待 DOM 更新
+                    await nextTick();
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    // 渲染思维导图
+                    renderMindmap(editableMarkdown.value);
+                    showToast('思维导图已更新', 'check');
+                };
+
+                /**
+                 * 复制 Markdown
+                 */
+                const copyMarkdown = () => {
+                    if (!result.value?.markdown) return;
+                    navigator.clipboard.writeText(result.value.markdown).then(() => {
+                        showToast('已复制 Markdown', 'copy');
+                    });
+                };
+
+                /**
+                 * 下载 Markdown 文件
+                 */
+                const downloadMarkdown = () => {
+                    if (!result.value?.markdown) return;
+
+                    let content = `# 思维导图\n\n`;
+                    if (input.centerTopic) {
+                        content += `**主题**: ${input.centerTopic}\n\n`;
+                    }
+                    content += `---\n\n${result.value.markdown}`;
+
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `思维导图_${new Date().toISOString().slice(0, 10)}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    showToast('已下载 MD 文件', 'download');
+                };
+
+                /**
+                 * 下载思维导图图片
+                 */
+                const downloadImage = () => {
+                    try {
+                        const svg = document.querySelector('#mindmap');
+                        if (!svg) {
+                            showToast('找不到思维导图', 'alert-circle');
+                            return;
+                        }
+
+                        // 获取 SVG 的尺寸
+                        const bbox = svg.getBBox();
+                        const svgData = new XMLSerializer().serializeToString(svg);
+
+                        // 创建 canvas
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const img = new Image();
+
+                        // 设置 canvas 尺寸（添加边距）
+                        const padding = 40;
+                        canvas.width = bbox.width + padding * 2;
+                        canvas.height = bbox.height + padding * 2;
+
+                        // 设置白色背景
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                        img.onload = () => {
+                            ctx.drawImage(img, padding, padding);
+
+                            // 下载图片
+                            canvas.toBlob((blob) => {
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `思维导图_${new Date().toISOString().slice(0, 10)}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+
+                                showToast('已导出图片', 'image');
+                            });
+                        };
+
+                        // 加载 SVG
+                        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                        const svgUrl = URL.createObjectURL(svgBlob);
+                        img.src = svgUrl;
+
+                    } catch (error) {
+
+                        showToast('导出失败: ' + error.message, 'alert-circle');
+                    }
+                };
+
+                // ==================== 返回 ====================
+
+                return {
+                    showSettings,
+                    showPromptSettings,
+                    apiConfig,
+                    isGenerating,
+                    isRendering,
+                    result,
+                    reasoningContent,
+                    toast,
+                    input,
+                    customPrompt,
+                    isEditing,
+                    editableMarkdown,
+                    viewState,  // 新增：视图状态计算属性
+                    generate,
+                    saveConfig,
+                    savePrompt,
+                    resetPrompt,
+                    toggleEdit,
+                    updateMindmap,
+                    copyMarkdown,
+                    downloadMarkdown,
+                    downloadImage
+                };
+            }
+        }).mount('#app');
+    </script>
+
+    <style>
+        /* Toast 动画样式 */
+        .toast-animate {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .toast-show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/ai_graphics_mindmap_generator.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

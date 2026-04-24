@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资产负债表 | Webtools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="bg-indigo-50 min-h-screen font-sans text-slate-800" x-data="netWorthApp()" x-init="init()">
+
+    <!-- Header -->
+    <header class="glass border-b border-indigo-100 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center gap-3">
+            <a href="./index.html" class="p-2 rounded-lg hover:bg-indigo-50 text-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
+                🏛️ 个人资产负债表
+            </h1>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Main Stats & Chart -->
+        <div class="lg:col-span-4 space-y-4">
+            <!-- Net Worth Card -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 text-center relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-600 opacity-90 transition-opacity group-hover:opacity-100"></div>
+                <div class="relative z-10 text-white">
+                    <div class="text-sm font-bold opacity-80 uppercase tracking-widest mb-2">个人净资产 (Net Worth)</div>
+                    <div class="text-4xl md:text-5xl font-black tracking-tight" x-text="formatCurrency(netWorth)"></div>
+                    <div class="mt-4 flex justify-center gap-8 text-sm opacity-90">
+                        <div>
+                            <span class="block text-xs uppercase opacity-70">总资产</span>
+                            <span class="font-bold" x-text="formatCurrency(totalAssets)"></span>
+                        </div>
+                        <div>
+                            <span class="block text-xs uppercase opacity-70">总负债</span>
+                            <span class="font-bold text-rose-200" x-text="'-' + formatCurrency(totalLiabilities)"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ratios -->
+            <div class="grid grid-cols-2 gap-4">
+                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-indigo-50 text-center">
+                     <div class="text-xs text-slate-400 font-bold uppercase mb-1">资产负债率</div>
+                     <div class="text-xl font-bold" :class="debtRatio > 50 ? 'text-rose-500' : 'text-emerald-500'" x-text="debtRatio + '%'"></div>
+                 </div>
+                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-indigo-50 text-center">
+                     <div class="text-xs text-slate-400 font-bold uppercase mb-1">流动资产占比</div>
+                     <div class="text-xl font-bold text-blue-500" x-text="liquidRatio + '%'"></div>
+                 </div>
+            </div>
+            
+            <!-- Chart -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-indigo-50 min-h-[250px] flex items-center justify-center">
+                <div class="w-full relative h-[200px]">
+                    <canvas id="assetChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Assets Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-indigo-50 overflow-hidden">
+                <div class="px-6 py-4 border-b border-indigo-50 bg-indigo-50/30 flex justify-between items-center">
+                    <h2 class="font-bold text-indigo-900 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-trend-up"></i> 资产 (Assets)
+                    </h2>
+                    <span class="font-bold text-emerald-600" x-text="formatCurrency(totalAssets)"></span>
+                </div>
+                
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    <template x-for="item in assets" :key="item.id">
+                        <div class="group">
+                             <div class="flex justify-between text-sm mb-1">
+                                 <span class="font-medium text-slate-500" x-text="item.name"></span>
+                                 <span class="font-bold text-slate-700" x-text="formatCurrency(item.value)"></span>
+                             </div>
+                             <div class="relative">
+                                 <input type="range" min="0" max="5000000" step="1000" x-model.number="item.value" 
+                                        class="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                             </div>
+                             <!-- Editable Input on hover/active? Keep it simple: text input below -->
+                             <input type="number" x-model.number="item.value" class="w-full mt-1 p-1 text-xs border-b border-transparent hover:border-slate-200 focus:border-indigo-500 outline-none text-slate-400 transition-colors bg-transparent">
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Liabilities Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-indigo-50 overflow-hidden">
+                <div class="px-6 py-4 border-b border-indigo-50 bg-rose-50/30 flex justify-between items-center">
+                    <h2 class="font-bold text-rose-900 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-trend-down"></i> 负债 (Liabilities)
+                    </h2>
+                    <span class="font-bold text-rose-600" x-text="formatCurrency(totalLiabilities)"></span>
+                </div>
+                
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    <template x-for="item in liabilities" :key="item.id">
+                        <div class="group">
+                             <div class="flex justify-between text-sm mb-1">
+                                 <span class="font-medium text-slate-500" x-text="item.name"></span>
+                                 <span class="font-bold text-slate-700" x-text="formatCurrency(item.value)"></span>
+                             </div>
+                             <div class="relative">
+                                 <input type="range" min="0" max="5000000" step="1000" x-model.number="item.value" 
+                                        class="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-rose-500">
+                             </div>
+                             <input type="number" x-model.number="item.value" class="w-full mt-1 p-1 text-xs border-b border-transparent hover:border-slate-200 focus:border-indigo-500 outline-none text-slate-400 transition-colors bg-transparent">
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function netWorthApp() {
+            return {
+                chart: null,
+                assets: [
+                    { id: 'cash', name: '现金/存款', value: 50000, type: 'liquid' },
+                    { id: 'invest', name: '股票/基金', value: 150000, type: 'liquid' },
+                    { id: 'house', name: '房产估值', value: 2000000, type: 'fixed' },
+                    { id: 'car', name: '车辆估值', value: 120000, type: 'fixed' },
+                    { id: 'other', name: '其他资产', value: 30000, type: 'fixed' }
+                ],
+                liabilities: [
+                    { id: 'mortgage', name: '房贷剩余', value: 1200000 },
+                    { id: 'car_loan', name: '车贷剩余', value: 50000 },
+                    { id: 'credit', name: '信用卡欠款', value: 5000 },
+                    { id: 'other_debt', name: '其他借款', value: 0 }
+                ],
+
+                init() {
+                    const savedAssets = localStorage.getItem('webtools_nw_assets');
+                    const savedLiab = localStorage.getItem('webtools_nw_liab');
+                    
+                    if (savedAssets) this.assets = JSON.parse(savedAssets);
+                    if (savedLiab) this.liabilities = JSON.parse(savedLiab);
+
+                    this.$watch('assets', () => {
+                        localStorage.setItem('webtools_nw_assets', JSON.stringify(this.assets));
+                        this.updateChart();
+                    }, { deep: true });
+                    
+                    this.$watch('liabilities', () => {
+                        localStorage.setItem('webtools_nw_liab', JSON.stringify(this.liabilities));
+                        this.updateChart();
+                    }, { deep: true });
+                    
+                    this.$nextTick(() => {
+                        // init
+                        this.updateChart();
+                    });
+                },
+
+                get totalAssets() {
+                    return this.assets.reduce((sum, item) => sum + (parseFloat(item.value) || 0), 0);
+                },
+
+                get totalLiabilities() {
+                    return this.liabilities.reduce((sum, item) => sum + (parseFloat(item.value) || 0), 0);
+                },
+
+                get netWorth() {
+                    return this.totalAssets - this.totalLiabilities;
+                },
+                
+                get debtRatio() {
+                    if (this.totalAssets === 0) return 0;
+                    return ((this.totalLiabilities / this.totalAssets) * 100).toFixed(1);
+                },
+                
+                get liquidRatio() {
+                    if (this.totalAssets === 0) return 0;
+                    const liquid = this.assets.filter(a => a.type === 'liquid').reduce((s, a) => s + (parseFloat(a.value)||0), 0);
+                    return ((liquid / this.totalAssets) * 100).toFixed(1);
+                },
+
+                formatCurrency(num) {
+                    return '¥' + (num || 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+                },
+
+                updateChart() {
+                    const ctx = document.getElementById('assetChart').getContext('2d');
+                    if (this.chart) this.chart.destroy();
+
+                    this.chart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['净资产', '负债'],
+                            datasets: [{
+                                data: [this.netWorth > 0 ? this.netWorth : 0, this.totalLiabilities],
+                                backgroundColor: [
+                                    '#4f46e5', // Indigo
+                                    '#f43f5e'  // Rose
+                                ],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            borderWidth: 0,
+                            cutout: '70%',
+                            plugins: {
+                                legend: { position: 'bottom', labels: { padding: 20 } },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => {
+                                            const val = context.raw;
+                                            return ` ${context.label}: ¥${val.toLocaleString()}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    </script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/webtools_net_worth.md"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

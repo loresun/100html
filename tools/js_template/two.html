@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Two.js 二维绘图</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #fafaf9; color: #44403c; }
+    .glass { background: white; border: 1px solid #e7e5e4; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-10">
+  <div>
+    <h1 class="text-3xl font-bold text-stone-800">🟠 Two.js</h1>
+    <p class="text-stone-500 mt-2 text-lg">专注于二维 SVG、Canvas 和 WebGL 绘图的库</p>
+  </div>
+  <a href="index.html" class="px-5 py-2.5 bg-white border border-stone-200 text-stone-600 rounded-lg hover:bg-stone-50 transition-all font-medium">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-8">
+
+  <!-- 绘图区域 -->
+  <div class="glass p-2 rounded-2xl bg-white text-center">
+    <div id="draw-area" class="w-full h-[400px] overflow-hidden rounded-xl border border-stone-100 relative">
+      <div class="absolute inset-0 flex items-center justify-center pointer-events-none text-stone-300 text-sm font-mono">RENDERER: SVG</div>
+    </div>
+  </div>
+
+  <!-- 控制器 -->
+  <div class="glass p-8 rounded-2xl">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="font-bold text-xl text-stone-800">🎮 动画控制</h3>
+      <button onclick="toggleAnim()" id="play-btn" class="px-6 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-700 font-medium">暂停动画</button>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div>
+        <label class="block text-sm font-bold text-stone-600 mb-2">图形数量</label>
+        <div class="flex gap-2">
+          <button onclick="addShape('rect')" class="px-3 py-1 bg-orange-100 text-orange-800 rounded hover:bg-orange-200 text-sm">+ 矩形</button>
+          <button onclick="addShape('circle')" class="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm">+ 圆形</button>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-bold text-stone-600 mb-2">旋转速度</label>
+        <input type="range" min="0" max="0.2" step="0.01" value="0.05" oninput="speed = parseFloat(this.value)" class="w-full accent-stone-600">
+      </div>
+      <div>
+        <label class="block text-sm font-bold text-stone-600 mb-2">操作</label>
+        <button onclick="clearShapes()" class="text-red-600 text-sm hover:underline">清空画布</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/two.js/build/two.min.js"></script>
+<script>
+  const elem = document.getElementById('draw-area');
+  const two = new Two({ 
+    fullscreen: false, 
+    fitted: true, // 适应父容器
+    autostart: true 
+  }).appendTo(elem);
+
+  let speed = 0.05;
+  let isPlaying = true;
+  const shapes = [];
+
+  // 初始创建一个中心组
+  const group = two.makeGroup();
+  group.translation.set(two.width / 2, two.height / 2);
+
+  // 添加基础图形
+  function addShape(type) {
+    const x = (Math.random() - 0.5) * 200;
+    const y = (Math.random() - 0.5) * 200;
+    let shape;
+
+    if (type === 'rect') {
+      shape = two.makeRectangle(x, y, 50, 50);
+      shape.fill = '#f97316'; // orange-500
+    } else {
+      shape = two.makeCircle(x, y, 30);
+      shape.fill = '#3b82f6'; // blue-500
+    }
+
+    shape.noStroke();
+    shape.opacity = 0.8;
+    group.add(shape);
+    shapes.push(shape);
+  }
+
+  // 初始添加几个
+  addShape('rect');
+  addShape('circle');
+  addShape('rect');
+
+  // 动画循环
+  two.bind('update', function(frameCount) {
+    if(!isPlaying) return;
+
+    // 旋转整个组
+    group.rotation += speed;
+
+    // 单个图形自转 + 脉冲
+    shapes.forEach((shape, i) => {
+      shape.rotation += speed * (i % 2 === 0 ? 1 : -1);
+      
+      // 简单的脉冲效果
+      const t = frameCount * 0.05 + i;
+      const scale = 1 + Math.sin(t) * 0.2;
+      shape.scale = scale;
+    });
+  });
+
+  function toggleAnim() {
+    isPlaying = !isPlaying;
+    document.getElementById('play-btn').textContent = isPlaying ? "暂停动画" : "继续动画";
+  }
+  
+  function clearShapes() {
+    group.remove(...shapes);
+    shapes.length = 0;
+  }
+
+  // 响应窗口大小变化
+  window.addEventListener('resize', () => {
+    two.width = elem.clientWidth;
+    two.height = elem.clientHeight;
+    group.translation.set(two.width / 2, two.height / 2);
+  });
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

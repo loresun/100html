@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>idb-keyval IndexedDB存储</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0d9488 0%, #0f172a 100%); min-height: 100vh; }
+    .mono { font-family: monospace; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-4xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">💾 idb-keyval</h1>
+    <p class="text-white/60 mt-1">超简单的 IndexedDB 键值存储 - Promise 风格 API</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-4xl mx-auto space-y-6">
+  <!-- 快速操作 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚡ 快速操作</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-3">
+        <div class="flex gap-2">
+          <input type="text" id="key-input" placeholder="键名" class="flex-1 px-4 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+          <input type="text" id="value-input" placeholder="值" class="flex-1 px-4 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="doSet()" class="px-4 py-2 bg-teal-600 rounded-lg hover:bg-teal-700 font-bold">💾 存储</button>
+          <button onclick="doGet()" class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 font-bold">📖 读取</button>
+          <button onclick="doDel()" class="px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 font-bold">🗑️ 删除</button>
+          <button onclick="doClear()" class="px-4 py-2 bg-slate-700 rounded-lg hover:bg-slate-600 font-bold">🧹 清空</button>
+        </div>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-teal-400 text-xs mb-2 font-bold">操作结果:</div>
+        <div id="result" class="mono text-sm text-cyan-300">等待操作...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 当前存储内容 -->
+  <div class="glass p-6 rounded-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg">📦 当前存储内容</h3>
+      <button onclick="refreshEntries()" class="text-xs px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">🔄 刷新</button>
+    </div>
+    <div id="entries" class="space-y-2 max-h-[250px] overflow-auto">
+      <div class="text-white/40 text-center py-4">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 复杂数据演示 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🎯 复杂数据存储演示</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <button onclick="storeObject()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-blue-300">📋 存储对象</div>
+        <div class="text-xs text-white/50 mt-1">用户配置数据</div>
+      </button>
+      <button onclick="storeArray()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-emerald-300">📚 存储数组</div>
+        <div class="text-xs text-white/50 mt-1">待办事项列表</div>
+      </button>
+      <button onclick="storeBlob()" class="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-700/50 text-left">
+        <div class="font-bold text-orange-300">🖼️ 存储Blob</div>
+        <div class="text-xs text-white/50 mt-1">二进制数据</div>
+      </button>
+    </div>
+    <div id="demo-result" class="mt-4 p-4 bg-slate-900/60 rounded-xl mono text-sm min-h-[80px]"></div>
+  </div>
+
+  <!-- API 对比 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚖️ 存储方案对比</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/20">
+            <th class="text-left py-2 px-3 text-white/70">特性</th>
+            <th class="text-left py-2 px-3 text-teal-400">idb-keyval</th>
+            <th class="text-left py-2 px-3 text-blue-400">localStorage</th>
+            <th class="text-left py-2 px-3 text-purple-400">原生 IDB</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/10">
+          <tr>
+            <td class="py-2 px-3">API 风格</td>
+            <td class="py-2 px-3 text-emerald-400">Promise</td>
+            <td class="py-2 px-3">同步</td>
+            <td class="py-2 px-3">回调/Promise</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-3">存储限制</td>
+            <td class="py-2 px-3 text-emerald-400">几GB</td>
+            <td class="py-2 px-3 text-orange-400">~5MB</td>
+            <td class="py-2 px-3 text-emerald-400">几GB</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-3">数据类型</td>
+            <td class="py-2 px-3 text-emerald-400">任意类型</td>
+            <td class="py-2 px-3 text-orange-400">仅字符串</td>
+            <td class="py-2 px-3 text-emerald-400">任意类型</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-3">学习曲线</td>
+            <td class="py-2 px-3 text-emerald-400">极简</td>
+            <td class="py-2 px-3 text-emerald-400">极简</td>
+            <td class="py-2 px-3 text-red-400">复杂</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 代码示例 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">📝 代码示例</h3>
+    <div class="bg-slate-900/80 p-4 rounded-xl overflow-x-auto">
+      <pre class="text-sm mono text-slate-300">import { set, get, del, clear, keys, entries } from 'idb-keyval';
+
+// 存储
+await set('user', { name: '张三', age: 25 });
+
+// 读取
+const user = await get('user');
+
+// 删除
+await del('user');
+
+// 获取所有键
+const allKeys = await keys();
+
+// 获取所有键值对
+const allEntries = await entries();
+
+// 清空
+await clear();</pre>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/idb-keyval@6.2.1/dist/idb-keyval.iife.min.js"></script>
+<script>
+const { set, get, del, clear, keys, entries } = idbKeyval;
+
+function showResult(msg) {
+  document.getElementById('result').innerHTML = msg;
+}
+
+async function doSet() {
+  const key = document.getElementById('key-input').value.trim();
+  let value = document.getElementById('value-input').value;
+  
+  if (!key) { showResult('<span class="text-red-400">请输入键名</span>'); return; }
+  
+  // 尝试解析 JSON
+  try { value = JSON.parse(value); } catch (e) {}
+  
+  await set(key, value);
+  showResult(`<span class="text-emerald-400">✅ 已存储: ${key} = ${JSON.stringify(value)}</span>`);
+  refreshEntries();
+}
+
+async function doGet() {
+  const key = document.getElementById('key-input').value.trim();
+  if (!key) { showResult('<span class="text-red-400">请输入键名</span>'); return; }
+  
+  const value = await get(key);
+  if (value === undefined) {
+    showResult(`<span class="text-orange-400">⚠️ 键 "${key}" 不存在</span>`);
+  } else {
+    showResult(`<span class="text-cyan-400">${key} = ${JSON.stringify(value, null, 2)}</span>`);
+  }
+}
+
+async function doDel() {
+  const key = document.getElementById('key-input').value.trim();
+  if (!key) { showResult('<span class="text-red-400">请输入键名</span>'); return; }
+  
+  await del(key);
+  showResult(`<span class="text-orange-400">🗑️ 已删除: ${key}</span>`);
+  refreshEntries();
+}
+
+async function doClear() {
+  if (!confirm('确定清空所有数据?')) return;
+  await clear();
+  showResult('<span class="text-orange-400">🧹 已清空所有数据</span>');
+  refreshEntries();
+}
+
+async function refreshEntries() {
+  const container = document.getElementById('entries');
+  const allEntries = await entries();
+  
+  if (allEntries.length === 0) {
+    container.innerHTML = '<div class="text-white/40 text-center py-4">暂无存储数据</div>';
+    return;
+  }
+  
+  container.innerHTML = allEntries.map(([k, v]) => `
+    <div class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+      <div>
+        <span class="text-teal-300 font-bold">${k}</span>
+        <span class="text-white/50 mx-2">=</span>
+        <span class="text-cyan-300 mono text-sm">${JSON.stringify(v).substring(0, 50)}${JSON.stringify(v).length > 50 ? '...' : ''}</span>
+      </div>
+      <button onclick="quickDelete('${k}')" class="text-red-400 hover:text-red-300 text-sm">✕</button>
+    </div>
+  `).join('');
+}
+
+async function quickDelete(key) {
+  await del(key);
+  refreshEntries();
+}
+
+// 复杂数据演示
+async function storeObject() {
+  const userConfig = {
+    theme: 'dark',
+    language: 'zh-CN',
+    notifications: true,
+    lastLogin: new Date().toISOString()
+  };
+  await set('userConfig', userConfig);
+  document.getElementById('demo-result').innerHTML = `
+    <div class="text-blue-300 font-bold mb-2">已存储对象:</div>
+    <pre class="text-xs text-cyan-300">${JSON.stringify(userConfig, null, 2)}</pre>
+  `;
+  refreshEntries();
+}
+
+async function storeArray() {
+  const todos = [
+    { id: 1, text: '学习 IndexedDB', done: true },
+    { id: 2, text: '完成项目', done: false },
+    { id: 3, text: '写文档', done: false }
+  ];
+  await set('todos', todos);
+  document.getElementById('demo-result').innerHTML = `
+    <div class="text-emerald-300 font-bold mb-2">已存储数组 (${todos.length} 项):</div>
+    <pre class="text-xs text-cyan-300">${JSON.stringify(todos, null, 2)}</pre>
+  `;
+  refreshEntries();
+}
+
+async function storeBlob() {
+  const blob = new Blob(['Hello, IndexedDB!'], { type: 'text/plain' });
+  await set('myBlob', blob);
+  document.getElementById('demo-result').innerHTML = `
+    <div class="text-orange-300 font-bold mb-2">已存储 Blob:</div>
+    <div class="text-cyan-300">类型: ${blob.type}, 大小: ${blob.size} 字节</div>
+    <div class="text-white/50 text-xs mt-2">IndexedDB 可直接存储 Blob、File、ArrayBuffer 等二进制数据</div>
+  `;
+  refreshEntries();
+}
+
+// 初始化
+refreshEntries();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>

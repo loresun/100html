@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隐私政策生成器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #f0fdf4 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+
+        .step-connector {
+            height: 2px;
+            flex: 1;
+            transition: background-color 0.4s ease;
+        }
+
+        @keyframes typing-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .typing-cursor::after {
+            content: '▋';
+            animation: typing-cursor 0.8s infinite;
+            color: #059669;
+        }
+
+        .chip-btn {
+            transition: all 0.2s ease;
+        }
+        .chip-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px -4px rgba(5, 150, 105, 0.25);
+        }
+
+        .result-card {
+            transition: all 0.3s ease;
+        }
+        .result-card:hover {
+            box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.12);
+        }
+
+        .prose h1, .prose h2, .prose h3, .prose h4 { color: #1e293b; margin-top: 1.2em; margin-bottom: 0.5em; }
+        .prose h1 { font-size: 1.5em; font-weight: 700; }
+        .prose h2 { font-size: 1.25em; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+        .prose h3 { font-size: 1.1em; font-weight: 600; }
+        .prose p { margin: 0.6em 0; line-height: 1.8; color: #475569; }
+        .prose ul, .prose ol { padding-left: 1.5em; margin: 0.5em 0; }
+        .prose li { margin: 0.3em 0; line-height: 1.7; color: #475569; }
+        .prose strong { color: #1e293b; }
+        .prose blockquote { border-left: 3px solid #059669; padding-left: 1em; color: #64748b; background: #f0fdf4; border-radius: 0 8px 8px 0; padding: 0.5em 1em; }
+        .prose code { background: #f1f5f9; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        .prose th, .prose td { border: 1px solid #e2e8f0; padding: 0.5em 0.75em; text-align: left; font-size: 0.9em; }
+        .prose th { background: #f8fafc; font-weight: 600; }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div x-data="privacyPolicyApp" class="min-h-screen flex flex-col">
+
+        <!-- 顶部导航栏 -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-emerald-200/60">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                        onclick="location.href='../../index.html'">
+                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="shield-check" class="text-white h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg text-slate-900">隐私政策生成器</span>
+                            <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 一键生成合规隐私政策</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-slate-700 transition flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/60">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 免责声明横幅 -->
+        <div class="bg-amber-50 border-b border-amber-200">
+            <div class="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-center gap-2 text-sm text-amber-800">
+                <i data-lucide="alert-triangle" class="h-4 w-4 text-amber-600 flex-shrink-0"></i>
+                <span class="font-medium">本工具生成的隐私政策仅供参考，正式使用前请咨询专业律师审核</span>
+            </div>
+        </div>
+
+        <!-- 步骤进度条 -->
+        <div class="bg-white/60 backdrop-blur-sm border-b border-emerald-100 py-4">
+            <div class="max-w-3xl mx-auto px-4 flex items-center">
+                <template x-for="(step, idx) in steps" :key="idx">
+                    <div class="flex items-center" :class="idx < steps.length - 1 ? 'flex-1' : ''">
+                        <div class="flex items-center gap-2 cursor-pointer" @click="canGoToStep(idx) && goToStep(idx)">
+                            <div :class="[
+                                'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 relative',
+                                currentStep === idx ? 'bg-emerald-600 text-white shadow-lg scale-110' :
+                                currentStep > idx ? 'bg-emerald-500 text-white' :
+                                'bg-slate-200 text-slate-500'
+                            ]">
+                                <template x-if="currentStep > idx">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                </template>
+                                <template x-if="currentStep <= idx">
+                                    <span x-text="idx + 1"></span>
+                                </template>
+                            </div>
+                            <span :class="[
+                                'text-sm font-medium hidden sm:inline transition-colors',
+                                currentStep === idx ? 'text-slate-900' :
+                                currentStep > idx ? 'text-emerald-600' : 'text-slate-400'
+                            ]" x-text="step.name"></span>
+                        </div>
+                        <div x-show="idx < steps.length - 1"
+                            :class="['step-connector mx-3', currentStep > idx ? 'bg-emerald-400' : 'bg-slate-200']">
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="flex-grow overflow-y-auto">
+            <div class="max-w-5xl mx-auto px-4 py-6">
+
+                <!-- ============ 步骤1：信息输入 ============ -->
+                <div x-show="currentStep === 0" x-transition class="animate-fade-in">
+                    <div class="bg-white rounded-2xl shadow-sm border border-emerald-200/60 overflow-hidden">
+                        <div class="p-6 border-b border-emerald-50">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="clipboard-list" class="w-5 h-5 text-emerald-600"></i>
+                                填写业务信息
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">请详细填写您的业务信息，以便生成准确的隐私政策</p>
+                        </div>
+                        <div class="p-6 space-y-6">
+
+                            <!-- 业务/应用名称 -->
+                            <div class="space-y-2">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="building-2" class="w-4 h-4 text-slate-500"></i>
+                                    业务/应用名称 <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" x-model="input.businessName"
+                                    placeholder="例如：小象商城、时光笔记App、XX科技有限公司"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition" />
+                            </div>
+
+                            <!-- 业务类型 -->
+                            <div class="space-y-2">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="briefcase" class="w-4 h-4 text-slate-500"></i>
+                                    业务类型 <span class="text-red-500">*</span>
+                                </label>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <template x-for="bt in businessTypes" :key="bt.value">
+                                        <button @click="input.businessType = bt.value"
+                                            :class="[
+                                                'chip-btn px-3 py-2.5 rounded-xl text-sm font-medium border-2 transition-all duration-200',
+                                                input.businessType === bt.value
+                                                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-md'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'
+                                            ]">
+                                            <span x-text="bt.icon + ' ' + bt.label"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 收集的数据类型 -->
+                            <div class="space-y-2">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="database" class="w-4 h-4 text-slate-500"></i>
+                                    收集的个人信息 <span class="text-red-500">*</span>
+                                    <span class="text-xs text-slate-400 ml-1">(可多选)</span>
+                                </label>
+                                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                    <template x-for="d in dataTypes" :key="d">
+                                        <button @click="toggleArray(input.dataCollected, d)"
+                                            :class="[
+                                                'chip-btn px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all',
+                                                input.dataCollected.includes(d)
+                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200'
+                                            ]">
+                                            <span class="flex items-center gap-1.5">
+                                                <span :class="[
+                                                    'w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all',
+                                                    input.dataCollected.includes(d)
+                                                        ? 'bg-emerald-500 border-emerald-500'
+                                                        : 'border-slate-300'
+                                                ]">
+                                                    <svg x-show="input.dataCollected.includes(d)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                                </span>
+                                                <span x-text="d"></span>
+                                            </span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 数据用途 -->
+                            <div class="space-y-2">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="target" class="w-4 h-4 text-slate-500"></i>
+                                    数据使用目的 <span class="text-red-500">*</span>
+                                    <span class="text-xs text-slate-400 ml-1">(可多选)</span>
+                                </label>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <template x-for="p in usagePurposes" :key="p">
+                                        <button @click="toggleArray(input.purposes, p)"
+                                            :class="[
+                                                'chip-btn px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all',
+                                                input.purposes.includes(p)
+                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200'
+                                            ]">
+                                            <span class="flex items-center gap-1.5">
+                                                <span :class="[
+                                                    'w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all',
+                                                    input.purposes.includes(p)
+                                                        ? 'bg-emerald-500 border-emerald-500'
+                                                        : 'border-slate-300'
+                                                ]">
+                                                    <svg x-show="input.purposes.includes(p)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                                </span>
+                                                <span x-text="p"></span>
+                                            </span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 第三方共享 -->
+                            <div class="space-y-3">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="share-2" class="w-4 h-4 text-slate-500"></i>
+                                    是否与第三方共享数据？
+                                </label>
+                                <div class="flex gap-3">
+                                    <button @click="input.thirdPartySharing = true"
+                                        :class="[
+                                            'px-5 py-2.5 rounded-xl text-sm font-medium border-2 transition-all',
+                                            input.thirdPartySharing === true
+                                                ? 'border-emerald-600 bg-emerald-600 text-white'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'
+                                        ]">
+                                        是
+                                    </button>
+                                    <button @click="input.thirdPartySharing = false; input.thirdPartyPartners = ''"
+                                        :class="[
+                                            'px-5 py-2.5 rounded-xl text-sm font-medium border-2 transition-all',
+                                            input.thirdPartySharing === false
+                                                ? 'border-emerald-600 bg-emerald-600 text-white'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'
+                                        ]">
+                                        否
+                                    </button>
+                                </div>
+                                <div x-show="input.thirdPartySharing === true" x-transition class="mt-2">
+                                    <label class="text-xs text-slate-500 mb-1 block">请列出主要合作方/SDK类型</label>
+                                    <textarea x-model="input.thirdPartyPartners" rows="3"
+                                        placeholder="例如：支付宝支付SDK、微信登录SDK、友盟统计、七牛云存储、物流合作方等"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition resize-none"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- 适用法规 -->
+                            <div class="space-y-2">
+                                <label class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="scale" class="w-4 h-4 text-slate-500"></i>
+                                    适用法规 <span class="text-red-500">*</span>
+                                    <span class="text-xs text-slate-400 ml-1">(可多选)</span>
+                                </label>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="reg in regulations" :key="reg.value">
+                                        <button @click="toggleArray(input.targetRegulations, reg.value)"
+                                            :class="[
+                                                'chip-btn px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all',
+                                                input.targetRegulations.includes(reg.value)
+                                                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-md'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'
+                                            ]">
+                                            <span class="flex items-center gap-2">
+                                                <span x-text="reg.icon"></span>
+                                                <span x-text="reg.label"></span>
+                                            </span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 生成按钮 -->
+                            <button @click="generatePolicy"
+                                :disabled="!canGenerate || isLoading"
+                                class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                                <template x-if="!isLoading">
+                                    <span class="flex items-center gap-2">
+                                        <i data-lucide="wand-2" class="w-5 h-5"></i>
+                                        生成隐私政策
+                                    </span>
+                                </template>
+                                <template x-if="isLoading">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                        正在生成...
+                                    </span>
+                                </template>
+                            </button>
+
+                            <!-- 流程说明 -->
+                            <div class="bg-emerald-50/60 border border-emerald-200/60 rounded-xl p-3">
+                                <div class="flex items-start gap-2">
+                                    <i data-lucide="info" class="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5"></i>
+                                    <div class="text-xs text-emerald-700 space-y-1">
+                                        <p class="font-medium">生成流程说明</p>
+                                        <p>1. 填写信息 → 详细描述您的业务和数据收集情况</p>
+                                        <p>2. AI 生成 → 根据您的信息生成完整隐私政策文档</p>
+                                        <p>3. 合规检查 → AI 审查政策是否符合所选法规要求</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤2：AI 生成隐私政策 ============ -->
+                <div x-show="currentStep === 1" x-transition class="animate-fade-in space-y-4">
+
+                    <!-- 加载/流式输出 -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-emerald-200/60 overflow-hidden">
+                        <div class="p-5 border-b border-emerald-50 flex items-center justify-between">
+                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="file-text" class="w-5 h-5 text-emerald-600"></i>
+                                隐私政策文档
+                            </h2>
+                            <div x-show="isLoading" class="flex items-center gap-2 text-sm text-emerald-600">
+                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                <span>正在生成中...</span>
+                            </div>
+                        </div>
+
+                        <!-- 思考过程（V4 Pro 模型） -->
+                        <div x-show="reasoningContent" class="border-b border-emerald-50">
+                            <details class="group">
+                                <summary class="px-5 py-3 cursor-pointer text-sm font-medium text-slate-500 hover:text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="brain" class="w-4 h-4"></i>
+                                    🧠 深度思考过程 (点击展开)
+                                    <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </summary>
+                                <div class="px-5 pb-4">
+                                    <div class="bg-slate-50 rounded-lg p-4 text-sm text-slate-600 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto" x-text="reasoningContent"></div>
+                                </div>
+                            </details>
+                        </div>
+
+                        <div class="p-5">
+                            <!-- 空状态 -->
+                            <div x-show="!policyContent && !isLoading" class="flex flex-col items-center justify-center py-16 text-slate-400">
+                                <i data-lucide="file-text" class="w-16 h-16 mb-4 opacity-40"></i>
+                                <p>隐私政策将在此处显示</p>
+                            </div>
+
+                            <!-- 内容区域 -->
+                            <div x-show="policyContent" class="prose max-w-none" :class="isLoading ? 'typing-cursor' : ''" x-html="renderMarkdown(policyContent)"></div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div x-show="policyContent && !isLoading" class="flex flex-col sm:flex-row gap-3">
+                        <button @click="startComplianceCheck"
+                            class="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.01]">
+                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                            下一步：合规检查
+                        </button>
+                        <button @click="goToStep(0)"
+                            class="px-6 py-3.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:border-emerald-300 transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                            返回修改
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ============ 步骤3：合规检查 ============ -->
+                <div x-show="currentStep === 2" x-transition class="animate-fade-in space-y-4">
+
+                    <!-- 合规检查结果 -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-emerald-200/60 overflow-hidden">
+                        <div class="p-5 border-b border-emerald-50 flex items-center justify-between">
+                            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i>
+                                合规检查报告
+                            </h2>
+                            <div x-show="isCheckLoading" class="flex items-center gap-2 text-sm text-emerald-600">
+                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                <span>正在检查...</span>
+                            </div>
+                        </div>
+
+                        <!-- 思考过程（V4 Pro） -->
+                        <div x-show="checkReasoningContent" class="border-b border-emerald-50">
+                            <details class="group">
+                                <summary class="px-5 py-3 cursor-pointer text-sm font-medium text-slate-500 hover:text-slate-700 flex items-center gap-2">
+                                    <i data-lucide="brain" class="w-4 h-4"></i>
+                                    🧠 深度思考过程 (点击展开)
+                                    <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </summary>
+                                <div class="px-5 pb-4">
+                                    <div class="bg-slate-50 rounded-lg p-4 text-sm text-slate-600 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto" x-text="checkReasoningContent"></div>
+                                </div>
+                            </details>
+                        </div>
+
+                        <div class="p-5">
+                            <div x-show="!complianceResult && !isCheckLoading" class="flex flex-col items-center justify-center py-16 text-slate-400">
+                                <i data-lucide="shield-check" class="w-16 h-16 mb-4 opacity-40"></i>
+                                <p>合规检查结果将在此处显示</p>
+                            </div>
+                            <div x-show="complianceResult" class="prose max-w-none" :class="isCheckLoading ? 'typing-cursor' : ''" x-html="renderMarkdown(complianceResult)"></div>
+                        </div>
+                    </div>
+
+                    <!-- 导出按钮 -->
+                    <div x-show="complianceResult && !isCheckLoading" class="flex flex-col sm:flex-row gap-3">
+                        <button @click="exportMarkdown"
+                            class="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.01]">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            导出 Markdown
+                        </button>
+                        <button @click="exportTxt"
+                            class="flex-1 bg-white border-2 border-emerald-300 text-emerald-700 font-bold py-3.5 rounded-xl hover:bg-emerald-50 flex items-center justify-center gap-2 transition-all">
+                            <i data-lucide="file-down" class="w-5 h-5"></i>
+                            导出 TXT
+                        </button>
+                        <button @click="copyPolicy"
+                            class="px-6 py-3.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:border-emerald-300 transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                            <span x-text="copyBtnText">复制政策</span>
+                        </button>
+                    </div>
+
+                    <!-- 返回按钮 -->
+                    <div class="flex gap-3">
+                        <button @click="goToStep(1)"
+                            class="px-6 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:border-emerald-300 transition-all flex items-center gap-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                            查看隐私政策
+                        </button>
+                        <button @click="resetAll"
+                            class="px-6 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:border-red-200 hover:text-red-600 transition-all flex items-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            重新开始
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============ 设置弹窗 ============ -->
+        <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" @click.self="showSettings = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" x-transition.scale.95 @click.stop>
+                <div class="flex items-center justify-between mb-5">
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="settings" class="w-5 h-5 text-emerald-600"></i>
+                        API 配置
+                    </h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600 transition">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">DeepSeek API Key</label>
+                        <input type="password" x-model="apiConfig.deepseek"
+                            placeholder="sk-..."
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">模型选择</label>
+                        <select x-model="apiConfig.model"
+                            class="w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white">
+                            <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                            <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button @click="showSettings = false"
+                        class="px-4 py-2.5 hover:bg-slate-100 rounded-xl text-sm font-medium text-slate-600 transition">
+                        取消
+                    </button>
+                    <button @click="saveConfig"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition shadow-md">
+                        保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 通知 -->
+        <div x-show="toast.show" x-transition
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-2"
+            :class="toast.type === 'success' ? 'bg-emerald-600 text-white' : toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-800 text-white'">
+            <template x-if="toast.type === 'success'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+            </template>
+            <template x-if="toast.type === 'error'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </template>
+            <span x-text="toast.message"></span>
+        </div>
+
+    </div>
+
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('privacyPolicyApp', () => ({
+
+            // ============ 步骤配置 ============
+            steps: [
+                { name: '填写信息' },
+                { name: 'AI生成隐私政策' },
+                { name: 'AI合规检查' }
+            ],
+            currentStep: 0,
+
+            // ============ 表单数据 ============
+            input: {
+                businessName: '',
+                businessType: '',
+                dataCollected: [],
+                purposes: [],
+                thirdPartySharing: null,
+                thirdPartyPartners: '',
+                targetRegulations: ['中国个人信息保护法']
+            },
+
+            // ============ 选项定义 ============
+            businessTypes: [
+                { value: '电商平台', label: '电商平台', icon: '🛒' },
+                { value: '社交应用', label: '社交应用', icon: '💬' },
+                { value: '工具类App', label: '工具类App', icon: '🔧' },
+                { value: 'SaaS服务', label: 'SaaS服务', icon: '☁️' },
+                { value: '内容平台', label: '内容平台', icon: '📝' },
+                { value: '线下门店', label: '线下门店', icon: '🏪' },
+                { value: '其他', label: '其他', icon: '📦' }
+            ],
+
+            dataTypes: ['姓名', '手机号', '邮箱', '身份证号', '地理位置', '浏览记录', '购买记录', '设备信息', 'Cookie', '生物信息'],
+
+            usagePurposes: ['账户注册', '订单处理', '个性化推荐', '广告投放', '数据分析', '安全防护', '客户服务'],
+
+            regulations: [
+                { value: '中国个人信息保护法', label: '中国个人信息保护法', icon: '🇨🇳' },
+                { value: 'GDPR', label: 'GDPR (欧盟)', icon: '🇪🇺' },
+                { value: 'CCPA', label: 'CCPA (加州)', icon: '🇺🇸' }
+            ],
+
+            // ============ 状态 ============
+            isLoading: false,
+            isCheckLoading: false,
+            showSettings: false,
+            policyContent: '',
+            reasoningContent: '',
+            complianceResult: '',
+            checkReasoningContent: '',
+            copyBtnText: '复制政策',
+
+            // ============ API 配置 ============
+            apiConfig: {
+                deepseek: '',
+                model: 'deepseek-v4-flash'
+            },
+
+            // ============ Toast ============
+            toast: { show: false, message: '', type: 'success' },
+
+            // ============ 初始化 ============
+            init() {
+                this.loadConfig();
+                this.$nextTick(() => { lucide.createIcons(); });
+            },
+
+            /** 加载 API 配置（合并策略） */
+            loadConfig() {
+                const saved = localStorage.getItem('global_llm_config');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        this.apiConfig = { ...this.apiConfig, ...parsed };
+                    } catch (e) { console.error('配置解析失败:', e); }
+                }
+            },
+
+            /** 保存 API 配置（合并策略，不覆盖其他工具的配置） */
+            saveConfig() {
+                const current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                localStorage.setItem('global_llm_config', JSON.stringify({
+                    ...current,
+                    deepseek: this.apiConfig.deepseek,
+                    model: this.apiConfig.model
+                }));
+                this.showSettings = false;
+                this.showToast('配置已保存', 'success');
+            },
+
+            // ============ 工具方法 ============
+
+            /** 切换数组中的元素（多选） */
+            toggleArray(arr, val) {
+                const idx = arr.indexOf(val);
+                if (idx === -1) { arr.push(val); }
+                else { arr.splice(idx, 1); }
+            },
+
+            /** 渲染 Markdown 为 HTML */
+            renderMarkdown(text) {
+                if (!text) return '';
+                try { return marked.parse(text); }
+                catch (e) { return text; }
+            },
+
+            /** 显示 Toast 通知 */
+            showToast(message, type = 'success') {
+                this.toast = { show: true, message, type };
+                setTimeout(() => { this.toast.show = false; }, 2500);
+            },
+
+            /** 判断表单是否可提交 */
+            get canGenerate() {
+                return this.input.businessName.trim() &&
+                       this.input.businessType &&
+                       this.input.dataCollected.length > 0 &&
+                       this.input.purposes.length > 0 &&
+                       this.input.targetRegulations.length > 0;
+            },
+
+            // ============ 步骤导航 ============
+
+            canGoToStep(idx) {
+                if (idx === 0) return true;
+                if (idx === 1) return this.policyContent !== '';
+                if (idx === 2) return this.complianceResult !== '';
+                return false;
+            },
+
+            goToStep(idx) {
+                this.currentStep = idx;
+                this.$nextTick(() => {
+                    lucide.createIcons();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            },
+
+            // ============ 步骤2：生成隐私政策 ============
+
+            /** 构建生成隐私政策的提示词 */
+            buildPolicyPrompt() {
+                const sharingInfo = this.input.thirdPartySharing
+                    ? `是，合作方/SDK包括：${this.input.thirdPartyPartners || '未具体列出'}`
+                    : '否';
+
+                return `你是一位专业的互联网法律顾问，精通中国《个人信息保护法》、GDPR、CCPA等数据隐私法规。
+
+请根据以下业务信息，生成一份完整、专业、合规的隐私政策文档。
+
+## 业务信息
+
+- **业务/应用名称**：${this.input.businessName}
+- **业务类型**：${this.input.businessType}
+- **收集的个人信息**：${this.input.dataCollected.join('、')}
+- **数据使用目的**：${this.input.purposes.join('、')}
+- **是否与第三方共享数据**：${sharingInfo}
+- **需要符合的法规**：${this.input.targetRegulations.join('、')}
+
+## 生成要求
+
+请生成一份完整的隐私政策文档，要求：
+
+1. **语言**：使用正式的中文法律语言，措辞严谨
+2. **结构完整**：必须包含以下所有章节：
+   - 引言/概述（说明政策适用范围）
+   - 定义与术语
+   - 我们收集的个人信息（分类列出每种信息及收集方式）
+   - 个人信息的使用目的（逐条说明）
+   - 个人信息的共享、转让与公开披露
+   - Cookie 和类似技术的使用（如适用）
+   - 个人信息的存储与保护（安全措施）
+   - 您的权利（查阅、更正、删除、撤回同意等）
+   - 未成年人信息保护
+   - 隐私政策的更新
+   - 联系我们
+3. **法规适配**：
+${this.input.targetRegulations.includes('中国个人信息保护法') ? '   - 符合中国《个人信息保护法》要求，包括合法性基础、最小必要原则、敏感个人信息特别处理等\n' : ''}${this.input.targetRegulations.includes('GDPR') ? '   - 符合 GDPR 要求，包括数据处理的合法基础、数据主体权利（被遗忘权、数据可携带权等）、DPO 信息、跨境传输机制等\n' : ''}${this.input.targetRegulations.includes('CCPA') ? '   - 符合 CCPA 要求，包括消费者权利（知情权、删除权、退出销售权）、不歧视原则、财务激励说明等\n' : ''}4. **实用性**：政策内容应具体、可执行，避免空泛的模板化表述
+5. **格式**：使用 Markdown 格式，层级清晰，便于阅读
+
+请直接输出隐私政策全文，不要添加额外的说明或前言。`;
+            },
+
+            /** 发起 AI 生成隐私政策 */
+            async generatePolicy() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    this.showToast('请先配置 API Key', 'error');
+                    return;
+                }
+
+                this.isLoading = true;
+                this.policyContent = '';
+                this.reasoningContent = '';
+                this.complianceResult = '';
+                this.checkReasoningContent = '';
+                this.currentStep = 1;
+                this.$nextTick(() => {
+                    lucide.createIcons();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+
+                try {
+                    await this.streamAPI(
+                        [{ role: 'user', content: this.buildPolicyPrompt() }],
+                        (text) => { this.policyContent = text; },
+                        (text) => { this.reasoningContent = text; }
+                    );
+                    this.showToast('隐私政策生成完成', 'success');
+                } catch (e) {
+                    console.error('生成失败:', e);
+                    this.showToast(e.message || '生成失败，请重试', 'error');
+                } finally {
+                    this.isLoading = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            // ============ 步骤3：合规检查 ============
+
+            /** 发起合规检查 */
+            async startComplianceCheck() {
+                if (!this.apiConfig.deepseek) {
+                    this.showSettings = true;
+                    this.showToast('请先配置 API Key', 'error');
+                    return;
+                }
+
+                this.isCheckLoading = true;
+                this.complianceResult = '';
+                this.checkReasoningContent = '';
+                this.currentStep = 2;
+                this.$nextTick(() => {
+                    lucide.createIcons();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+
+                const prompt = `你是一位资深的数据隐私合规审计专家，精通以下法规：${this.input.targetRegulations.join('、')}。
+
+请对以下隐私政策文档进行全面的合规性审查。
+
+## 待审查的隐私政策
+
+${this.policyContent}
+
+## 审查要求
+
+请按照以下结构进行审查：
+
+### 1. 总体评估
+- 给出合规评分（满分100分）
+- 总体合规性评价
+
+### 2. 逐项法规检查
+
+${this.input.targetRegulations.includes('中国个人信息保护法') ? `#### 中国《个人信息保护法》合规检查
+- 合法性基础是否明确
+- 最小必要原则是否体现
+- 敏感个人信息处理是否有特别规定
+- 个人信息主体权利是否完整
+- 个人信息出境条款（如适用）
+- 个人信息保护影响评估提及
+- 自动化决策说明（如适用）
+` : ''}${this.input.targetRegulations.includes('GDPR') ? `#### GDPR 合规检查
+- 数据处理的合法基础（第6条）
+- 数据主体权利完整性（第15-22条）
+- 数据保护官（DPO）信息
+- 跨境数据传输机制
+- 数据泄露通知义务
+- 隐私设计原则体现
+- 数据处理记录
+` : ''}${this.input.targetRegulations.includes('CCPA') ? `#### CCPA 合规检查
+- 消费者知情权
+- 删除权
+- 退出销售权（Opt-out）
+- 不歧视条款
+- 财务激励说明
+- 12个月内信息收集披露
+- "不出售我的个人信息"链接要求
+` : ''}
+### 3. 缺失或不足之处
+用 ⚠️ 标记每个需要补充或改进的地方，并给出具体修改建议。
+
+### 4. 改进建议清单
+以表格形式列出所有改进项：
+| 序号 | 问题描述 | 严重程度 | 改进建议 |
+
+### 5. 最佳实践建议
+提供3-5条提升隐私政策质量的最佳实践建议。
+
+请使用 Markdown 格式输出，确保结构清晰、内容详实。`;
+
+                try {
+                    await this.streamAPI(
+                        [{ role: 'user', content: prompt }],
+                        (text) => { this.complianceResult = text; },
+                        (text) => { this.checkReasoningContent = text; }
+                    );
+                    this.showToast('合规检查完成', 'success');
+                } catch (e) {
+                    console.error('合规检查失败:', e);
+                    this.showToast(e.message || '检查失败，请重试', 'error');
+                } finally {
+                    this.isCheckLoading = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+
+            // ============ 流式 API 调用 ============
+
+            /** 通用流式 API 调用，支持 V4 Pro */
+            async streamAPI(messages, onContent, onReasoning) {
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                    },
+                    body: JSON.stringify({
+                        model: this.apiConfig.model,
+                        messages: messages,
+                        stream: true,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`API 请求失败 (${response.status}): ${errText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let contentAcc = '';
+                let reasoningAcc = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6).trim();
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices?.[0]?.delta;
+                                if (!delta) continue;
+
+                                if (delta.reasoning_content) {
+                                    reasoningAcc += delta.reasoning_content;
+                                    onReasoning(reasoningAcc);
+                                }
+                                if (delta.content) {
+                                    contentAcc += delta.content;
+                                    onContent(contentAcc);
+                                }
+                            } catch (e) { /* 忽略不完整的 JSON 行 */ }
+                        }
+                    }
+                }
+            },
+
+            // ============ 导出功能 ============
+
+            /** 导出 Markdown 文件 */
+            exportMarkdown() {
+                let content = `# ${this.input.businessName} 隐私政策\n\n`;
+                content += this.policyContent;
+
+                if (this.complianceResult) {
+                    content += '\n\n---\n\n# 合规检查报告\n\n';
+                    content += this.complianceResult;
+                }
+
+                this.downloadFile(content, `${this.input.businessName}_隐私政策.md`, 'text/markdown;charset=utf-8');
+                this.showToast('Markdown 导出成功', 'success');
+            },
+
+            /** 导出 TXT 文件（去除 Markdown 标记） */
+            exportTxt() {
+                let content = `${this.input.businessName} 隐私政策\n${'='.repeat(40)}\n\n`;
+                content += this.stripMarkdown(this.policyContent);
+
+                if (this.complianceResult) {
+                    content += `\n\n${'='.repeat(40)}\n合规检查报告\n${'='.repeat(40)}\n\n`;
+                    content += this.stripMarkdown(this.complianceResult);
+                }
+
+                this.downloadFile(content, `${this.input.businessName}_隐私政策.txt`, 'text/plain;charset=utf-8');
+                this.showToast('TXT 导出成功', 'success');
+            },
+
+            /** 简单去除 Markdown 标记 */
+            stripMarkdown(text) {
+                return text
+                    .replace(/#{1,6}\s/g, '')
+                    .replace(/\*\*(.*?)\*\*/g, '$1')
+                    .replace(/\*(.*?)\*/g, '$1')
+                    .replace(/`(.*?)`/g, '$1')
+                    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                    .replace(/^[-*+]\s/gm, '• ')
+                    .replace(/^\d+\.\s/gm, (m) => m)
+                    .replace(/^>\s?/gm, '  ')
+                    .replace(/\|/g, ' | ')
+                    .replace(/^---+$/gm, '---');
+            },
+
+            /** 下载文件 */
+            downloadFile(content, filename, type) {
+                const blob = new Blob([content], { type });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+
+            /** 复制隐私政策到剪贴板 */
+            async copyPolicy() {
+                try {
+                    await navigator.clipboard.writeText(this.policyContent);
+                    this.copyBtnText = '已复制 ✓';
+                    setTimeout(() => { this.copyBtnText = '复制政策'; }, 2000);
+                } catch (e) {
+                    const ta = document.createElement('textarea');
+                    ta.value = this.policyContent;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    this.copyBtnText = '已复制 ✓';
+                    setTimeout(() => { this.copyBtnText = '复制政策'; }, 2000);
+                }
+            },
+
+            /** 重置所有状态 */
+            resetAll() {
+                this.input = {
+                    businessName: '',
+                    businessType: '',
+                    dataCollected: [],
+                    purposes: [],
+                    thirdPartySharing: null,
+                    thirdPartyPartners: '',
+                    targetRegulations: ['中国个人信息保护法']
+                };
+                this.policyContent = '';
+                this.reasoningContent = '';
+                this.complianceResult = '';
+                this.checkReasoningContent = '';
+                this.currentStep = 0;
+                this.$nextTick(() => {
+                    lucide.createIcons();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            }
+        }));
+    });
+    </script>
+</body>
+</html>

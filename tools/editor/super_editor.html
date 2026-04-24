@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超级编校编辑器 - AI 内容创作工坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/diff-match-patch@1.0.5/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth/mammoth.browser.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 50%, #faf5ff 100%);
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 999px;
+        }
+
+        .diff-insert {
+            background: rgba(34, 197, 94, 0.2);
+            border-bottom: 2px solid #22c55e;
+        }
+
+        .diff-delete {
+            background: rgba(239, 68, 68, 0.15);
+            border-bottom: 2px solid #ef4444;
+            text-decoration: line-through;
+        }
+    </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+
+<body class="text-slate-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-indigo-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2 cursor-pointer" onclick="location.href='../../index.html'">
+                        <i class="fa-solid fa-file-pen text-indigo-600 h-6 w-6"></i>
+                        <span class="font-bold text-xl tracking-tight text-slate-900">超级编校编辑器</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                            <button @click="apiConfig.model = 'deepseek-v4-flash'"
+                                :class="{'bg-white shadow text-indigo-600': apiConfig.model === 'deepseek-v4-flash', 'text-slate-500': apiConfig.model !== 'deepseek-v4-flash'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Flash</button>
+                            <button @click="apiConfig.model = 'deepseek-v4-pro'"
+                                :class="{'bg-white shadow text-indigo-600': apiConfig.model === 'deepseek-v4-pro', 'text-slate-500': apiConfig.model !== 'deepseek-v4-pro'}"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition">V4 Pro</button>
+                        </div>
+                        <button @click="showSettings = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-gear h-4 w-4"></i>
+                            API 设置
+                        </button>
+                        <button @click="showHelp = true"
+                            class="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm font-medium">
+                            <i class="fa-solid fa-circle-question h-4 w-4"></i>
+                            使用帮助
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden h-[calc(100vh-4rem)]">
+            <div
+                class="w-full lg:w-2/5 bg-white/70 backdrop-blur-sm border-r border-indigo-200 p-6 overflow-y-auto space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-upload w-5 h-5 text-indigo-600"></i>
+                            文档导入 & 预览
+                        </h2>
+                        <span class="text-xs text-slate-500" v-if="rawContent">{{ rawContent.length }} 字符</span>
+                    </div>
+                    <label
+                        class="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-indigo-300 rounded-xl text-indigo-600 cursor-pointer hover:bg-indigo-50 transition">
+                        <i class="fa-solid fa-file-circle-plus w-4 h-4"></i>
+                        <span class="text-sm font-medium">上传 .docx / .txt / .md</span>
+                        <input type="file" class="hidden" accept=".docx,.txt,.md" @change="handleFileUpload">
+                    </label>
+                    <textarea v-model="rawContent" rows="6" placeholder="粘贴或输入文档内容..."
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"></textarea>
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="splitParagraphs" :disabled="!rawContent"
+                            class="px-3 py-2 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">自动拆分段落</button>
+                        <button @click="compressContent" :disabled="!rawContent || isCompressing"
+                            class="px-3 py-2 text-xs font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span v-if="isCompressing">压缩提取中...</span>
+                            <span v-else>内容压缩提取</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm p-5">
+                    <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-eye w-4 h-4 text-indigo-600"></i>
+                        文档预览
+                    </h3>
+                    <div class="prose prose-slate max-w-none text-sm bg-slate-50 rounded-xl p-4 h-64 overflow-y-auto"
+                        v-html="previewHtml"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-list w-4 h-4 text-indigo-600"></i>
+                            段落拆解
+                        </h3>
+                        <span class="text-xs text-slate-500">{{ paragraphs.length }} 段</span>
+                    </div>
+                    <div class="space-y-3 max-h-64 overflow-y-auto">
+                        <div v-if="!paragraphs.length" class="text-xs text-slate-400">尚未拆分段落</div>
+                        <div v-for="(para, index) in paragraphs" :key="index"
+                            class="border border-slate-200 rounded-lg p-3 text-xs text-slate-600 bg-slate-50">
+                            <div class="text-[11px] text-indigo-500 font-semibold mb-2">段落 {{ index + 1 }}</div>
+                            <div class="whitespace-pre-wrap">{{ para }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles w-4 h-4 text-indigo-600"></i>
+                            压缩提取结果
+                        </h3>
+                        <button v-if="compressionResult" @click="copyCompression"
+                            class="text-xs text-indigo-600 hover:underline">复制</button>
+                    </div>
+                    <div class="text-sm text-slate-600 whitespace-pre-wrap bg-slate-50 rounded-xl p-4 min-h-[120px]">
+                        {{ compressionResult || '等待生成摘要...' }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 p-6 overflow-y-auto space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-wand-sparkles w-5 h-5 text-indigo-600"></i>
+                            AI 编校
+                        </h2>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs px-2 py-1 rounded-full"
+                                :class="apiConfig.editMode === 'sequential' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'">
+                                {{ apiConfig.editMode === 'sequential' ? '顺序模式' : '并行模式' }}
+                            </span>
+                            <span class="text-xs text-slate-500" v-if="editedContent">已生成编校稿</span>
+                        </div>
+                    </div>
+
+                    <div v-if="paragraphEdits.length"
+                        class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                        <div class="flex items-center justify-between text-xs text-slate-600">
+                            <span>分段编校进度</span>
+                            <span>已完成 {{ paragraphProgress.completed }} / {{ paragraphProgress.total }}</span>
+                        </div>
+                        <div class="h-2 rounded-full bg-slate-200 overflow-hidden">
+                            <div class="h-full bg-indigo-500 transition-all"
+                                :style="{ width: paragraphProgress.percent + '%' }"></div>
+                        </div>
+                        <div class="flex flex-wrap gap-3 text-[11px] text-slate-500">
+                            <span>成功 {{ paragraphProgress.success }}</span>
+                            <span>失败 {{ paragraphProgress.error }}</span>
+                            <span>待处理 {{ paragraphProgress.pending }}</span>
+                        </div>
+                    </div>
+
+                    <!-- 当前编校提示词预览 -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-medium text-slate-600">当前编校提示词</span>
+                            <button @click="showSettings = true"
+                                class="text-xs text-indigo-600 hover:underline">编辑提示词</button>
+                        </div>
+                        <div class="text-sm text-slate-700 whitespace-pre-wrap max-h-20 overflow-y-auto">{{
+                            apiConfig.corePrompt || '未配置编校提示词' }}</div>
+                    </div>
+
+                    <!-- 帮助说明 -->
+                    <div class="text-xs text-slate-500 bg-amber-50/50 rounded-lg p-3 space-y-2">
+                        <div class="flex items-start gap-2">
+                            <i class="fa-solid fa-circle-info w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5"></i>
+                            <div class="space-y-1">
+                                <div><strong class="text-amber-700">全文编校</strong>：适合 1000 字以下的短文档，一次性发送给 AI 处理。</div>
+                                <div><strong
+                                        class="text-indigo-700">分段编校</strong>：适合长文档，按字数拆分后逐部分编校，支持顺序模式（延续性强）和并行模式（速度快）。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="runEditing" :disabled="!rawContent || isEditing"
+                            class="px-4 py-2 text-sm font-semibold bg-slate-600 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50"
+                            :title="'适合 1000 字以下短文档（当前：' + (rawContent ? rawContent.length : 0) + ' 字）'">
+                            <span v-if="isEditing">编校中...</span>
+                            <span v-else>全文编校</span>
+                        </button>
+                        <button @click="runParagraphEditing" :disabled="!rawContent || isParagraphEditing"
+                            class="px-4 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                            <span v-if="isParagraphEditing">分段编校中...</span>
+                            <span v-else>分段编校（{{ apiConfig.editMode === 'sequential' ? '顺序' : '并行' }}）</span>
+                        </button>
+                        <button @click="generateDiff" :disabled="!rawContent || !editedContent"
+                            class="px-4 py-2 text-sm font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                            生成差异对比
+                        </button>
+                        <button @click="downloadEdited" :disabled="!editedContent"
+                            class="px-4 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                            下载编校版本
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-3 text-xs text-slate-500">
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full" :class="actionStatus.editing"></span>全文编校
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full" :class="actionStatus.paragraph"></span>分段编校
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full" :class="actionStatus.compress"></span>压缩提取
+                        </span>
+                        <span v-if="rawContent" class="text-slate-400">| 当前内容：{{ rawContent.length }} 字</span>
+                        <span v-if="paragraphs.length" class="text-slate-400">| 已拆分：{{ paragraphs.length }} 个部分</span>
+                        <span v-if="lastApiError" class="text-rose-500">| API 错误：{{ lastApiError }}</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group w-4 h-4 text-indigo-600"></i>
+                            逐段编校结果
+                        </h3>
+                        <div class="flex items-center gap-3 text-xs text-slate-500">
+                            <span>{{ paragraphEdits.length }} 段</span>
+                            <span v-if="paragraphEdits.length" class="text-indigo-600">完成 {{ paragraphProgress.completed
+                                }} / {{ paragraphProgress.total }}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-3 max-h-72 overflow-y-auto">
+                        <div v-if="!paragraphEdits.length" class="text-xs text-slate-400">暂无逐段编校结果</div>
+                        <div v-for="(item, index) in paragraphEdits" :key="index"
+                            class="border border-slate-200 rounded-lg p-3 text-xs bg-slate-50 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-semibold text-indigo-500">段落 {{ index + 1 }}</span>
+                                <span class="text-[11px]"
+                                    :class="item.status === 'success' ? 'text-emerald-600' : item.status === 'error' ? 'text-rose-500' : 'text-slate-400'">
+                                    {{ item.statusLabel }}
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-slate-400">原文</div>
+                            <div class="whitespace-pre-wrap text-slate-600">{{ item.original }}</div>
+                            <div class="text-[11px] text-slate-400">编校后</div>
+                            <div class="whitespace-pre-wrap text-slate-700">{{ item.edited || '等待生成...' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl shadow-sm p-5">
+                        <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-file-lines w-4 h-4 text-indigo-600"></i>
+                            原文
+                        </h3>
+                        <div
+                            class="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 whitespace-pre-wrap h-80 overflow-y-auto">
+                            {{ rawContent || '暂无内容' }}</div>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm p-5">
+                        <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-file-circle-check w-4 h-4 text-indigo-600"></i>
+                            编校稿
+                        </h3>
+                        <div
+                            class="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 whitespace-pre-wrap h-80 overflow-y-auto">
+                            {{ editedContent || '等待编校结果' }}</div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-code-compare w-4 h-4 text-indigo-600"></i>
+                            差异对比
+                        </h3>
+                        <button v-if="diffHtml" @click="copyDiff"
+                            class="text-xs text-indigo-600 hover:underline">复制差异</button>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 h-64 overflow-y-auto"
+                        v-html="diffHtml || '<span class=\'text-slate-400\'>请先生成差异对比</span>'"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配置弹窗 -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-gear w-5 h-5"></i>
+                        编校配置
+                    </h3>
+                    <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- API Key 配置 -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        DeepSeek API Key
+                        <a href="https://platform.deepseek.com/api_keys" target="_blank"
+                            class="text-indigo-600 hover:underline text-xs ml-2">获取 Key</a>
+                    </label>
+                    <input type="password" v-model="apiConfig.deepseek" placeholder="sk-..."
+                        class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <!-- 分段设置 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            分段字数阈值
+                            <span class="text-xs text-slate-400 ml-1">(每部分约多少字)</span>
+                        </label>
+                        <input type="number" v-model.number="apiConfig.chunkSize" min="100" max="2000"
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            分段编校模式
+                        </label>
+                        <select v-model="apiConfig.editMode"
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="sequential">顺序模式（延续性强）</option>
+                            <option value="parallel">并行模式（速度快）</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 模式说明 -->
+                <div class="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 space-y-1">
+                    <div class="flex items-start gap-2">
+                        <span class="text-indigo-500 font-semibold">顺序模式：</span>
+                        <span>按顺序逐部分编校，后续部分基于前面已编校的结果，保持整体延续性和连贯性。适合需要前后呼应的文档。</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="text-emerald-500 font-semibold">并行模式：</span>
+                        <span>所有部分同时并行编校，速度快。每部分独立处理（但包含上下文参考）。适合段落相对独立的文档。</span>
+                    </div>
+                </div>
+
+                <!-- 核心编校提示词 -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">
+                        编校提示词模板
+                        <span class="text-xs text-slate-400 ml-1">(可选择预设并编辑)</span>
+                    </label>
+                    <div class="flex flex-col gap-2 mb-2">
+                        <select v-model="apiConfig.promptPreset"
+                            class="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option v-for="preset in promptPresets" :key="preset.id" :value="preset.id">
+                                {{ preset.label }}
+                            </option>
+                        </select>
+                        <button @click="applyPromptPreset"
+                            class="self-start px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
+                            应用预设到编辑框
+                        </button>
+                        <p class="text-xs text-slate-400">应用预设后可继续编辑，支持自定义细节。</p>
+                    </div>
+                    <textarea v-model="apiConfig.corePrompt" rows="4" placeholder="描述你的编校要求，如：修正语法错误、统一术语、保持正式语气..."
+                        class="w-full rounded-lg border-slate-300 border p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"></textarea>
+                </div>
+
+                <!-- 上下文提示说明 -->
+                <div class="text-xs text-slate-500 bg-amber-50 rounded-lg p-3">
+                    <div class="font-semibold text-amber-700 mb-1">💡 上下文编校机制</div>
+                    <div>分段编校时，系统会自动为每个部分提供"上一部分 + 当前部分 + 下一部分"的上下文，确保编校结果与前后内容保持连贯。</div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button @click="resetConfig"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition">恢复默认</button>
+                    <button @click="showSettings = false"
+                        class="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded-lg transition">取消</button>
+                    <button @click="saveConfig"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 帮助弹窗 -->
+        <div v-if="showHelp" class="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-circle-question w-5 h-5 text-indigo-600"></i>
+                        超级编校编辑器 - 使用指南
+                    </h3>
+                    <button @click="showHelp = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- 快速入门 -->
+                    <div class="bg-indigo-50 rounded-xl p-4">
+                        <h4 class="font-semibold text-indigo-800 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-rocket w-4 h-4"></i>
+                            快速入门
+                        </h4>
+                        <ol class="text-sm text-indigo-700 space-y-1 list-decimal list-inside">
+                            <li>配置 DeepSeek API Key（点击右上角"API 设置"）</li>
+                            <li>导入文档（支持 .docx / .txt / .md）或直接粘贴内容</li>
+                            <li>选择编校模式：全文编校（短文）或 分段编校（长文）</li>
+                            <li>点击"生成差异对比"查看修改内容</li>
+                            <li>下载编校后的文档</li>
+                        </ol>
+                    </div>
+
+                    <!-- 功能说明 -->
+                    <div class="space-y-3">
+                        <h4 class="font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-book-open w-4 h-4 text-indigo-600"></i>
+                            功能说明
+                        </h4>
+
+                        <!-- 导入与预览 -->
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h5 class="font-medium text-slate-800 mb-1">📁 文档导入 & 预览</h5>
+                            <p class="text-sm text-slate-600 mb-2">支持上传 .docx、.txt、.md 格式文件，或直接粘贴文本。导入后会自动显示预览。</p>
+                            <p class="text-xs text-slate-500">💡 提示：Word 文档会自动提取纯文本，保留段落结构。</p>
+                        </div>
+
+                        <!-- 自动拆分段落 -->
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h5 class="font-medium text-slate-800 mb-1">✂️ 自动拆分段落</h5>
+                            <p class="text-sm text-slate-600 mb-2">将长文档按字数阈值拆分为多个部分，便于分段处理。</p>
+                            <p class="text-xs text-slate-500">📊 默认每部分约 300 字，可在"编校配置"中调整。</p>
+                        </div>
+
+                        <!-- 内容压缩提取 -->
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h5 class="font-medium text-slate-800 mb-1">📝 内容压缩提取</h5>
+                            <p class="text-sm text-slate-600 mb-2">使用 AI 对原文进行摘要提炼，输出：</p>
+                            <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside ml-2">
+                                <li>80-150 字的精炼摘要</li>
+                                <li>3-6 条核心要点</li>
+                                <li>关键风险或注意事项（如有）</li>
+                            </ul>
+                        </div>
+
+                        <!-- 全文编校 -->
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h5 class="font-medium text-slate-800 mb-1">📄 全文编校</h5>
+                            <p class="text-sm text-slate-600 mb-2">适合 1000 字以下的短文档，一次性提交给 AI 进行全文润色。</p>
+                            <p class="text-xs text-amber-600">⚠️ 注意：长文档建议使用"分段编校"，避免超出 API 限制。</p>
+                        </div>
+
+                        <!-- 分段编校 -->
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h5 class="font-medium text-slate-800 mb-1">📑 分段编校</h5>
+                            <p class="text-sm text-slate-600 mb-2">适合长文档，按字数拆分后逐部分编校。支持两种模式：</p>
+                            <div class="space-y-2 mt-2">
+                                <div class="bg-slate-50 rounded-lg p-2">
+                                    <span class="text-xs font-semibold text-indigo-600">顺序模式</span>
+                                    <p class="text-xs text-slate-600 mt-1">按顺序逐部分编校，后续部分基于前面已编校的结果，保持整体延续性和连贯性。</p>
+                                </div>
+                                <div class="bg-slate-50 rounded-lg p-2">
+                                    <span class="text-xs font-semibold text-emerald-600">并行模式</span>
+                                    <p class="text-xs text-slate-600 mt-1">所有部分同时并行编校，速度快，但每部分独立处理（仍有上下文参考）。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 差异对比 -->
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h5 class="font-medium text-slate-800 mb-1">🔍 差异对比</h5>
+                            <p class="text-sm text-slate-600 mb-2">生成原文与编校稿的差异视图：</p>
+                            <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside ml-2">
+                                <li><span class="text-emerald-600 font-medium">绿色下划线</span> = 新增内容</li>
+                                <li><span class="text-rose-600 font-medium">红色删除线</span> = 删除内容</li>
+                            </ul>
+                        </div>
+
+                        <!-- 编校配置 -->
+                        <div class="border border-slate-200 rounded-xl p-4">
+                            <h5 class="font-medium text-slate-800 mb-1">⚙️ 编校配置说明</h5>
+                            <div class="space-y-3 mt-2">
+                                <div>
+                                    <span class="text-xs font-semibold text-slate-700">分段字数阈值</span>
+                                    <p class="text-xs text-slate-600">每部分的目标字数。300-500 字适合大多数场景。</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-semibold text-slate-700">编校提示词模板</span>
+                                    <p class="text-xs text-slate-600">预设 4 种模式：文字润色、逻辑提取、标题整理、翻译校对。可自定义编辑。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 常见问题 -->
+                    <div class="bg-amber-50 rounded-xl p-4">
+                        <h4 class="font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-lightbulb w-4 h-4"></i>
+                            常见问题
+                        </h4>
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <p class="font-medium text-amber-800">Q: 编校后的内容会丢失格式吗？</p>
+                                <p class="text-amber-700 mt-1">A: 会保留段落结构，但不会保留复杂格式。建议在原文中使用纯文本或简单换行。</p>
+                            </div>
+                            <div>
+                                <p class="font-medium text-amber-800">Q: 为什么分段编校比全文编校慢？</p>
+                                <p class="text-amber-700 mt-1">A: 长文档被拆分成多个部分，每个部分都需要单独调用 API。如果选择并行模式会快很多。</p>
+                            </div>
+                            <div>
+                                <p class="font-medium text-amber-800">Q: 可以只修改部分段落吗？</p>
+                                <p class="text-amber-700 mt-1">A: 可以直接编辑"逐段编校结果"中的内容，或在"编校稿"面板中手动修改。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button @click="showHelp = false"
+                        class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        知道了
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="toast.show"
+            class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 z-[200]">
+            <span v-html="renderIcon(toast.icon, { class: 'w-4 h-4' })"></span>
+            <span class="text-sm">{{ toast.message }}</span>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    showSettings: false,
+                    showHelp: false,
+                    rawContent: '',
+                    previewHtml: '<span class="text-slate-400">等待输入内容...</span>',
+                    fileName: 'edited_document.txt',
+                    fileType: 'text',
+                    paragraphs: [],
+                    compressionResult: '',
+                    editedContent: '',
+                    diffHtml: '',
+                    isCompressing: false,
+                    isEditing: false,
+                    isParagraphEditing: false,
+                    paragraphEdits: [],
+                    lastApiError: '',
+                    toast: { show: false, message: '', icon: 'check' },
+                    apiConfig: {
+                        deepseek: '',
+                        model: 'deepseek-v4-flash',
+                        chunkSize: 300,  // 每部分约300字
+                        editMode: 'sequential',  // 'sequential' 顺序模式 或 'parallel' 并行模式
+                        promptPreset: 'polish',
+                        corePrompt: '请对内容进行专业编校：修正语法错误，提升逻辑连贯性，统一术语，并保持正式商务语气。'  // 核心编校提示词
+                    },
+                    promptPresets: [
+                        {
+                            id: 'polish',
+                            label: '文字润色（提升表达）',
+                            prompt: '请对内容进行文字润色：修正语法错误，优化措辞，保持原意但提升表达的清晰度与节奏感。'
+                        },
+                        {
+                            id: 'logic',
+                            label: '逻辑提取（结构梳理）',
+                            prompt: '请优化内容的逻辑结构：补充必要的过渡句，突出因果或层级关系，保持信息完整并提升可读性。'
+                        },
+                        {
+                            id: 'titles',
+                            label: '标题整理（层级标题）',
+                            prompt: '请为内容梳理清晰的层级结构，必要时补充小标题，保证各段主题明确且一致。'
+                        },
+                        {
+                            id: 'translate',
+                            label: '翻译校对（双语可用）',
+                            prompt: '请对内容进行翻译或译文润色：保证语义准确、语言自然，保持专业术语一致。'
+                        }
+                    ],
+                    actionStatus: {
+                        compress: 'bg-slate-300',
+                        editing: 'bg-slate-300',
+                        paragraph: 'bg-slate-300'
+                    }
+                };
+            },
+            watch: {
+                rawContent() {
+                    this.updatePreview();
+                }
+            },
+            mounted() {
+                // 初始化 Lucide 图标
+
+                // 加载 API Key
+                const saved = localStorage.getItem('global_llm_config');
+                if (saved) {
+                    try {
+                        const config = JSON.parse(saved);
+                        this.apiConfig.deepseek = config.deepseek || '';
+                        this.apiConfig.model = config.model || this.apiConfig.model;
+                    } catch (e) {
+
+                    }
+                }
+                // 加载编辑器专属配置
+                const editorConfig = localStorage.getItem('super_editor_config');
+                if (editorConfig) {
+                    try {
+                        const config = JSON.parse(editorConfig);
+                        this.apiConfig.chunkSize = config.chunkSize || 300;
+                        this.apiConfig.editMode = config.editMode || 'sequential';
+                        this.apiConfig.corePrompt = config.corePrompt || this.apiConfig.corePrompt;
+                        this.apiConfig.promptPreset = config.promptPreset || this.apiConfig.promptPreset;
+                    } catch (e) {
+
+                    }
+                }
+                this.refreshIcons();
+            },
+            computed: {
+                paragraphProgress() {
+                    const total = this.paragraphEdits.length;
+                    const success = this.paragraphEdits.filter(item => item.status === 'success').length;
+                    const error = this.paragraphEdits.filter(item => item.status === 'error').length;
+                    const completed = success + error;
+                    const pending = total - completed;
+                    const percent = total ? Math.round((completed / total) * 100) : 0;
+                    return {
+                        total,
+                        success,
+                        error,
+                        pending,
+                        completed,
+                        percent
+                    };
+                }
+            },
+            methods: {
+
+                refreshIcons() {
+                    setTimeout(() => {
+                    }, 50);
+                },
+                showToast(message, icon = 'check') {
+                    this.toast = { show: true, message, icon };
+                    this.refreshIcons();
+                    setTimeout(() => {
+                        this.toast.show = false;
+                    }, 2500);
+                },
+                // 保存配置到 localStorage
+                saveConfig() {
+                    // 保存 API Key 到全局配置
+                    let current = {};
+                    try {
+                        current = JSON.parse(localStorage.getItem('global_llm_config') || '{}');
+                    } catch (e) {
+
+                    }
+                    localStorage.setItem('global_llm_config', JSON.stringify({
+                        ...current,
+                        deepseek: this.apiConfig.deepseek,
+                        model: this.apiConfig.model
+                    }));
+                    // 保存编辑器专属配置
+                    localStorage.setItem('super_editor_config', JSON.stringify({
+                        chunkSize: this.apiConfig.chunkSize,
+                        editMode: this.apiConfig.editMode,
+                        corePrompt: this.apiConfig.corePrompt,
+                        promptPreset: this.apiConfig.promptPreset
+                    }));
+                    this.showSettings = false;
+                    this.showToast('配置已保存');
+                },
+                // 恢复默认配置
+                resetConfig() {
+                    this.apiConfig.chunkSize = 300;
+                    this.apiConfig.editMode = 'sequential';
+                    this.apiConfig.promptPreset = 'polish';
+                    this.apiConfig.corePrompt = '请对内容进行专业编校：修正语法错误，提升逻辑连贯性，统一术语，并保持正式商务语气。';
+                    this.showToast('已恢复默认配置', 'refresh-cw');
+                },
+                applyPromptPreset() {
+                    const preset = this.promptPresets.find(item => item.id === this.apiConfig.promptPreset);
+                    if (preset) {
+                        this.apiConfig.corePrompt = preset.prompt;
+                        this.showToast('已应用预设提示词', 'sparkles');
+                    }
+                },
+                async handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    this.fileName = file.name;
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    this.fileType = ext === 'md' ? 'markdown' : 'text';
+
+                    if (ext === 'docx') {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const result = await mammoth.extractRawText({ arrayBuffer });
+                        this.rawContent = result.value.trim();
+                        this.fileType = 'text';
+                        this.showToast('Word 文档已解析');
+                    } else {
+                        const text = await file.text();
+                        this.rawContent = text.trim();
+                        this.showToast('文档已加载');
+                    }
+                    this.splitParagraphs();
+                    this.refreshIcons();
+                },
+                updatePreview() {
+                    if (!this.rawContent) {
+                        this.previewHtml = '<span class="text-slate-400">等待输入内容...</span>';
+                        return;
+                    }
+                    if (this.fileType === 'markdown') {
+                        this.previewHtml = marked.parse(this.rawContent);
+                        return;
+                    }
+                    const escaped = this.rawContent
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/\n/g, '<br>');
+                    this.previewHtml = `<div class="whitespace-pre-wrap">${escaped}</div>`;
+                },
+                /**
+                 * 按字数阈值拆分文档为多个部分
+                 * 原理：先按双换行符拆分为自然段落，然后按字数阈值合并段落为"部分"
+                 * 每个部分尽量接近 chunkSize 字数，但不会强行拆断段落
+                 */
+                splitParagraphs() {
+                    if (!this.rawContent) {
+                        this.paragraphs = [];
+                        return;
+                    }
+
+                    const chunkSize = this.apiConfig.chunkSize || 300;
+
+                    // 第一步：按双换行符拆分为自然段落
+                    const naturalParagraphs = this.rawContent
+                        .split(/\n\s*\n/)
+                        .map(chunk => chunk.trim())
+                        .filter(Boolean);
+
+                    // 第二步：按字数阈值合并段落为"部分"
+                    const parts = [];  // 最终的部分列表
+                    let currentPart = '';  // 当前正在构建的部分
+
+                    for (const para of naturalParagraphs) {
+                        // 如果当前部分为空，直接添加
+                        if (!currentPart) {
+                            currentPart = para;
+                        }
+                        // 如果合并后不超过阈值，则合并
+                        else if (currentPart.length + para.length + 2 <= chunkSize * 1.5) {
+                            currentPart += '\n\n' + para;
+                        }
+                        // 超过阈值，保存当前部分，开始新部分
+                        else {
+                            parts.push(currentPart);
+                            currentPart = para;
+                        }
+                    }
+
+                    // 添加最后一个部分
+                    if (currentPart) {
+                        parts.push(currentPart);
+                    }
+
+                    this.paragraphs = parts;
+
+                    const totalChars = this.rawContent.length;
+                    const avgChars = parts.length > 0 ? Math.round(totalChars / parts.length) : 0;
+                    this.showToast(`已拆分为 ${parts.length} 个部分（平均 ${avgChars} 字/部分）`, 'list');
+                },
+                resetParagraphEdits() {
+                    this.paragraphEdits = this.paragraphs.map((para) => ({
+                        original: para,
+                        edited: '',
+                        status: 'pending',
+                        statusLabel: '等待中'
+                    }));
+                },
+                async compressContent() {
+                    if (!this.ensureApiKey()) return;
+                    this.isCompressing = true;
+                    this.compressionResult = '';
+                    this.setActionStatus('compress', 'loading');
+                    try {
+                        const prompt = `你是专业内容分析师，请对以下内容进行压缩提取，输出：\n1. 80-150 字的精炼摘要\n2. 3-6 条要点清单\n3. 关键风险或注意事项（如有）\n\n原文：\n${this.rawContent}`;
+                        const result = await this.callDeepseek(prompt);
+                        this.compressionResult = result || '未生成摘要，请稍后重试。';
+                        this.setActionStatus('compress', 'success');
+                    } catch (error) {
+
+                        this.lastApiError = error.message;
+                        this.setActionStatus('compress', 'error');
+                        this.compressionResult = '摘要生成失败，请检查 API 设置。';
+                    } finally {
+                        this.isCompressing = false;
+                    }
+                },
+                /**
+                 * 全文 AI 编校
+                 * 注意：此方法适合 1000 字以下的短文档
+                 * 长文档建议使用分段编校功能
+                 */
+                async runEditing() {
+                    if (!this.ensureApiKey()) return;
+
+                    // 字数检查提示
+                    const charCount = this.rawContent.length;
+                    if (charCount > 1000) {
+                        const proceed = confirm(`当前文档有 ${charCount} 字，超过 1000 字。\n\n全文编校适合短文档，长文档可能会：\n• 超出 API token 限制\n• 编校效果不佳\n• 增加 API 费用\n\n建议使用"分段编校"功能。\n\n是否仍要继续全文编校？`);
+                        if (!proceed) {
+                            this.showToast('已取消，建议使用分段编校', 'info');
+                            return;
+                        }
+                    }
+
+                    this.isEditing = true;
+                    this.editedContent = '';
+                    this.diffHtml = '';
+                    this.setActionStatus('editing', 'loading');
+
+                    try {
+                        const corePrompt = this.apiConfig.corePrompt || '请对内容进行专业编校。';
+                        const prompt = `你是资深中文编校专家。请根据以下要求对全文进行编校，并输出完整的编校后的内容：
+
+编校要求：
+${corePrompt}
+
+原文：
+${this.rawContent}
+
+输出要求：
+1. 直接输出编校后的全文
+2. 不要加入任何解释或标题`;
+
+                        const result = await this.callDeepseek(prompt);
+                        this.editedContent = result || '未生成编校稿，请稍后重试。';
+                        this.setActionStatus('editing', 'success');
+                        this.showToast('编校完成', 'check-circle');
+                    } catch (error) {
+
+                        this.lastApiError = error.message;
+                        this.setActionStatus('editing', 'error');
+                        this.editedContent = '编校失败，请检查 API 设置。';
+                    } finally {
+                        this.isEditing = false;
+                    }
+                },
+                /**
+                 * 分段编校核心方法
+                 * 支持两种模式：
+                 * 1. sequential（顺序模式）：按顺序逐部分编校，后续部分基于前面已编校结果
+                 * 2. parallel（并行模式）：所有部分并行编校，每部分独立处理（但包含上下文）
+                 * 
+                 * 上下文机制：为每个部分提供"上一部分 + 当前部分 + 下一部分"的上下文
+                 */
+                async runParagraphEditing() {
+                    if (!this.ensureApiKey()) return;
+                    if (!this.paragraphs.length) {
+                        this.splitParagraphs();
+                    }
+                    if (!this.paragraphs.length) {
+                        this.showToast('请先提供可拆分的正文内容', 'alert-circle');
+                        return;
+                    }
+
+                    this.isParagraphEditing = true;
+                    this.setActionStatus('paragraph', 'loading');
+                    this.lastApiError = '';
+                    this.resetParagraphEdits();
+
+                    const mode = this.apiConfig.editMode || 'sequential';
+                    const modeLabel = mode === 'sequential' ? '顺序' : '并行';
+                    this.showToast(`开始 ${modeLabel} 模式编校 (${this.paragraphs.length} 个部分)`, 'play');
+
+                    if (mode === 'sequential') {
+                        // 顺序模式：按顺序逐部分编校，后续部分基于已编校结果
+                        await this.runSequentialEditing();
+                    } else {
+                        // 并行模式：所有部分同时编校
+                        await this.runParallelEditing();
+                    }
+
+                    this.isParagraphEditing = false;
+                    const hasError = this.paragraphEdits.some(item => item.status === 'error');
+                    this.setActionStatus('paragraph', hasError ? 'error' : 'success');
+
+                    // 合并所有编校后的部分
+                    this.editedContent = this.paragraphEdits.map(item => item.edited || item.original).join('\n\n');
+                    this.showToast(`${modeLabel}模式编校完成`, hasError ? 'alert-circle' : 'check-circle');
+                },
+
+                /**
+                 * 顺序编校模式
+                 * 特点：按顺序逐部分编校，后续部分的"上一部分"使用已编校的结果
+                 * 优点：保持整体延续性和连贯性
+                 */
+                async runSequentialEditing() {
+                    for (let i = 0; i < this.paragraphEdits.length; i++) {
+                        const item = this.paragraphEdits[i];
+                        item.status = 'loading';
+                        item.statusLabel = `编校中 (${i + 1}/${this.paragraphEdits.length})`;
+
+                        try {
+                            // 构建上下文：
+                            // 上一部分使用已编校的结果（如果有）
+                            // 下一部分使用原文
+                            const prevPart = i > 0
+                                ? (this.paragraphEdits[i - 1].edited || this.paragraphEdits[i - 1].original)
+                                : null;
+                            const nextPart = i < this.paragraphEdits.length - 1
+                                ? this.paragraphEdits[i + 1].original
+                                : null;
+
+                            const prompt = this.buildEditPrompt(item.original, prevPart, nextPart);
+                            const result = await this.callDeepseek(prompt);
+                            item.edited = result || item.original;
+                            item.status = 'success';
+                            item.statusLabel = '已完成';
+                        } catch (error) {
+
+                            item.edited = item.original;
+                            item.status = 'error';
+                            item.statusLabel = '失败';
+                            this.lastApiError = error.message;
+                        }
+                    }
+                },
+
+                /**
+                 * 并行编校模式
+                 * 特点：所有部分同时并行发送请求
+                 * 优点：速度快
+                 * 注意：上下文均使用原文
+                 */
+                async runParallelEditing() {
+                    const tasks = this.paragraphEdits.map(async (item, index) => {
+                        item.status = 'loading';
+                        item.statusLabel = '编校中';
+
+                        try {
+                            // 构建上下文：上一部分和下一部分均使用原文
+                            const prevPart = index > 0
+                                ? this.paragraphEdits[index - 1].original
+                                : null;
+                            const nextPart = index < this.paragraphEdits.length - 1
+                                ? this.paragraphEdits[index + 1].original
+                                : null;
+
+                            const prompt = this.buildEditPrompt(item.original, prevPart, nextPart);
+                            const result = await this.callDeepseek(prompt);
+                            item.edited = result || item.original;
+                            item.status = 'success';
+                            item.statusLabel = '已完成';
+                        } catch (error) {
+
+                            item.edited = item.original;
+                            item.status = 'error';
+                            item.statusLabel = '失败';
+                            this.lastApiError = error.message;
+                        }
+                    });
+
+                    await Promise.allSettled(tasks);
+                },
+
+                /**
+                 * 构建编校提示词
+                 * @param {string} currentPart - 当前待编校的部分
+                 * @param {string|null} prevPart - 上一部分（作为上下文）
+                 * @param {string|null} nextPart - 下一部分（作为上下文）
+                 * @returns {string} 完整的提示词
+                 */
+                buildEditPrompt(currentPart, prevPart, nextPart) {
+                    const corePrompt = this.apiConfig.corePrompt || '请对内容进行专业编校。';
+
+                    let contextInfo = '';
+                    if (prevPart) {
+                        contextInfo += `【上文参考】（仅供理解上下文，不要编辑此部分）\n${prevPart}\n\n`;
+                    }
+                    contextInfo += `【待编校内容】（请编校此部分）\n${currentPart}\n\n`;
+                    if (nextPart) {
+                        contextInfo += `【下文参考】（仅供理解上下文，不要编辑此部分）\n${nextPart}\n\n`;
+                    }
+
+                    return `你是资深中文编校专家。请对【待编校内容】进行编校。
+
+编校要求：
+${corePrompt}
+
+${contextInfo}
+输出要求：
+1. 仅输出编校后的【待编校内容】部分
+2. 不要输出上文参考或下文参考的内容
+3. 不要添加任何解释、标题或标记
+4. 保持原文的段落结构`;
+                },
+                generateDiff() {
+                    if (!this.rawContent || !this.editedContent) return;
+                    const dmp = new diff_match_patch();
+                    const diffs = dmp.diff_main(this.rawContent, this.editedContent);
+                    dmp.diff_cleanupSemantic(diffs);
+                    this.diffHtml = diffs.map(([op, text]) => {
+                        const safeText = text
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/\n/g, '<br>');
+                        if (op === 1) return `<span class="diff-insert">${safeText}</span>`;
+                        if (op === -1) return `<span class="diff-delete">${safeText}</span>`;
+                        return `<span>${safeText}</span>`;
+                    }).join('');
+                    this.showToast('差异已生成', 'git-compare');
+                },
+                downloadEdited() {
+                    if (!this.editedContent) return;
+                    const ext = this.fileType === 'markdown' ? 'md' : 'txt';
+                    const fileBase = this.fileName.replace(/\.[^/.]+$/, '') || 'edited_document';
+                    const finalName = `${fileBase}_edited.${ext}`;
+                    const blob = new Blob([this.editedContent], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = finalName;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    URL.revokeObjectURL(url);
+                    this.showToast('编校文件已下载', 'download');
+                },
+                copyCompression() {
+                    if (!this.compressionResult) return;
+                    navigator.clipboard.writeText(this.compressionResult);
+                    this.showToast('摘要已复制', 'copy');
+                },
+                copyDiff() {
+                    if (!this.diffHtml) return;
+                    const temp = document.createElement('div');
+                    temp.innerHTML = this.diffHtml;
+                    navigator.clipboard.writeText(temp.innerText);
+                    this.showToast('差异已复制', 'copy');
+                },
+                ensureApiKey() {
+                    if (!this.apiConfig.deepseek) {
+                        this.showSettings = true;
+                        this.showToast('请先配置 API Key', 'alert-circle');
+                        return false;
+                    }
+                    return true;
+                },
+                setActionStatus(action, status) {
+                    const statusMap = {
+                        idle: 'bg-slate-300',
+                        loading: 'bg-amber-400',
+                        success: 'bg-emerald-500',
+                        error: 'bg-rose-500'
+                    };
+                    this.actionStatus[action] = statusMap[status] || statusMap.idle;
+                },
+                async callDeepseek(prompt) {
+                    this.lastApiError = '';
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.apiConfig.deepseek}`
+                        },
+                        body: JSON.stringify({
+                            model: this.apiConfig.model,
+                            messages: [{ role: 'user', content: prompt }],
+                            stream: false
+                        })
+                    });
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        this.lastApiError = errorText || `HTTP ${response.status}`;
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    const data = await response.json();
+                    return data.choices?.[0]?.message?.content?.trim() || '';
+                }
+            }
+        }).mount('#app');
+    </script>
+
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js" data-help-doc="../../docs/help/editor_super_editor.md"></script>
+<!-- HELP-WIDGET-END -->
+    </body>
+
+</html>

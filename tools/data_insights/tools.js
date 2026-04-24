@@ -1,0 +1,67 @@
+window.toolCollections = window.toolCollections || {};
+window.toolCollections.data_insights = [
+    {
+        id: 'data_storyteller',
+        name: '数据故事讲述者',
+        desc: '粘贴表格/CSV数据→识别数据结构→发现趋势和异常→生成数据洞察报告+可视化建议+演讲要点。',
+        href: 'tools/data_insights/data_storyteller.html',
+        icon: 'fa-solid fa-chart-pie',
+        category: 'data_insights',
+        tags: ['职场'],
+        isNew: true,
+        complexity: 4,
+        iconBg: 'bg-cyan-50',
+        iconColor: 'text-cyan-600',
+        borderColor: 'cyan-200',
+        hoverTextColor: 'text-cyan-600',
+        linkColor: 'text-cyan-600'
+    },
+    {
+        id: 'survey_designer',
+        name: '问卷设计师',
+        desc: '调研目标+目标人群→设计问卷结构→生成题目+选项→添加逻辑跳转→导出问卷+分析计划。',
+        href: 'tools/data_insights/survey_designer.html',
+        icon: 'fa-solid fa-square-poll-vertical',
+        category: 'data_insights',
+        tags: ['职场'],
+        isNew: true,
+        complexity: 3,
+        iconBg: 'bg-violet-50',
+        iconColor: 'text-violet-600',
+        borderColor: 'violet-200',
+        hoverTextColor: 'text-violet-600',
+        linkColor: 'text-violet-600'
+    },
+    {
+        id: 'ab_test_analyzer',
+        name: 'AB测试分析师',
+        desc: '输入两组实验数据→统计显著性分析→效果量计算→胜出方案判定+置信度→决策建议。',
+        href: 'tools/data_insights/ab_test_analyzer.html',
+        icon: 'fa-solid fa-code-compare',
+        category: 'data_insights',
+        tags: ['职场'],
+        isNew: true,
+        complexity: 4,
+        iconBg: 'bg-green-50',
+        iconColor: 'text-green-600',
+        borderColor: 'green-200',
+        hoverTextColor: 'text-green-600',
+        linkColor: 'text-green-600'
+    },
+    {
+        id: 'user_research_report',
+        name: '用户调研报告',
+        desc: '输入调研原始笔记→提取关键发现→归类用户需求→生成洞察报告+人物画像+建议。',
+        href: 'tools/data_insights/user_research_report.html',
+        icon: 'fa-solid fa-users-viewfinder',
+        category: 'data_insights',
+        tags: ['职场'],
+        isNew: true,
+        complexity: 4,
+        iconBg: 'bg-blue-50',
+        iconColor: 'text-blue-600',
+        borderColor: 'blue-200',
+        hoverTextColor: 'text-blue-600',
+        linkColor: 'text-blue-600'
+    }
+];

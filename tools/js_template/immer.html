@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M09H8GY78X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-M09H8GY78X');
+</script>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Immer 不可变数据更新</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #134e4a 0%, #0f172a 100%); min-height: 100vh; }
+    .mono { font-family: monospace; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+    .code-block { background: #0f172a; border: 1px solid #334155; }
+  </style>
+    <script src="../../assets/js/deepseek-v4-compat.js"></script>
+</head>
+<body class="p-6 md:p-12 text-white">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold">🧊 Immer 不可变数据</h1>
+    <p class="text-white/60 mt-1">用可变的方式写不可变的数据 - React/Redux 状态管理神器</p>
+  </div>
+  <a href="index.html" class="px-4 py-2 glass rounded-lg text-white hover:bg-white/20">← 返回</a>
+</header>
+
+<main class="max-w-5xl mx-auto space-y-6">
+  <!-- 核心概念 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">💡 核心概念：produce 函数</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="code-block p-4 rounded-xl">
+        <div class="text-red-400 text-xs mb-2 font-bold">❌ 传统方式（繁琐）</div>
+        <pre class="text-sm mono text-slate-300">const newState = {
+  ...state,
+  user: { ...state.user, name: 'New' }
+};</pre>
+      </div>
+      <div class="code-block p-4 rounded-xl border-teal-500/50">
+        <div class="text-teal-400 text-xs mb-2 font-bold">✅ Immer 方式</div>
+        <pre class="text-sm mono text-slate-300">const newState = produce(state, draft => {
+  draft.user.name = 'New';
+});</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- 交互演示 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🎮 交互式演示</h3>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="space-y-3">
+        <input type="text" id="new-name" placeholder="修改用户名" class="w-full px-3 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white text-sm">
+        <button onclick="updateName()" class="w-full px-4 py-2 bg-teal-600 rounded-lg hover:bg-teal-700 text-sm font-bold">✏️ 更新用户名</button>
+        <input type="text" id="new-todo" placeholder="添加待办" class="w-full px-3 py-2 bg-slate-900/50 border border-white/20 rounded-lg text-white text-sm">
+        <button onclick="addTodo()" class="w-full px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 text-sm font-bold">➕ 添加待办</button>
+        <button onclick="toggleTodo()" class="w-full px-4 py-2 bg-amber-600 rounded-lg text-sm font-bold">🔄 切换第一项状态</button>
+        <button onclick="incrementScore()" class="w-full px-4 py-2 bg-rose-600 rounded-lg text-sm font-bold">📈 积分 +10</button>
+        <button onclick="resetState()" class="w-full px-4 py-2 bg-slate-700 rounded-lg text-sm">🔄 重置</button>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-teal-400 text-xs mb-2 font-bold">📦 当前状态</div>
+        <pre id="current-state" class="text-xs mono text-slate-300 overflow-auto max-h-[280px]"></pre>
+      </div>
+      <div class="bg-slate-900/60 p-4 rounded-xl">
+        <div class="text-purple-400 text-xs mb-2 font-bold">📜 操作历史</div>
+        <div id="history" class="space-y-2 overflow-auto max-h-[280px]"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 不可变性验证 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">🔍 不可变性验证</h3>
+    <div id="check-result" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+    <button onclick="runCheck()" class="mt-4 px-6 py-3 bg-emerald-600 rounded-xl hover:bg-emerald-700 font-bold">🧪 运行测试</button>
+  </div>
+
+  <!-- React 集成 -->
+  <div class="glass p-6 rounded-2xl">
+    <h3 class="font-bold text-lg mb-4">⚛️ 与 React 集成</h3>
+    <div class="code-block p-4 rounded-xl overflow-x-auto">
+      <pre class="text-sm mono text-slate-300">import { useImmer } from 'use-immer';
+
+function TodoApp() {
+  const [todos, updateTodos] = useImmer([]);
+  
+  const addTodo = (title) => updateTodos(draft => {
+    draft.push({ id: Date.now(), title, done: false });
+  });
+  
+  const toggle = (id) => updateTodos(draft => {
+    const todo = draft.find(t => t.id === id);
+    if (todo) todo.done = !todo.done;
+  });
+}</pre>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/immer@10.0.3/dist/immer.umd.production.min.js"></script>
+<script>
+const { produce } = immer;
+
+const initial = {
+  user: { name: 'AI工程师', score: 100 },
+  todos: [{ id: 1, text: '学习Immer', done: true }, { id: 2, text: '构建应用', done: false }]
+};
+
+let state = produce(initial, d => {});
+let history = [];
+
+function updateDisplay() {
+  document.getElementById('current-state').textContent = JSON.stringify(state, null, 2);
+  document.getElementById('history').innerHTML = history.map(h => 
+    `<div class="p-2 bg-slate-800/50 rounded text-xs"><div class="text-purple-300">${h}</div></div>`
+  ).reverse().join('');
+}
+
+function updateName() {
+  const name = document.getElementById('new-name').value.trim();
+  if (!name) return;
+  history.push(`用户名: ${state.user.name} → ${name}`);
+  state = produce(state, d => { d.user.name = name; });
+  document.getElementById('new-name').value = '';
+  updateDisplay();
+}
+
+function addTodo() {
+  const text = document.getElementById('new-todo').value.trim();
+  if (!text) return;
+  history.push(`添加待办: ${text}`);
+  state = produce(state, d => { d.todos.push({ id: Date.now(), text, done: false }); });
+  document.getElementById('new-todo').value = '';
+  updateDisplay();
+}
+
+function toggleTodo() {
+  if (!state.todos.length) return;
+  const t = state.todos[0];
+  history.push(`切换: ${t.text} (${t.done ? '完成→未完成' : '未完成→完成'})`);
+  state = produce(state, d => { d.todos[0].done = !d.todos[0].done; });
+  updateDisplay();
+}
+
+function incrementScore() {
+  history.push(`积分: ${state.user.score} → ${state.user.score + 10}`);
+  state = produce(state, d => { d.user.score += 10; });
+  updateDisplay();
+}
+
+function resetState() {
+  history.push('重置状态');
+  state = produce(initial, d => {});
+  updateDisplay();
+}
+
+function runCheck() {
+  const old = state, oldUser = state.user, oldTodos = state.todos;
+  const next = produce(state, d => { d.user.name = 'Test'; });
+  
+  const checks = [
+    { name: '根对象', pass: old !== next, desc: '新状态是新对象' },
+    { name: '用户对象', pass: oldUser !== next.user, desc: '修改的部分创建新引用' },
+    { name: 'Todos数组', pass: oldTodos === next.todos, desc: '未修改部分保持引用' }
+  ];
+  
+  document.getElementById('check-result').innerHTML = checks.map(c => `
+    <div class="p-4 rounded-xl ${c.pass ? 'bg-emerald-900/30 border border-emerald-500/50' : 'bg-red-900/30 border border-red-500/50'}">
+      <div class="font-bold ${c.pass ? 'text-emerald-400' : 'text-red-400'}">${c.pass ? '✅' : '❌'} ${c.name}</div>
+      <div class="text-white/60 text-sm mt-1">${c.desc}</div>
+    </div>
+  `).join('');
+}
+
+updateDisplay();
+</script>
+
+<!-- HELP-WIDGET-START -->
+<script src="../../help/help-widget-v2.js"></script>
+<!-- HELP-WIDGET-END -->
+</body>
+</html>
